@@ -32,7 +32,20 @@ $ gradle -q :server:run
 asom server 0.1.0 — placeholder (P3 brings the Ktor CIO server on 127.0.0.1:11435)
 ```
 
-## P1 — Contract + catalogue — not started
+## P1 — Contract + catalogue
+
+- [x] `:core:contract`: header names, 7 typed error codes (+HTTP status map), `Policy`, `RouteRecord` + echo-header law, `Capabilities`, OpenAI DTOs (responses only — request bodies stay raw `JsonObject` per §5.9 pass-through)
+- [x] `:core:catalogue`: §6 schema DTOs, tolerant parser with loud semantic validation
+- [x] `fixtures/catalogue.v1.json` — 5 providers (≥3 ✓, one `trainsOnData:true` ✓, llama-3.3-70b priced differently by 3 providers ✓, one `programmaticAllowed:false` for filter tests)
+- [x] `:core:inference-api`: `LocalEngine` seam + `NoopEngine` throwing typed `501 LOCAL_ENGINE_ABSENT`
+- [x] Golden tests incl. fixture-law tests so the fixture can't rot
+- [x] **Gate: `:core:*` tests pass**
+
+```
+$ gradle :core:contract:test :core:catalogue:test :core:inference-api:test
+BUILD SUCCESSFUL in 12s
+# JUnit XML: contract 13 tests / catalogue 13 tests / inference-api 2 tests — 0 failures, 0 errors
+```
 
 ## P2 — Routing core — not started
 
