@@ -1,0 +1,217 @@
+# asystemofmodels — v1 Build Brief ("asom")
+
+**Status:** FROZEN for cold execution · **Date:** 2026-07-04
+**Repo:** `asystemofcells/asystemofmodels` (public, Apache-2.0)
+**Naming:** canonical name `asystemofmodels`; everyday name **asom** (WINE-pattern nickname — use after first mention). Package anchor `xyz.mdhv.asom`. Header prefix `X-Asom-*`. Default port **11435**.
+
+---
+
+## 0. What this is (cold-start context — assume no chat history)
+
+asom is a **sovereign model-routing daemon for Android**. One app owns the model files, the BYOK cloud keys, the routing decision, and an egress ledger; it exposes an OpenAI-compatible HTTP API on `127.0.0.1:11435`. Every other app on the device is a thin client with **no model files, no inference engine, no keys**. Apps join via an "AI hotspot" pairing flow (AIDL-verified consent), exactly like devices joining a Wi-Fi hotspot.
+
+**v1 ships:** deterministic cloud-BYOK routing, shared model download/storage (install-once, served read-only to paired apps), Keystore vault, pairing, egress ledger + per-response echo headers, dashboard app, publishable client SDK.
+**v1 does NOT ship:** a local generation engine (stubbed with typed errors), semantic routing, NL routing, loop workflows, web-origin callers. These are Phase 2, separate brief.
+
+Ethos (frames every decision): sovereign, local-first, open-source, BYOK, **no telemetry**, no operator backend, one-time/free. The cloud is always a *watched object*: the user can always see which model ran, on-device vs cloud, and what left the device.
+
+**Reader contract:** this brief is self-contained. Where `OWNER-FILL` appears, request the value from the owner or proceed with the committed fixture — never invent it.
+
+---
+
+## 1. Invariants — violating any of these fails the build
+
+1. **No telemetry.** No analytics, no crash-reporting SaaS, no third-party data egress of any kind.
+2. Server binds `127.0.0.1` **only**. Never `0.0.0.0`. No cleartext exceptions beyond localhost in network security config.
+3. Permitted network egress classes, exhaustively: (a) provider API calls using the user's own keys, (b) catalogue.json fetch, (c) model-file downloads from catalogue URLs. **Every** network event writes a ledger row.
+4. BYOK keys: Android-Keystore-wrapped (§8), entered **only** in the dashboard Keys tab, never accepted or returned by any API, never in logs or the ledger.
+5. Pairing identity is **AIDL-verified** via `Binder.getCallingUid()`. No HTTP registration endpoint exists in v1 (the legacy `POST /admin/register` design is deleted).
+6. **Red/green never carry meaning** (owner is red-green colorblind — hard constraint). Semantic hue pair: violet `#8E7BFF` / cyan `#08FED5`, always with shape/label redundancy.
+7. UI is placeholder-functional Compose/Material3, wired against a **token-contract seam** (the Hyle design system supplies real visuals later; do not attempt visual design).
+8. No GMS/Firebase/Play-services dependencies.
+9. Per-response echo headers and the ledger row are built from the **same `RouteRecord` struct** — the API answer and the dashboard can never disagree.
+
+---
+
+## 2. v1 scope
+
+**IN:** deterministic router · OpenAI-compat server (SSE streaming) · AIDL pairing + bearer tokens · Keystore vault · catalogue consumption · model download/verify/store + fd-sharing to paired apps · metadata ledger + opt-in verbose mode · dashboard (status / Hotspot / models / keys / ledger tabs) · `:client` SDK · `:sample-client` proof app.
+
+**OUT (fail loudly, never silently):** local generation engine — `local-only` returns `501 LOCAL_ENGINE_ABSENT` and capabilities report `hasLocalEngine:false` · semantic router tiers · `X-Asom-Route-NL` · `loop:<name>` DAGs · web/PWA callers · on-device embeddings.
+
+---
+
+## 3. Environment & build reality
+
+- **Dev host:** Steam Deck (SteamOS). Work inside a distrobox/podman Ubuntu box with JDK 17, git, `gh`. Local Android SDK is **optional** — document setup in `docs/DECK_SETUP.md` but never require it.
+- **Guaranteed build path: GitHub Actions** (public repo → free hosted runners). CI runs all JVM tests and assembles a debug APK artifact on every push. There is **no self-hosted runner and no homelab** — do not reference one.
+- **Pure-JVM-first law:** `:core:*` and `:server` must build and test on a bare JDK (`./gradlew :server:test`) with no Android SDK present. This is what makes the project developable on the Deck.
+- Pins: Kotlin 2.1.x · Gradle 8.10+ wrapper · AGP 8.7+ · Ktor 3.x (**CIO** engine — not Netty) · Room 2.6+ · kotlinx-serialization · OkHttp (SSE) · androidx.work. `compileSdk 35 / targetSdk 35 / minSdk 29`.
+- Foreground service uses FGS type `specialUse` with the manifest property declaration (sideload-first distribution makes this safe; Play justification is a later owner concern).
+
+---
+
+## 4. Modules & dependency law
+
+| Module | Type | May depend on |
+|---|---|---|
+| `:core:contract` | pure JVM | — (DTOs, header names, error codes, `RouteRecord`) |
+| `:core:catalogue` | pure JVM | contract |
+| `:core:routing` | pure JVM | contract, catalogue |
+| `:core:inference-api` | pure JVM | contract (engine interface + `NoopEngine` stub) |
+| `:server` | pure JVM (Ktor) | all `:core:*` |
+| `:vault` | Android lib | contract |
+| `:pairing` | Android lib | contract |
+| `:storage` | Android lib | contract, catalogue |
+| `:ledger` | Android lib | contract |
+| `:app` | Android app | everything above |
+| `:client` | Android lib (publishable) | contract only |
+| `:sample-client` | Android app | client |
+
+**Law:** no `android.*` import in JVM modules — enforced by module type. `:client` must stay dependency-minimal (it ships inside other people's apps).
+
+---
+
+## 5. Public contract — FROZEN (no new endpoints or headers without owner sign-off)
+
+### 5.1 Discovery
+`ContentProvider`, authority **`xyz.mdhv.asom.discovery`**, no permission required (discovery only, no secrets). Single row: `port:Int, version:String, capabilities:String(JSON)`. Capabilities JSON: `{ endpoints[], virtualModels[], hasLocalEngine:false, catalogueVersion }`. Clients fall back to documented default port 11435.
+
+### 5.2 HTTP API — base `http://127.0.0.1:11435`
+- `POST /v1/chat/completions` — OpenAI schema; **SSE** when `stream:true`.
+- `POST /v1/completions` — legacy shim over chat.
+- `POST /v1/embeddings` — cloud-routed in v1.
+- `GET /v1/models` — concrete models (key present) + virtual models, each tagged via `owned_by`/metadata so clients can distinguish.
+- `GET /admin/health`, `GET /admin/catalogue` (merged catalogue + live cooldown state). Bearer-gated, localhost-only.
+- **Deleted vs legacy design:** `POST /admin/register`, `POST /admin/providers/{id}/key`. Do not implement.
+
+### 5.3 Request headers (all optional except auth)
+`Authorization: Bearer <token>` (required on `/v1/*` and `/admin/*`) · `X-Asom-Policy: cheapest|fastest|best-reasoning|local-only` · `X-Asom-Fallback: provider_a,provider_b` · `X-Asom-No-Train: true` (exclude providers with `trainsOnData=true`).
+
+### 5.4 Response headers (every `/v1/*` response)
+`X-Asom-Served-By: <provider>/<model>` · `X-Asom-Egress: local|cloud` · `X-Asom-Cost-Est: <USD>` **only when derivable**, with `X-Asom-Cost-Basis: usage|heuristic`. Never estimate without a basis.
+
+### 5.5 `model` field semantics
+Concrete id (`"llama-3.3-70b"`) **or** virtual policy (`auto | cheapest | fastest | best-reasoning | local-only`).
+
+### 5.6 Errors
+OpenAI error envelope + typed `code`: `NOT_PAIRED, TOKEN_REVOKED, NO_PROVIDER_KEY, MODEL_UNKNOWN, ALL_PROVIDERS_COOLING, LOCAL_ENGINE_ABSENT, UNSUPPORTED_BY_DRIVER`.
+
+### 5.7 Pairing (AIDL — the "Hotspot")
+Exported bound service, action **`xyz.mdhv.asom.PAIR`**. Conceptual interface: `requestPairing()`, `getToken()`, `getStatus()` with an async callback. Flow: client binds → daemon reads `Binder.getCallingUid()` → resolves package name + **signing-cert SHA-256** via PackageManager → consent sheet shows the *verified* identity (app label, package, cert fingerprint) → on approval mint a random 256-bit token bound to `(package, certHash)` → deliver via callback. Store only the token's SHA-256 hash (Room); compare constant-time. Revocation from the Hotspot tab invalidates immediately (server + providers check per request). Tokens never expire; revocation is the only invalidation.
+
+**Consent-UI launch path (landmine):** a background-bound service cannot launch activities on modern Android (background-activity-launch restrictions). Sequence therefore is: SDK binds AIDL → `requestPairing()` records a pending request keyed by the *verified* (uid, package, certHash) → SDK launches asom's exported `PairingActivity` from the **client app's foreground context** via `startActivityForResult` → the activity displays the pending verified identity for consent. Identity always comes from the AIDL bind's `getCallingUid()` — never from activity extras or `callingPackage`. If the user dismisses without deciding, `getStatus()` returns `PENDING` and no token is minted.
+
+### 5.8 Model file sharing
+`ContentProvider`, authority **`xyz.mdhv.asom.models`**, `openFile` mode `"r"` only, URIs `content://xyz.mdhv.asom.models/models/{modelId}`. Caller UID must map to an active pairing. Consumer note (document in README): llama.cpp-embedding apps can load the returned fd via the `/proc/self/fd/<n>` path; the kernel page cache dedups read-only mappings across processes.
+
+### 5.9 Body handling & streaming (v1)
+The router parses only `model` and `stream` (and reads `messages` for heuristic token counts). All other body fields **pass through verbatim** to `openai-compat` providers — the daemon never gatekeeps provider capabilities. The Anthropic driver translates the text-chat subset (`messages`/`system`, `max_tokens`, `temperature`, `top_p`, `stop`, `stream`); fields it cannot translate (e.g. `tools`) return `501 UNSUPPORTED_BY_DRIVER`. Streaming: `openai-compat` streams are **byte-level pass-through** (echo headers are committed before the body starts); only the Anthropic driver re-maps events to `chat.completion.chunk` shape. For usage-based cost on streams, inject `stream_options: {"include_usage": true}` when absent; if the provider still omits usage, fall back to `costBasis: heuristic`.
+
+---
+
+## 6. Catalogue (consumed, not owned)
+
+Source of truth lives in the owner's news-app repo. `CATALOGUE_URL = <OWNER-FILL>`. Until provided, drive everything from the committed fixture `fixtures/catalogue.v1.json`, authored to this schema:
+
+```json
+{
+  "version": 1,
+  "updatedAt": "2026-07-04T00:00:00Z",
+  "providers": [{
+    "id": "openrouter",
+    "displayName": "OpenRouter",
+    "kind": "openai-compat",
+    "baseUrl": "https://openrouter.ai/api/v1",
+    "auth": { "type": "bearer" },
+    "trainsOnData": false,
+    "programmaticAllowed": true,
+    "rate": { "rpm": 60, "rpd": 10000 },
+    "pricing": { "llama-3.3-70b": { "inPerMTok": 0.10, "outPerMTok": 0.30 } },
+    "models": ["llama-3.3-70b"]
+  }],
+  "models": [{
+    "id": "llama-3.3-70b",
+    "family": "llama",
+    "kind": "chat",
+    "ctx": 131072,
+    "files": [{ "url": "https://…", "sha256": "…", "bytes": 40000000000, "quant": "Q4_K_M" }]
+  }]
+}
+```
+
+`kind` drives driver selection: `openai-compat` (generic, baseUrl-parameterized — covers OpenRouter/Groq/Together/Mistral/DeepSeek/Gemini-compat) and `anthropic` (native driver). Refresh: on demand + 24 h cache with ETag. Catalogue fetches are ledger rows (`egress: catalogue`). The fixture must contain **≥3 providers** — at least one with `trainsOnData:true` and at least two serving a common model at different prices — so §7's filter and ordering tests are exercisable.
+
+---
+
+## 7. Routing spec (deterministic, v1)
+
+For each request: **resolve** the model selector → **filter** candidate providers (user key stored ∧ serves the model ∧ `programmaticAllowed` ∧ passes `No-Train` filter if set) → **order** by policy: `cheapest` = pricing ascending; `fastest` = latency EWMA ascending (persisted per provider); `best-reasoning` = catalogue rank field; `auto` = cheapest within the fastest latency band → **attempt** in order with a per-provider circuit breaker: on 429/5xx/timeout, put provider in cooldown (exponential backoff 30 s → 15 min cap) and fall to next → all exhausted = `ALL_PROVIDERS_COOLING`. `X-Asom-Fallback` overrides ordering; `X-Asom-Policy` overrides the default policy. Every request produces one `RouteRecord` → echo headers + ledger row. No ML, no embeddings, no NL parsing in v1.
+
+---
+
+## 8. Vault
+
+AES-256-GCM master key in Android Keystore (**StrongBox when available**, TEE fallback) wraps a random data key; ciphertext + nonce in Room. One active key per provider. Write path exists only in the dashboard Keys tab. Redaction law: any logging path renders key material as `[REDACTED]`; include a unit test asserting no key bytes appear in captured logs.
+
+---
+
+## 9. Ledger
+
+Room table `route_log`: `ts, callerPkg, requestedModel, servedProvider, servedModel, egress(local|cloud|catalogue|download), bytesOut, tokensIn, tokensOut, costEst?, costBasis, latencyMs, status`. Default is **metadata-only**. Opt-in **verbose mode** stores request/response bodies in a separate table with a **24 h TTL purge job** and a persistent notification while active. Export: user-triggered JSON share only — the ledger itself never leaves the device automatically.
+
+---
+
+## 10. Storage & sharing
+
+WorkManager downloads (resumable, wifi-only toggle) from catalogue `files[].url` → SHA-256 verify → `filesDir/models/{modelId}/`. Dashboard models tab: download, progress, pin, evict, per-model and total storage stats. Served read-only via §5.8. Download events are ledger rows (`egress: download`).
+
+---
+
+## 11. Phases & gates (log every gate to `PROGRESS.md`)
+
+- **P0 — Bootstrap.** Module skeleton per §4, version catalog, `LICENSE` (Apache-2.0), README stub, `CLAUDE.md` at root distilling §1 invariants, §3 build commands, §4 dependency law, and the gate list (future sessions read it first), CI (`.github/workflows/ci.yml`: JVM tests + `assembleDebug` artifact, Java 17, Gradle cache). *Gate:* CI green on skeleton.
+- **P1 — Contract + catalogue.** DTOs, parser, fixture, golden tests. *Gate:* `:core:*` tests pass.
+- **P2 — Routing core.** Router + cooldown FSM + property tests (ordering laws, filter laws, breaker behavior). *Gate:* `./gradlew :core:routing:test`; ≥90% branch coverage on policy/cooldown logic.
+- **P3 — Server, desktop-runnable.** Ktor CIO, all §5.2 endpoints, SSE, auth middleware (in-memory tokens), `FakeProvider` drivers; JVM integration tests against `127.0.0.1`. *Gate:* `./gradlew :server:run` on desktop + committed curl transcript test.
+- **P4 — Real drivers.** `OpenAICompatDriver(baseUrl)` + `AnthropicDriver`; upstream-SSE → OpenAI-SSE normalization; usage→cost mapping. *Gate:* mock-server JVM tests green; real-key smoke = `NEEDS-OWNER-VALIDATION` (owner curls from Deck).
+- **P5 — Android shell.** `:app` foreground service (`specialUse` + property) hosting the server; real `:vault`; ledger persistence; minimal dashboard (status, keys, ledger). *Gate:* CI APK artifact; on-device checklist → `NEEDS-DEVICE-VALIDATION` (RedMagic).
+- **P6 — Pairing + client.** AIDL service + consent sheet + token store; `:client` SDK (discovery, pair, streaming chat) — pin its public surface in `docs/CLIENT_API.md` *before* implementing and treat it as contract, since it ships inside other apps; `:sample-client` proving end-to-end paired streaming. *Gate:* device checklist.
+- **P7 — Storage.** Downloads, fd provider, pin/evict. *Gate:* device checklist including a second app reading a model fd via `:sample-client`.
+- **P8 — Watched-object polish.** Echo headers asserted end-to-end; Hotspot tab (list/revoke); verbose mode + TTL; quick-settings tile; boot-start toggle (**default OFF** — nothing runs unless the user starts it); notification surfaces live state (idle/streaming/provider). *Gate:* execute and commit `QA_V1.md` manual script.
+- **Phase 2 (separate brief, do not start):** `:inference` engine (llama.cpp JNI), semantic tiers, `Route-NL`, loops.
+
+---
+
+## 12. Testing & anti-overclaim discipline
+
+Never mark a gate passed without pasting real command output into `PROGRESS.md`. No fabricated logs or test results. If blocked, write `BLOCKED(<reason>)` and stop. Device-only items are `NEEDS-DEVICE-VALIDATION` and remain open until the owner confirms — do not claim them done.
+
+---
+
+## 13. Do-not list
+
+No telemetry libraries · no Firebase/GMS · no `0.0.0.0` bind · no endpoints/headers beyond §5 · no package renames · no engine code in v1 (`NoopEngine` only) · no KMP · no UI ambition beyond functional Compose/Material3 against the token seam · no extra egress classes · no chakravyuha-specific hooks (see §15).
+
+---
+
+## 14. Owner tasks (the parts only Madhav can do)
+
+1. **(P0)** Create the repo `asystemofcells/asystemofmodels` (public, Apache-2.0) — or authenticate `gh` in the session and delegate: `gh repo create asystemofcells/asystemofmodels --public --license apache-2.0`.
+2. **(by P1, ongoing)** Mirror §6 schema into the news-app catalogue: add `pricing`, `rate`, and model `files[]` (URL/sha256/bytes) entries; paste the raw `CATALOGUE_URL` into this brief's `OWNER-FILL`.
+3. **(P4)** Provide at least two provider keys and run the real-key smoke curls from the Deck; mark the P4 validation item.
+4. **(P5+)** RedMagic sideload validation per each device checklist (adb from Deck distrobox or Termux).
+5. **(P8)** Decide distribution order (sideload → F-Droid first; Play later requires the `specialUse` justification); create and safeguard a release keystore when distributing.
+6. **(anytime)** Confirm Apache-2.0; publish the Hyle token contract or explicitly bless the placeholder seam.
+
+---
+
+## 15. Relationship boundary — chakravyuha
+
+asystemofmodels is a **standalone product**. chakravyuha (the larger sovereignty tool that works with Aarso) MAY consume it strictly as a client: the localhost API, the `:client` SDK, and — if later needed — a read-only ledger endpoint added through the normal public-contract process. asom never imports, references, or special-cases chakravyuha; features it wants arrive as ordinary public API proposals. **One-way dependency, no shared private code.** This is the line that prevents forked work.
+
+---
+
+## 16. First commands (after owner task 1)
+
+Clone the repo, commit this brief at the root as `ASOM_BUILD_BRIEF.md`, then execute P0. Work phase by phase; never skip a gate.
