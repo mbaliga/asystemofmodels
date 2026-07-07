@@ -47,7 +47,24 @@ BUILD SUCCESSFUL in 12s
 # JUnit XML: contract 13 tests / catalogue 13 tests / inference-api 2 tests — 0 failures, 0 errors
 ```
 
-## P2 — Routing core — not started
+## P2 — Routing core
+
+- [x] Deterministic `Router` per §7: resolve → filter (key ∧ serves ∧ programmatic ∧ no-train) → order (cheapest/fastest/best-reasoning/auto) → cooldown skip; typed errors on every failure path
+- [x] `CooldownRegistry` circuit-breaker FSM: 30 s → 15 min exponential backoff, success resets, streak survives expired deadlines
+- [x] `LatencyTracker` EWMA (persistable snapshot/preload seam)
+- [x] `X-Asom-Fallback` restricts + orders; `local-only` → typed `LOCAL_ENGINE_ABSENT`
+- [x] Property tests (seeded, 200 iters × 6 laws): filter soundness, ordering laws, auto-band law, determinism, total-order tie-breaks
+- [x] JaCoCo branch-coverage verification wired into `check` (≥90% rule)
+- [x] **Gate: `:core:routing:test` + coverage**
+
+```
+$ gradle :core:routing:check
+> Task :core:routing:test
+> Task :core:routing:jacocoTestCoverageVerification
+BUILD SUCCESSFUL in 15s
+# 38 tests, 0 failures. Branch coverage (jacocoTestReport.xml):
+#   Router 44/45 = 97.8% · Router.Companion 2/2 = 100% · CooldownRegistry 16/16 = 100%
+```
 
 ## P3 — Server (desktop-runnable) — not started
 
