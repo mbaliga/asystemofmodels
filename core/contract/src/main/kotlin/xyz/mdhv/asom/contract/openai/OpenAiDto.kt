@@ -81,13 +81,14 @@ data class ModelListResponse(
     val data: List<ModelObject>,
 )
 
-/** OpenAI error envelope + typed asom `code` (§5.6). */
+/** OpenAI error envelope + typed asom `code` (§5.6). `code` is null only for
+ *  plain malformed-request 400s; every routed failure carries a §5.6 code. */
 @Serializable
 data class ErrorBody(
     val message: String,
     val type: String,
     val param: String? = null,
-    val code: String,
+    val code: String? = null,
 )
 
 @Serializable

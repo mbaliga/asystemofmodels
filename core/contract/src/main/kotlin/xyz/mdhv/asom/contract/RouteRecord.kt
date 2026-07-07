@@ -69,8 +69,14 @@ data class RouteRecord(
     }
 
     companion object {
-        /** Locale-safe plain-decimal USD rendering (no scientific notation). */
+        /**
+         * Locale-safe plain-decimal USD rendering: no scientific notation,
+         * rounded to 8 decimal places (sub-hundredth-of-a-cent is noise).
+         */
         fun formatUsd(value: Double): String =
-            BigDecimal.valueOf(value).stripTrailingZeros().toPlainString()
+            BigDecimal.valueOf(value)
+                .setScale(8, java.math.RoundingMode.HALF_UP)
+                .stripTrailingZeros()
+                .toPlainString()
     }
 }

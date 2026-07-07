@@ -66,7 +66,29 @@ BUILD SUCCESSFUL in 15s
 #   Router 44/45 = 97.8% · Router.Companion 2/2 = 100% · CooldownRegistry 16/16 = 100%
 ```
 
-## P3 — Server (desktop-runnable) — not started
+## P3 — Server (desktop-runnable)
+
+- [x] Ktor CIO server; bind host hardcoded to `127.0.0.1` (no config surface for `0.0.0.0` — §1.2 by construction)
+- [x] All §5.2 endpoints: `/v1/chat/completions` (SSE), `/v1/completions` shim (incl. stream translation), `/v1/embeddings`, `/v1/models` (concrete tagged by provider + virtual tagged `asom-virtual`), `/admin/health`, `/admin/catalogue` (merged + live cooldown state, key PRESENCE only)
+- [x] Auth middleware: in-memory token registry, SHA-256-hashed tokens, constant-time compare; `NOT_PAIRED` / `TOKEN_REVOKED`
+- [x] `RoutePipeline`: attempt loop with circuit breaker; virtual selectors resolved to concrete model ids before upstream dispatch; §5.9 `include_usage` injection
+- [x] `FakeDriver` with per-provider failure injection (429/5xx/4xx) exercising breaker + fatal-relay paths
+- [x] Echo headers + ledger row from the same `RouteRecord` (§1.9) — asserted in tests; streams commit headers pre-body, cost lands in the ledger (usage-based)
+- [x] 23 JVM integration tests against a real CIO server on 127.0.0.1 (auth, routing, SSE, shim, embeddings, breaker, admin, key-never-leaks, ledger-row-per-request)
+- [x] **Gate: `./gradlew :server:run` + committed curl transcript** → `docs/CURL_TRANSCRIPT.md` (captured live)
+
+```
+$ gradle :server:test
+BUILD SUCCESSFUL — 23 tests, 0 failures (server/build/test-results)
+
+$ gradle -q :server:run   # + curl transcript captured live, see docs/CURL_TRANSCRIPT.md
+asom server 0.1.0 on http://127.0.0.1:11435
+dev bearer token: asom-dev-token
+providers (fake drivers): openrouter, groq, trainy-ai, anthropic, webchat-only
+
+$ gradle jvmTest
+BUILD SUCCESSFUL in 9s
+```
 
 ## P4 — Real drivers — not started
 

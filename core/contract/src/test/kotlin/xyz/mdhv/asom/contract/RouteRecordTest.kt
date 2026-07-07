@@ -64,9 +64,11 @@ class RouteRecordTest {
     }
 
     @Test
-    fun `usd formatting is plain decimal — no scientific notation`() {
+    fun `usd formatting is plain decimal — no scientific notation, no float noise`() {
         assertEquals("0.0000001", RouteRecord.formatUsd(1e-7))
         assertEquals("12", RouteRecord.formatUsd(12.0))
+        assertEquals("0.00000058", RouteRecord.formatUsd(0.0000005800000000000001))
+        assertEquals("1.5", RouteRecord.formatUsd(1.5))
     }
 
     @Test
