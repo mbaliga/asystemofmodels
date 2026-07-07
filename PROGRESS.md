@@ -12,7 +12,9 @@ until the owner confirms.
 - [x] LICENSE (Apache-2.0, canonical text), README stub, CLAUDE.md
 - [x] CI workflow (`.github/workflows/ci.yml`: `jvmTest` with SDK hidden + `:app:assembleDebug` artifact, Java 17, Gradle cache)
 - [x] Brief committed as `ASOM_BUILD_BRIEF.md`
-- [ ] **Gate: CI green on skeleton** — pending first push
+- [x] **Gate: CI green on skeleton** — run #1 (`c1b36dc`) concluded `success`
+      (both jobs: JVM tests on bare JDK + debug APK artifact) —
+      https://github.com/mbaliga/asystemofmodels/actions/runs/28896705015
 
 Local pure-JVM verification (bare JDK, no Android SDK; session note: Gradle
 distribution downloads are proxy-blocked in this environment, so the identical
@@ -90,7 +92,20 @@ $ gradle jvmTest
 BUILD SUCCESSFUL in 9s
 ```
 
-## P4 — Real drivers — not started
+## P4 — Real drivers
+
+- [x] `OpenAICompatDriver(baseUrl)` (OkHttp): verbatim body pass-through, bearer auth, byte-level SSE pass-through, 429/5xx retryable vs 4xx fatal
+- [x] `AnthropicDriver`: §5.9 text-chat subset translation (system extraction, `stop`→`stop_sequences`, `max_tokens` default), response + usage mapping, upstream-SSE → `chat.completion.chunk` re-mapping; untranslatable fields → typed `501 UNSUPPORTED_BY_DRIVER` **before any bytes leave** (asserted: mock got 0 requests)
+- [x] usage→cost mapping shared with P3 path (`usageCost`)
+- [x] Desktop real mode: `ASOM_REAL_DRIVERS=1` + `ASOM_KEY_<PROVIDER_ID>` env keys
+- [x] **Gate: mock-server JVM tests green** (MockWebServer)
+- [ ] Real-key smoke curls from the Deck — `NEEDS-OWNER-VALIDATION` (owner task §14.3; run `ASOM_REAL_DRIVERS=1 ASOM_KEY_OPENROUTER=… ./gradlew :server:run` and repeat the transcript)
+
+```
+$ gradle :server:test
+BUILD SUCCESSFUL — 33 tests, 0 failures
+# integration 23 · AnthropicDriverTest 6 · OpenAICompatDriverTest 4
+```
 
 ## P5 — Android shell — not started
 
