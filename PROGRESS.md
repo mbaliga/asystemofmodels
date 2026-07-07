@@ -107,7 +107,21 @@ BUILD SUCCESSFUL — 33 tests, 0 failures
 # integration 23 · AnthropicDriverTest 6 · OpenAICompatDriverTest 4
 ```
 
-## P5 — Android shell — not started
+## P5 — Android shell
+
+- [x] `:vault`: `DataKeyVault` (Keystore-wrapped data key, AES-256-GCM, one active key per provider) with JVM-testable seams; `KeystoreWrappingCipher` (StrongBox → TEE fallback); Room ciphertext store; redaction-law unit test (§8)
+- [x] `:ledger`: Room `route_log` + `verbose_log` (24h TTL query ready), `RouteRecord` ↔ entity lossless mapping tests
+- [x] `:app`: `AsomService` FGS (`specialUse` + manifest property) hosting the P3/P4 server with vault-backed keys, Room ledger sink, real drivers; fixture catalogue synced into assets at build time (single source of truth)
+- [x] Dashboard (placeholder-functional, token seam per §1.7): Status (start/stop, endpoint, dev token), Keys (the ONLY key write path, §1.4), Ledger (live rows). §1.6: violet/cyan + shape/label redundancy everywhere
+- [x] CI extended: `:vault` + `:ledger` unit tests before APK assembly
+- [ ] **Gate: CI APK artifact** — pending CI run on this push
+- [ ] On-device checklist — `NEEDS-DEVICE-VALIDATION` → `docs/DEVICE_CHECKLIST_P5.md`
+
+```
+$ gradle jvmTest   # pure-JVM side unaffected
+BUILD SUCCESSFUL
+# Android modules compile in CI (no local SDK in this session — by design, §3)
+```
 
 ## P6 — Pairing + client — not started
 

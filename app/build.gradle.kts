@@ -60,3 +60,14 @@ dependencies {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
+// The committed fixture is the single source of truth (§6); mirror it into
+// assets at build time instead of committing a copy that can drift.
+val syncFixtureAsset = tasks.register<Copy>("syncFixtureAsset") {
+    from(rootProject.file("fixtures/catalogue.v1.json"))
+    into(layout.projectDirectory.dir("src/main/assets"))
+}
+
+tasks.named("preBuild") {
+    dependsOn(syncFixtureAsset)
+}
