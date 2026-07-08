@@ -158,6 +158,28 @@ private fun SampleScreen(
 
         Button(onClick = {
             scope.launch {
+                // §5.8 proof: read a model's fd via the models ContentProvider.
+                // Requires an active pairing; the fd itself never copies bytes —
+                // llama.cpp-style consumers mmap /proc/self/fd/<n>.
+                withContext(Dispatchers.IO) {
+                    try {
+                        val uri = android.net.Uri.parse("content://xyz.mdhv.asom.models/models/llama-3.3-70b")
+                        activity.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                            withContext(Dispatchers.Main) {
+                                append("model fd opened: size=${pfd.statSize} bytes (via /proc/self/fd/${pfd.fd})")
+                            }
+                        } ?: withContext(Dispatchers.Main) { append("model fd: not available (not paired or not downloaded)") }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) { append("model fd error: ${e.message}") }
+                    }
+                }
+            }
+        }) {
+            Text("Open model fd (§5.8)")
+        }
+
+        Button(onClick = {
+            scope.launch {
                 val resolved = resolver.resolve()
                 val client = resolved.client
                 if (client == null) {

@@ -10,8 +10,13 @@ import xyz.mdhv.asom.catalogue.Catalogue
 import xyz.mdhv.asom.catalogue.CatalogueParser
 import xyz.mdhv.asom.catalogue.ProviderKind
 import xyz.mdhv.asom.contract.Asom
+import xyz.mdhv.asom.contract.Egress
+import xyz.mdhv.asom.contract.RouteRecord
 import xyz.mdhv.asom.ledger.LedgerDatabase
 import xyz.mdhv.asom.ledger.toEntity
+import xyz.mdhv.asom.storage.DownloadLedgerBridge
+import xyz.mdhv.asom.storage.DownloadLedgerSink
+import xyz.mdhv.asom.storage.ModelDownloadManager
 import xyz.mdhv.asom.pairing.PairingDatabase
 import xyz.mdhv.asom.pairing.PairingRegistry
 import xyz.mdhv.asom.pairing.PairingRegistryHolder
@@ -57,6 +62,26 @@ object ServiceLocator {
     }
 
     val ledgerDb: LedgerDatabase by lazy { LedgerDatabase.open(appContext) }
+
+    val modelDownloadManager: ModelDownloadManager by lazy {
+        ModelDownloadManager(appContext) { catalogue }.also { manager ->
+            DownloadLedgerBridge.sink = DownloadLedgerSink { modelId, bytes ->
+                scope.launch {
+                    ledgerDb.dao().insert(
+                        RouteRecord(
+                            ts = System.currentTimeMillis(),
+                            callerPkg = "asom",
+                            requestedModel = modelId,
+                            egress = Egress.DOWNLOAD,
+                            bytesOut = 0,
+                            latencyMs = 0,
+                            status = 200,
+                        ).toEntity(),
+                    )
+                }
+            }
+        }
+    }
 
     val cooldowns = CooldownRegistry()
     val latency = LatencyTracker()

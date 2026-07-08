@@ -42,6 +42,14 @@
             android:authorities="xyz.mdhv.asom.discovery"
             android:exported="true" />
 
+        <!-- Model file sharing (§5.8): read-only fd access, caller UID must
+             map to an active pairing (checked in code, not by permission). -->
+        <provider
+            android:name=".storage.ModelsProvider"
+            android:authorities="xyz.mdhv.asom.models"
+            android:exported="true"
+            android:grantUriPermissions="false" />
+
         <!-- FGS type specialUse with the property declaration (brief §3):
              sideload-first distribution; Play justification is a later owner
              concern. -->

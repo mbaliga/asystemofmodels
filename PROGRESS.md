@@ -147,6 +147,24 @@ $ ANDROID_HOME=/opt/android-sdk gradle jvmTest :client:testDebugUnitTest \
 BUILD SUCCESSFUL in 2m 30s
 ```
 
-## P7 — Storage — not started
+## P7 — Storage
+
+- [x] `:storage`: `ModelStore` (`filesDir/models/{modelId}/` layout, streaming SHA-256 verify, bytes-on-disk accounting)
+- [x] `DownloadWorker` (WorkManager, resumable, wifi-only-by-default constraint) → verify → typed failure on hash mismatch (deletes partial file)
+- [x] Room `model_download_state` (status/progress/pinned) + `ModelDownloadManager` facade (download/cancel/pin/evict/stats)
+- [x] Download completion writes a ledger row (`egress: download`) via a process-wide bridge so `:storage` stays contract-only otherwise
+- [x] `:app`: `ModelsProvider` (§5.8) — `openFile` mode `"r"` only, caller UID verified against the pairing registry (self-process always allowed); Models dashboard tab (download/progress/pin/evict/total storage, §1.6 shape+label states)
+- [x] `:sample-client`: opens a model fd via the provider — proves the second-app read path structurally (real device needed to prove kernel dedup)
+- [x] 3 JVM unit tests for SHA-256 verify (match/tamper/case-insensitive)
+- [x] CI: `:storage` unit tests added
+- [x] Local full build green (JVM tests + `:storage` unit tests + both APKs)
+- [ ] **Gate: device checklist incl. second app reading a model fd** → `docs/DEVICE_CHECKLIST_P7.md` — `NEEDS-DEVICE-VALIDATION`
+
+```
+$ ANDROID_HOME=/opt/android-sdk gradle jvmTest :storage:testDebugUnitTest \
+    :app:assembleDebug :sample-client:assembleDebug
+BUILD SUCCESSFUL in 1m 56s
+# storage: 3 tests, 0 failures
+```
 
 ## P8 — Watched-object polish — not started

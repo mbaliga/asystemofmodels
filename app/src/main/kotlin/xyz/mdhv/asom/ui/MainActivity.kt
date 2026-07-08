@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun Dashboard() {
-    val tabs = listOf("Status", "Hotspot", "Keys", "Ledger")
+    val tabs = listOf("Status", "Hotspot", "Models", "Keys", "Ledger")
     var selected by remember { mutableIntStateOf(0) }
 
     Scaffold { padding ->
@@ -54,8 +54,9 @@ private fun Dashboard() {
             when (selected) {
                 0 -> StatusScreen()
                 1 -> HotspotScreen()
-                2 -> KeysScreen()
-                3 -> LedgerScreen()
+                2 -> ModelsScreen()
+                3 -> KeysScreen()
+                4 -> LedgerScreen()
             }
         }
     }
