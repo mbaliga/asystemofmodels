@@ -184,6 +184,32 @@ $ ANDROID_HOME=/opt/android-sdk gradle jvmTest :app:assembleDebug :sample-client
 BUILD SUCCESSFUL in 30s
 ```
 
+## Hyle design-system adoption (token seam)
+
+Owner-directed adoption of the Hyle Design System (`mbaliga/Hyle-Design-System`,
+`dev.aarso:hyle:0.2.0`) through the existing token-contract seam. Scope locked by
+the owner: **tokens only** (no material/`Pulse` layer — honors §1.7), **vendor**
+the generated tokens (no Gradle/network dependency — honors §1.1–§1.3 and keeps
+the pure-JVM path intact), and **keep the violet/cyan pair** with the radiant hue
+standardized on Hyle's cold-cyan (§1.6-safe; Hyle's radium-green + red/green
+feedback hues never bound).
+
+- [x] Vendored Hyle token surface into `:app` — `dev/aarso/hyle/tokens/HyleTokens.kt` (verbatim generated copy) + `dev/aarso/hyle/Argb.kt`, provenance + re-sync steps in `dev/aarso/hyle/README.md` (source commit `0fade5b`)
+- [x] Token seam re-pointed: `AsomTokens` now sources every colour from `HyleSeam` (raw ARGB) → violet `#8E7BFF` (`accent.violet`), cyan `#35E0FF` (`provenance.cloud`), field/ink neutrals. Field names unchanged → all 6 screens + both Activities compile untouched
+- [x] §1.6 guard: `HyleSeamTest` (pure-JVM, Compose-free) asserts violet+cold-cyan are the only meaning-bearing hues and that no seam colour is a banned red/green hue (radium-green, feedback success/danger, smog)
+- [x] CI: `:app:testDebugUnitTest` added to the Android job so the §1.6 guard runs on every push
+- [x] Spec synced: `CLAUDE.md` §6 + `ASOM_BUILD_BRIEF.md` §6 cyan updated `#08FED5` → `#35E0FF` (Hyle `provenance.cloud`)
+- [ ] **Gate: CI green (`:app:testDebugUnitTest` + `:app:assembleDebug` APK)** — verified on CI; local `:app` build not runnable in this session (no Android SDK — pure-JVM-only environment, brief §3)
+- [ ] **Gate: on-device visual confirmation of the Hyle palette on the dashboard** — `NEEDS-DEVICE-VALIDATION`
+
+```
+# Local environment has NO Android SDK (ANDROID_HOME unset), so `:app` is excluded
+# from the Gradle build (settings.gradle.kts) and cannot be assembled here — CI is
+# the build path per brief §3. Vendored token files are pure Kotlin; the §1.6 guard
+# runs as a standard :app unit test (same kotlin.test + useJUnitPlatform wiring as
+# :vault, which is green in CI). CI output to be pasted from the branch run.
+```
+
 ---
 
 ## v1 build status
