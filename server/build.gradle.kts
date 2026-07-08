@@ -30,7 +30,8 @@ dependencies {
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
     // Upstream provider drivers use OkHttp (brief §3 pins OkHttp for SSE).
-    implementation(libs.okhttp)
+    // api: OkHttpClient appears in the drivers' public constructors.
+    api(libs.okhttp)
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)

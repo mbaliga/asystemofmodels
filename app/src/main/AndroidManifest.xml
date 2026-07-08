@@ -22,6 +22,26 @@
             </intent-filter>
         </activity>
 
+        <!-- Consent sheet (§5.7): launched by the client SDK from the CLIENT's
+             foreground context; identity comes from the AIDL bind, never from
+             extras. -->
+        <activity
+            android:name=".ui.PairingActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Material.Dialog.NoActionBar">
+            <intent-filter>
+                <action android:name="xyz.mdhv.asom.PAIR_CONSENT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Discovery (§5.1): no permission — port/version/capabilities only,
+             no secrets. -->
+        <provider
+            android:name=".discovery.DiscoveryProvider"
+            android:authorities="xyz.mdhv.asom.discovery"
+            android:exported="true" />
+
         <!-- FGS type specialUse with the property declaration (brief §3):
              sideload-first distribution; Play justification is a later owner
              concern. -->

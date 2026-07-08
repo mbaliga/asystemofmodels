@@ -27,8 +27,10 @@ kotlin {
 dependencies {
     implementation(project(":core:contract"))
     implementation(libs.androidx.core.ktx)
-    implementation(libs.room.runtime)
-    implementation(libs.room.ktx)
+    // api: LedgerDatabase (extends RoomDatabase) and Flow-returning DAOs are
+    // part of this module's public surface consumed by :app.
+    api(libs.room.runtime)
+    api(libs.room.ktx)
     ksp(libs.room.compiler)
     testImplementation(libs.kotlin.test)
 }

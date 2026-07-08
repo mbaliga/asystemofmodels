@@ -3,19 +3,16 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
-// :client ships inside other people's apps — keep dependencies minimal
-// (brief §4 law). contract only, plus okhttp for SSE transport.
+// :client-cloud ships inside other people's apps (brief §4/§10A law):
+// contract + OkHttp + coroutines only. Its vault is deliberately tiny
+// (Keystore + SharedPreferences ciphertext) — no Room, no extra deps.
 
 android {
-    namespace = "xyz.mdhv.asom.client"
+    namespace = "xyz.mdhv.asom.clientcloud"
     compileSdk = 35
 
     defaultConfig {
         minSdk = 29
-    }
-
-    buildFeatures {
-        aidl = true
     }
 
     compileOptions {
@@ -32,8 +29,7 @@ kotlin {
 
 dependencies {
     api(project(":core:contract"))
-    // api: OkHttpClient appears in AsomChat's public constructor (callers may
-    // supply their own client); coroutines Flow appears in AsomStream.
+    // api: OkHttpClient appears in CloudOnly's public constructor.
     api(libs.okhttp)
     api(libs.kotlinx.coroutines.core)
     testImplementation(libs.kotlin.test)

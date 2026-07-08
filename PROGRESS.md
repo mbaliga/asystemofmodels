@@ -123,7 +123,29 @@ BUILD SUCCESSFUL
 # Android modules compile in CI (no local SDK in this session — by design, §3)
 ```
 
-## P6 — Pairing + client — not started
+## P6 — Pairing + client + §10A fallback
+
+Brief updated mid-phase by owner (2026-07-08): §10A consuming-app integration,
+`:client-cloud` module, `InferenceClient` in contract, reworded Invariant 1;
+`ASOM_ROADMAP_BRIEF.md` committed alongside (v1.1→v4 — NOT started, per its
+own entry criteria).
+
+- [x] `docs/CLIENT_API.md` pinned (rewritten to the §10A surface) before implementation
+- [x] `:pairing`: AIDL service (action `xyz.mdhv.asom.PAIR`), `Binder.getCallingUid()`-verified identity (uid → package + signing-cert SHA-256), Room store (token **hashes** only, constant-time compare), pending/approve/deny/revoke/remove FSM, one-shot raw-token delivery
+- [x] `:app`: consent `PairingActivity` (verified identity only — nothing from extras; dismiss keeps PENDING), Hotspot tab (list/revoke/remove), `DiscoveryProvider` (§5.1), pairing-backed `TokenValidator` wired into the server auth path
+- [x] `:core:contract`: §10A.1 `InferenceClient` + `RequestOptions`/`InferenceResponse`/`InferenceStream`
+- [x] `:client`: `AsomDiscovery`, `AsomPairing` (BAL landmine handled: consent launched from the client's foreground context), `AsomChat` transport, `RemoteAsom`, `FallbackResolver` (RemoteAsom → Embedded(v2 seam) → CloudOnly, re-evaluated per call), `InventoryProvider`/`SuiteInventory` (§10A.4), `NudgePolicy` (§10A.5) + 6 unit tests of the anti-spam laws
+- [x] `:client-cloud`: `CloudOnly` impl + its own `ClientVault` (Keystore AES-GCM + prefs ciphertext) — §10A.3 keys never transfer
+- [x] `:sample-client`: full tier proof — pair, stream via resolved tier, CloudOnly key entry, nudge decision display; suite package list = OWNER-FILL (empty ⇒ nudges disabled)
+- [x] CI: `:client` unit tests + both APKs (`asom` + `sample-client`)
+- [x] Local full build green (JVM tests + all Android modules + both APKs; local SDK installed in-session at /opt/android-sdk)
+- [ ] **Gate: device checklist** → `docs/DEVICE_CHECKLIST_P6.md` — `NEEDS-DEVICE-VALIDATION` (incl. THE §10A item: uninstall asom mid-session → graceful CloudOnly fallback)
+
+```
+$ ANDROID_HOME=/opt/android-sdk gradle jvmTest :client:testDebugUnitTest \
+    :client-cloud:assembleDebug :app:assembleDebug :sample-client:assembleDebug
+BUILD SUCCESSFUL in 2m 30s
+```
 
 ## P7 — Storage — not started
 

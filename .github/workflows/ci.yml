@@ -47,10 +47,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Android-module unit tests
-        run: ./gradlew :vault:testDebugUnitTest :ledger:testDebugUnitTest --stacktrace
+        run: ./gradlew :vault:testDebugUnitTest :ledger:testDebugUnitTest :client:testDebugUnitTest --stacktrace
 
-      - name: Assemble debug APK
-        run: ./gradlew :app:assembleDebug --stacktrace
+      - name: Assemble debug APKs
+        run: ./gradlew :app:assembleDebug :sample-client:assembleDebug --stacktrace
 
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4

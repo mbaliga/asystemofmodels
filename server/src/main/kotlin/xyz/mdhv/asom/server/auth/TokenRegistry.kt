@@ -16,7 +16,7 @@ sealed interface AuthResult {
 }
 
 /** Server-side seam; Android plugs the pairing Room store in here (P6). */
-interface TokenValidator {
+fun interface TokenValidator {
     fun validate(rawToken: String): AuthResult
 }
 

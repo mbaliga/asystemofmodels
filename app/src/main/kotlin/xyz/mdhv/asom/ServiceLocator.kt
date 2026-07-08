@@ -12,6 +12,12 @@ import xyz.mdhv.asom.catalogue.ProviderKind
 import xyz.mdhv.asom.contract.Asom
 import xyz.mdhv.asom.ledger.LedgerDatabase
 import xyz.mdhv.asom.ledger.toEntity
+import xyz.mdhv.asom.pairing.PairingDatabase
+import xyz.mdhv.asom.pairing.PairingRegistry
+import xyz.mdhv.asom.pairing.PairingRegistryHolder
+import xyz.mdhv.asom.pairing.TokenCheck
+import xyz.mdhv.asom.server.auth.AuthResult
+import xyz.mdhv.asom.server.auth.TokenValidator
 import xyz.mdhv.asom.routing.CooldownRegistry
 import xyz.mdhv.asom.routing.LatencyTracker
 import xyz.mdhv.asom.server.AsomServerConfig
@@ -72,13 +78,31 @@ object ServiceLocator {
         InMemoryTokenRegistry().apply { issue(devToken, "device-owner") }
     }
 
+    val pairingDb: PairingDatabase by lazy { PairingDatabase.open(appContext) }
+
+    val pairingRegistry: PairingRegistry by lazy { PairingRegistryHolder.get(appContext) }
+
+    /**
+     * Auth for the HTTP layer (§5.7): pairing store first (constant-time
+     * hash check, revocation per request), device-owner dev token second.
+     */
+    private val tokenValidator: TokenValidator by lazy {
+        TokenValidator { raw ->
+            when (val check = pairingRegistry.check(raw)) {
+                is TokenCheck.Valid -> AuthResult.Valid(check.callerPkg)
+                TokenCheck.Revoked -> AuthResult.Revoked
+                TokenCheck.Unknown -> tokenRegistry.validate(raw)
+            }
+        }
+    }
+
     private val openAiCompatDriver by lazy { OpenAICompatDriver() }
     private val anthropicDriver by lazy { AnthropicDriver() }
 
     fun serverConfig(): AsomServerConfig = AsomServerConfig(
         port = Asom.DEFAULT_PORT,
         catalogue = { catalogue },
-        tokens = tokenRegistry,
+        tokens = tokenValidator,
         keys = KeyProvider { vault.getKey(it) },
         drivers = { kind: ProviderKind ->
             when (kind) {

@@ -13,6 +13,8 @@ asom is a **sovereign model-routing daemon for Android**. One app owns the model
 **v1 ships:** deterministic cloud-BYOK routing, shared model download/storage (install-once, served read-only to paired apps), Keystore vault, pairing, egress ledger + per-response echo headers, dashboard app, publishable client SDK.
 **v1 does NOT ship:** a local generation engine (stubbed with typed errors), semantic routing, NL routing, loop workflows, web-origin callers. These are Phase 2, separate brief.
 
+**ASOM is optional for consuming apps.** Each app declares a fallback tier (§10A): the *default* tier does cloud-BYOK on its own when ASOM is absent, and routes through ASOM only when present; a small *opt-in* set embeds the full engine (v2). ASOM is never a hard dependency, and a single-app user is never nagged to install it. Keys and models are the reason to *want* ASOM (enter once, download once), never a gate.
+
 Ethos (frames every decision): sovereign, local-first, open-source, BYOK, **no telemetry**, no operator backend, one-time/free. The cloud is always a *watched object*: the user can always see which model ran, on-device vs cloud, and what left the device.
 
 **Reader contract:** this brief is self-contained. Where `OWNER-FILL` appears, request the value from the owner or proceed with the committed fixture — never invent it.
@@ -21,7 +23,7 @@ Ethos (frames every decision): sovereign, local-first, open-source, BYOK, **no t
 
 ## 1. Invariants — violating any of these fails the build
 
-1. **No telemetry.** No analytics, no crash-reporting SaaS, no third-party data egress of any kind.
+1. **No automatic egress.** No analytics, no crash-reporting SaaS, no telemetry SDKs, and no background or silent transmission of usage or benchmark data — ever. The *only* data that leaves the device leaves by an explicit foreground user action that shows the exact payload first: in v1 that is user-triggered ledger export via the Android share sheet (§9). v1 has **no upload path at all**. (v2 introduces exactly one more such action — opt-in, view-first benchmark contribution — under the same rule; see roadmap §13. It does not exist in v1.)
 2. Server binds `127.0.0.1` **only**. Never `0.0.0.0`. No cleartext exceptions beyond localhost in network security config.
 3. Permitted network egress classes, exhaustively: (a) provider API calls using the user's own keys, (b) catalogue.json fetch, (c) model-file downloads from catalogue URLs. **Every** network event writes a ledger row.
 4. BYOK keys: Android-Keystore-wrapped (§8), entered **only** in the dashboard Keys tab, never accepted or returned by any API, never in logs or the ledger.
@@ -55,7 +57,7 @@ Ethos (frames every decision): sovereign, local-first, open-source, BYOK, **no t
 
 | Module | Type | May depend on |
 |---|---|---|
-| `:core:contract` | pure JVM | — (DTOs, header names, error codes, `RouteRecord`) |
+| `:core:contract` | pure JVM | — (DTOs, header names, error codes, `RouteRecord`, **`InferenceClient` interface** §10A) |
 | `:core:catalogue` | pure JVM | contract |
 | `:core:routing` | pure JVM | contract, catalogue |
 | `:core:inference-api` | pure JVM | contract (engine interface + `NoopEngine` stub) |
@@ -65,10 +67,11 @@ Ethos (frames every decision): sovereign, local-first, open-source, BYOK, **no t
 | `:storage` | Android lib | contract, catalogue |
 | `:ledger` | Android lib | contract |
 | `:app` | Android app | everything above |
-| `:client` | Android lib (publishable) | contract only |
-| `:sample-client` | Android app | client |
+| `:client` | Android lib (publishable) | contract only (`RemoteAsom` transport, discovery, pairing, `FallbackResolver`, `NudgePolicy`, `InventoryProvider` — §10A) |
+| `:client-cloud` | Android lib (publishable) | contract only (`CloudOnly` impl: HTTPS + the app's *own* Keystore BYOK vault — §10A) |
+| `:sample-client` | Android app | client, client-cloud |
 
-**Law:** no `android.*` import in JVM modules — enforced by module type. `:client` must stay dependency-minimal (it ships inside other people's apps).
+**Law:** no `android.*` import in JVM modules — enforced by module type. `:client` and `:client-cloud` must stay dependency-minimal (they ship inside other people's apps). **`asom-standalone`** (the embeddable engine + downloader + vault providing the `Embedded` impl) is **v2** — it needs the engine and is not built here; §10A defines the seam it will slot into.
 
 ---
 
@@ -121,7 +124,7 @@ Source of truth lives in the owner's news-app repo. `CATALOGUE_URL = <OWNER-FILL
   "providers": [{
     "id": "openrouter",
     "displayName": "OpenRouter",
-    "kind": "openai-compat",
+    "kind": "openai-compat",            
     "baseUrl": "https://openrouter.ai/api/v1",
     "auth": { "type": "bearer" },
     "trainsOnData": false,
@@ -168,6 +171,45 @@ WorkManager downloads (resumable, wifi-only toggle) from catalogue `files[].url`
 
 ---
 
+## 10A. Consuming-app integration & fallback (SDK-side)
+
+This governs how *other* apps use ASOM. The `:client*` modules and `:sample-client` are built in this repo and must demonstrate all of it; other repos consume these modules.
+
+### 10A.1 The one interface
+Every consuming app codes against a single `InferenceClient` (in `:core:contract`) exposing an OpenAI-compatible surface (`chat`, `stream`, `embed`, `models`). The app's own logic never knows which implementation is live. Three implementations exist:
+
+- **`RemoteAsom`** (`:client`) — talks to the ASOM daemon on `127.0.0.1:11435` over HTTP/SSE after AIDL pairing. No keys, no models, no engine in the consuming app.
+- **`CloudOnly`** (`:client-cloud`) — the app does cloud-BYOK itself: HTTPS to providers using keys entered into **the app's own** Keystore vault. No engine, no local models. Lightweight. **Available from v1.**
+- **`Embedded`** (`asom-standalone`, **v2**) — the app runs local generation itself via the embedded engine. Heavy. Only opt-in, on-device-identity apps include it.
+
+### 10A.2 Fallback tiers (declared per app, at build time)
+- **Default tier** = `RemoteAsom` when ASOM is present and paired, else `CloudOnly`. Local inference simply requires ASOM. This keeps the app light and makes the dedup guarantee airtight: on-device models live in exactly one place (ASOM) or nowhere — never *N* copies.
+- **Standalone tier** (opt-in; e.g. FoneBru) = additionally includes `Embedded`, so the app runs local models with **no ASOM present**. Even here the resolver prefers ASOM's shared model files when ASOM *is* installed (reads the `content://xyz.mdhv.asom.models` fd from §5.8 rather than downloading a second copy), shrinking duplicate-model storage to the one rare tail: a standalone app **and** a user who declined ASOM. Acceptable.
+
+`FallbackResolver` (in `:client`) picks the impl in priority order **RemoteAsom → Embedded (if bundled) → CloudOnly**, re-evaluating when ASOM is installed/removed mid-life. Removal of ASOM must degrade gracefully to the app's next available tier with no data loss and no crash — this is the whole point of "optional."
+
+### 10A.3 Keys never transfer (reinforces Invariant 4)
+Keys are **human-entered into whichever surface will hold them**, and never move between surfaces in either direction:
+- `RemoteAsom` apps hold **no keys** — they route through ASOM, whose vault the user filled in ASOM's Keys tab.
+- `CloudOnly` / `Embedded` apps hold keys in **their own** vault, entered by the user in that app.
+- ASOM never emits a key to an app, and never ingests a key from an app (§1.4). **Late adoption is a handoff, not a push:** when an app detects ASOM installed but lacking a key the app has, it shows "ASOM can manage this key for all your apps — open ASOM to add it," the user re-enters it *in ASOM*, and the app then drops its local copy and switches to `RemoteAsom`. A secret only ever crosses a human-verified boundary. No `authOnce`, no double-auth, no programmatic key exchange — the vault write-path integrity is the product's spine.
+
+### 10A.4 Sibling detection (backend-free, channel-robust)
+So the suite can recognize itself without a server and without coupling to signing keys (first-party apps span Play's per-app signing, F-Droid, and direct APKs — cert-matching is *not* reliable across those; package names are), each first-party app **optionally** exposes an `InventoryProvider` (shipped in `:client`): a read-only `ContentProvider`, authority `<pkg>.asom.inventory`, reporting `{ modelIds[], bytesHeld, appLabel }`. Model inventory is not sensitive, so no permission is needed. A sibling sums these to compute both **how many suite apps are installed** and **how much storage would be reclaimed** by deduping to ASOM. Detection uses a `<queries>` list of known suite packages (configurable; defaults to the owner's suite). Apps that don't register the provider simply don't contribute to the estimate — graceful. This is **not** a security boundary; ASOM's AIDL cert-verification (§5.7) remains the only trust gate.
+
+### 10A.5 Adoption nudges (must not become spam)
+A nudge may fire **only when the user is in a state ASOM would concretely improve**, and always shows the quantified value:
+- **Single app, no ASOM** → fully functional on `CloudOnly`; **no nagging**. At most one dismissible, low-key mention that centralized routing exists. Never a launch modal, never a wall.
+- **≥2 suite apps detected** (via §10A.4) → "You have {appLabels} — install ASOM to store models and keys once. You'd reclaim **{reclaimableBytes}** across **{n}** apps." The pitch appears only when the duplication it solves is real.
+- **ASOM present, app holding a local key/model** → offer the §10A.3 handoff + switch to shared model files, showing the storage reclaimed.
+
+`NudgePolicy` (in `:client`) enforces: dismissible; dismiss = long cooldown; a hard lifetime cap on prompts per app; suppressed entirely for single-app users. UI is the consuming app's own (Hyle later); `:client` provides only the *signals* and the policy gate.
+
+### 10A.6 Design intent for consuming apps (Hyle-realized, not built here)
+In a consuming app's inference/keys surface, ASOM should read as **a fixed, provenance-glowing header** — the canonical, always-visible home for keys and routing: when ASOM is present, "Keys & models managed by ASOM" with the warm-radium/cyan provenance treatment; when absent, the install affordance. This is a Hyle concern surfaced later through the token seam; **no UI is designed in this repo** (Invariant 7). Noted here so the seam reserves the slot.
+
+---
+
 ## 11. Phases & gates (log every gate to `PROGRESS.md`)
 
 - **P0 — Bootstrap.** Module skeleton per §4, version catalog, `LICENSE` (Apache-2.0), README stub, `CLAUDE.md` at root distilling §1 invariants, §3 build commands, §4 dependency law, and the gate list (future sessions read it first), CI (`.github/workflows/ci.yml`: JVM tests + `assembleDebug` artifact, Java 17, Gradle cache). *Gate:* CI green on skeleton.
@@ -176,7 +218,7 @@ WorkManager downloads (resumable, wifi-only toggle) from catalogue `files[].url`
 - **P3 — Server, desktop-runnable.** Ktor CIO, all §5.2 endpoints, SSE, auth middleware (in-memory tokens), `FakeProvider` drivers; JVM integration tests against `127.0.0.1`. *Gate:* `./gradlew :server:run` on desktop + committed curl transcript test.
 - **P4 — Real drivers.** `OpenAICompatDriver(baseUrl)` + `AnthropicDriver`; upstream-SSE → OpenAI-SSE normalization; usage→cost mapping. *Gate:* mock-server JVM tests green; real-key smoke = `NEEDS-OWNER-VALIDATION` (owner curls from Deck).
 - **P5 — Android shell.** `:app` foreground service (`specialUse` + property) hosting the server; real `:vault`; ledger persistence; minimal dashboard (status, keys, ledger). *Gate:* CI APK artifact; on-device checklist → `NEEDS-DEVICE-VALIDATION` (RedMagic).
-- **P6 — Pairing + client.** AIDL service + consent sheet + token store; `:client` SDK (discovery, pair, streaming chat) — pin its public surface in `docs/CLIENT_API.md` *before* implementing and treat it as contract, since it ships inside other apps; `:sample-client` proving end-to-end paired streaming. *Gate:* device checklist.
+- **P6 — Pairing + client + fallback (§10A).** AIDL service + consent sheet + token store; `:client` SDK (discovery, pair, streaming chat, `FallbackResolver`, `InventoryProvider`, `NudgePolicy`); `:client-cloud` (`CloudOnly` impl with its own Keystore vault); pin the `InferenceClient` + SDK surface in `docs/CLIENT_API.md` *before* implementing and treat it as contract, since it ships inside other apps. `:sample-client` must prove the full tier behavior: paired streaming via `RemoteAsom`, **automatic fallback to `CloudOnly` when ASOM is absent/removed**, and a nudge firing only under the §10A.5 conditions. *Gate:* device checklist including uninstalling ASOM mid-session and observing graceful `CloudOnly` fallback.
 - **P7 — Storage.** Downloads, fd provider, pin/evict. *Gate:* device checklist including a second app reading a model fd via `:sample-client`.
 - **P8 — Watched-object polish.** Echo headers asserted end-to-end; Hotspot tab (list/revoke); verbose mode + TTL; quick-settings tile; boot-start toggle (**default OFF** — nothing runs unless the user starts it); notification surfaces live state (idle/streaming/provider). *Gate:* execute and commit `QA_V1.md` manual script.
 - **Phase 2 (separate brief, do not start):** `:inference` engine (llama.cpp JNI), semantic tiers, `Route-NL`, loops.
@@ -203,6 +245,7 @@ No telemetry libraries · no Firebase/GMS · no `0.0.0.0` bind · no endpoints/h
 4. **(P5+)** RedMagic sideload validation per each device checklist (adb from Deck distrobox or Termux).
 5. **(P8)** Decide distribution order (sideload → F-Droid first; Play later requires the `specialUse` justification); create and safeguard a release keystore when distributing.
 6. **(anytime)** Confirm Apache-2.0; publish the Hyle token contract or explicitly bless the placeholder seam.
+7. **(P6)** Provide the first-party suite package list for §10A.4 sibling detection (e.g. `xyz.mdhv.fonebru`, `com.clackpad.ime`, …) — ships as editable config, not hardcoded; unknown/empty list just disables the nudge.
 
 ---
 
