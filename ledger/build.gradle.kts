@@ -31,6 +31,7 @@ dependencies {
     // part of this module's public surface consumed by :app.
     api(libs.room.runtime)
     api(libs.room.ktx)
+    api(libs.androidx.work.runtime.ktx) // VerbosePurgeWorker.schedule/cancel in the public surface
     ksp(libs.room.compiler)
     testImplementation(libs.kotlin.test)
 }

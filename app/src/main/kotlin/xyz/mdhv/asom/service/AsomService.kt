@@ -13,14 +13,19 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import kotlinx.coroutines.flow.MutableStateFlow
 import xyz.mdhv.asom.ServiceLocator
+import xyz.mdhv.asom.Settings
 import xyz.mdhv.asom.contract.Asom
+import xyz.mdhv.asom.ledger.VerbosePurgeWorker
+import xyz.mdhv.asom.server.ActivityListener
 import xyz.mdhv.asom.server.AsomServer
 import xyz.mdhv.asom.ui.MainActivity
 
 /**
- * Foreground service hosting the asom daemon (brief P5): FGS type
+ * Foreground service hosting the asom daemon (brief P5/P8): FGS type
  * `specialUse` with the manifest property declaration (§3). Nothing runs
- * unless the user starts it (boot-start is a later, default-OFF toggle, §11 P8).
+ * unless the user starts it, or has explicitly opted into boot-start
+ * (default OFF). The notification surfaces live state — idle, serving a
+ * provider, or streaming (§11 P8) — never anything from the ledger/body.
  */
 class AsomService : Service() {
 
@@ -34,9 +39,25 @@ class AsomService : Service() {
         } else {
             0
         }
-        ServiceCompat.startForeground(this, NOTIFICATION_ID, notification("serving on 127.0.0.1:${Asom.DEFAULT_PORT}"), type)
+        ServiceCompat.startForeground(this, NOTIFICATION_ID, notification(idleText()), type)
 
-        server = AsomServer(ServiceLocator.serverConfig()).also { it.start(wait = false) }
+        if (Settings(this).verboseModeEnabled) {
+            VerbosePurgeWorker.schedule(this)
+        }
+
+        val config = ServiceLocator.serverConfig(
+            activity = ActivityListener { busy, providerId ->
+                activity.value = if (!busy) {
+                    Activity.Idle
+                } else if (providerId != null) {
+                    Activity.Streaming(providerId)
+                } else {
+                    Activity.Serving
+                }
+                updateNotification()
+            },
+        )
+        server = AsomServer(config).also { it.start(wait = false) }
         running.value = true
     }
 
@@ -46,6 +67,7 @@ class AsomService : Service() {
         server?.stop()
         server = null
         running.value = false
+        activity.value = Activity.Idle
         super.onDestroy()
     }
 
@@ -56,6 +78,18 @@ class AsomService : Service() {
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, "asom daemon", NotificationManager.IMPORTANCE_LOW),
         )
+    }
+
+    private fun idleText() = "idle — serving on 127.0.0.1:${Asom.DEFAULT_PORT}"
+
+    private fun updateNotification() {
+        val text = when (val a = activity.value) {
+            Activity.Idle -> idleText()
+            Activity.Serving -> "serving a request…"
+            is Activity.Streaming -> "streaming via ${a.providerId}…"
+        }
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.notify(NOTIFICATION_ID, notification(text))
     }
 
     private fun notification(text: String): Notification {
@@ -73,12 +107,22 @@ class AsomService : Service() {
             .build()
     }
 
+    /** Live daemon state (§11 P8) — never derived from ledger/body content. */
+    sealed interface Activity {
+        data object Idle : Activity
+        data object Serving : Activity
+        data class Streaming(val providerId: String) : Activity
+    }
+
     companion object {
         const val CHANNEL_ID = "asom-daemon"
         const val NOTIFICATION_ID = 1
 
         /** Observed by the dashboard Status tab. */
         val running = MutableStateFlow(false)
+
+        /** Observed by the dashboard Status tab + QS tile. */
+        val activity = MutableStateFlow<Activity>(Activity.Idle)
 
         fun start(context: android.content.Context) {
             context.startForegroundService(Intent(context, AsomService::class.java))

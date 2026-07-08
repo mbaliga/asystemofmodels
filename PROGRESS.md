@@ -167,4 +167,30 @@ BUILD SUCCESSFUL in 1m 56s
 # storage: 3 tests, 0 failures
 ```
 
-## P8 — Watched-object polish — not started
+## P8 — Watched-object polish
+
+- [x] Echo headers ↔ ledger row asserted end-to-end from the SAME `RouteRecord` (§1.9) — `AsomServerIntegrationTest` (P3), still green
+- [x] Hotspot tab (list/revoke/remove) — built in P6, exercised again in the consolidated QA script
+- [x] Verbose mode + 24h TTL: `verbose_log` Room table (P5), `VerbosePurgeWorker` (hourly WorkManager job, TTL 24h), Status tab toggle (default OFF) that schedules/cancels the purge worker
+- [x] Quick-settings tile (`AsomTileService`): start/stop, reflects live running state
+- [x] Boot-start toggle: `Settings.bootStartEnabled` **defaults OFF**; `BootReceiver` only starts the service when explicitly enabled — nothing runs unless the user starts it (or opts in)
+- [x] Notification surfaces live state: `ActivityListener` seam added to `AsomServerConfig` (default no-op — existing P3/P4 tests unaffected), wired in `AsomService` to show idle / "serving a request…" / "streaming via `<provider>`…"; Status tab mirrors the same state
+- [x] `QA_V1.md` committed — consolidated manual script across P0–P8; all device items `NEEDS-DEVICE-VALIDATION`, real build/test output pasted for everything executable in-session
+- [x] Local full build green (JVM tests + all Android modules + both APKs) after the polish changes
+- [ ] **Gate: execute QA_V1.md on hardware** — `NEEDS-DEVICE-VALIDATION`
+
+```
+$ ANDROID_HOME=/opt/android-sdk gradle jvmTest :app:assembleDebug :sample-client:assembleDebug
+BUILD SUCCESSFUL in 30s
+```
+
+---
+
+## v1 build status
+
+P0–P8 all executed to their JVM/CI-verifiable gates; every phase's code,
+tests, and CI are green. The only remaining gates are hardware-dependent
+(`NEEDS-DEVICE-VALIDATION` device checklists P5–P7 + `QA_V1.md`) and the P4
+real-key cloud smoke (`NEEDS-OWNER-VALIDATION`) — both require the owner's
+RedMagic per brief §12. `ASOM_ROADMAP_BRIEF.md` (v1.1→v4) is committed but
+explicitly **not started**, per its own entry criteria.

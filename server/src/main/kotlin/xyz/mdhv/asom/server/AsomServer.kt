@@ -59,6 +59,14 @@ import xyz.mdhv.asom.server.util.usageCost
 import xyz.mdhv.asom.server.util.usageFrom
 import xyz.mdhv.asom.contract.AsomHeaders
 
+/**
+ * Live-state hook for the P8 notification (idle/streaming/provider) — a
+ * seam, not a new egress class: purely local UI signal, never ledgered.
+ */
+fun interface ActivityListener {
+    fun onActivity(busy: Boolean, providerId: String?)
+}
+
 class AsomServerConfig(
     val port: Int = Asom.DEFAULT_PORT,
     val catalogue: () -> Catalogue,
@@ -70,6 +78,7 @@ class AsomServerConfig(
     val latency: LatencyTracker = LatencyTracker(),
     val defaultPolicy: Policy = Policy.AUTO,
     val clock: () -> Long = System::currentTimeMillis,
+    val activity: ActivityListener = ActivityListener { _, _ -> },
 )
 
 /**
@@ -151,6 +160,7 @@ class AsomServer(private val config: AsomServerConfig) {
         val t0 = config.clock()
         var caller = "unknown"
         var requestedModel = ""
+        config.activity.onActivity(true, null)
         try {
             caller = authenticate(call)
             val raw = parseBody(call.receiveText())
@@ -178,6 +188,7 @@ class AsomServer(private val config: AsomServerConfig) {
                     call.respondText(bodyOut.toString(), ContentType.Application.Json, HttpStatusCode.OK)
                 }
                 is RoutePipeline.Result.Stream -> {
+                    config.activity.onActivity(true, result.candidate.provider.id)
                     // Echo headers commit BEFORE the body (§5.9). Cost is not
                     // yet derivable at commit time, so cost headers are
                     // omitted (§5.4 allows this); the ledger row — same
@@ -231,6 +242,8 @@ class AsomServer(private val config: AsomServerConfig) {
             respondRoutedError(call, e, t0, caller, requestedModel)
         } catch (e: Exception) {
             respondBadRequest(call, e, t0, caller, requestedModel)
+        } finally {
+            config.activity.onActivity(false, null)
         }
     }
 
@@ -240,6 +253,7 @@ class AsomServer(private val config: AsomServerConfig) {
         val t0 = config.clock()
         var caller = "unknown"
         var requestedModel = ""
+        config.activity.onActivity(true, null)
         try {
             caller = authenticate(call)
             val body = parseBody(call.receiveText())
@@ -283,6 +297,8 @@ class AsomServer(private val config: AsomServerConfig) {
             respondRoutedError(call, e, t0, caller, requestedModel)
         } catch (e: Exception) {
             respondBadRequest(call, e, t0, caller, requestedModel)
+        } finally {
+            config.activity.onActivity(false, null)
         }
     }
 

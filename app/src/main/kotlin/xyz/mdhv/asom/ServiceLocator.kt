@@ -124,21 +124,23 @@ object ServiceLocator {
     private val openAiCompatDriver by lazy { OpenAICompatDriver() }
     private val anthropicDriver by lazy { AnthropicDriver() }
 
-    fun serverConfig(): AsomServerConfig = AsomServerConfig(
-        port = Asom.DEFAULT_PORT,
-        catalogue = { catalogue },
-        tokens = tokenValidator,
-        keys = KeyProvider { vault.getKey(it) },
-        drivers = { kind: ProviderKind ->
-            when (kind) {
-                ProviderKind.OPENAI_COMPAT -> openAiCompatDriver
-                ProviderKind.ANTHROPIC -> anthropicDriver
-            }
-        },
-        ledger = LedgerSink { record ->
-            scope.launch { ledgerDb.dao().insert(record.toEntity()) }
-        },
-        cooldowns = cooldowns,
-        latency = latency,
-    )
+    fun serverConfig(activity: xyz.mdhv.asom.server.ActivityListener = xyz.mdhv.asom.server.ActivityListener { _, _ -> }): AsomServerConfig =
+        AsomServerConfig(
+            port = Asom.DEFAULT_PORT,
+            catalogue = { catalogue },
+            tokens = tokenValidator,
+            keys = KeyProvider { vault.getKey(it) },
+            drivers = { kind: ProviderKind ->
+                when (kind) {
+                    ProviderKind.OPENAI_COMPAT -> openAiCompatDriver
+                    ProviderKind.ANTHROPIC -> anthropicDriver
+                }
+            },
+            ledger = LedgerSink { record ->
+                scope.launch { ledgerDb.dao().insert(record.toEntity()) }
+            },
+            cooldowns = cooldowns,
+            latency = latency,
+            activity = activity,
+        )
 }
