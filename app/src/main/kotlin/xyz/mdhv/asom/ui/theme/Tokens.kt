@@ -7,26 +7,29 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 /**
- * Token-contract seam (invariant §1.7): placeholder values only — the Hyle
- * design system replaces THESE VALUES later; every screen must consume
- * colors/shapes exclusively through this object, never inline.
+ * Token-contract seam (invariant §1.7): every screen consumes colors/shapes
+ * exclusively through this object, never inline. As of the Hyle adoption the
+ * VALUES are now sourced from the vendored Hyle design tokens (see
+ * `dev/aarso/hyle/README.md`) via [HyleSeam] — the field names below are kept
+ * stable so screens are untouched.
  *
  * Invariant §1.6 (owner is red-green colorblind — hard constraint):
  * red/green NEVER carry meaning. The semantic hue pair is violet/cyan and
  * every state indicator also carries a shape/label redundancy — see
- * [StateGlyph].
+ * [StateGlyph]. The violet/cyan binding is pinned in [HyleSeam] and guarded by
+ * `HyleSeamTest`; Hyle's radium-green and red/green feedback hues are never bound.
  */
 object AsomTokens {
-    /** Semantic "attention / inactive / needs-action" hue. */
-    val Violet = Color(0xFF8E7BFF)
+    /** Semantic "attention / inactive / needs-action" hue — Hyle `accent.violet` #8E7BFF. */
+    val Violet = Color(HyleSeam.Violet)
 
-    /** Semantic "active / healthy / present" hue. */
-    val Cyan = Color(0xFF08FED5)
+    /** Semantic "active / healthy / present" hue — Hyle `provenance.cloud` cold-cyan #35E0FF. */
+    val Cyan = Color(HyleSeam.Cyan)
 
-    val Background = Color(0xFF101014)
-    val Surface = Color(0xFF1A1A20)
-    val OnSurface = Color(0xFFE8E8F0)
-    val OnSurfaceDim = Color(0xFF9A9AAC)
+    val Background = Color(HyleSeam.Background)
+    val Surface = Color(HyleSeam.Surface)
+    val OnSurface = Color(HyleSeam.OnSurface)
+    val OnSurfaceDim = Color(HyleSeam.OnSurfaceDim)
 
     /**
      * Shape/label redundancy (§1.6): color alone never encodes state.

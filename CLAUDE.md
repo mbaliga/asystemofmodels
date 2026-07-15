@@ -11,7 +11,7 @@ asom is a sovereign model-routing daemon for Android: one app owns model files, 
 3. Only permitted egress: provider API calls (user's keys), catalogue.json fetch, model downloads. **Every** network event writes a ledger row.
 4. BYOK keys: Keystore-wrapped, entered only in dashboard Keys tab, never in any API/logs/ledger.
 5. Pairing identity is AIDL-verified via `Binder.getCallingUid()`. **No HTTP registration endpoint** (`POST /admin/register` is deleted legacy — do not implement).
-6. Red/green never carry meaning (owner colorblind). Semantic pair: violet `#8E7BFF` / cyan `#08FED5`, always with shape/label redundancy.
+6. Red/green never carry meaning (owner colorblind). Semantic pair: violet `#8E7BFF` / cyan `#35E0FF` (sourced from Hyle `accent.violet` / `provenance.cloud`), always with shape/label redundancy.
 7. UI is placeholder-functional Compose/Material3 against a token-contract seam. No visual design ambition.
 8. No GMS/Firebase/Play-services dependencies.
 9. Echo headers and ledger rows are built from the **same `RouteRecord`** — API and dashboard can never disagree.

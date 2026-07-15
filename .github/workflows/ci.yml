@@ -47,7 +47,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Android-module unit tests
-        run: ./gradlew :vault:testDebugUnitTest :ledger:testDebugUnitTest :client:testDebugUnitTest :storage:testDebugUnitTest --stacktrace
+        run: ./gradlew :app:testDebugUnitTest :vault:testDebugUnitTest :ledger:testDebugUnitTest :client:testDebugUnitTest :storage:testDebugUnitTest --stacktrace
 
       - name: Assemble debug APKs
         run: ./gradlew :app:assembleDebug :sample-client:assembleDebug --stacktrace

@@ -28,7 +28,7 @@ Ethos (frames every decision): sovereign, local-first, open-source, BYOK, **no t
 3. Permitted network egress classes, exhaustively: (a) provider API calls using the user's own keys, (b) catalogue.json fetch, (c) model-file downloads from catalogue URLs. **Every** network event writes a ledger row.
 4. BYOK keys: Android-Keystore-wrapped (§8), entered **only** in the dashboard Keys tab, never accepted or returned by any API, never in logs or the ledger.
 5. Pairing identity is **AIDL-verified** via `Binder.getCallingUid()`. No HTTP registration endpoint exists in v1 (the legacy `POST /admin/register` design is deleted).
-6. **Red/green never carry meaning** (owner is red-green colorblind — hard constraint). Semantic hue pair: violet `#8E7BFF` / cyan `#08FED5`, always with shape/label redundancy.
+6. **Red/green never carry meaning** (owner is red-green colorblind — hard constraint). Semantic hue pair: violet `#8E7BFF` / cyan `#35E0FF` (Hyle `accent.violet` / `provenance.cloud`, vendored into the token seam), always with shape/label redundancy.
 7. UI is placeholder-functional Compose/Material3, wired against a **token-contract seam** (the Hyle design system supplies real visuals later; do not attempt visual design).
 8. No GMS/Firebase/Play-services dependencies.
 9. Per-response echo headers and the ledger row are built from the **same `RouteRecord` struct** — the API answer and the dashboard can never disagree.
