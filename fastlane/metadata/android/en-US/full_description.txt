@@ -1,0 +1,40 @@
+One app on your phone owns your AI model access: your keys, your routing rules,
+and a ledger of every request that ever left the device. Other apps ask it for
+inference instead of each holding a copy of your keys.
+
+Think of it as an AI hotspot. You set it up once, and the apps you use connect to
+it.
+
+WHY THIS EXISTS
+Every app that wants a model asks you for an API key. That means your keys spread
+across a dozen apps, each with its own idea of what to send and when, and no single
+place where you can see what actually went out. asom inverts that: one app holds
+the keys, one app makes the routing call, one ledger records every egress.
+
+WHAT IT DOES
+• An OpenAI-compatible API on your device's loopback address, so existing clients
+  work with almost no changes.
+• Bring your own keys. Anthropic, Gemini, any OpenAI-compatible provider.
+• Routing rules you set, with the reasoning visible rather than hidden.
+• An egress ledger: every network event the router made, written down, with the
+  same record the API response reports. The dashboard and the API cannot disagree,
+  because they are built from the same object.
+• Apps pair through Android's own binder identity, verified by the system, not by a
+  token an app could copy.
+
+WHAT IT REFUSES TO DO
+• No automatic egress, ever. No analytics, no crash reporting, no telemetry SDKs,
+  no background transmission of anything.
+• The server binds to your device's loopback address only. Never to your network.
+• Your keys are wrapped by the Android Keystore. They appear in no API response, no
+  log and no ledger row.
+• There is no upload path in this version at all. Exporting the ledger is a share
+  sheet you invoke, showing you the exact payload first.
+
+STATUS
+This version routes to cloud providers with your own keys. There is no on-device
+inference engine yet, and a request that demands one is refused with a clear error
+rather than quietly sent to a cloud instead.
+
+Colour never carries meaning on its own here. Every state has a shape and a label
+too.
