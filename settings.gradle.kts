@@ -41,6 +41,7 @@ if (hasAndroidSdk) {
     include(":ledger")
     include(":app")
     include(":client")
+    include(":client-cloud")
     include(":sample-client")
 } else {
     logger.lifecycle("asom: no Android SDK detected — Android modules excluded (pure-JVM mode).")

@@ -6,12 +6,12 @@ asom is a sovereign model-routing daemon for Android: one app owns model files, 
 
 ## Invariants — violating any of these fails the build (brief §1)
 
-1. **No telemetry.** No analytics, no crash-reporting SaaS, no third-party data egress.
+1. **No automatic egress.** No analytics, no crash-reporting SaaS, no telemetry SDKs, no background/silent transmission of anything — ever. Data leaves only by explicit foreground user action that shows the exact payload first (v1: ledger export via share sheet; v1 has NO upload path at all).
 2. Server binds `127.0.0.1` **only**. Never `0.0.0.0`. No cleartext beyond localhost.
 3. Only permitted egress: provider API calls (user's keys), catalogue.json fetch, model downloads. **Every** network event writes a ledger row.
 4. BYOK keys: Keystore-wrapped, entered only in dashboard Keys tab, never in any API/logs/ledger.
 5. Pairing identity is AIDL-verified via `Binder.getCallingUid()`. **No HTTP registration endpoint** (`POST /admin/register` is deleted legacy — do not implement).
-6. Red/green never carry meaning (owner colorblind). Semantic pair: violet `#8E7BFF` / cyan `#08FED5`, always with shape/label redundancy.
+6. Red/green never carry meaning (owner colorblind). Semantic pair: violet `#8E7BFF` / cyan `#35E0FF` (sourced from Hyle `accent.violet` / `provenance.cloud`), always with shape/label redundancy.
 7. UI is placeholder-functional Compose/Material3 against a token-contract seam. No visual design ambition.
 8. No GMS/Firebase/Play-services dependencies.
 9. Echo headers and ledger rows are built from the **same `RouteRecord`** — API and dashboard can never disagree.
@@ -33,7 +33,9 @@ Also: no new endpoints/headers beyond brief §5 without owner sign-off · no pac
 
 Pure JVM (no `android.*` imports, ever): `:core:contract` (no deps) · `:core:catalogue` → contract · `:core:routing` → contract, catalogue · `:core:inference-api` → contract · `:server` → all `:core:*`.
 
-Android: `:vault` → contract · `:pairing` → contract · `:storage` → contract, catalogue · `:ledger` → contract · `:app` → everything · `:client` → contract only (**dependency-minimal, ships in other apps**) · `:sample-client` → client.
+Android: `:vault` → contract · `:pairing` → contract · `:storage` → contract, catalogue · `:ledger` → contract · `:app` → everything · `:client` → contract only (`RemoteAsom`, discovery, pairing, `FallbackResolver`, `NudgePolicy`, `InventoryProvider` — **dependency-minimal, ships in other apps**) · `:client-cloud` → contract only (`CloudOnly` impl + its own Keystore vault) · `:sample-client` → client, client-cloud.
+
+§10A (consuming-app integration): every consuming app codes against `InferenceClient` (in `:core:contract`); impls are `RemoteAsom` (v1), `CloudOnly` (v1), `Embedded` (v2, seam only). Resolver priority RemoteAsom → Embedded → CloudOnly; asom removal degrades gracefully. Keys NEVER transfer between surfaces programmatically — late adoption is a human re-entry handoff. Nudges: never for single-app users; quantified value only; dismiss = long cooldown + lifetime cap. Roadmap for v1.1→v4 lives in `ASOM_ROADMAP_BRIEF.md` — do NOT start those versions from this brief.
 
 ## Phases & gates (brief §11) — log every gate to PROGRESS.md with real output
 
@@ -43,7 +45,7 @@ Android: `:vault` → contract · `:pairing` → contract · `:storage` → cont
 - P3 server desktop-runnable → gate: `:server:run` + committed curl transcript
 - P4 real drivers → gate: mock-server tests; real-key smoke = `NEEDS-OWNER-VALIDATION`
 - P5 Android shell → gate: CI APK; device checklist = `NEEDS-DEVICE-VALIDATION`
-- P6 pairing+client (pin `docs/CLIENT_API.md` **before** implementing) → device checklist
+- P6 pairing+client+§10A fallback (pin `docs/CLIENT_API.md` **before** implementing; sample-client proves RemoteAsom→CloudOnly fallback + nudge conditions) → device checklist incl. uninstall-asom fallback
 - P7 storage → device checklist
 - P8 polish → execute + commit `QA_V1.md`
 - Phase 2 (local engine, semantic routing, loops): **do not start.**

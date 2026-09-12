@@ -32,9 +32,10 @@ kotlin {
 
 dependencies {
     api(project(":core:contract"))
-    implementation(libs.okhttp)
-    implementation(libs.okhttp.sse)
-    implementation(libs.kotlinx.coroutines.core)
+    // api: OkHttpClient appears in AsomChat's public constructor (callers may
+    // supply their own client); coroutines Flow appears in AsomStream.
+    api(libs.okhttp)
+    api(libs.kotlinx.coroutines.core)
     testImplementation(libs.kotlin.test)
 }
 

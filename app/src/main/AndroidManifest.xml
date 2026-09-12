@@ -1,11 +1,89 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
+        android:name=".AsomApplication"
         android:label="asom"
         android:allowBackup="false"
         android:networkSecurityConfig="@xml/network_security_config"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        android:theme="@android:style/Theme.Material.NoActionBar">
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Consent sheet (§5.7): launched by the client SDK from the CLIENT's
+             foreground context; identity comes from the AIDL bind, never from
+             extras. -->
+        <activity
+            android:name=".ui.PairingActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Material.Dialog.NoActionBar">
+            <intent-filter>
+                <action android:name="xyz.mdhv.asom.PAIR_CONSENT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Discovery (§5.1): no permission — port/version/capabilities only,
+             no secrets. -->
+        <provider
+            android:name=".discovery.DiscoveryProvider"
+            android:authorities="xyz.mdhv.asom.discovery"
+            android:exported="true" />
+
+        <!-- Model file sharing (§5.8): read-only fd access, caller UID must
+             map to an active pairing (checked in code, not by permission). -->
+        <provider
+            android:name=".storage.ModelsProvider"
+            android:authorities="xyz.mdhv.asom.models"
+            android:exported="true"
+            android:grantUriPermissions="false" />
+
+        <!-- FGS type specialUse with the property declaration (brief §3):
+             sideload-first distribution; Play justification is a later owner
+             concern. -->
+        <service
+            android:name=".service.AsomService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Local-only (127.0.0.1) OpenAI-compatible model routing daemon serving paired apps on this device" />
+        </service>
+
+        <!-- Boot-start toggle (§11 P8): default OFF, checked at receive time. -->
+        <receiver
+            android:name=".service.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Quick-settings tile (§11 P8): start/stop from the shade. -->
+        <service
+            android:name=".service.AsomTileService"
+            android:exported="true"
+            android:icon="@android:drawable/stat_notify_sync_noanim"
+            android:label="asom"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
     </application>
 
 </manifest>
