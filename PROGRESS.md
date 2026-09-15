@@ -212,11 +212,107 @@ feedback hues never bound).
 
 ---
 
+## Production-readiness audit + remediation
+
+Owner-directed hardening pass after P0–P8. Every phase had passed its own
+gate, but no part of the codebase had been read adversarially. A 15-dimension
+audit (the nine invariants individually, HTTP/SSE correctness, driver
+translation fidelity, router determinism, the fd-sharing provider's security
+surface, the client SDK contract, concurrency/resource lifetime, test-suite
+honesty, and build/CI law) raised 104 candidate defects. Each was then put to
+three independent adversarial reviewers — reproduction, spec-grounding, and
+production-impact — and kept only on a majority verdict.
+
+**71 confirmed** (15 critical, 28 high, 26 medium, 2 low); 33 refuted. All 71
+are fixed across the commits below. 51 were upheld unanimously.
+
+What the audit found, in order of seriousness:
+
+- **The egress ledger — the artifact this product exists to provide — was
+  under-reporting, and on one path asserting the opposite of the truth.**
+  Failover wrote no row for providers that had already received the prompt (in
+  the committed fixture, that includes the one provider with
+  `trainsOnData: true`). `ALL_PROVIDERS_COOLING` recorded `egress=local`
+  — "nothing left the device" — for a request transmitted to every candidate,
+  and drove the echo headers from the same falsified record, so §1.9 held while
+  both surfaces were wrong. The streaming path appended its row last, after the
+  response completed, so a client disconnect — routine on mobile — lost it
+  entirely. Android's sink only enqueued, so a process kill lost rows for
+  egress that had already happened.
+- **A BYOK key could reach a response body** (§1.4). OkHttp redacts
+  `Authorization` in header-validation exceptions but not `x-api-key`, and the
+  error envelope echoed raw exception messages.
+- **A revoked app could silently un-revoke itself** over AIDL and reuse its old
+  token, non-interactively, contradicting §5.7. `:pairing` — the device's only
+  auth authority — had no test source set and was never run by CI.
+- **`:client` shipped no AndroidManifest**, so no `<queries>`: on Android 11+
+  both discovery paths fail silently and the RemoteAsom tier is dead in the
+  field, indistinguishable from "asom is not installed". This is why P6's
+  device checklist could look green.
+- **Model files were served to other apps before SHA-256 verification**, with a
+  path-traversal hole in the same provider.
+- **Pin/Evict crashed the dashboard** (blocking Room on the main thread), and
+  **ledger export did not exist** — the one sanctioned egress path in v1 (§9)
+  was dead code.
+- **The routing property tests could not catch a regression**: exceptions were
+  swallowed so iterations skipped silently, and the ordering oracles were the
+  implementation's own key functions, reducing each law to `sortedBy(f)` is
+  sorted by `f`.
+
+Verbose ledger mode (§2, §9) was inert — the setting, table, DAO and purge
+worker existed but nothing wrote a row — and is now implemented end to end.
+Capture policy: request bodies and non-streamed response bodies are stored;
+streamed responses store metadata only, because buffering an SSE response to
+log it would be a memory hazard and would change streaming behaviour.
+
+```
+$ ./gradlew jvmTest --rerun-tasks
+BUILD SUCCESSFUL in 11s
+21 actionable tasks: 21 executed
+# AnthropicDriverTest: 11 tests, 0 failures
+# AsomServerIntegrationTest: 41 tests, 0 failures
+# AsomTest: 2 tests, 0 failures
+# CatalogueGoldenTest: 13 tests, 0 failures
+# ContractFreezeTest: 5 tests, 0 failures
+# CooldownRegistryTest: 7 tests, 0 failures
+# LatencyTrackerTest: 7 tests, 0 failures
+# LedgerDurabilityTest: 2 tests, 0 failures
+# NoopEngineTest: 2 tests, 0 failures
+# OpenAICompatDriverTest: 5 tests, 0 failures
+# RouteRecordTest: 6 tests, 0 failures
+# RouterPropertyTest: 10 tests, 0 failures
+# RouterTest: 22 tests, 0 failures
+# VerboseRedactorTest: 6 tests, 0 failures
+# TOTAL: 139 tests, 0 failures   (was 100 before the audit)
+```
+
+- [x] Pure-JVM suite green locally, 139 tests
+- [x] Pure-JVM-first law intact — no `android.*` in `:core:*` or `:server`
+- [x] `:pairing` and `:client-cloud` unit tests added to the CI Android job
+      (neither module was previously exercised by CI at all)
+- [ ] **Gate: the audit's device-observable fixes re-run on hardware** —
+      `NEEDS-DEVICE-VALIDATION`. `QA_V1.md` §§4, 6, 7, 11, 12 cover them.
+
+> The Android half of this remediation (`:app`, `:storage`, `:ledger`,
+> `:vault`, `:pairing`, `:client`, `:client-cloud`, `:sample-client`) was
+> written without a local Android SDK — brief §3 — so CI is its first compile
+> and its only automated verification. It compiles and its unit tests pass
+> there, but no Android change in this pass has been exercised on a device.
+
+---
+
 ## v1 build status
 
-P0–P8 all executed to their JVM/CI-verifiable gates; every phase's code,
-tests, and CI are green. The only remaining gates are hardware-dependent
-(`NEEDS-DEVICE-VALIDATION` device checklists P5–P7 + `QA_V1.md`) and the P4
-real-key cloud smoke (`NEEDS-OWNER-VALIDATION`) — both require the owner's
-RedMagic per brief §12. `ASOM_ROADMAP_BRIEF.md` (v1.1→v4) is committed but
-explicitly **not started**, per its own entry criteria.
+P0–P8 all executed to their JVM/CI-verifiable gates, followed by the
+production-readiness audit above (71 confirmed defects, all fixed). Code,
+tests and CI are green.
+
+Remaining gates are hardware- or owner-dependent: the `NEEDS-DEVICE-VALIDATION`
+checklists (P5–P7 + `QA_V1.md`, now extended to cover the audit fixes) and the
+P4 real-key cloud smoke (`NEEDS-OWNER-VALIDATION`) — both require the owner's
+RedMagic per brief §12. Note that P6's original RemoteAsom results are **not
+meaningful** and must be re-run: the `<queries>` defect meant the tier could not
+have worked on the test device.
+
+`ASOM_ROADMAP_BRIEF.md` (v1.1→v4) is committed but explicitly **not started**,
+per its own entry criteria.

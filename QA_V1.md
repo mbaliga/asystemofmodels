@@ -87,7 +87,10 @@ bare JDK (no Android SDK) on every push — see PROGRESS.md for run links.
 ## 7. Verbose mode + TTL (§9, §11 P8)
 
 - [ ] Status tab: enable **Verbose ledger mode** → a persistent-notification-worthy state is active (WorkManager periodic purge scheduled; confirm via `adb shell dumpsys jobscheduler | grep asom` or WorkManager's own diagnostics)
-- [ ] Send a request with verbose mode on → a `verbose_log` row exists (inspect via a temporary debug query or Room Inspector) containing the request/response bodies
+- [ ] Send a **non-streaming** request with verbose mode on → a `verbose_log` row exists (inspect via a temporary debug query or Room Inspector) containing the request body and the response body
+- [ ] Send a **streaming** request with verbose mode on → the row stores the request body, but the response is metadata only (`asom_capture: "response-metadata-only"`), never the streamed bytes. This is the documented policy: buffering an SSE response to log it would be a memory hazard on long generations
+- [ ] With verbose mode on, confirm the foreground notification says capture is active (§9 — the user must always be able to see that bodies are being recorded)
+- [ ] Enter a BYOK key, force an upstream 401, then inspect the captured row → no key material and no pairing bearer token appear in any captured body (§1.4)
 - [ ] Wait past 24h (or temporarily shrink `VerbosePurgeWorker.TTL_MS` in a debug build) → the row is purged by the next hourly worker run
 - [ ] Disable verbose mode → no new verbose rows written; existing rows still purge on schedule
 
@@ -106,11 +109,35 @@ bare JDK (no Android SDK) on every push — see PROGRESS.md for run links.
 - [ ] Sideloaded APK installs cleanly with no GMS/Play Services prompts (invariant §1.8)
 - [ ] App requests no permissions beyond those declared in the manifest (INTERNET, FOREGROUND_SERVICE[_SPECIAL_USE], POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED)
 
+## 11. Ledger truthfulness under failure (audit remediation — §1.3/§1.9)
+
+These paths were all previously wrong; they are the highest-value things to
+check on hardware because the ledger is the product's trust surface.
+
+- [ ] Force a failover (revoke or corrupt the cheapest provider's key so it 401s, or block its host) → the Ledger tab shows a row for **each provider actually contacted**, not just the one that served. The failed attempt must read `cloud`, with its real status and byte count
+- [ ] Put the device in airplane mode mid-session and send a request so every candidate fails → the terminal row must **not** claim `local`. Before the fix it read "nothing left the device" for a request sent to every provider
+- [ ] Start a streaming completion and background/kill the client app mid-stream → a row is still committed for the request (it was already dispatched and billed). Before the fix the row was lost entirely
+- [ ] Kill the daemon process immediately after a request completes → the row survives; ledger writes are committed before the response finishes
+
+## 12. Pairing, discovery, and model integrity (audit remediation)
+
+- [ ] Revoke a paired app from the Hotspot tab, then have that app call `pair()` again → it must **not** silently regain access with its old token. Re-pairing must require explicit consent
+- [ ] Uninstall and reinstall a paired client (or clear its data) → it can pair again through consent, rather than being stuck permanently "paired" with no token
+- [ ] **Re-run §5 in full on Android 11+.** The `<queries>` defect meant `AsomDiscovery` and AIDL pairing silently returned "not installed" on every modern device, so any earlier RemoteAsom pass was not meaningful. Confirm the sample app actually reaches the daemon
+- [ ] Interrupt a model download partway (airplane mode), then have a paired app request that model's fd → it must be refused. Partial/unverified files must never be shared (§5.8)
+- [ ] Models tab: tap **Pin**, then **Evict** on a downloaded model → neither crashes the dashboard, and eviction frees the bytes
+- [ ] Queue a download, leave the app, let the process be killed, then let it complete on Wi-Fi → a ledger row exists for the download egress
+- [ ] Ledger tab: trigger **Export** → the exact payload is shown **before** the share sheet opens, and contains no key material (§9, invariant §1.1)
+
 ---
 
 ## Sign-off
 
 This script has not yet been executed on hardware. Per brief §12, all of
-§1–§10 above remain `NEEDS-DEVICE-VALIDATION` until the owner runs them on
+§1–§12 above remain `NEEDS-DEVICE-VALIDATION` until the owner runs them on
 the RedMagic and confirms. Real-key cloud smoke (P4) is a separate
 `NEEDS-OWNER-VALIDATION` item logged in `PROGRESS.md`.
+
+§§11–12 were added after the production-readiness audit. Every item in them
+covers a defect that was real and is now fixed, but whose fix has only been
+verified by CI — no Android change from that pass has run on a device.
