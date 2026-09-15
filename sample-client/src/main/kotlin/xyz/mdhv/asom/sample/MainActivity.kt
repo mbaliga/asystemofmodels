@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -102,6 +103,8 @@ private fun SampleScreen(
 
                     // §10A.5 nudge demo — fires only under the spec conditions.
                     val summary = withContext(Dispatchers.IO) { SuiteInventory.query(activity, suitePackages) }
+                    // Reading the vault touches the Keystore — never on the main thread.
+                    val holdsKey = withContext(Dispatchers.IO) { cloudOnly.vault.providersWithKeys().isNotEmpty() }
                     val decision = NudgePolicy().decide(
                         NudgePolicy.Signals(
                             asomInstalled = endpoint != null,
@@ -109,7 +112,7 @@ private fun SampleScreen(
                             suiteAppCount = summary.suiteAppCount,
                             reclaimableBytes = summary.reclaimableBytes,
                             appLabels = summary.appLabels,
-                            holdsLocalKeyOrModel = cloudOnly.vault.providersWithKeys().isNotEmpty(),
+                            holdsLocalKeyOrModel = holdsKey,
                         ),
                         NudgePolicy.State(), // demo: fresh state
                         nowMs = System.currentTimeMillis(),
@@ -134,6 +137,7 @@ private fun SampleScreen(
             value = cloudKey,
             onValueChange = { cloudKey = it },
             label = { Text("CloudOnly key for openrouter (this app's own vault)") },
+            visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
         )
@@ -186,9 +190,11 @@ private fun SampleScreen(
                     append("no tier available (no asom, no cloud key)")
                     return@launch
                 }
-                append("→ streaming via ${resolved.tier} (model=${if (resolved.tier == FallbackResolver.Tier.REMOTE_ASOM) "cheapest" else "llama-3.3-70b"}) …")
-                val model = if (resolved.tier == FallbackResolver.Tier.REMOTE_ASOM) "cheapest" else "llama-3.3-70b"
-                val body = """{"model":"$model","messages":[{"role":"user","content":${jsonString(prompt)}}]}"""
+                // §10A.1: one body, whichever tier is live. The §5.5 virtual
+                // selector is honoured by RemoteAsom and CloudOnly alike, so
+                // the app never branches on the implementation.
+                append("→ streaming via ${resolved.tier} (model=cheapest) …")
+                val body = """{"model":"cheapest","messages":[{"role":"user","content":${jsonString(prompt)}}]}"""
                 try {
                     withContext(Dispatchers.IO) {
                         val stream = client.chatStream(body)

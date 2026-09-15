@@ -37,6 +37,9 @@ dependencies {
     api(libs.okhttp)
     api(libs.kotlinx.coroutines.core)
     testImplementation(libs.kotlin.test)
+    // Test-only (never published in the AAR): the SSE transport is plain JVM,
+    // so its real behavior is exercised against a loopback server.
+    testImplementation(libs.okhttp.mockwebserver)
 }
 
 tasks.withType<Test> {

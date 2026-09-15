@@ -1,11 +1,14 @@
 package xyz.mdhv.asom.client
 
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
@@ -31,7 +34,7 @@ import xyz.mdhv.asom.contract.client.RequestOptions
 class AsomChat(
     private val endpoint: AsomEndpoint,
     private val token: String,
-    private val client: OkHttpClient = OkHttpClient(),
+    private val client: OkHttpClient = asomDefaultHttpClient(),
 ) {
 
     suspend fun complete(bodyJson: String, options: RequestOptions = RequestOptions()): InferenceResponse =
@@ -49,7 +52,11 @@ class AsomChat(
         return execute(request)
     }
 
-    /** Streaming (`stream:true` set for you); emits SSE data payloads, no `[DONE]`. */
+    /**
+     * Streaming (`stream:true` set for you); emits SSE data payloads, no
+     * `[DONE]`. [InferenceStream.headers] is only populated once the first
+     * chunk has been collected.
+     */
     fun stream(bodyJson: String, options: RequestOptions = RequestOptions()): InferenceStream {
         val withStream = Json.parseToJsonElement(bodyJson).jsonObject.let { obj ->
             buildJsonObject {
@@ -57,36 +64,46 @@ class AsomChat(
                 put("stream", JsonPrimitive(true))
             }
         }.toString()
-        val call = client.newCall(build("/v1/chat/completions", withStream, options))
+        val request = build("/v1/chat/completions", withStream, options)
 
-        var headerResponse: InferenceResponse? = null
-        val flow = callbackFlow {
-            val response = call.execute()
-            headerResponse = response.toInferenceResponse("")
-            response.body?.source()?.let { source ->
-                val buffer = StringBuilder()
-                while (!source.exhausted()) {
-                    val line = source.readUtf8Line() ?: break
-                    if (line.startsWith("data:")) {
-                        buffer.append(line.removePrefix("data:").trim())
-                    } else if (line.isEmpty() && buffer.isNotEmpty()) {
-                        val payload = buffer.toString()
-                        buffer.setLength(0)
-                        if (payload == "[DONE]") break
-                        trySend(payload)
+        val echo = AtomicReference(InferenceResponse(0, ""))
+        val active = AtomicReference<Call?>(null)
+        val cancelled = AtomicBoolean(false)
+
+        // The Call is created per collection (not once, outside) so the Flow is
+        // re-collectable; `use` closes the response on a mid-stream failure, and
+        // the suspending `emit` is the cancellation checkpoint the blocking read
+        // loop would otherwise have none of.
+        val chunkFlow = flow {
+            val call = client.newCall(request).also { active.set(it) }
+            if (cancelled.get()) call.cancel()
+            call.execute().use { response ->
+                echo.set(response.toInferenceResponse(""))
+                val source = response.body?.source()
+                if (source != null) {
+                    val buffer = StringBuilder()
+                    while (!source.exhausted()) {
+                        val line = source.readUtf8Line() ?: break
+                        if (line.startsWith("data:")) {
+                            buffer.append(line.removePrefix("data:").trim())
+                        } else if (line.isEmpty() && buffer.isNotEmpty()) {
+                            val payload = buffer.toString()
+                            buffer.setLength(0)
+                            if (payload == "[DONE]") break
+                            emit(payload)
+                        }
                     }
                 }
             }
-            response.close()
-            close()
-            awaitClose { call.cancel() }
-        }
+        }.flowOn(Dispatchers.IO)
 
         return object : InferenceStream {
-            override val headers: InferenceResponse
-                get() = headerResponse ?: InferenceResponse(0, "")
-            override val chunks: Flow<String> = flow
-            override fun cancel() = call.cancel()
+            override val headers: InferenceResponse get() = echo.get()
+            override val chunks: Flow<String> = chunkFlow
+            override fun cancel() {
+                cancelled.set(true)
+                active.get()?.cancel()
+            }
         }
     }
 

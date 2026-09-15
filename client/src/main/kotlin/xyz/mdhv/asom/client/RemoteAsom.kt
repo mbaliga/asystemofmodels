@@ -16,7 +16,7 @@ import xyz.mdhv.asom.contract.client.RequestOptions
  */
 class RemoteAsom(
     private val context: Context,
-    private val httpClient: OkHttpClient = OkHttpClient(),
+    private val httpClient: OkHttpClient = asomDefaultHttpClient(),
 ) : InferenceClient {
 
     val pairing = AsomPairing(context)

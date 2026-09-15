@@ -11,6 +11,54 @@ Visible dependencies: contract + OkHttp + kotlinx-coroutines. Nothing else.
 
 ---
 
+## Manifest: what merges in, what you must add
+
+`:client` and `:client-cloud` each ship a manifest that merges into your app:
+
+```xml
+<!-- from :client (and INTERNET also from :client-cloud) -->
+<uses-permission android:name="android.permission.INTERNET" />
+<queries>
+    <package android:name="xyz.mdhv.asom" />
+    <intent><action android:name="xyz.mdhv.asom.PAIR" /></intent>
+    <provider android:authorities="xyz.mdhv.asom.discovery;xyz.mdhv.asom.models" />
+</queries>
+```
+
+`<queries>` is load-bearing, not hygiene: on API 30+ an app that cannot see
+`xyz.mdhv.asom` gets an empty `queryIntentServices` and an unresolvable
+provider authority, so `AsomDiscovery.discover` returns null and
+`AsomPairing.pair` returns `NOT_INSTALLED` — **indistinguishable from asom
+genuinely not being installed**, on a device where it is installed and running.
+INTERNET is required even for the loopback call, because Android gates AF_INET
+socket creation on that permission and 127.0.0.1 is not exempt.
+
+Your app must add, for itself:
+
+- **Sibling inventory authorities** (§10A.4) — one entry per package in your
+  `suitePackages` list; the SDK cannot know them:
+  `<queries><provider android:authorities="com.example.sibling.asom.inventory" /></queries>`
+- **`InventoryProvider`**, if you want to contribute to siblings' estimates:
+  `<provider android:name="xyz.mdhv.asom.client.InventoryProvider"
+   android:authorities="${applicationId}.asom.inventory" android:exported="true" />`
+  Publish the inventory from your `Application.onCreate` — a sibling's query can
+  start your process without ever reaching an Activity.
+- **A network security config** (invariant §1.2). The daemon is plain HTTP on
+  loopback, everything else is HTTPS; copy
+  `sample-client/src/main/res/xml/network_security_config.xml`. Never set
+  `android:usesCleartextTraffic="true"` — that is an app-wide exception for
+  *every* host.
+- **Backup exclusion for the `:client-cloud` vault.** Its Keystore master key is
+  never backed up, so a restored copy of the `asom-client-cloud-vault`
+  SharedPreferences can never decrypt. A library cannot set your
+  `<application>` backup attributes without a merge conflict, so exclude
+  `asom-client-cloud-vault.xml` in your own `dataExtractionRules` /
+  `fullBackupContent` (or set `android:allowBackup="false"`, as asom itself
+  does). `ClientVault` degrades to "no key stored" — and prompts re-entry —
+  rather than failing, but the user still re-types the key.
+
+---
+
 ## The one interface (§10A.1)
 
 Every consuming app codes against `InferenceClient` — the app's own logic
@@ -47,6 +95,13 @@ interface InferenceStream {
 }
 ```
 
+`chunks` is a cold Flow: collecting it issues the request, and it may be
+collected more than once. It does its own I/O on `Dispatchers.IO`, so
+collecting from a main-thread scope is safe. `headers` is the placeholder
+`InferenceResponse(0, "")` until the first chunk has been collected; read it
+after collection, not before. Cancelling the collector closes the response and
+releases the connection; `cancel()` aborts the in-flight call outright.
+
 Three implementations:
 
 | Impl | Module | Ships in v1 | What it is |
@@ -74,6 +129,34 @@ class FallbackResolver(
 
 Priority: **RemoteAsom → Embedded (if bundled) → CloudOnly**. Removing asom
 must degrade to the next tier with no data loss and no crash.
+
+## The `model` field on every tier (§5.5)
+
+The same body must work whichever implementation is live, so **`CloudOnly`
+accepts the virtual selectors too** — your app never branches on the tier.
+`:client-cloud` has no catalogue and no router (routing is what asom is *for*),
+so it resolves them with a fixed, deliberately dumb rule:
+
+| `model` | `RemoteAsom` | `CloudOnly` |
+|---|---|---|
+| concrete id | routed by policy | first keyed provider that serves it |
+| `auto` `cheapest` `fastest` `best-reasoning` | routed per §7 | **first keyed provider that declares models, and its first declared model** — declaration order is your preference order; the outgoing body's `model` is rewritten to that concrete id |
+| `local-only` | `501 LOCAL_ENGINE_ABSENT` | `501 LOCAL_ENGINE_ABSENT` |
+
+If no keyed provider declares any model, a virtual selector returns
+`404 MODEL_UNKNOWN` — it is never forwarded upstream verbatim. With no key at
+all the answer is `503 NO_PROVIDER_KEY`, as before.
+
+`CloudProvider.baseUrl` must be `https://` (invariant §1.2); anything else
+throws `IllegalArgumentException` at construction.
+
+## Timeouts
+
+Both default OkHttp clients use connect 10 s / write 30 s / **read 180 s**,
+matching what the daemon itself allows its upstream provider. Do not hand in a
+bare `OkHttpClient()`: its 10 s read timeout is shorter than a routine
+completion takes, so the call fails client-side while the user is still billed
+for it and the ledger records an egress the app never saw.
 
 ## Discovery (§5.1)
 
@@ -104,6 +187,19 @@ never extras), then launches asom's consent activity from the CLIENT's
 foreground context. The daemon stores only the token's SHA-256; the raw
 token is delivered exactly once and persisted app-side. Losing local storage
 means re-pairing.
+
+The bind is pinned to the `xyz.mdhv.asom` package: the action is public, so
+without the pin any installed app could publish a matching service and a
+look-alike consent sheet. Signing certificates are deliberately *not* checked —
+§10A.4 records that first-party cert matching is unreliable across
+Play/F-Droid/direct-APK channels; trust still rests on the daemon's
+`Binder.getCallingUid()` check (§5.7).
+
+`pair()` always returns. "Decide later" and a back-press finish the sheet
+without any decision reaching the callback, so the SDK also treats your activity
+coming back to the foreground as an answer and re-reads the daemon's
+`getStatus()` — yielding `PENDING`. Call `pair()` again later, or `fetchToken()`
+to pick up a token approved out of band.
 
 ## Keys never transfer (§10A.3)
 
