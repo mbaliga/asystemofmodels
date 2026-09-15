@@ -45,6 +45,21 @@ class PairingActivity : ComponentActivity() {
             }
         }
     }
+
+    /**
+     * "Decide later", a back-press and a swipe-away all land here, and each
+     * leaves a client blocked on a callback nothing else would ever fire.
+     * Guarded on isFinishing so a rotation is not mistaken for a dismissal;
+     * rows already approved or denied are no longer PENDING, so this only ever
+     * answers the genuinely undecided ones.
+     */
+    override fun onDestroy() {
+        super.onDestroy()
+        if (isFinishing) {
+            val registry = ServiceLocator.pairingRegistry
+            ServiceLocator.scope.launch { registry.dismiss() }
+        }
+    }
 }
 
 @Composable

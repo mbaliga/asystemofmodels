@@ -2,6 +2,7 @@ package xyz.mdhv.asom.pairing
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
@@ -36,13 +37,54 @@ private class FakePairingDao : PairingDao {
     }
 }
 
-/** Records the AIDL callback so tests can assert what the client was told. */
-private class Decision {
+/**
+ * Stands in for the AIDL callback proxy: records what the client was told and
+ * models binder liveness, so eviction can be asserted through the registry's
+ * own behaviour rather than its internals.
+ */
+private class FakeClient(var alive: Boolean = true) : PendingClient {
     var status: Int? = null
     var token: String? = null
-    val sink: (Int, String?) -> Unit = { s, t ->
-        status = s
-        token = t
+
+    /** Delivery attempts, successful or not — a dead client must see zero. */
+    var deliveries = 0
+    var linked = false
+    var unlinks = 0
+    private var deathHandler: (() -> Unit)? = null
+
+    override fun deliver(status: Int, token: String?): Boolean {
+        deliveries++
+        if (!alive) return false
+        this.status = status
+        this.token = token
+        return true
+    }
+
+    override fun linkToDeath(onDeath: () -> Unit): Boolean {
+        if (!alive) return false
+        deathHandler = onDeath
+        linked = true
+        return true
+    }
+
+    override fun unlink() {
+        unlinks++
+        linked = false
+    }
+
+    /** The client process dies while the registry is still watching it. */
+    fun die() {
+        alive = false
+        if (linked) deathHandler?.invoke()
+    }
+
+    /**
+     * A death notification already dispatched when unlink() ran — a real
+     * binder race, and the reason eviction has to be value-guarded.
+     */
+    fun raceDeathNotification() {
+        alive = false
+        deathHandler?.invoke()
     }
 }
 
@@ -58,8 +100,8 @@ class PairingRegistryTest {
         label = "Fonebru",
     )
 
-    private fun pairFully(): String {
-        registry.requestPairing(caller, Decision().sink)
+    private fun pairFully(client: FakeClient = FakeClient()): String {
+        registry.requestPairing(caller, client)
         return requireNotNull(registry.approve(caller.packageName, caller.certHash))
     }
 
@@ -78,9 +120,15 @@ class PairingRegistryTest {
     }
 
     @Test
-    fun `raw token is delivered exactly once`() {
-        val token = pairFully()
+    fun `raw token is fetched exactly once when the callback could not deliver it`() {
+        // The fetch-later path: the client was registered (so it linked), but its
+        // process was gone by the time the decision was pushed.
+        val client = FakeClient()
+        registry.requestPairing(caller, client)
+        client.alive = false
+        val token = requireNotNull(registry.approve(caller.packageName, caller.certHash))
 
+        assertEquals(1, client.deliveries, "the push must have been attempted")
         assertEquals(token, registry.takeToken(caller))
         assertNull(registry.takeToken(caller))
     }
@@ -112,16 +160,16 @@ class PairingRegistryTest {
         val token = pairFully()
         registry.revoke(caller.packageName, caller.certHash)
 
-        val decision = Decision()
-        registry.requestPairing(caller, decision.sink)
+        val client = FakeClient()
+        registry.requestPairing(caller, client)
 
         assertIs<TokenCheck.Revoked>(registry.check(token))
         assertEquals(
             PairingStatusCode.REVOKED,
             requireNotNull(dao.find(caller.packageName, caller.certHash)).status,
         )
-        assertEquals(PairingStatusCode.REVOKED, decision.status)
-        assertNull(decision.token)
+        assertEquals(PairingStatusCode.REVOKED, client.status)
+        assertNull(client.token)
         assertTrue(registry.pending().isEmpty(), "a revoked app must not reach the consent sheet")
     }
 
@@ -129,7 +177,7 @@ class PairingRegistryTest {
     fun `a revoked row cannot be approved back into service`() {
         val token = pairFully()
         registry.revoke(caller.packageName, caller.certHash)
-        registry.requestPairing(caller, Decision().sink)
+        registry.requestPairing(caller, FakeClient())
 
         assertNull(registry.approve(caller.packageName, caller.certHash))
         assertIs<TokenCheck.Revoked>(registry.check(token))
@@ -141,7 +189,7 @@ class PairingRegistryTest {
         registry.revoke(caller.packageName, caller.certHash)
         registry.remove(caller.packageName, caller.certHash)
 
-        registry.requestPairing(caller, Decision().sink)
+        registry.requestPairing(caller, FakeClient())
         val newToken = requireNotNull(registry.approve(caller.packageName, caller.certHash))
 
         assertNotEquals(oldToken, newToken)
@@ -171,14 +219,14 @@ class PairingRegistryTest {
 
     @Test
     fun `deny drops the row and the caller is told NOT_PAIRED`() {
-        val decision = Decision()
-        registry.requestPairing(caller, decision.sink)
+        val client = FakeClient()
+        registry.requestPairing(caller, client)
         registry.deny(caller.packageName, caller.certHash)
 
         assertNull(dao.find(caller.packageName, caller.certHash))
         assertEquals(PairingStatusCode.NOT_PAIRED, registry.status(caller))
-        assertEquals(PairingStatusCode.NOT_PAIRED, decision.status)
-        assertNull(decision.token)
+        assertEquals(PairingStatusCode.NOT_PAIRED, client.status)
+        assertNull(client.token)
     }
 
     @Test
@@ -194,32 +242,35 @@ class PairingRegistryTest {
     @Test
     fun `a paired app that lost its token can re-pair through fresh consent`() {
         val oldToken = pairFully()
-        registry.takeToken(caller)
 
         // Reinstall / data clear: same (package, certHash), no local token.
-        val decision = Decision()
-        registry.requestPairing(caller, decision.sink)
+        val client = FakeClient()
+        registry.requestPairing(caller, client)
 
         val row = requireNotNull(dao.find(caller.packageName, caller.certHash))
         assertEquals(PairingStatusCode.PENDING, row.status)
         assertNull(row.tokenHash)
         assertIs<TokenCheck.Unknown>(registry.check(oldToken))
         assertEquals(listOf(caller.packageName), registry.pending().map { it.packageName })
-        assertNull(decision.status, "re-pair must wait for consent, not answer immediately")
+        assertNull(client.status, "re-pair must wait for consent, not answer immediately")
 
         val newToken = requireNotNull(registry.approve(caller.packageName, caller.certHash))
         assertNotEquals(oldToken, newToken)
-        assertEquals(PairingStatusCode.PAIRED, decision.status)
-        assertEquals(newToken, decision.token)
+        assertEquals(PairingStatusCode.PAIRED, client.status)
+        assertEquals(newToken, client.token)
         assertEquals(TokenCheck.Valid(caller.packageName), registry.check(newToken))
         assertIs<TokenCheck.Unknown>(registry.check(oldToken))
     }
 
     @Test
     fun `a re-pair request retires any undelivered token from the previous approval`() {
-        pairFully()
+        // Undelivered: the push failed, so the token is still staged for getToken().
+        val stranded = FakeClient()
+        registry.requestPairing(caller, stranded)
+        stranded.alive = false
+        registry.approve(caller.packageName, caller.certHash)
 
-        registry.requestPairing(caller, Decision().sink)
+        registry.requestPairing(caller, FakeClient())
 
         assertNull(registry.takeToken(caller))
     }
@@ -227,10 +278,10 @@ class PairingRegistryTest {
     @Test
     fun `re-pairing keeps the original createdAt so the row is not duplicated`() {
         val fixed = PairingRegistry(dao, clock = { 4242L })
-        fixed.requestPairing(caller, Decision().sink)
+        fixed.requestPairing(caller, FakeClient())
         fixed.approve(caller.packageName, caller.certHash)
 
-        fixed.requestPairing(caller, Decision().sink)
+        fixed.requestPairing(caller, FakeClient())
 
         assertEquals(1, dao.rows.size)
         assertEquals(4242L, requireNotNull(dao.find(caller.packageName, caller.certHash)).createdAt)
@@ -243,7 +294,7 @@ class PairingRegistryTest {
         val token = pairFully()
         val impostor = caller.copy(certHash = "b".repeat(64))
 
-        registry.requestPairing(impostor, Decision().sink)
+        registry.requestPairing(impostor, FakeClient())
         registry.approve(impostor.packageName, impostor.certHash)
 
         assertEquals(2, dao.rows.size)
@@ -251,5 +302,145 @@ class PairingRegistryTest {
 
         registry.revoke(impostor.packageName, impostor.certHash)
         assertEquals(TokenCheck.Valid(caller.packageName), registry.check(token))
+    }
+
+    // ------------------------------------------------------- client liveness
+
+    @Test
+    fun `a dead client binder is evicted and never delivered to`() {
+        val client = FakeClient()
+        registry.requestPairing(caller, client)
+        assertTrue(client.linked, "a waiting client must be watched for death")
+
+        client.die()
+        val token = requireNotNull(registry.approve(caller.packageName, caller.certHash))
+
+        assertEquals(0, client.deliveries, "a dead client's proxy must not be retained")
+        assertNull(client.status)
+        assertEquals(token, registry.takeToken(caller))
+    }
+
+    @Test
+    fun `a client that is already dead is never retained`() {
+        val client = FakeClient(alive = false)
+        registry.requestPairing(caller, client)
+
+        assertFalse(client.linked)
+        registry.approve(caller.packageName, caller.certHash)
+        assertEquals(0, client.deliveries)
+    }
+
+    @Test
+    fun `the normal delivery path unlinks instead of leaking death recipients`() {
+        val client = FakeClient()
+        registry.requestPairing(caller, client)
+        registry.approve(caller.packageName, caller.certHash)
+
+        assertEquals(1, client.unlinks, "the death recipient must be dropped on delivery")
+        assertFalse(client.linked)
+    }
+
+    @Test
+    fun `deny unlinks the waiting client too`() {
+        val client = FakeClient()
+        registry.requestPairing(caller, client)
+        registry.deny(caller.packageName, caller.certHash)
+
+        assertEquals(1, client.unlinks)
+        assertFalse(client.linked)
+    }
+
+    @Test
+    fun `a superseding request releases the previous client`() {
+        val first = FakeClient()
+        registry.requestPairing(caller, first)
+        val second = FakeClient()
+        registry.requestPairing(caller, second)
+
+        assertEquals(1, first.unlinks)
+        assertFalse(first.linked)
+
+        registry.approve(caller.packageName, caller.certHash)
+        assertEquals(0, first.deliveries, "only the current client is owed a decision")
+        assertEquals(PairingStatusCode.PAIRED, second.status)
+    }
+
+    @Test
+    fun `a death notification arriving after release cannot evict the current client`() {
+        val first = FakeClient()
+        registry.requestPairing(caller, first)
+        val second = FakeClient()
+        registry.requestPairing(caller, second)
+
+        first.raceDeathNotification()
+
+        registry.approve(caller.packageName, caller.certHash)
+        assertEquals(PairingStatusCode.PAIRED, second.status)
+        assertNull(registry.takeToken(caller), "the live client was still delivered to")
+    }
+
+    // ------------------------------------------------------ plaintext hygiene
+
+    @Test
+    fun `an approved token is cleared from undelivered once the push succeeds`() {
+        val client = FakeClient()
+        val token = pairFully(client)
+
+        assertEquals(token, client.token)
+        assertNull(
+            registry.takeToken(caller),
+            "a delivered plaintext token must not linger in the daemon's heap",
+        )
+    }
+
+    // ------------------------------------------------- unverifiable + dismiss
+
+    @Test
+    fun `an unverifiable caller gets a definitive refusal and creates no row`() {
+        val client = FakeClient()
+        registry.refuseUnverified(client)
+
+        assertEquals(PairingStatusCode.NOT_PAIRED, client.status)
+        assertNull(client.token)
+        assertTrue(dao.rows.isEmpty(), "an unverified caller must never reach the consent sheet")
+        assertFalse(client.linked, "an unverified caller's proxy must not be retained")
+    }
+
+    @Test
+    fun `dismissal answers the waiting client with PENDING and decides nothing`() {
+        val client = FakeClient()
+        registry.requestPairing(caller, client)
+
+        registry.dismiss()
+
+        assertEquals(PairingStatusCode.PENDING, client.status)
+        assertNull(client.token)
+        assertEquals(PairingStatusCode.PENDING, registry.status(caller))
+        assertNull(requireNotNull(dao.find(caller.packageName, caller.certHash)).tokenHash)
+        assertEquals(1, client.unlinks)
+    }
+
+    @Test
+    fun `an out-of-band approval after dismissal is still fetchable`() {
+        val client = FakeClient()
+        registry.requestPairing(caller, client)
+        registry.dismiss()
+
+        val token = requireNotNull(registry.approve(caller.packageName, caller.certHash))
+
+        assertEquals(1, client.deliveries, "the dismissal was the only push")
+        assertEquals(token, registry.takeToken(caller))
+    }
+
+    @Test
+    fun `dismissal after a decision does not push a second answer`() {
+        val client = FakeClient()
+        registry.requestPairing(caller, client)
+        registry.approve(caller.packageName, caller.certHash)
+
+        registry.dismiss()
+
+        assertEquals(1, client.deliveries)
+        assertEquals(PairingStatusCode.PAIRED, client.status)
     }
 }
