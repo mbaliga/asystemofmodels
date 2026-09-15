@@ -35,16 +35,24 @@ class PairingRegistry(
     fun requestPairing(caller: VerifiedCaller, callback: (Int, String?) -> Unit) {
         val key = Key(caller.packageName, caller.certHash)
         val existing = dao.find(caller.packageName, caller.certHash)
-        if (existing?.status == PairingStatusCode.PAIRED) {
-            callback(PairingStatusCode.PAIRED, null) // already paired; token not re-issuable
+        if (existing?.status == PairingStatusCode.REVOKED) {
+            // §5.7: revocation is the only invalidation, so the revoked app must
+            // not be able to reopen its own row over AIDL. Only the owner's
+            // Remove in the Hotspot tab clears it.
+            callback(PairingStatusCode.REVOKED, null)
             return
         }
+        undelivered.remove(key)
         dao.upsert(
             PairingEntity(
                 packageName = caller.packageName,
                 certHash = caller.certHash,
                 label = caller.label,
-                tokenHash = existing?.tokenHash,
+                // A credential never survives a status reset. Re-requesting from a
+                // PAIRED row is the re-pair path (the client lost its once-delivered
+                // token, per docs/CLIENT_API.md): the old hash is retired here and a
+                // fresh token is minted only if the owner consents again.
+                tokenHash = null,
                 status = PairingStatusCode.PENDING,
                 createdAt = existing?.createdAt ?: clock(),
                 approvedAt = null,
@@ -112,10 +120,12 @@ class PairingRegistry(
         for (row in dao.allWithTokens()) {
             val stored = row.tokenHash?.toByteArray(Charsets.US_ASCII) ?: continue
             if (MessageDigest.isEqual(stored, hash)) {
-                return if (row.status == PairingStatusCode.REVOKED) {
-                    TokenCheck.Revoked
-                } else {
-                    TokenCheck.Valid(row.packageName)
+                // Allow-list, not deny-list: a hash that outlives PAIRED (revoked,
+                // or a row reset to PENDING) must never authorize a request.
+                return when (row.status) {
+                    PairingStatusCode.PAIRED -> TokenCheck.Valid(row.packageName)
+                    PairingStatusCode.REVOKED -> TokenCheck.Revoked
+                    else -> TokenCheck.Unknown
                 }
             }
         }
