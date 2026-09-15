@@ -62,7 +62,7 @@ class RoutePipeline(
         body: JsonObject,
         stream: Boolean,
         op: Operation,
-        onAttempt: (Attempt) -> Unit = {},
+        onAttempt: suspend (Attempt) -> Unit = {},
     ): Result {
         val plan = router.plan(query)
         // A driver that cannot serve a candidate at all (translate() failure,

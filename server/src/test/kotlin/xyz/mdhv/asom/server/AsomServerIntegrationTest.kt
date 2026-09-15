@@ -40,7 +40,11 @@ import xyz.mdhv.asom.server.driver.DriverOutcome
 import xyz.mdhv.asom.server.driver.FakeDriver
 import xyz.mdhv.asom.server.driver.ProviderDriver
 import xyz.mdhv.asom.server.keys.InMemoryKeyProvider
+import xyz.mdhv.asom.server.ledger.BodyRecord
+import xyz.mdhv.asom.server.ledger.BodySink
+import xyz.mdhv.asom.server.ledger.InMemoryBodySink
 import xyz.mdhv.asom.server.ledger.InMemoryLedger
+import xyz.mdhv.asom.server.ledger.VerboseRedactor
 
 /**
  * JVM integration tests against a REAL Ktor CIO server bound to 127.0.0.1
@@ -73,6 +77,9 @@ class AsomServerIntegrationTest {
     private var driverFor: (ProviderKind) -> ProviderDriver = { fake }
 
     private val ledger = InMemoryLedger()
+
+    /** §9 verbose mode: opt-in, so the sink starts NOT capturing. */
+    private val bodies = InMemoryBodySink(capturing = false)
     private val latency = LatencyTracker()
 
     private var now = 1_000_000_000_000L
@@ -86,6 +93,7 @@ class AsomServerIntegrationTest {
             keys = keys,
             drivers = { kind: ProviderKind -> driverFor(kind) },
             ledger = ledger,
+            bodies = bodies,
             cooldowns = cooldowns,
             latency = latency,
         ),
@@ -109,10 +117,21 @@ class AsomServerIntegrationTest {
     private fun resetBreakers() {
         driverFor = { fake }
         fake.omitStreamUsage = false
+        bodies.capturing = false
+        bodies.clear()
         listOf("openrouter", "groq", "trainy-ai", "anthropic").forEach {
             fake.heal(it)
             cooldowns.recordSuccess(it)
         }
+    }
+
+    /** A stream's verbose row is written after the last byte reaches the client. */
+    private fun capturedRows(expected: Int): List<BodyRecord> {
+        val deadline = System.currentTimeMillis() + 5_000
+        while (bodies.all().size < expected && System.currentTimeMillis() < deadline) {
+            Thread.sleep(10)
+        }
+        return bodies.all()
     }
 
     /** The ledger row for an aborted stream is written after the socket dies. */
@@ -834,5 +853,139 @@ class AsomServerIntegrationTest {
         assertEquals(400, r.statusCode())
         val message = json(r)["error"]!!.jsonObject["message"]!!.jsonPrimitive.contentOrNull
         assertEquals("malformed request", message)
+    }
+
+    // ---------------------------------------------------- §9 verbose mode
+
+    @Test
+    fun `verbose mode is off by default and captures nothing`() {
+        resetBreakers()
+        assertFalse(BodySink.Disabled.isCapturing(), "the shipped default sink must never capture")
+        request("POST", "/v1/chat/completions", chatBody("cheapest", "private prompt"))
+        request("POST", "/v1/chat/completions", chatBody("cheapest", "private prompt", stream = true))
+        request("POST", "/v1/embeddings", """{"model":"llama-3.3-70b","input":"private"}""")
+        Thread.sleep(200) // give an async capture, if any existed, time to land
+        assertTrue(bodies.all().isEmpty(), "verbose mode is opt-in (§9) — nothing may be stored while off")
+    }
+
+    @Test
+    fun `verbose mode stores the request and the non-streamed response body`() {
+        resetBreakers()
+        bodies.capturing = true
+        try {
+            val r = request("POST", "/v1/chat/completions", chatBody("cheapest", "capture me"))
+            assertEquals(200, r.statusCode())
+
+            val row = capturedRows(1).single()
+            assertEquals("test.caller", row.callerPkg)
+            assertTrue("capture me" in row.requestBody, "the request body must be stored, got ${row.requestBody}")
+            assertTrue("fake:trainy-ai/llama-3.3-70b:capture me" in row.responseBody)
+        } finally {
+            resetBreakers()
+        }
+    }
+
+    @Test
+    fun `a streamed response is stored as metadata, never as a buffered body`() {
+        resetBreakers()
+        bodies.capturing = true
+        try {
+            val r = request("POST", "/v1/chat/completions", chatBody("cheapest", "stream me", stream = true))
+            assertEquals(200, r.statusCode())
+
+            val row = capturedRows(1).single()
+            assertTrue("stream me" in row.requestBody)
+            val summary = Json.parseToJsonElement(row.responseBody).jsonObject
+            assertEquals("response-metadata-only", summary["asom_capture"]!!.jsonPrimitive.contentOrNull)
+            assertEquals(200, summary["status"]!!.jsonPrimitive.content.toInt())
+            assertTrue(summary["responseBytes"]!!.jsonPrimitive.content.toLong() > 0)
+            // Buffering a long generation to log it is the memory hazard this
+            // policy exists to avoid: the forwarded bytes must not be here.
+            assertFalse(
+                "fake:trainy-ai" in row.responseBody,
+                "the streamed body must never be buffered into a verbose row",
+            )
+        } finally {
+            resetBreakers()
+        }
+    }
+
+    @Test
+    fun `key material can never land in a verbose row`() {
+        resetBreakers()
+        bodies.capturing = true
+        try {
+            // The only realistic route a BYOK key could take into a stored
+            // body: an upstream error that echoes the credential it was sent.
+            driverFor = { EchoKeyDriver() }
+            val r = request(
+                "POST", "/v1/chat/completions", chatBody("llama-3.3-70b"),
+                headers = mapOf(AsomHeaders.POLICY to "cheapest"),
+            )
+            assertEquals(401, r.statusCode())
+            driverFor = { fake }
+            request("POST", "/v1/chat/completions", chatBody("cheapest", "x"))
+            request("POST", "/v1/chat/completions", chatBody("cheapest", "x", stream = true))
+            request("POST", "/v1/embeddings", """{"model":"llama-3.3-70b","input":"x"}""")
+
+            val rows = capturedRows(4)
+            assertTrue(rows.size >= 4, "expected a row per captured exchange, got ${rows.size}")
+            for (row in rows) {
+                assertFalse(secretMarker in row.requestBody, "key material reached a verbose request body!")
+                assertFalse(secretMarker in row.responseBody, "key material reached a verbose response body!")
+                // Request headers are not reachable from the capture seam at
+                // all: the caller's bearer token must be absent too.
+                assertFalse("test-token" in row.requestBody, "a request header reached a verbose row!")
+                assertFalse("test-token" in row.responseBody, "a request header reached a verbose row!")
+            }
+            assertTrue(
+                rows.any { VerboseRedactor.REDACTED in it.responseBody },
+                "the echoed credential must be visibly redacted (§8)",
+            )
+        } finally {
+            resetBreakers()
+        }
+    }
+
+    @Test
+    fun `a captured body is bounded`() {
+        resetBreakers()
+        bodies.capturing = true
+        try {
+            val huge = "x".repeat(BodySink.MAX_BODY_CHARS * 2)
+            val r = request("POST", "/v1/chat/completions", chatBody("cheapest", huge))
+            assertEquals(200, r.statusCode())
+
+            val row = capturedRows(1).single()
+            assertTrue(
+                row.requestBody.length < BodySink.MAX_BODY_CHARS + 64,
+                "a verbose row must be bounded, got ${row.requestBody.length} chars",
+            )
+            assertTrue("truncated" in row.requestBody)
+            assertTrue("truncated" in row.responseBody)
+        } finally {
+            resetBreakers()
+        }
+    }
+
+    /** A provider that echoes the credential it was sent back in its error body. */
+    private class EchoKeyDriver : ProviderDriver {
+        override suspend fun chat(
+            provider: ProviderEntry,
+            apiKey: String,
+            body: JsonObject,
+            stream: Boolean,
+        ): DriverOutcome = DriverOutcome.Error(
+            status = 401,
+            bodyText = """{"error":{"message":"Incorrect API key provided: $apiKey",""" +
+                """"type":"invalid_request_error"},"api_key":"$apiKey"}""",
+            retryable = false,
+        )
+
+        override suspend fun embeddings(
+            provider: ProviderEntry,
+            apiKey: String,
+            body: JsonObject,
+        ): DriverOutcome = chat(provider, apiKey, body, stream = false)
     }
 }

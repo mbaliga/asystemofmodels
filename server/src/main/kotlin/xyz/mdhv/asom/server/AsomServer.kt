@@ -19,9 +19,11 @@ import io.ktor.server.routing.routing
 import io.ktor.util.cio.ChannelWriteException
 import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -56,7 +58,10 @@ import xyz.mdhv.asom.server.auth.AuthResult
 import xyz.mdhv.asom.server.auth.TokenValidator
 import xyz.mdhv.asom.server.driver.ProviderDriver
 import xyz.mdhv.asom.server.keys.KeyProvider
+import xyz.mdhv.asom.server.ledger.BodyRecord
+import xyz.mdhv.asom.server.ledger.BodySink
 import xyz.mdhv.asom.server.ledger.LedgerSink
+import xyz.mdhv.asom.server.ledger.VerboseRedactor
 import xyz.mdhv.asom.server.util.estimateTokens
 import xyz.mdhv.asom.server.util.usageCost
 import xyz.mdhv.asom.server.util.usageFrom
@@ -77,6 +82,8 @@ class AsomServerConfig(
     val keys: KeyProvider,
     val drivers: (ProviderKind) -> ProviderDriver,
     val ledger: LedgerSink,
+    /** §9 opt-in verbose mode. OFF by default — the metadata ledger is v1's norm. */
+    val bodies: BodySink = BodySink.Disabled,
     val cooldowns: CooldownRegistry = CooldownRegistry(),
     val latency: LatencyTracker = LatencyTracker(),
     val defaultPolicy: Policy = Policy.AUTO,
@@ -177,7 +184,7 @@ class AsomServer(private val config: AsomServerConfig) {
             // §5.9: for usage-based cost on streams, inject include_usage when absent.
             val upstreamBody = if (stream) withIncludeUsage(chatBody) else chatBody
             val bytesOut = upstreamBody.toString().toByteArray().size.toLong()
-            val onAttempt = { attempt: RoutePipeline.Attempt ->
+            val onAttempt: suspend (RoutePipeline.Attempt) -> Unit = { attempt ->
                 egressed = true
                 config.ledger.append(attemptRecord(caller, requestedModel, attempt))
             }
@@ -194,6 +201,7 @@ class AsomServer(private val config: AsomServerConfig) {
                     config.ledger.append(record)
                     applyEchoHeaders(call, record)
                     val bodyOut = if (legacy) chatToLegacy(result.outcome.body) else result.outcome.body
+                    captureBodies(caller, result.candidate.provider.id, upstreamBody.toString(), bodyOut.toString())
                     call.respondText(bodyOut.toString(), ContentType.Application.Json, HttpStatusCode.OK)
                 }
                 is RoutePipeline.Result.Stream -> {
@@ -215,6 +223,7 @@ class AsomServer(private val config: AsomServerConfig) {
                     responseCommitted = true
                     var tailUsage: Usage? = null
                     var outChars = 0L
+                    var outBytes = 0L
                     var terminalStatus = 200
                     // Both transforms need whole SSE events; the openai-compat
                     // driver emits raw socket reads (§5.9 byte pass-through),
@@ -228,6 +237,7 @@ class AsomServer(private val config: AsomServerConfig) {
                                 val seen = scanEvents(bytes)
                                 seen.usage?.let { tailUsage = it }
                                 outChars += seen.outChars
+                                outBytes += bytes.size
                                 writeFully(bytes)
                                 flush()
                             }
@@ -242,17 +252,26 @@ class AsomServer(private val config: AsomServerConfig) {
                         throw e
                     } finally {
                         val usage = tailUsage
-                        // No suspension point below, so this runs even when the
-                        // call coroutine is cancelled mid-stream.
-                        config.ledger.append(
-                            completedRecord(
-                                t0, caller, requestedModel, result.candidate.provider.id, result.candidate.modelId,
-                                bytesOut, usage, result.candidate.pricing?.let { p -> usage?.let { usageCost(p, it) } },
-                                heuristicIn = estimateTokens(upstreamBody), status = terminalStatus,
-                                usagePresent = usage != null, pricing = result.candidate,
-                                heuristicOut = (outChars / 4).coerceAtLeast(if (outChars > 0) 1 else 0),
-                            ),
-                        )
+                        // Committing the row now suspends, which the previous
+                        // "no suspension point below" guarantee did not allow
+                        // for: the row is owed for egress that already happened
+                        // (§1.3), so the commit must outlive a cancellation of
+                        // the call coroutine rather than be dropped with it.
+                        withContext(NonCancellable) {
+                            config.ledger.append(
+                                completedRecord(
+                                    t0, caller, requestedModel, result.candidate.provider.id, result.candidate.modelId,
+                                    bytesOut, usage, result.candidate.pricing?.let { p -> usage?.let { usageCost(p, it) } },
+                                    heuristicIn = estimateTokens(upstreamBody), status = terminalStatus,
+                                    usagePresent = usage != null, pricing = result.candidate,
+                                    heuristicOut = (outChars / 4).coerceAtLeast(if (outChars > 0) 1 else 0),
+                                ),
+                            )
+                            captureBodies(
+                                caller, result.candidate.provider.id, upstreamBody.toString(),
+                                streamResponseSummary(terminalStatus, outBytes, outChars),
+                            )
+                        }
                     }
                 }
                 is RoutePipeline.Result.UpstreamError -> {
@@ -267,6 +286,10 @@ class AsomServer(private val config: AsomServerConfig) {
                     )
                     config.ledger.append(record)
                     applyEchoHeaders(call, record)
+                    captureBodies(
+                        caller, result.candidate.provider.id,
+                        upstreamBody.toString(), result.outcome.bodyText,
+                    )
                     call.respondText(
                         result.outcome.bodyText, ContentType.Application.Json,
                         HttpStatusCode.fromValue(result.outcome.status),
@@ -302,7 +325,7 @@ class AsomServer(private val config: AsomServerConfig) {
                 ?: throw AsomException(AsomErrorCode.MODEL_UNKNOWN, "request body has no 'model' field")
             val query = routeQuery(call, requestedModel)
             val bytesOut = body.toString().toByteArray().size.toLong()
-            val onAttempt = { attempt: RoutePipeline.Attempt ->
+            val onAttempt: suspend (RoutePipeline.Attempt) -> Unit = { attempt ->
                 egressed = true
                 config.ledger.append(attemptRecord(caller, requestedModel, attempt))
             }
@@ -318,6 +341,10 @@ class AsomServer(private val config: AsomServerConfig) {
                     )
                     config.ledger.append(record)
                     applyEchoHeaders(call, record)
+                    captureBodies(
+                        caller, result.candidate.provider.id,
+                        body.toString(), result.outcome.body.toString(),
+                    )
                     call.respondText(result.outcome.body.toString(), ContentType.Application.Json, HttpStatusCode.OK)
                 }
                 is RoutePipeline.Result.Stream -> error("embeddings never stream")
@@ -331,6 +358,10 @@ class AsomServer(private val config: AsomServerConfig) {
                     )
                     config.ledger.append(record)
                     applyEchoHeaders(call, record)
+                    captureBodies(
+                        caller, result.candidate.provider.id,
+                        body.toString(), result.outcome.bodyText,
+                    )
                     call.respondText(
                         result.outcome.bodyText, ContentType.Application.Json,
                         HttpStatusCode.fromValue(result.outcome.status),
@@ -507,6 +538,50 @@ class AsomServer(private val config: AsomServerConfig) {
     private fun applyEchoHeaders(call: ApplicationCall, record: RouteRecord) {
         record.toEchoHeaders().forEach { (name, value) -> call.response.header(name, value) }
     }
+
+    // ------------------------------------------------- §9 verbose body capture
+
+    /**
+     * Stores one exchange's bodies when — and only when — the user has opted
+     * into verbose mode (§9). Bodies only: request headers, the `Authorization`
+     * bearer and the driver-attached provider credential are never reachable
+     * from here, and whatever an upstream error body echoed back is redacted
+     * against the live key before it is stored (§1.4/§8). Rows are local: they
+     * are not in the export payload and v1 has no upload path (§1.1).
+     */
+    private suspend fun captureBodies(
+        caller: String,
+        providerId: String?,
+        requestBody: String,
+        responseBody: String,
+    ) {
+        if (!config.bodies.isCapturing()) return
+        val secrets = listOfNotNull(providerId?.let { config.keys.keyFor(it) })
+        config.bodies.capture(
+            BodyRecord(
+                ts = config.clock(),
+                callerPkg = caller,
+                requestBody = VerboseRedactor.bound(VerboseRedactor.redact(requestBody, secrets)),
+                responseBody = VerboseRedactor.bound(VerboseRedactor.redact(responseBody, secrets)),
+            ),
+        )
+    }
+
+    /**
+     * Verbose mode's streaming policy: an SSE response is forwarded chunk by
+     * chunk and never buffered — holding a long generation in memory to log it
+     * is a memory hazard and would change streaming behaviour — so the stored
+     * "response" is this metadata, not the body.
+     */
+    private fun streamResponseSummary(status: Int, outBytes: Long, outChars: Long): String =
+        buildJsonObject {
+            put("asom_capture", "response-metadata-only")
+            put("reason", "streamed responses are forwarded, never buffered")
+            put("stream", true)
+            put("status", status)
+            put("responseBytes", outBytes)
+            put("assistantChars", outChars)
+        }.toString()
 
     /**
      * Routed failure: typed envelope + echo headers + ledger row (§7).

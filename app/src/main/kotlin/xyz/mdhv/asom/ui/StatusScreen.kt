@@ -26,6 +26,7 @@ import androidx.core.app.NotificationManagerCompat
 import xyz.mdhv.asom.ServiceLocator
 import xyz.mdhv.asom.Settings
 import xyz.mdhv.asom.contract.Asom
+import xyz.mdhv.asom.server.ledger.BodySink
 import xyz.mdhv.asom.service.AsomService
 import xyz.mdhv.asom.ui.theme.AsomTokens
 
@@ -36,6 +37,7 @@ fun StatusScreen() {
     val activity by AsomService.activity.collectAsState()
     val settings = remember { Settings(context) }
     var bootStart by remember { mutableStateOf(settings.bootStartEnabled) }
+    val verbose by ServiceLocator.verboseMode.collectAsState()
     val startError by AsomService.startError.collectAsState()
     val ledgerDegraded by ServiceLocator.ledgerDegraded.collectAsState()
     // Binder call — re-read on daemon state changes and tab re-entry, not on
@@ -109,21 +111,26 @@ fun StatusScreen() {
             )
         }
 
-        // The §9 body-capture path does not exist in this build: the server
-        // exposes only a metadata RouteRecord sink, so nothing can write a
-        // verbose_log row. The control stays visible but says so rather than
-        // promising storage that never happens.
+        // §9 verbose mode. The subtitle states exactly what is and is not
+        // stored, so the toggle can never overpromise: streamed responses are
+        // forwarded, never buffered, so only their metadata is recorded.
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Column {
-                Text("Verbose ledger mode", color = AsomTokens.OnSurfaceDim)
+            Column(Modifier.weight(1f)) {
+                // §1.6: state carries a glyph and a label, never hue alone.
+                Text(if (verbose) "⦿ Verbose ledger mode — recording" else "Verbose ledger mode")
                 Text(
-                    "Unavailable in this build — no request/response body is captured, " +
-                        "so no verbose_log row is ever written (§9)",
+                    "Default OFF. Stores request bodies and non-streamed response " +
+                        "bodies on this device only, capped at ${BodySink.MAX_BODY_CHARS / 1024} KB " +
+                        "each and purged after 24h. Streamed responses record metadata only — " +
+                        "they are never buffered. Never exported, never uploaded.",
                     color = AsomTokens.OnSurfaceDim,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-            Switch(checked = false, enabled = false, onCheckedChange = {})
+            Switch(
+                checked = verbose,
+                onCheckedChange = { ServiceLocator.setVerboseMode(it) },
+            )
         }
 
         Text("Device-owner bearer token (P6 replaces this with pairing):", color = AsomTokens.OnSurfaceDim)

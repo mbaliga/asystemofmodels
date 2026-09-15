@@ -78,6 +78,17 @@ class LedgerExportTest {
     }
 
     @Test
+    fun `no verbose-mode body can reach the export payload`() {
+        // §1.1: verbose rows (§9) are local storage only. The export renders
+        // `route_log` metadata and nothing else — widening it to carry a body
+        // would put a captured prompt into the one sanctioned egress action.
+        val json = LedgerExport.toJson(listOf(row()))
+        for (forbidden in listOf("requestBody", "responseBody", "verbose")) {
+            assertFalse(json.contains(forbidden, ignoreCase = true), "'$forbidden' must never reach the export")
+        }
+    }
+
+    @Test
     fun `an empty ledger exports an empty array`() {
         val parsed = Json.parseToJsonElement(LedgerExport.toJson(emptyList())) as JsonArray
         assertTrue(parsed.isEmpty())

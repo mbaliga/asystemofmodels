@@ -8,7 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import xyz.mdhv.asom.catalogue.Catalogue
 import xyz.mdhv.asom.catalogue.CatalogueParser
 import xyz.mdhv.asom.catalogue.ProviderKind
@@ -16,6 +16,8 @@ import xyz.mdhv.asom.contract.Asom
 import xyz.mdhv.asom.contract.Egress
 import xyz.mdhv.asom.contract.RouteRecord
 import xyz.mdhv.asom.ledger.LedgerDatabase
+import xyz.mdhv.asom.ledger.VerboseLogEntity
+import xyz.mdhv.asom.ledger.VerbosePurgeWorker
 import xyz.mdhv.asom.ledger.toEntity
 import xyz.mdhv.asom.storage.DownloadLedgerBridge
 import xyz.mdhv.asom.storage.DownloadLedgerSink
@@ -34,6 +36,8 @@ import xyz.mdhv.asom.server.driver.AnthropicDriver
 import xyz.mdhv.asom.server.driver.OpenAICompatDriver
 import xyz.mdhv.asom.server.driver.ProviderDriver
 import xyz.mdhv.asom.server.keys.KeyProvider
+import xyz.mdhv.asom.server.ledger.BodyRecord
+import xyz.mdhv.asom.server.ledger.BodySink
 import xyz.mdhv.asom.server.ledger.LedgerSink
 import xyz.mdhv.asom.vault.DataKeyVault
 import xyz.mdhv.asom.vault.KeystoreWrappingCipher
@@ -65,6 +69,25 @@ object ServiceLocator {
 
     /** Set when a ledger row could not be written — surfaced in the Status tab. */
     val ledgerDegraded = MutableStateFlow(false)
+
+    /**
+     * §9 verbose mode, live. Persisted in [Settings] and mirrored here so the
+     * capture gate, the Status tab and the foreground-service notification
+     * cannot disagree about whether bodies are being recorded. Default OFF.
+     */
+    val verboseMode: MutableStateFlow<Boolean> by lazy {
+        MutableStateFlow(Settings(appContext).verboseModeEnabled)
+    }
+
+    /**
+     * The one write path for the §9 opt-in. Turning it OFF deliberately leaves
+     * the purge job scheduled: rows already captured still owe their 24h TTL.
+     */
+    fun setVerboseMode(enabled: Boolean) {
+        Settings(appContext).verboseModeEnabled = enabled
+        verboseMode.value = enabled
+        if (enabled) VerbosePurgeWorker.schedule(appContext)
+    }
 
     /** Fixture catalogue bundled as an asset until CATALOGUE_URL (OWNER-FILL). */
     val catalogue: Catalogue by lazy {
@@ -157,6 +180,33 @@ object ServiceLocator {
     private val openAiCompatDriver by lazy { OpenAICompatDriver() }
     private val anthropicDriver by lazy { AnthropicDriver() }
 
+    /**
+     * §9 verbose rows. Local storage only: `verbose_log` is not part of the
+     * export payload (§1.1) and the server hands this seam bodies only — never
+     * headers, so no BYOK key and no bearer token can reach it (§1.4).
+     * A failed capture is swallowed: verbose mode is a debugging aid, and it
+     * must never be able to fail a request or falsify [ledgerDegraded], which
+     * means "the EGRESS ledger is incomplete".
+     */
+    private val verboseBodySink = object : BodySink {
+        override fun isCapturing(): Boolean = verboseMode.value
+
+        override suspend fun capture(record: BodyRecord) {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    ledgerDb.dao().insertVerbose(
+                        VerboseLogEntity(
+                            ts = record.ts,
+                            callerPkg = record.callerPkg,
+                            requestBody = record.requestBody,
+                            responseBody = record.responseBody,
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
     fun serverConfig(activity: xyz.mdhv.asom.server.ActivityListener = xyz.mdhv.asom.server.ActivityListener { _, _ -> }): AsomServerConfig =
         AsomServerConfig(
             port = Asom.DEFAULT_PORT,
@@ -169,12 +219,17 @@ object ServiceLocator {
                     ProviderKind.ANTHROPIC -> anthropicDriver
                 }
             },
+            // §1.3: the row is owed for egress that already happened, so it is
+            // committed inline — the server does not finish the response until
+            // this returns. Handing it to a background scope would lose the row
+            // to a process kill in exactly that window.
             ledger = LedgerSink { record ->
-                scope.launch {
+                withContext(Dispatchers.IO) {
                     runCatching { ledgerDb.dao().insert(record.toEntity()) }
                         .onFailure { ledgerDegraded.value = true }
                 }
             },
+            bodies = verboseBodySink,
             cooldowns = cooldowns,
             latency = latency,
             activity = activity,
