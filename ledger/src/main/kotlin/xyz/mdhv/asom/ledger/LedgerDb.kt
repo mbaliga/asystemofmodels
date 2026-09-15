@@ -83,10 +83,19 @@ abstract class LedgerDatabase : RoomDatabase() {
     abstract fun dao(): LedgerDao
 
     companion object {
-        fun open(context: Context): LedgerDatabase = Room.databaseBuilder(
-            context.applicationContext,
-            LedgerDatabase::class.java,
-            "asom-ledger.db",
-        ).build()
+        // Cached like PairingDatabase/StorageDatabase: VerbosePurgeWorker runs
+        // in this same process, so a per-call builder would open a second
+        // connection (and invalidation tracker) over the same file each hour.
+        @Volatile
+        private var instance: LedgerDatabase? = null
+
+        fun open(context: Context): LedgerDatabase =
+            instance ?: synchronized(this) {
+                instance ?: Room.databaseBuilder(
+                    context.applicationContext,
+                    LedgerDatabase::class.java,
+                    "asom-ledger.db",
+                ).build().also { instance = it }
+            }
     }
 }

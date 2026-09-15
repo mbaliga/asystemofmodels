@@ -22,10 +22,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
 import xyz.mdhv.asom.ServiceLocator
 import xyz.mdhv.asom.Settings
 import xyz.mdhv.asom.contract.Asom
-import xyz.mdhv.asom.ledger.VerbosePurgeWorker
 import xyz.mdhv.asom.service.AsomService
 import xyz.mdhv.asom.ui.theme.AsomTokens
 
@@ -36,7 +36,11 @@ fun StatusScreen() {
     val activity by AsomService.activity.collectAsState()
     val settings = remember { Settings(context) }
     var bootStart by remember { mutableStateOf(settings.bootStartEnabled) }
-    var verbose by remember { mutableStateOf(settings.verboseModeEnabled) }
+    val startError by AsomService.startError.collectAsState()
+    val ledgerDegraded by ServiceLocator.ledgerDegraded.collectAsState()
+    // Binder call — re-read on daemon state changes and tab re-entry, not on
+    // every recomposition.
+    val notificationsEnabled = remember(running) { NotificationManagerCompat.from(context).areNotificationsEnabled() }
 
     Column(
         Modifier.fillMaxWidth().padding(16.dp).verticalScroll(rememberScrollState()),
@@ -59,6 +63,22 @@ fun StatusScreen() {
                 is AsomService.Activity.Streaming -> "streaming via ${a.providerId}…"
             }
             Text(activityText, color = AsomTokens.OnSurfaceDim)
+        }
+        // §1.6: every warning carries a glyph and a label, never hue alone.
+        startError?.let { Text("✕ $it", color = AsomTokens.Violet) }
+        if (!notificationsEnabled) {
+            Text(
+                "⚠ notifications are off — the daemon runs with no visible indicator",
+                color = AsomTokens.Violet,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        if (ledgerDegraded) {
+            Text(
+                "⚠ a ledger row could not be written — the ledger is incomplete",
+                color = AsomTokens.Violet,
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -89,19 +109,21 @@ fun StatusScreen() {
             )
         }
 
+        // The §9 body-capture path does not exist in this build: the server
+        // exposes only a metadata RouteRecord sink, so nothing can write a
+        // verbose_log row. The control stays visible but says so rather than
+        // promising storage that never happens.
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
-                Text("Verbose ledger mode")
-                Text("Stores request/response bodies, 24h auto-purge (§9)", color = AsomTokens.OnSurfaceDim, style = MaterialTheme.typography.bodySmall)
+                Text("Verbose ledger mode", color = AsomTokens.OnSurfaceDim)
+                Text(
+                    "Unavailable in this build — no request/response body is captured, " +
+                        "so no verbose_log row is ever written (§9)",
+                    color = AsomTokens.OnSurfaceDim,
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
-            Switch(
-                checked = verbose,
-                onCheckedChange = {
-                    verbose = it
-                    settings.verboseModeEnabled = it
-                    if (it) VerbosePurgeWorker.schedule(context) else VerbosePurgeWorker.cancel(context)
-                },
-            )
+            Switch(checked = false, enabled = false, onCheckedChange = {})
         }
 
         Text("Device-owner bearer token (P6 replaces this with pairing):", color = AsomTokens.OnSurfaceDim)

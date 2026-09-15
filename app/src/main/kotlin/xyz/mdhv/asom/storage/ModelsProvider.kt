@@ -26,10 +26,14 @@ class ModelsProvider : ContentProvider() {
     override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor? {
         if (mode != "r") return null // read-only, no exceptions (§5.8)
 
-        val modelId = uri.pathSegments.getOrNull(1) ?: return null
+        // The URI shape is exactly `/models/{modelId}` — anything else is a
+        // probe. `fileFor` re-checks the id itself and confines the result to
+        // the sharing root; this only rejects the wrong shape early.
+        val segments = uri.pathSegments
+        if (segments.size != 2 || segments[0] != MODELS_SEGMENT) return null
         if (!callerIsPaired()) return null
 
-        val file = ServiceLocator.modelDownloadManager.fileFor(modelId) ?: return null
+        val file = ServiceLocator.modelDownloadManager.fileFor(segments[1]) ?: return null
         return ParcelFileDescriptor.open(file, MODE_READ_ONLY)
     }
 
@@ -58,4 +62,8 @@ class ModelsProvider : ContentProvider() {
     override fun insert(uri: Uri, values: ContentValues?): Uri? = null
     override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int = 0
     override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?): Int = 0
+
+    private companion object {
+        const val MODELS_SEGMENT = "models"
+    }
 }

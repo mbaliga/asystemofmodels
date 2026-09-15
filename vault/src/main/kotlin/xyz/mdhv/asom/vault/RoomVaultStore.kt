@@ -45,6 +45,12 @@ internal interface VaultDao {
 
     @Query("SELECT providerId FROM provider_keys ORDER BY providerId")
     fun providerIds(): List<String>
+
+    @Query("DELETE FROM provider_keys")
+    fun deleteAllKeys()
+
+    @Query("DELETE FROM wrapped_data_key")
+    fun deleteWrappedDataKey()
 }
 
 @Database(
@@ -82,4 +88,9 @@ class RoomVaultStore(context: Context) : VaultStore {
     override fun deleteKey(providerId: String) = dao.deleteKey(providerId)
 
     override fun listProviderIds(): List<String> = dao.providerIds()
+
+    override fun clear() {
+        dao.deleteAllKeys()
+        dao.deleteWrappedDataKey()
+    }
 }

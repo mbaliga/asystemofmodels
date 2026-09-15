@@ -51,6 +51,19 @@
             android:exported="true"
             android:grantUriPermissions="false" />
 
+        <!-- Ledger export (§9 / §1.1): the ONE sanctioned egress action in v1.
+             Not exported — the receiving app only ever gets the one-shot read
+             grant carried by the user's own share intent. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="xyz.mdhv.asom.export"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- FGS type specialUse with the property declaration (brief §3):
              sideload-first distribution; Play justification is a later owner
              concern. -->

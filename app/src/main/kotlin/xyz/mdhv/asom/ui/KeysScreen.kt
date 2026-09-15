@@ -39,21 +39,53 @@ import xyz.mdhv.asom.ui.theme.AsomTokens
 fun KeysScreen() {
     var refresh by remember { mutableIntStateOf(0) }
     var keyed by remember { mutableStateOf(setOf<String>()) }
+    var unreadable by remember { mutableStateOf(false) }
 
     LaunchedEffect(refresh) {
-        keyed = withContext(Dispatchers.IO) { ServiceLocator.vault.providersWithKeys().toSet() }
+        val snapshot = withContext(Dispatchers.IO) {
+            val readable = ServiceLocator.vault.isReadable()
+            readable to ServiceLocator.vault.providersWithKeys().toSet()
+        }
+        unreadable = !snapshot.first
+        keyed = snapshot.second
     }
 
     LazyColumn(
         Modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        if (unreadable) {
+            item { VaultUnreadableCard(onReset = { vaultIo({ refresh++ }) { ServiceLocator.vault.reset() } }) }
+        }
         items(ServiceLocator.catalogue.providers, key = { it.id }) { provider ->
             ProviderKeyCard(
                 provider = provider,
                 hasKey = provider.id in keyed,
                 onChanged = { refresh++ },
             )
+        }
+    }
+}
+
+/**
+ * The device Keystore lost the master key, so every stored ciphertext is
+ * permanently undecryptable (§8). Saying "key stored" here would be a lie and
+ * every route would fail with no explanation.
+ */
+@Composable
+private fun VaultUnreadableCard(onReset: () -> Unit) {
+    Card {
+        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // §1.6: glyph + label, never hue alone.
+            Text("✕ vault unreadable", color = AsomTokens.Violet, style = MaterialTheme.typography.titleMedium)
+            Text(
+                "The device Keystore can no longer decrypt the stored keys. Clear the " +
+                    "vault and re-enter each key — asom never transfers keys for you.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Button(onClick = onReset) {
+                Text("Clear vault")
+            }
         }
     }
 }
@@ -106,10 +138,14 @@ private fun ProviderKeyCard(provider: ProviderEntry, hasKey: Boolean, onChanged:
     }
 }
 
-/** Runs vault I/O off the main thread, then notifies the UI. */
+/**
+ * Runs vault I/O off the main thread, then notifies the UI. A Keystore or Room
+ * failure must not escape the coroutine: [done] re-reads the vault, so the
+ * screen shows what actually happened instead of the process dying.
+ */
 private fun vaultIo(done: () -> Unit, block: () -> Unit) {
     ServiceLocator.scope.launch {
-        block()
+        runCatching { block() }
         withContext(Dispatchers.Main) { done() }
     }
 }

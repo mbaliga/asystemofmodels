@@ -15,9 +15,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import xyz.mdhv.asom.ServiceLocator
 import xyz.mdhv.asom.catalogue.ModelEntry
 import xyz.mdhv.asom.storage.DownloadStatus
@@ -32,7 +36,10 @@ fun ModelsScreen() {
     val byId = states.associateBy { it.modelId }
 
     Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        val totalBytes = remember(states) { manager.totalBytesOnDisk() }
+        // Walks every model directory — never on the composition thread.
+        val totalBytes by produceState(0L, states) {
+            value = withContext(Dispatchers.IO) { manager.totalBytesOnDisk() }
+        }
         Text("Total storage: ${formatBytes(totalBytes)}", color = AsomTokens.OnSurfaceDim)
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -87,10 +94,16 @@ private fun ModelCard(model: ModelEntry, state: ModelDownloadEntity?, manager: x
                         Text("Cancel")
                     }
                     DownloadStatus.DOWNLOADED -> {
-                        OutlinedButton(onClick = { manager.pin(model.id, !pinned) }) {
+                        // Room refuses main-thread access, and evict deletes a
+                        // multi-GB directory — both belong off the click thread.
+                        OutlinedButton(onClick = {
+                            ServiceLocator.scope.launch { manager.pin(model.id, !pinned) }
+                        }) {
                             Text(if (pinned) "Unpin" else "Pin")
                         }
-                        OutlinedButton(onClick = { manager.evict(model.id) }, enabled = !pinned) {
+                        OutlinedButton(onClick = {
+                            ServiceLocator.scope.launch { manager.evict(model.id) }
+                        }, enabled = !pinned) {
                             Text("Evict")
                         }
                     }

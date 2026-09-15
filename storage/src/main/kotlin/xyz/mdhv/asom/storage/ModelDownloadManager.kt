@@ -1,6 +1,7 @@
 package xyz.mdhv.asom.storage
 
 import android.content.Context
+import java.io.File
 import kotlinx.coroutines.flow.Flow
 import xyz.mdhv.asom.catalogue.Catalogue
 
@@ -45,8 +46,17 @@ class ModelDownloadManager(
 
     fun bytesOnDisk(modelId: String): Long = store.bytesOnDisk(modelId)
 
-    fun isDownloaded(modelId: String): Boolean = store.isDownloaded(modelId)
+    fun isDownloaded(modelId: String): Boolean = fileFor(modelId) != null
 
-    /** Weights file for read-only fd sharing (§5.8) — null when not downloaded. */
-    fun fileFor(modelId: String) = store.fileFor(modelId).takeIf { it.exists() }
+    /**
+     * Weights file for read-only fd sharing (§5.8) — null unless the model is
+     * recorded DOWNLOADED. Existence alone is not an admission gate: the file
+     * is on disk before the SHA-256 verify, and `modelId` arrives from a
+     * caller-controlled URI segment, so both are checked here.
+     */
+    fun fileFor(modelId: String): File? {
+        if (!ModelStore.isValidModelId(modelId)) return null
+        if (db.dao().get(modelId)?.status != DownloadStatus.DOWNLOADED.name) return null
+        return store.fileFor(modelId).takeIf { it.exists() && store.isInsideRoot(it) }
+    }
 }

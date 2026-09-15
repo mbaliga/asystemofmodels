@@ -27,6 +27,9 @@ kotlin {
 dependencies {
     implementation(project(":core:contract"))
     implementation(libs.androidx.core.ktx)
+    // Runtime JsonElement DSL only (no serialization compiler plugin) — the
+    // §9 export payload must be escaped correctly, not hand-rolled.
+    implementation(libs.kotlinx.serialization.json)
     // api: LedgerDatabase (extends RoomDatabase) and Flow-returning DAOs are
     // part of this module's public surface consumed by :app.
     api(libs.room.runtime)

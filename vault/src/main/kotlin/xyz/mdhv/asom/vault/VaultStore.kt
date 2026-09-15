@@ -17,6 +17,9 @@ interface VaultStore {
     fun saveKey(providerId: String, blob: WrappedBlob)
     fun deleteKey(providerId: String)
     fun listProviderIds(): List<String>
+
+    /** Drops every provider key AND the wrapped data key (vault reset, §8). */
+    fun clear()
 }
 
 /**

@@ -1,10 +1,13 @@
 package xyz.mdhv.asom
 
 import android.content.Context
+import android.util.Log
 import java.security.SecureRandom
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import xyz.mdhv.asom.catalogue.Catalogue
 import xyz.mdhv.asom.catalogue.CatalogueParser
@@ -48,7 +51,20 @@ object ServiceLocator {
         appContext = context.applicationContext
     }
 
-    val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    /**
+     * SupervisorJob stops sibling cancellation but NOT the uncaught-exception
+     * path: without a handler, one failed Room/Keystore write on this scope
+     * reaches Android's default handler and kills the daemon process. The
+     * throwable's message is deliberately not logged (§1.4 keeps key material
+     * out of every sink).
+     */
+    val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO +
+            CoroutineExceptionHandler { _, t -> Log.w(TAG, "background task failed: ${t.javaClass.name}") },
+    )
+
+    /** Set when a ledger row could not be written — surfaced in the Status tab. */
+    val ledgerDegraded = MutableStateFlow(false)
 
     /** Fixture catalogue bundled as an asset until CATALOGUE_URL (OWNER-FILL). */
     val catalogue: Catalogue by lazy {
@@ -64,27 +80,44 @@ object ServiceLocator {
     val ledgerDb: LedgerDatabase by lazy { LedgerDatabase.open(appContext) }
 
     val modelDownloadManager: ModelDownloadManager by lazy {
-        ModelDownloadManager(appContext) { catalogue }.also { manager ->
-            DownloadLedgerBridge.sink = DownloadLedgerSink { modelId, bytes ->
-                scope.launch {
-                    ledgerDb.dao().insert(
-                        RouteRecord(
-                            ts = System.currentTimeMillis(),
-                            callerPkg = "asom",
-                            requestedModel = modelId,
-                            egress = Egress.DOWNLOAD,
-                            bytesOut = 0,
-                            latencyMs = 0,
-                            status = 200,
-                        ).toEntity(),
-                    )
-                }
-            }
+        ModelDownloadManager(appContext) { catalogue }
+    }
+
+    /**
+     * §1.3: WorkManager cold-starts this process to run a queued download with
+     * no UI composed, so the sink is installed from Application.onCreate —
+     * never as a side effect of touching [modelDownloadManager] lazily. The
+     * write is synchronous because the worker calls it from its own background
+     * thread and must not return success while the row is still owed.
+     */
+    fun installDownloadLedgerSink() {
+        DownloadLedgerBridge.sink = DownloadLedgerSink { modelId, status, latencyMs ->
+            runCatching {
+                ledgerDb.dao().insert(
+                    RouteRecord(
+                        ts = System.currentTimeMillis(),
+                        callerPkg = "asom",
+                        requestedModel = modelId,
+                        egress = Egress.DOWNLOAD,
+                        bytesOut = 0,
+                        latencyMs = latencyMs,
+                        status = status,
+                    ).toEntity(),
+                )
+            }.onFailure { ledgerDegraded.value = true }
         }
     }
 
     val cooldowns = CooldownRegistry()
-    val latency = LatencyTracker()
+
+    private val latencyStore: SharedPrefsLatencyStore by lazy {
+        SharedPrefsLatencyStore(appContext, scope)
+    }
+
+    /** §7 `fastest` is a persisted EWMA — a cold tracker silently routes as `cheapest`. */
+    val latency: LatencyTracker by lazy {
+        LatencyTracker(store = latencyStore).also { it.preload(latencyStore.load()) }
+    }
 
     /**
      * P5 stopgap: one device-owner token, generated once, surfaced in the
@@ -137,10 +170,15 @@ object ServiceLocator {
                 }
             },
             ledger = LedgerSink { record ->
-                scope.launch { ledgerDb.dao().insert(record.toEntity()) }
+                scope.launch {
+                    runCatching { ledgerDb.dao().insert(record.toEntity()) }
+                        .onFailure { ledgerDegraded.value = true }
+                }
             },
             cooldowns = cooldowns,
             latency = latency,
             activity = activity,
         )
+
+    private const val TAG = "asom"
 }

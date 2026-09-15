@@ -30,6 +30,7 @@ import xyz.mdhv.asom.ui.MainActivity
 class AsomService : Service() {
 
     private var server: AsomServer? = null
+    private var startFailed = false
 
     override fun onCreate() {
         super.onCreate()
@@ -57,17 +58,42 @@ class AsomService : Service() {
                 updateNotification()
             },
         )
-        server = AsomServer(config).also { it.start(wait = false) }
-        running.value = true
+        try {
+            server = AsomServer(config).also { it.start(wait = false) }
+            running.value = true
+            startError.value = null
+        } catch (t: Throwable) {
+            // Ktor CIO awaits its startup job inside start(), so a bind failure
+            // arrives here as a JobCancellationException — not an IOException.
+            // Letting it escape onCreate kills the process, and START_STICKY
+            // then rebuilds the service into a crash loop.
+            val message = "port ${Asom.DEFAULT_PORT} is unavailable — asom did not start"
+            server = null
+            startFailed = true
+            running.value = false
+            startError.value = message
+            postNotification(message)
+        }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (startFailed) {
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
+        return START_STICKY
+    }
 
     override fun onDestroy() {
+        // Kept synchronous on purpose: the listening socket must be released
+        // before onDestroy returns, or the next Start races the old connector
+        // for port 11435.
         server?.stop()
         server = null
         running.value = false
         activity.value = Activity.Idle
+        // §7 EWMA is only useful across restarts if it is written on the way out.
+        ServiceLocator.latency.flush()
         super.onDestroy()
     }
 
@@ -88,6 +114,10 @@ class AsomService : Service() {
             Activity.Serving -> "serving a request…"
             is Activity.Streaming -> "streaming via ${a.providerId}…"
         }
+        postNotification(text)
+    }
+
+    private fun postNotification(text: String) {
         val manager = getSystemService(NotificationManager::class.java)
         manager.notify(NOTIFICATION_ID, notification(text))
     }
@@ -123,6 +153,9 @@ class AsomService : Service() {
 
         /** Observed by the dashboard Status tab + QS tile. */
         val activity = MutableStateFlow<Activity>(Activity.Idle)
+
+        /** Why the last start attempt did not produce a listening daemon. */
+        val startError = MutableStateFlow<String?>(null)
 
         fun start(context: android.content.Context) {
             context.startForegroundService(Intent(context, AsomService::class.java))
