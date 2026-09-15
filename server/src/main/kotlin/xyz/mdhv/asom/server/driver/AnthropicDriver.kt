@@ -1,12 +1,15 @@
 package xyz.mdhv.asom.server.driver
 
 import java.io.BufferedReader
+import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -53,6 +56,7 @@ class AnthropicDriver(
         stream: Boolean,
     ): DriverOutcome {
         val anthropicBody = translate(body, stream) // throws UNSUPPORTED_BY_DRIVER pre-flight
+        requireHeaderSafeKey(provider.id, apiKey) // pre-flight, §1.4
         val model = body["model"]?.jsonPrimitive?.contentOrNull ?: "unknown"
 
         return withContext(Dispatchers.IO) {
@@ -107,6 +111,9 @@ class AnthropicDriver(
 
     // ------------------------------------------------------------ translate
 
+    private fun JsonObject.presentNonNull(key: String): JsonElement? =
+        this[key]?.takeIf { it !is JsonNull }
+
     private fun translate(body: JsonObject, stream: Boolean): JsonObject {
         // Fail loudly on anything outside the §5.9 text-chat subset.
         val unsupported = body.keys - TRANSLATABLE_FIELDS
@@ -118,10 +125,25 @@ class AnthropicDriver(
         }
 
         val systemParts = mutableListOf<String>()
-        (body["system"] as? JsonPrimitive)?.contentOrNull?.let { systemParts.add(it) }
+        body.presentNonNull("system")?.let { system ->
+            if (system !is JsonPrimitive || !system.isString) {
+                throw AsomException(
+                    AsomErrorCode.UNSUPPORTED_BY_DRIVER,
+                    "anthropic driver supports a plain string `system` only",
+                )
+            }
+            systemParts.add(system.content)
+        }
         val messages = buildJsonArray {
             for (element in body["messages"]?.jsonArray ?: JsonArray(emptyList())) {
                 val m = element.jsonObject
+                val unsupportedKeys = m.keys - TRANSLATABLE_MESSAGE_FIELDS
+                if (unsupportedKeys.isNotEmpty()) {
+                    throw AsomException(
+                        AsomErrorCode.UNSUPPORTED_BY_DRIVER,
+                        "anthropic driver cannot translate message field(s): ${unsupportedKeys.sorted().joinToString()}",
+                    )
+                }
                 val role = m["role"]?.jsonPrimitive?.contentOrNull
                 val content = m["content"]
                 if (content !is JsonPrimitive || !content.isString) {
@@ -151,10 +173,12 @@ class AnthropicDriver(
             put("messages", messages)
             if (systemParts.isNotEmpty()) put("system", systemParts.joinToString("\n"))
             // Anthropic requires max_tokens; default generously when absent.
-            put("max_tokens", body["max_tokens"] ?: JsonPrimitive(4096))
-            body["temperature"]?.let { put("temperature", it) }
-            body["top_p"]?.let { put("top_p", it) }
-            body["stop"]?.let { stop ->
+            // An explicit JSON null is "unset", not a value to forward — it is
+            // a non-null JsonElement, so `?:` alone would send `null` upstream.
+            put("max_tokens", body.presentNonNull("max_tokens") ?: JsonPrimitive(4096))
+            body.presentNonNull("temperature")?.let { put("temperature", it) }
+            body.presentNonNull("top_p")?.let { put("top_p", it) }
+            body.presentNonNull("stop")?.let { stop ->
                 // OpenAI stop: string | array → Anthropic stop_sequences: array.
                 put("stop_sequences", if (stop is JsonArray) stop else buildJsonArray { add(stop) })
             }
@@ -207,6 +231,7 @@ class AnthropicDriver(
         var inputTokens = 0L
         var outputTokens = 0L
         var stopReason: String? = null
+        var sawStop = false
 
         suspend fun emitChunk(delta: Delta, finish: String? = null, usage: Usage? = null) {
             val chunk = ChatCompletionChunk(
@@ -247,6 +272,7 @@ class AnthropicDriver(
                         ?: outputTokens
                 }
                 "message_stop" -> {
+                    sawStop = true
                     emitChunk(
                         Delta(),
                         finish = mapStopReason(stopReason),
@@ -254,7 +280,11 @@ class AnthropicDriver(
                     )
                     emit("data: [DONE]\n\n".toByteArray())
                 }
-                // ping, content_block_start/stop, error → nothing to forward.
+                "error" -> throw IOException(
+                    "anthropic stream terminated with error type " +
+                        "'${obj["error"]?.jsonObject?.get("type")?.jsonPrimitive?.contentOrNull ?: "unknown"}'",
+                )
+                // ping, content_block_start/stop → nothing to forward.
             }
         }
 
@@ -267,6 +297,11 @@ class AnthropicDriver(
             }
         }
         handleEvent() // trailing event without final blank line
+        // Ending without message_stop means the answer is truncated. Completing
+        // the flow normally here would emit no [DONE] and no finish_reason, and
+        // the caller would read a partial answer as a complete one while the
+        // ledger recorded a successful 200 (§1.3 fidelity).
+        if (!sawStop) throw IOException("anthropic stream ended without message_stop")
     }
 
     companion object {
@@ -277,5 +312,8 @@ class AnthropicDriver(
             "model", "messages", "system", "max_tokens", "temperature",
             "top_p", "stop", "stream", "stream_options",
         )
+
+        /** Per-message keys the driver can carry across; anything else 501s. */
+        val TRANSLATABLE_MESSAGE_FIELDS: Set<String> = setOf("role", "content")
     }
 }

@@ -12,12 +12,15 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import xyz.mdhv.asom.catalogue.AuthSpec
 import xyz.mdhv.asom.catalogue.ProviderEntry
 import xyz.mdhv.asom.catalogue.ProviderKind
+import xyz.mdhv.asom.contract.AsomErrorCode
+import xyz.mdhv.asom.contract.AsomException
 
 class OpenAICompatDriverTest {
 
@@ -99,6 +102,16 @@ class OpenAICompatDriverTest {
         val forwarded = stream.events.toList().joinToString("") { it.toString(Charsets.UTF_8) }
         // Byte-identical forwarding (§5.9).
         assertEquals(sse, forwarded)
+    }
+
+    @Test
+    fun `a key that is not a valid header value is rejected before any egress`() = runBlocking {
+        val ex = assertFailsWith<AsomException> {
+            driver.chat(provider(), "sk-REALSECRETKEYVALUE ", body(), stream = false)
+        }
+        assertEquals(AsomErrorCode.NO_PROVIDER_KEY, ex.code)
+        assertFalse("REALSECRETKEYVALUE" in ex.message, "key material reached an exception message")
+        assertEquals(0, mock.requestCount)
     }
 
     @Test

@@ -1,5 +1,6 @@
 package xyz.mdhv.asom.server.driver
 
+import java.io.IOException
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -127,6 +129,98 @@ class AnthropicDriverTest {
             ),
         )
         assertTrue(err.retryable)
+    }
+
+    @Test
+    fun `a non-string system field 501s instead of vanishing`() = runBlocking {
+        val body = Json.parseToJsonElement(
+            """{"model":"c","system":[{"type":"text","text":"never output account numbers"}],
+                "messages":[{"role":"user","content":"x"}]}""",
+        ).jsonObject
+        val ex = assertFailsWith<AsomException> { driver.chat(provider(), "k", body, false) }
+        assertEquals(AsomErrorCode.UNSUPPORTED_BY_DRIVER, ex.code)
+        assertEquals(0, mock.requestCount) // the safety instruction never silently dropped
+    }
+
+    @Test
+    fun `an untranslatable per-message field 501s instead of being dropped`() = runBlocking {
+        val body = Json.parseToJsonElement(
+            """{"model":"c","messages":[{"role":"user","content":"x","name":"alice"}]}""",
+        ).jsonObject
+        val ex = assertFailsWith<AsomException> { driver.chat(provider(), "k", body, false) }
+        assertEquals(AsomErrorCode.UNSUPPORTED_BY_DRIVER, ex.code)
+        assertTrue("name" in ex.message)
+        assertEquals(0, mock.requestCount)
+    }
+
+    @Test
+    fun `explicit JSON nulls are treated as unset, not forwarded`() = runBlocking {
+        mock.enqueue(MockResponse().setBody("""{"id":"m","content":[],"usage":{"input_tokens":1,"output_tokens":1}}"""))
+        driver.chat(
+            provider(), "k",
+            Json.parseToJsonElement(
+                """{"model":"c","messages":[{"role":"user","content":"hi"}],
+                    "max_tokens":null,"temperature":null,"top_p":null,"stop":null,"system":null}""",
+            ).jsonObject,
+            stream = false,
+        )
+        val sent = Json.parseToJsonElement(mock.takeRequest().body.readUtf8()).jsonObject
+        assertEquals(4096, sent["max_tokens"]?.jsonPrimitive?.contentOrNull?.toInt())
+        assertNull(sent["temperature"])
+        assertNull(sent["top_p"])
+        assertNull(sent["stop_sequences"]) // never a self-constructed [null]
+        assertNull(sent["system"])
+    }
+
+    @Test
+    fun `a key that is not a valid header value is rejected without leaking it`() = runBlocking {
+        val leakyKey = "sk-ant-api03-REALSECRETKEYVALUE "
+        val body = Json.parseToJsonElement(
+            """{"model":"c","messages":[{"role":"user","content":"x"}]}""",
+        ).jsonObject
+        val ex = assertFailsWith<AsomException> { driver.chat(provider(), leakyKey, body, false) }
+        assertEquals(AsomErrorCode.NO_PROVIDER_KEY, ex.code)
+        assertFalse("REALSECRETKEYVALUE" in ex.message, "key material reached an exception message")
+        assertEquals(0, mock.requestCount)
+    }
+
+    @Test
+    fun `a mid-stream error event fails the stream instead of truncating silently`() = runBlocking {
+        val sse = buildString {
+            append("""data: {"type":"message_start","message":{"id":"m","usage":{"input_tokens":9,"output_tokens":0}}}""")
+            append("\n\n")
+            append("""data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"The contract states that"}}""")
+            append("\n\n")
+            append("""data: {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}""")
+            append("\n\n")
+        }
+        mock.enqueue(MockResponse().setBody(sse).setHeader("Content-Type", "text/event-stream"))
+
+        val outcome = driver.chat(
+            provider(), "k",
+            Json.parseToJsonElement("""{"model":"c","stream":true,"messages":[{"role":"user","content":"x"}]}""").jsonObject,
+            stream = true,
+        )
+        // Completing normally here would hand the caller a partial answer with
+        // no [DONE] and no finish_reason, ledgered as a successful 200.
+        val ex = assertFailsWith<IOException> { assertIs<DriverOutcome.Stream>(outcome).events.toList() }
+        assertTrue("overloaded_error" in (ex.message ?: ""))
+    }
+
+    @Test
+    fun `a stream that ends without message_stop fails rather than looking complete`() = runBlocking {
+        val sse = """data: {"type":"message_start","message":{"id":"m","usage":{"input_tokens":1,"output_tokens":0}}}""" +
+            "\n\n" +
+            """data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"partial"}}""" +
+            "\n\n"
+        mock.enqueue(MockResponse().setBody(sse).setHeader("Content-Type", "text/event-stream"))
+
+        val outcome = driver.chat(
+            provider(), "k",
+            Json.parseToJsonElement("""{"model":"c","stream":true,"messages":[{"role":"user","content":"x"}]}""").jsonObject,
+            stream = true,
+        )
+        assertFailsWith<IOException> { assertIs<DriverOutcome.Stream>(outcome).events.toList() }
     }
 
     @Test

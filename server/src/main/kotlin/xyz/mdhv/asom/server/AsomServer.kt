@@ -1,5 +1,6 @@
 package xyz.mdhv.asom.server
 
+import java.io.ByteArrayOutputStream
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
@@ -15,9 +16,11 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
+import io.ktor.util.cio.ChannelWriteException
 import io.ktor.utils.io.writeFully
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -160,6 +163,8 @@ class AsomServer(private val config: AsomServerConfig) {
         val t0 = config.clock()
         var caller = "unknown"
         var requestedModel = ""
+        var egressed = false
+        var responseCommitted = false
         config.activity.onActivity(true, null)
         try {
             caller = authenticate(call)
@@ -172,8 +177,12 @@ class AsomServer(private val config: AsomServerConfig) {
             // §5.9: for usage-based cost on streams, inject include_usage when absent.
             val upstreamBody = if (stream) withIncludeUsage(chatBody) else chatBody
             val bytesOut = upstreamBody.toString().toByteArray().size.toLong()
+            val onAttempt = { attempt: RoutePipeline.Attempt ->
+                egressed = true
+                config.ledger.append(attemptRecord(caller, requestedModel, attempt))
+            }
 
-            when (val result = pipeline.execute(query, upstreamBody, stream, Operation.CHAT)) {
+            when (val result = pipeline.execute(query, upstreamBody, stream, Operation.CHAT, onAttempt)) {
                 is RoutePipeline.Result.Json -> {
                     val usage = result.outcome.usage ?: usageFrom(result.outcome.body)
                     val record = completedRecord(
@@ -189,10 +198,12 @@ class AsomServer(private val config: AsomServerConfig) {
                 }
                 is RoutePipeline.Result.Stream -> {
                     config.activity.onActivity(true, result.candidate.provider.id)
+                    egressed = true
                     // Echo headers commit BEFORE the body (§5.9). Cost is not
                     // yet derivable at commit time, so cost headers are
                     // omitted (§5.4 allows this); the ledger row — same
-                    // record, finalized post-stream — carries usage cost.
+                    // record, finalized post-stream — carries usage cost and
+                    // the terminal status the stream actually reached.
                     val commitView = RouteRecord(
                         ts = config.clock(), callerPkg = caller, requestedModel = requestedModel,
                         servedProvider = result.candidate.provider.id, servedModel = result.candidate.modelId,
@@ -201,27 +212,53 @@ class AsomServer(private val config: AsomServerConfig) {
                     )
                     applyEchoHeaders(call, commitView)
                     call.response.header("Cache-Control", "no-cache")
+                    responseCommitted = true
                     var tailUsage: Usage? = null
-                    val events = if (legacy) chunksToLegacy(result.outcome.events) else result.outcome.events
-                    call.respondBytesWriter(ContentType.Text.EventStream, HttpStatusCode.OK) {
-                        events.collect { bytes ->
-                            tailUsage = scanUsage(bytes) ?: tailUsage
-                            writeFully(bytes)
-                            flush()
+                    var outChars = 0L
+                    var terminalStatus = 200
+                    // Both transforms need whole SSE events; the openai-compat
+                    // driver emits raw socket reads (§5.9 byte pass-through),
+                    // so re-frame first. The byte SEQUENCE is unchanged — only
+                    // the emission boundaries are.
+                    val framed = reframeSse(result.outcome.events)
+                    val events = if (legacy) chunksToLegacy(framed) else framed
+                    try {
+                        call.respondBytesWriter(ContentType.Text.EventStream, HttpStatusCode.OK) {
+                            events.collect { bytes ->
+                                val seen = scanEvents(bytes)
+                                seen.usage?.let { tailUsage = it }
+                                outChars += seen.outChars
+                                writeFully(bytes)
+                                flush()
+                            }
                         }
+                    } catch (e: Throwable) {
+                        // 200 + echo headers are already on the wire, so no
+                        // error status is reachable — but the row must still
+                        // say what really happened (§1.3).
+                        terminalStatus =
+                            if (e is CancellationException || e is ChannelWriteException) CLIENT_CLOSED_REQUEST
+                            else 502
+                        throw e
+                    } finally {
+                        val usage = tailUsage
+                        // No suspension point below, so this runs even when the
+                        // call coroutine is cancelled mid-stream.
+                        config.ledger.append(
+                            completedRecord(
+                                t0, caller, requestedModel, result.candidate.provider.id, result.candidate.modelId,
+                                bytesOut, usage, result.candidate.pricing?.let { p -> usage?.let { usageCost(p, it) } },
+                                heuristicIn = estimateTokens(upstreamBody), status = terminalStatus,
+                                usagePresent = usage != null, pricing = result.candidate,
+                                heuristicOut = (outChars / 4).coerceAtLeast(if (outChars > 0) 1 else 0),
+                            ),
+                        )
                     }
-                    val usage = tailUsage
-                    val record = completedRecord(
-                        t0, caller, requestedModel, result.candidate.provider.id, result.candidate.modelId,
-                        bytesOut, usage, result.candidate.pricing?.let { p -> usage?.let { usageCost(p, it) } },
-                        heuristicIn = estimateTokens(upstreamBody), status = 200,
-                        usagePresent = usage != null, pricing = result.candidate,
-                    )
-                    config.ledger.append(record)
                 }
                 is RoutePipeline.Result.UpstreamError -> {
                     // Fatal upstream error relayed verbatim; bytes DID leave
                     // the device — egress cloud, ledgered (§1.3).
+                    egressed = true
                     val record = RouteRecord(
                         ts = config.clock(), callerPkg = caller, requestedModel = requestedModel,
                         servedProvider = result.candidate.provider.id, servedModel = result.candidate.modelId,
@@ -239,9 +276,12 @@ class AsomServer(private val config: AsomServerConfig) {
         } catch (e: CancellationException) {
             throw e
         } catch (e: AsomException) {
-            respondRoutedError(call, e, t0, caller, requestedModel)
+            if (!responseCommitted) respondRoutedError(call, e, t0, caller, requestedModel, egressed)
         } catch (e: Exception) {
-            respondBadRequest(call, e, t0, caller, requestedModel)
+            // Once the stream committed, its own finally already wrote the row
+            // and no status is reachable — a second respond would throw and a
+            // second row would contradict the headers already sent (§1.9).
+            if (!responseCommitted) respondBadRequest(call, e, t0, caller, requestedModel, egressed)
         } finally {
             config.activity.onActivity(false, null)
         }
@@ -253,6 +293,7 @@ class AsomServer(private val config: AsomServerConfig) {
         val t0 = config.clock()
         var caller = "unknown"
         var requestedModel = ""
+        var egressed = false
         config.activity.onActivity(true, null)
         try {
             caller = authenticate(call)
@@ -261,8 +302,12 @@ class AsomServer(private val config: AsomServerConfig) {
                 ?: throw AsomException(AsomErrorCode.MODEL_UNKNOWN, "request body has no 'model' field")
             val query = routeQuery(call, requestedModel)
             val bytesOut = body.toString().toByteArray().size.toLong()
+            val onAttempt = { attempt: RoutePipeline.Attempt ->
+                egressed = true
+                config.ledger.append(attemptRecord(caller, requestedModel, attempt))
+            }
 
-            when (val result = pipeline.execute(query, body, stream = false, op = Operation.EMBEDDINGS)) {
+            when (val result = pipeline.execute(query, body, stream = false, op = Operation.EMBEDDINGS, onAttempt)) {
                 is RoutePipeline.Result.Json -> {
                     val usage = result.outcome.usage ?: usageFrom(result.outcome.body)
                     val record = completedRecord(
@@ -277,6 +322,7 @@ class AsomServer(private val config: AsomServerConfig) {
                 }
                 is RoutePipeline.Result.Stream -> error("embeddings never stream")
                 is RoutePipeline.Result.UpstreamError -> {
+                    egressed = true
                     val record = RouteRecord(
                         ts = config.clock(), callerPkg = caller, requestedModel = requestedModel,
                         servedProvider = result.candidate.provider.id, servedModel = result.candidate.modelId,
@@ -294,9 +340,9 @@ class AsomServer(private val config: AsomServerConfig) {
         } catch (e: CancellationException) {
             throw e
         } catch (e: AsomException) {
-            respondRoutedError(call, e, t0, caller, requestedModel)
+            respondRoutedError(call, e, t0, caller, requestedModel, egressed)
         } catch (e: Exception) {
-            respondBadRequest(call, e, t0, caller, requestedModel)
+            respondBadRequest(call, e, t0, caller, requestedModel, egressed)
         } finally {
             config.activity.onActivity(false, null)
         }
@@ -305,8 +351,10 @@ class AsomServer(private val config: AsomServerConfig) {
     // ---------------------------------------------------------------- models
 
     private suspend fun handleModels(call: ApplicationCall) {
+        val t0 = config.clock()
+        var caller = "unknown"
         try {
-            authenticate(call)
+            caller = authenticate(call)
             val cat = config.catalogue()
             val keyedProviders = cat.providers.filter { config.keys.keyFor(it.id) != null }
             // Concrete models with a key present, tagged by serving providers (§5.2).
@@ -321,11 +369,16 @@ class AsomServer(private val config: AsomServerConfig) {
                 ModelObject(id = it, ownedBy = "asom-virtual")
             }
             val response = ModelListResponse(data = concrete + virtual)
+            // §5.4 headers are owed on EVERY /v1/* response. The listing is
+            // served from the in-memory catalogue, so egress is genuinely
+            // local and no ledger row is owed (§1.3 covers network events).
+            applyEchoHeaders(call, localRecord(t0, caller, 200))
             call.respondText(
                 json.encodeToString(ModelListResponse.serializer(), response),
                 ContentType.Application.Json, HttpStatusCode.OK,
             )
         } catch (e: AsomException) {
+            applyEchoHeaders(call, localRecord(t0, caller, e.code.httpStatus))
             respondError(call, e.code, e.message)
         }
     }
@@ -384,7 +437,7 @@ class AsomServer(private val config: AsomServerConfig) {
     private fun routeQuery(call: ApplicationCall, model: String): RouteQuery {
         val policyHeader = call.request.headers[AsomHeaders.POLICY]?.let {
             Policy.fromWire(it.trim())
-                ?: throw IllegalArgumentException("unknown ${AsomHeaders.POLICY} value '$it'")
+                ?: throw BadRequest("unknown ${AsomHeaders.POLICY} value '$it'")
         }
         val fallback = call.request.headers[AsomHeaders.FALLBACK]
             ?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }
@@ -406,11 +459,14 @@ class AsomServer(private val config: AsomServerConfig) {
         status: Int,
         usagePresent: Boolean,
         pricing: xyz.mdhv.asom.routing.Candidate,
+        heuristicOut: Long = 0,
     ): RouteRecord {
         // §5.4: cost with basis `usage` when the provider reported usage;
         // otherwise heuristic (chars/4) when pricing is known; otherwise none.
         val tokensIn = usage?.promptTokens ?: heuristicIn
-        val tokensOut = usage?.completionTokens
+        // Output is priced 3-5x input, so counting it as zero when a provider
+        // drops stream_options would understate the row by ~100x.
+        val tokensOut = usage?.completionTokens ?: heuristicOut.takeIf { it > 0 }
         val (cost, basis) = when {
             usagePresent && usageBasedCost != null -> usageBasedCost to CostBasis.USAGE
             pricing.pricing != null ->
@@ -426,21 +482,53 @@ class AsomServer(private val config: AsomServerConfig) {
         )
     }
 
+    /**
+     * A candidate that received the request body and failed retryably. The
+     * driver transmits before it can classify the reply, so this is a network
+     * event in its own right and owes its own row (§1.3) — the request's
+     * terminal row describes only the candidate that answered.
+     */
+    private fun attemptRecord(
+        caller: String,
+        requestedModel: String,
+        attempt: RoutePipeline.Attempt,
+    ): RouteRecord = RouteRecord(
+        ts = config.clock(), callerPkg = caller, requestedModel = requestedModel,
+        servedProvider = attempt.candidate.provider.id, servedModel = attempt.candidate.modelId,
+        egress = Egress.CLOUD, bytesOut = attempt.bytesOut,
+        latencyMs = attempt.latencyMs, status = attempt.status,
+    )
+
+    private fun localRecord(t0: Long, caller: String, status: Int): RouteRecord = RouteRecord(
+        ts = config.clock(), callerPkg = caller, requestedModel = "",
+        egress = Egress.LOCAL, latencyMs = config.clock() - t0, status = status,
+    )
+
     private fun applyEchoHeaders(call: ApplicationCall, record: RouteRecord) {
         record.toEchoHeaders().forEach { (name, value) -> call.response.header(name, value) }
     }
 
-    /** Routed failure: typed envelope + echo headers + ledger row (§7). */
+    /**
+     * Routed failure: typed envelope + echo headers + ledger row (§7).
+     *
+     * [egressed] distinguishes the two sources of the same code: a plan-time
+     * failure never touched the network, while ALL_PROVIDERS_COOLING raised
+     * after the pipeline contacted candidates did. Stamping `local` on the
+     * latter is a positive falsehood in the artifact the product exists to
+     * produce. The bytes themselves are accounted on the per-attempt rows, so
+     * this row carries none.
+     */
     private suspend fun respondRoutedError(
         call: ApplicationCall,
         e: AsomException,
         t0: Long,
         caller: String,
         requestedModel: String,
+        egressed: Boolean,
     ) {
         val record = RouteRecord(
             ts = config.clock(), callerPkg = caller, requestedModel = requestedModel,
-            egress = Egress.LOCAL, // nothing left the device on this path
+            egress = if (egressed) Egress.CLOUD else Egress.LOCAL,
             latencyMs = config.clock() - t0, status = e.code.httpStatus,
         )
         config.ledger.append(record)
@@ -454,15 +542,23 @@ class AsomServer(private val config: AsomServerConfig) {
         t0: Long,
         caller: String,
         requestedModel: String,
+        egressed: Boolean,
     ) {
         val record = RouteRecord(
             ts = config.clock(), callerPkg = caller, requestedModel = requestedModel,
-            egress = Egress.LOCAL, latencyMs = config.clock() - t0, status = 400,
+            egress = if (egressed) Egress.CLOUD else Egress.LOCAL,
+            latencyMs = config.clock() - t0, status = 400,
         )
         config.ledger.append(record)
         applyEchoHeaders(call, record)
+        // Only messages authored here reach the caller: an arbitrary internal
+        // exception message can carry key material into a third-party app's
+        // response string (§1.4).
         val envelope = ErrorEnvelope(
-            ErrorBody(message = e.message ?: "malformed request", type = "invalid_request_error"),
+            ErrorBody(
+                message = (e as? BadRequest)?.message ?: "malformed request",
+                type = "invalid_request_error",
+            ),
         )
         call.respondText(
             json.encodeToString(ErrorEnvelope.serializer(), envelope),
@@ -495,10 +591,31 @@ class AsomServer(private val config: AsomServerConfig) {
         }
     }
 
-    /** Legacy /v1/completions request → chat body (§5.2 shim). */
+    /**
+     * Legacy /v1/completions request → chat body (§5.2 shim). `prompt` is the
+     * one field the shim consumes rather than passing through verbatim, so an
+     * untranslatable shape must 501 rather than silently become an empty
+     * message that is still dispatched and billed.
+     */
     private fun legacyToChat(body: JsonObject): JsonObject = buildJsonObject {
         body.forEach { (k, v) -> if (k != "prompt") put(k, v) }
-        val prompt = (body["prompt"] as? JsonPrimitive)?.contentOrNull ?: ""
+        val prompt = when (val raw = body["prompt"]) {
+            null, kotlinx.serialization.json.JsonNull -> ""
+            is JsonPrimitive -> raw.content
+            is kotlinx.serialization.json.JsonArray ->
+                if (raw.all { it is JsonPrimitive && it.isString }) {
+                    raw.joinToString("\n") { it.jsonPrimitive.content }
+                } else {
+                    throw AsomException(
+                        AsomErrorCode.UNSUPPORTED_BY_DRIVER,
+                        "the /v1/completions shim supports a string or string-array 'prompt' only",
+                    )
+                }
+            else -> throw AsomException(
+                AsomErrorCode.UNSUPPORTED_BY_DRIVER,
+                "the /v1/completions shim supports a string or string-array 'prompt' only",
+            )
+        }
         put(
             "messages",
             kotlinx.serialization.json.buildJsonArray {
@@ -576,21 +693,71 @@ class AsomServer(private val config: AsomServerConfig) {
         transformed.toByteArray()
     }
 
-    /** Tee: scan a forwarded SSE event for a `usage` object (§5.9 stream cost). */
-    private fun scanUsage(bytes: ByteArray): Usage? {
-        val text = bytes.toString(Charsets.UTF_8)
-        if ("\"usage\"" !in text) return null
-        var found: Usage? = null
-        for (block in text.split("\n\n")) {
-            val line = block.trim()
-            if (!line.startsWith("data: ") || line.startsWith("data: [DONE]")) continue
-            try {
-                val obj = Json.parseToJsonElement(line.removePrefix("data: ")).jsonObject
-                usageFrom(obj)?.let { found = it }
-            } catch (e: Exception) {
-                // Partial/foreign payload — ignore; pass-through must not break.
+    /**
+     * Re-frames a driver's byte stream onto SSE event boundaries. The
+     * openai-compat driver emits raw 8 KiB socket reads, so a `data:` event —
+     * and any multi-byte codepoint inside it — can straddle two emissions;
+     * everything downstream (the legacy transform, the usage tee) assumes
+     * whole events. Only emission boundaries change: the concatenated byte
+     * sequence is identical, preserving §5.9 pass-through.
+     */
+    private fun reframeSse(events: Flow<ByteArray>): Flow<ByteArray> = flow {
+        val carry = ByteArrayOutputStream()
+        events.collect { bytes ->
+            carry.write(bytes)
+            val buffered = carry.toByteArray()
+            val cut = lastEventBoundary(buffered)
+            if (cut > 0) {
+                emit(buffered.copyOfRange(0, cut))
+                carry.reset()
+                carry.write(buffered, cut, buffered.size - cut)
             }
         }
-        return found
+        if (carry.size() > 0) emit(carry.toByteArray())
+    }
+
+    /** End index (exclusive) of the last complete SSE event, or 0 if none. */
+    private fun lastEventBoundary(buf: ByteArray): Int {
+        val lf = '\n'.code.toByte()
+        val cr = '\r'.code.toByte()
+        for (i in buf.size - 1 downTo 1) {
+            if (buf[i] != lf) continue
+            if (buf[i - 1] == lf) return i + 1
+            if (i >= 2 && buf[i - 1] == cr && buf[i - 2] == lf) return i + 1
+        }
+        return 0
+    }
+
+    /** What one re-framed emission contributed to the stream's ledger row. */
+    private class StreamScan(val usage: Usage?, val outChars: Long)
+
+    /** Tee over the forwarded stream: usage + assistant text size (§5.9 cost). */
+    private fun scanEvents(bytes: ByteArray): StreamScan {
+        var usage: Usage? = null
+        var outChars = 0L
+        for (block in bytes.toString(Charsets.UTF_8).split("\n\n")) {
+            val line = block.trim()
+            if (!line.startsWith("data: ") || line.startsWith("data: [DONE]")) continue
+            val obj = try {
+                Json.parseToJsonElement(line.removePrefix("data: ")).jsonObject
+            } catch (e: Exception) {
+                continue // foreign payload — the tee must never break pass-through
+            }
+            usageFrom(obj)?.let { usage = it }
+            val choice = (obj["choices"] as? kotlinx.serialization.json.JsonArray)
+                ?.firstOrNull()?.jsonObject
+            val text = choice?.get("delta")?.jsonObject?.get("content") as? JsonPrimitive
+                ?: choice?.get("text") as? JsonPrimitive // legacy text_completion shape
+            outChars += text?.contentOrNull?.length ?: 0
+        }
+        return StreamScan(usage, outChars)
+    }
+
+    /** A 400 whose message is authored here and therefore safe to echo. */
+    private class BadRequest(message: String) : Exception(message)
+
+    private companion object {
+        /** Not an HTTP response code — a ledger-only marker for a caller that hung up. */
+        const val CLIENT_CLOSED_REQUEST = 499
     }
 }

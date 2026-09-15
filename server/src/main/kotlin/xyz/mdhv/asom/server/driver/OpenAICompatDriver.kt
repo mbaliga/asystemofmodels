@@ -46,6 +46,7 @@ class OpenAICompatDriver(
         path: String,
         stream: Boolean,
     ): DriverOutcome = withContext(Dispatchers.IO) {
+        requireHeaderSafeKey(provider.id, apiKey) // pre-flight, §1.4
         val request = Request.Builder()
             .url(provider.baseUrl.trimEnd('/') + path)
             .header("Authorization", "Bearer $apiKey")

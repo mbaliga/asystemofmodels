@@ -13,7 +13,9 @@ sealed interface DriverOutcome {
     /**
      * Streaming 2xx: raw SSE byte events, already `chat.completion.chunk`
      * shaped (openai-compat = byte pass-through; Anthropic driver re-maps,
-     * §5.9). Each element is one or more complete SSE lines/events.
+     * §5.9). Emission boundaries are NOT guaranteed to fall on SSE event
+     * boundaries — the openai-compat driver emits raw socket reads — so any
+     * consumer that parses events must re-frame the byte sequence first.
      */
     data class Stream(val events: Flow<ByteArray>) : DriverOutcome
 

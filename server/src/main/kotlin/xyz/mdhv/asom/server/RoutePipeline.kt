@@ -1,6 +1,7 @@
 package xyz.mdhv.asom.server
 
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonObject
 import xyz.mdhv.asom.catalogue.ProviderKind
 import xyz.mdhv.asom.contract.AsomErrorCode
@@ -39,14 +40,37 @@ class RoutePipeline(
         data class UpstreamError(override val candidate: Candidate, val outcome: DriverOutcome.Error) : Result
     }
 
-    /** @throws AsomException with a typed §5.6 code on every failure path. */
+    /**
+     * An attempt that put the request body on the wire and did NOT serve the
+     * request. The driver transmits before it can classify the response, so
+     * each of these is a real network event and owes a ledger row (§1.3).
+     */
+    data class Attempt(
+        val candidate: Candidate,
+        val status: Int,
+        val bytesOut: Long,
+        val latencyMs: Long,
+    )
+
+    /**
+     * @param onAttempt invoked for every candidate that egressed and failed,
+     *   before the next candidate is tried.
+     * @throws AsomException with a typed §5.6 code on every failure path.
+     */
     suspend fun execute(
         query: RouteQuery,
         body: JsonObject,
         stream: Boolean,
         op: Operation,
+        onAttempt: (Attempt) -> Unit = {},
     ): Result {
         val plan = router.plan(query)
+        // A driver that cannot serve a candidate at all (translate() failure,
+        // unsupported operation) raises AsomException BEFORE transmitting, so
+        // that candidate is skipped rather than failing the whole request —
+        // but the reason is surfaced if no candidate ever reached the wire.
+        var preflightSkip: AsomException? = null
+        var egressed = false
         for (candidate in plan) {
             // The router filtered on key presence; a vanished key just skips.
             val apiKey = keys.keyFor(candidate.provider.id) ?: continue
@@ -61,9 +85,26 @@ class RoutePipeline(
                     Operation.CHAT -> driver.chat(candidate.provider, apiKey, upstreamBody, stream)
                     Operation.EMBEDDINGS -> driver.embeddings(candidate.provider, apiKey, upstreamBody)
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: AsomException) {
+                if (preflightSkip == null) preflightSkip = e
+                continue
             } catch (e: IOException) {
                 // Timeout/connect failure → retryable (§7).
                 DriverOutcome.Error(599, e.message ?: "upstream I/O failure", retryable = true)
+            } catch (e: Exception) {
+                // The driver already transmitted and then failed to read the
+                // reply (e.g. a 2xx body that is not the expected JSON). That
+                // is an upstream fault, never the caller's: cool the provider
+                // and fall through. The message is fixed rather than taken
+                // from the exception, which can carry key material (§1.4).
+                DriverOutcome.Error(
+                    502,
+                    """{"error":{"message":"upstream returned a response this driver could not read",""" +
+                        """"type":"server_error"}}""",
+                    retryable = true,
+                )
             }
             when (outcome) {
                 is DriverOutcome.Json -> {
@@ -80,12 +121,22 @@ class RoutePipeline(
                 is DriverOutcome.Error -> {
                     if (outcome.retryable) {
                         cooldowns.recordFailure(candidate.provider.id)
+                        egressed = true
+                        onAttempt(
+                            Attempt(
+                                candidate = candidate,
+                                status = outcome.status,
+                                bytesOut = upstreamBody.toString().toByteArray().size.toLong(),
+                                latencyMs = clock() - started,
+                            ),
+                        )
                         continue
                     }
                     return Result.UpstreamError(candidate, outcome)
                 }
             }
         }
+        if (!egressed) preflightSkip?.let { throw it }
         // Every candidate failed retryably — they are all cooling now (§7).
         throw AsomException(
             AsomErrorCode.ALL_PROVIDERS_COOLING,

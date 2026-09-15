@@ -1,5 +1,6 @@
 package xyz.mdhv.asom.server.driver
 
+import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
@@ -34,12 +35,25 @@ class FakeDriver(private val clock: () -> Long = System::currentTimeMillis) : Pr
     /** providerId → HTTP status the next attempts should fail with. */
     private val failures = ConcurrentHashMap<String, Int>()
 
+    /** providerId → number of stream chunks to emit before throwing. */
+    private val midStreamFailures = ConcurrentHashMap<String, Int>()
+
+    /** Suppresses the trailing usage chunk to model a provider that drops `stream_options`. */
+    @Volatile
+    var omitStreamUsage: Boolean = false
+
     fun failWith(providerId: String, status: Int) {
         failures[providerId] = status
     }
 
+    /** Makes the stream die after [afterChunks] emissions, as a dropped upstream does. */
+    fun failMidStream(providerId: String, afterChunks: Int) {
+        midStreamFailures[providerId] = afterChunks
+    }
+
     fun heal(providerId: String) {
         failures.remove(providerId)
+        midStreamFailures.remove(providerId)
     }
 
     private fun injectedError(provider: ProviderEntry): DriverOutcome.Error? {
@@ -90,8 +104,18 @@ class FakeDriver(private val clock: () -> Long = System::currentTimeMillis) : Pr
         val includeUsage = body["stream_options"]?.jsonObject
             ?.get("include_usage")?.jsonPrimitive?.booleanOrNull == true
 
+        val dieAfter = midStreamFailures[provider.id]
+
         // Three content chunks + final usage/finish chunk + [DONE], SSE-framed.
         val events = flow {
+            var emitted = 0
+            suspend fun send(bytes: ByteArray) {
+                if (dieAfter != null && emitted >= dieAfter) {
+                    throw IOException("injected mid-stream upstream failure")
+                }
+                emit(bytes)
+                emitted++
+            }
             fun chunk(delta: Delta, finish: String? = null, chunkUsage: Usage? = null): ByteArray {
                 val c = ChatCompletionChunk(
                     id = id, created = created, model = model,
@@ -100,12 +124,12 @@ class FakeDriver(private val clock: () -> Long = System::currentTimeMillis) : Pr
                 )
                 return "data: ${json.encodeToString(ChatCompletionChunk.serializer(), c)}\n\n".toByteArray()
             }
-            emit(chunk(Delta(role = "assistant", content = "")))
+            send(chunk(Delta(role = "assistant", content = "")))
             content.chunked((content.length / 2).coerceAtLeast(1)).forEach {
-                emit(chunk(Delta(content = it)))
+                send(chunk(Delta(content = it)))
             }
-            emit(chunk(Delta(), finish = "stop", chunkUsage = if (includeUsage) usage else null))
-            emit("data: [DONE]\n\n".toByteArray())
+            send(chunk(Delta(), finish = "stop", chunkUsage = if (includeUsage && !omitStreamUsage) usage else null))
+            send("data: [DONE]\n\n".toByteArray())
         }
         return DriverOutcome.Stream(events)
     }

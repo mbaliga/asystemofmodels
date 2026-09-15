@@ -1,10 +1,12 @@
 package xyz.mdhv.asom.server
 
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -24,13 +26,19 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import xyz.mdhv.asom.catalogue.CatalogueParser
+import xyz.mdhv.asom.catalogue.ProviderEntry
 import xyz.mdhv.asom.catalogue.ProviderKind
 import xyz.mdhv.asom.contract.AsomHeaders
 import xyz.mdhv.asom.contract.CostBasis
+import xyz.mdhv.asom.contract.Egress
+import xyz.mdhv.asom.contract.RouteRecord
 import xyz.mdhv.asom.routing.CooldownRegistry
 import xyz.mdhv.asom.routing.LatencyTracker
 import xyz.mdhv.asom.server.auth.InMemoryTokenRegistry
+import xyz.mdhv.asom.server.driver.AnthropicDriver
+import xyz.mdhv.asom.server.driver.DriverOutcome
 import xyz.mdhv.asom.server.driver.FakeDriver
+import xyz.mdhv.asom.server.driver.ProviderDriver
 import xyz.mdhv.asom.server.keys.InMemoryKeyProvider
 import xyz.mdhv.asom.server.ledger.InMemoryLedger
 
@@ -59,6 +67,11 @@ class AsomServerIntegrationTest {
         ),
     )
     private val fake = FakeDriver()
+
+    /** Swappable so a test can model a driver the FakeDriver cannot (chopped streams, bad bodies). */
+    @Volatile
+    private var driverFor: (ProviderKind) -> ProviderDriver = { fake }
+
     private val ledger = InMemoryLedger()
     private val latency = LatencyTracker()
 
@@ -71,7 +84,7 @@ class AsomServerIntegrationTest {
             catalogue = { catalogue },
             tokens = tokens,
             keys = keys,
-            drivers = { _: ProviderKind -> fake },
+            drivers = { kind: ProviderKind -> driverFor(kind) },
             ledger = ledger,
             cooldowns = cooldowns,
             latency = latency,
@@ -94,10 +107,21 @@ class AsomServerIntegrationTest {
 
     /** Clears breaker state between failure-injection tests. */
     private fun resetBreakers() {
+        driverFor = { fake }
+        fake.omitStreamUsage = false
         listOf("openrouter", "groq", "trainy-ai", "anthropic").forEach {
             fake.heal(it)
             cooldowns.recordSuccess(it)
         }
+    }
+
+    /** The ledger row for an aborted stream is written after the socket dies. */
+    private fun rowsSince(before: Int, expected: Int): List<RouteRecord> {
+        val deadline = System.currentTimeMillis() + 5_000
+        while (ledger.all().size - before < expected && System.currentTimeMillis() < deadline) {
+            Thread.sleep(10)
+        }
+        return ledger.all().drop(before)
     }
 
     private fun request(
@@ -475,5 +499,340 @@ class AsomServerIntegrationTest {
         request("POST", "/v1/chat/completions", chatBody("gpt-99"))
         request("POST", "/v1/embeddings", """{"model":"llama-3.3-70b","input":"x"}""")
         assertEquals(4, ledger.all().size - before)
+    }
+
+    // -------------------------------------------------- egress ledger fidelity
+
+    @Test
+    fun `a failed-over attempt gets its own cloud ledger row`() {
+        resetBreakers()
+        try {
+            fake.failWith("trainy-ai", 429)
+            val before = ledger.all().size
+            val r = request(
+                "POST", "/v1/chat/completions", chatBody("llama-3.3-70b", "private text"),
+                headers = mapOf(AsomHeaders.POLICY to "cheapest"),
+            )
+            assertEquals(200, r.statusCode())
+
+            // The prompt reached trainy-ai before the 429 came back: §1.3 owes
+            // that transmission a row of its own, not just the winner's.
+            val rows = ledger.all().drop(before)
+            assertEquals(2, rows.size, "expected one row per network event, got $rows")
+            val attempt = rows[0]
+            assertEquals("trainy-ai", attempt.servedProvider)
+            assertEquals(Egress.CLOUD, attempt.egress)
+            assertEquals(429, attempt.status)
+            assertTrue(attempt.bytesOut > 0, "the attempted body size must be recorded")
+            assertEquals("openrouter", rows[1].servedProvider)
+            assertEquals(200, rows[1].status)
+        } finally {
+            resetBreakers()
+        }
+    }
+
+    @Test
+    fun `ALL_PROVIDERS_COOLING after dispatch never claims the request stayed local`() {
+        resetBreakers()
+        try {
+            listOf("trainy-ai", "openrouter", "groq").forEach { fake.failWith(it, 500) }
+            val before = ledger.all().size
+            val r = request("POST", "/v1/chat/completions", chatBody("llama-3.3-70b", "confidential"))
+            assertEquals(503, r.statusCode())
+            assertEquals("ALL_PROVIDERS_COOLING", errorCode(r))
+
+            val rows = ledger.all().drop(before)
+            val attempts = rows.dropLast(1)
+            assertEquals(3, attempts.size, "one row per provider actually contacted, got $rows")
+            assertEquals(
+                setOf("trainy-ai", "openrouter", "groq"),
+                attempts.mapNotNull { it.servedProvider }.toSet(),
+            )
+            attempts.forEach {
+                assertEquals(Egress.CLOUD, it.egress)
+                assertEquals(500, it.status)
+                assertTrue(it.bytesOut > 0)
+            }
+
+            // The terminal row and the echo header must not say "nothing left
+            // the device" after three full transmissions.
+            val terminal = rows.last()
+            assertEquals(503, terminal.status)
+            assertEquals(Egress.CLOUD, terminal.egress)
+            assertEquals("cloud", r.headers().firstValue(AsomHeaders.EGRESS).get())
+        } finally {
+            resetBreakers()
+        }
+    }
+
+    @Test
+    fun `a pre-dispatch failure still ledgers egress local`() {
+        resetBreakers()
+        val before = ledger.all().size
+        val r = request("POST", "/v1/chat/completions", chatBody("gpt-99"))
+        assertEquals(404, r.statusCode())
+        assertEquals(Egress.LOCAL, ledger.all().drop(before).single().egress)
+        assertEquals("local", r.headers().firstValue(AsomHeaders.EGRESS).get())
+    }
+
+    @Test
+    fun `a stream that dies mid-flight ledgers one cloud row, not a local 400`() {
+        resetBreakers()
+        try {
+            fake.failMidStream("trainy-ai", 2)
+            val before = ledger.all().size
+            try {
+                request("POST", "/v1/chat/completions", chatBody("cheapest", "stream me", stream = true))
+            } catch (e: Exception) {
+                // The stream is cut without a terminating chunk — expected.
+            }
+
+            val rows = rowsSince(before, 1)
+            assertEquals(1, rows.size, "an aborted stream owes exactly one row, got $rows")
+            val row = rows.single()
+            // The echo headers already committed cloud/trainy-ai; the row must
+            // agree and must not be reclassified as a local client error.
+            assertEquals(Egress.CLOUD, row.egress)
+            assertEquals("trainy-ai", row.servedProvider)
+            assertEquals("llama-3.3-70b", row.servedModel)
+            assertTrue(row.bytesOut > 0)
+            assertTrue(row.status != 200 && row.status != 400, "expected a terminal failure status, got ${row.status}")
+        } finally {
+            resetBreakers()
+        }
+    }
+
+    @Test
+    fun `an upstream body the driver cannot read is not blamed on the caller`() {
+        resetBreakers()
+        try {
+            // A captive portal answering 200 with HTML: the driver parses the
+            // body and throws something that is not an IOException.
+            val broken = object : ProviderDriver {
+                override suspend fun chat(
+                    provider: ProviderEntry,
+                    apiKey: String,
+                    body: JsonObject,
+                    stream: Boolean,
+                ): DriverOutcome {
+                    if (provider.id == "trainy-ai") Json.parseToJsonElement("<!DOCTYPE html>")
+                    return fake.chat(provider, apiKey, body, stream)
+                }
+
+                override suspend fun embeddings(
+                    provider: ProviderEntry,
+                    apiKey: String,
+                    body: JsonObject,
+                ): DriverOutcome = fake.embeddings(provider, apiKey, body)
+            }
+            driverFor = { broken }
+            val before = ledger.all().size
+            val r = request(
+                "POST", "/v1/chat/completions", chatBody("llama-3.3-70b"),
+                headers = mapOf(AsomHeaders.POLICY to "cheapest"),
+            )
+
+            // The provider malfunctioned, so the chain must fall through to the
+            // next candidate rather than returning the caller a 400.
+            assertEquals(200, r.statusCode())
+            assertEquals("openrouter/llama-3.3-70b", r.headers().firstValue(AsomHeaders.SERVED_BY).get())
+            assertTrue(cooldowns.isCooling("trainy-ai"), "the broken provider must be cooled")
+
+            val rows = ledger.all().drop(before)
+            assertEquals(2, rows.size)
+            assertEquals(Egress.CLOUD, rows[0].egress)
+            assertEquals("trainy-ai", rows[0].servedProvider)
+        } finally {
+            resetBreakers()
+        }
+    }
+
+    @Test
+    fun `a candidate its driver cannot serve is skipped, not fatal to the request`() {
+        resetBreakers()
+        try {
+            val anthropic = AnthropicDriver()
+            driverFor = { kind -> if (kind == ProviderKind.ANTHROPIC) anthropic else fake }
+
+            // anthropic is first in the fallback order and has no embeddings
+            // endpoint; openrouter behind it can serve, so the request must not
+            // die on the first candidate's pre-flight 501.
+            val r = request(
+                "POST", "/v1/embeddings", """{"model":"cheapest","input":"x"}""",
+                headers = mapOf(AsomHeaders.FALLBACK to "anthropic,openrouter"),
+            )
+            assertEquals(200, r.statusCode())
+            assertTrue(r.headers().firstValue(AsomHeaders.SERVED_BY).get().startsWith("openrouter/"))
+
+            // But when EVERY candidate is skipped that way the typed code still
+            // reaches the caller rather than being swallowed.
+            val only = request("POST", "/v1/embeddings", """{"model":"claude-sonnet-4-5","input":"x"}""")
+            assertEquals(501, only.statusCode())
+            assertEquals("UNSUPPORTED_BY_DRIVER", errorCode(only))
+        } finally {
+            resetBreakers()
+        }
+    }
+
+    // ------------------------------------------------------------- stream cost
+
+    @Test
+    fun `a stream with no usage still bills output tokens heuristically`() {
+        resetBreakers()
+        try {
+            fake.omitStreamUsage = true
+            val before = ledger.all().size
+            val r = request("POST", "/v1/chat/completions", chatBody("cheapest", "stream me", stream = true))
+            assertEquals(200, r.statusCode())
+
+            val record = ledger.all().drop(before).single()
+            assertEquals(CostBasis.HEURISTIC, record.costBasis)
+            assertNotNull(record.tokensOut, "output tokens must be estimated, not dropped")
+            assertTrue(record.tokensOut!! > 0, "output billed as zero understates the row")
+            assertNotNull(record.costEst)
+        } finally {
+            resetBreakers()
+        }
+    }
+
+    // ----------------------------------------------------------- stream framing
+
+    @Test
+    fun `a stream chopped at arbitrary byte offsets survives the legacy shim intact`() {
+        resetBreakers()
+        try {
+            // Reproduces the openai-compat driver's raw 8 KiB socket reads:
+            // SSE events and multi-byte codepoints straddle emissions.
+            driverFor = { ChoppingDriver(fake, chunkSize = 13) }
+            val prompt = "契約書を要約してください"
+            val s = request(
+                "POST", "/v1/completions",
+                """{"model":"llama-3.3-70b","prompt":"$prompt","stream":true}""",
+                headers = mapOf(AsomHeaders.POLICY to "cheapest"),
+            )
+            assertEquals(200, s.statusCode())
+
+            val dataLines = s.body().lines().filter { it.startsWith("data: ") }
+            assertEquals("data: [DONE]", dataLines.last())
+            val text = dataLines.dropLast(1).joinToString("") { line ->
+                val chunk = Json.parseToJsonElement(line.removePrefix("data: ")).jsonObject
+                assertEquals("text_completion", chunk["object"]!!.jsonPrimitive.contentOrNull)
+                chunk["choices"]?.jsonArray?.firstOrNull()?.jsonObject
+                    ?.get("text")?.jsonPrimitive?.contentOrNull ?: ""
+            }
+            assertEquals("fake:trainy-ai/llama-3.3-70b:$prompt", text)
+            assertFalse('�' in text, "a chunk boundary inside a codepoint corrupted the output")
+        } finally {
+            resetBreakers()
+        }
+    }
+
+    @Test
+    fun `a chopped chat stream is still forwarded byte-identically`() {
+        resetBreakers()
+        try {
+            val prompt = "契約書"
+            val whole = request(
+                "POST", "/v1/chat/completions", chatBody("llama-3.3-70b", prompt, stream = true),
+                headers = mapOf(AsomHeaders.POLICY to "cheapest"),
+            ).body()
+            driverFor = { ChoppingDriver(fake, chunkSize = 7) }
+            val chopped = request(
+                "POST", "/v1/chat/completions", chatBody("llama-3.3-70b", prompt, stream = true),
+                headers = mapOf(AsomHeaders.POLICY to "cheapest"),
+            ).body()
+            // §5.9 pass-through: re-framing may move emission boundaries but
+            // must never alter the byte sequence.
+            assertEquals(whole, chopped)
+        } finally {
+            resetBreakers()
+        }
+    }
+
+    /** Re-emits a delegate's stream at fixed byte offsets, ignoring SSE framing. */
+    private class ChoppingDriver(
+        private val delegate: ProviderDriver,
+        private val chunkSize: Int,
+    ) : ProviderDriver {
+        override suspend fun chat(
+            provider: ProviderEntry,
+            apiKey: String,
+            body: JsonObject,
+            stream: Boolean,
+        ): DriverOutcome {
+            val outcome = delegate.chat(provider, apiKey, body, stream)
+            if (outcome !is DriverOutcome.Stream) return outcome
+            return DriverOutcome.Stream(
+                flow {
+                    val all = ByteArrayOutputStream()
+                    outcome.events.collect { all.write(it) }
+                    val bytes = all.toByteArray()
+                    var i = 0
+                    while (i < bytes.size) {
+                        val end = minOf(i + chunkSize, bytes.size)
+                        emit(bytes.copyOfRange(i, end))
+                        i = end
+                    }
+                },
+            )
+        }
+
+        override suspend fun embeddings(
+            provider: ProviderEntry,
+            apiKey: String,
+            body: JsonObject,
+        ): DriverOutcome = delegate.embeddings(provider, apiKey, body)
+    }
+
+    // ------------------------------------------------------------ legacy shim
+
+    @Test
+    fun `an array-form prompt is joined rather than silently dropped`() {
+        resetBreakers()
+        val r = request(
+            "POST", "/v1/completions",
+            """{"model":"llama-3.3-70b","prompt":["Summarize:","alpha"]}""",
+            headers = mapOf(AsomHeaders.POLICY to "cheapest"),
+        )
+        assertEquals(200, r.statusCode())
+        assertEquals(
+            "fake:trainy-ai/llama-3.3-70b:Summarize:\nalpha",
+            json(r)["choices"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.contentOrNull,
+        )
+    }
+
+    @Test
+    fun `a token-array prompt fails loudly instead of egressing an empty message`() {
+        resetBreakers()
+        val before = ledger.all().size
+        val r = request(
+            "POST", "/v1/completions",
+            """{"model":"llama-3.3-70b","prompt":[[1,2,3]]}""",
+            headers = mapOf(AsomHeaders.POLICY to "cheapest"),
+        )
+        assertEquals(501, r.statusCode())
+        assertEquals("UNSUPPORTED_BY_DRIVER", errorCode(r))
+        assertEquals(Egress.LOCAL, ledger.all().drop(before).single().egress)
+    }
+
+    // ---------------------------------------------------------- §5_4 contract
+
+    @Test
+    fun `models carries the §5_4 egress header on success and on 401`() {
+        val ok = request("GET", "/v1/models")
+        assertEquals(200, ok.statusCode())
+        assertEquals("local", ok.headers().firstValue(AsomHeaders.EGRESS).get())
+
+        val denied = request("GET", "/v1/models", token = null)
+        assertEquals(401, denied.statusCode())
+        assertEquals("local", denied.headers().firstValue(AsomHeaders.EGRESS).get())
+    }
+
+    @Test
+    fun `an internal exception message never reaches the error envelope`() {
+        val r = request("POST", "/v1/chat/completions", "{not json")
+        assertEquals(400, r.statusCode())
+        val message = json(r)["error"]!!.jsonObject["message"]!!.jsonPrimitive.contentOrNull
+        assertEquals("malformed request", message)
     }
 }
