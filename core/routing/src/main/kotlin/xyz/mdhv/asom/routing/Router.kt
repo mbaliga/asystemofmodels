@@ -125,7 +125,12 @@ class Router(
         }
 
         // Circuit breaker: skip cooling providers; all cooling = typed 503.
-        val attemptable = ordered.filterNot { cooldowns.isCooling(it.provider.id) }
+        // Distinct first: a provider id repeated in X-Asom-Fallback would
+        // otherwise become two attempts on one provider, and each failure
+        // increments its breaker streak — doubling the §7 backoff curve.
+        val attemptable = ordered
+            .distinctBy { it.provider.id to it.modelId }
+            .filterNot { cooldowns.isCooling(it.provider.id) }
         if (attemptable.isEmpty()) {
             throw AsomException(
                 AsomErrorCode.ALL_PROVIDERS_COOLING,

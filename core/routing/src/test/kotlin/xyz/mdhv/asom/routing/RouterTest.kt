@@ -192,6 +192,14 @@ class RouterTest {
     }
 
     @Test
+    fun `a provider repeated in the fallback list is attempted once`() {
+        val plan = router().plan(
+            RouteQuery(model = "llama-3.3-70b", fallback = listOf("groq", "groq", "trainy-ai")),
+        )
+        assertEquals(listOf("groq/llama-3.3-70b", "trainy-ai/llama-3.3-70b"), ids(plan))
+    }
+
+    @Test
     fun `fallback naming only unusable providers is a typed NO_PROVIDER_KEY`() {
         val ex = assertFailsWith<AsomException> {
             router().plan(RouteQuery(model = "llama-3.3-70b", fallback = listOf("webchat-only", "nope")))
