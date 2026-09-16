@@ -11,6 +11,8 @@ local.properties
 *.apk
 *.aab
 captures/
+# generated at build time from fixtures/catalogue.v1.json
+app/src/main/assets/catalogue.v1.json
 
 # IDE
 .idea/

@@ -1,0 +1,186 @@
+package xyz.mdhv.asom.service
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
+import android.os.IBinder
+import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import xyz.mdhv.asom.ServiceLocator
+import xyz.mdhv.asom.contract.Asom
+import xyz.mdhv.asom.ledger.VerbosePurgeWorker
+import xyz.mdhv.asom.server.ActivityListener
+import xyz.mdhv.asom.server.AsomServer
+import xyz.mdhv.asom.ui.MainActivity
+
+/**
+ * Foreground service hosting the asom daemon (brief P5/P8): FGS type
+ * `specialUse` with the manifest property declaration (§3). Nothing runs
+ * unless the user starts it, or has explicitly opted into boot-start
+ * (default OFF). The notification surfaces live state — idle, serving a
+ * provider, or streaming (§11 P8) — never anything from the ledger/body.
+ */
+class AsomService : Service() {
+
+    private var server: AsomServer? = null
+    private var startFailed = false
+    private var verboseWatch: Job? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        createChannel()
+        val type = if (Build.VERSION.SDK_INT >= 34) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+        } else {
+            0
+        }
+        ServiceCompat.startForeground(this, NOTIFICATION_ID, notification(idleText()), type)
+
+        if (ServiceLocator.verboseMode.value) {
+            VerbosePurgeWorker.schedule(this)
+        }
+        // §9: while verbose mode is ACTIVE the user must always be able to see
+        // that bodies are being recorded, including when it is toggled while
+        // the daemon is already running.
+        verboseWatch = ServiceLocator.scope.launch {
+            ServiceLocator.verboseMode.collect { updateNotification() }
+        }
+
+        val config = ServiceLocator.serverConfig(
+            activity = ActivityListener { busy, providerId ->
+                activity.value = if (!busy) {
+                    Activity.Idle
+                } else if (providerId != null) {
+                    Activity.Streaming(providerId)
+                } else {
+                    Activity.Serving
+                }
+                updateNotification()
+            },
+        )
+        try {
+            server = AsomServer(config).also { it.start(wait = false) }
+            running.value = true
+            startError.value = null
+        } catch (t: Throwable) {
+            // Ktor CIO awaits its startup job inside start(), so a bind failure
+            // arrives here as a JobCancellationException — not an IOException.
+            // Letting it escape onCreate kills the process, and START_STICKY
+            // then rebuilds the service into a crash loop.
+            val message = "port ${Asom.DEFAULT_PORT} is unavailable — asom did not start"
+            server = null
+            startFailed = true
+            running.value = false
+            startError.value = message
+            postNotification(message)
+        }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (startFailed) {
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
+        return START_STICKY
+    }
+
+    override fun onDestroy() {
+        // Kept synchronous on purpose: the listening socket must be released
+        // before onDestroy returns, or the next Start races the old connector
+        // for port 11435.
+        server?.stop()
+        server = null
+        verboseWatch?.cancel()
+        verboseWatch = null
+        running.value = false
+        activity.value = Activity.Idle
+        // §7 EWMA is only useful across restarts if it is written on the way out.
+        ServiceLocator.latency.flush()
+        super.onDestroy()
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun createChannel() {
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL_ID, "asom daemon", NotificationManager.IMPORTANCE_LOW),
+        )
+    }
+
+    private fun idleText() = "idle — serving on 127.0.0.1:${Asom.DEFAULT_PORT}"
+
+    private fun updateNotification() {
+        val text = when (val a = activity.value) {
+            Activity.Idle -> idleText()
+            Activity.Serving -> "serving a request…"
+            is Activity.Streaming -> "streaming via ${a.providerId}…"
+        }
+        postNotification(text)
+    }
+
+    private fun postNotification(text: String) {
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.notify(NOTIFICATION_ID, notification(text))
+    }
+
+    private fun notification(text: String): Notification {
+        val tap = PendingIntent.getActivity(
+            this, 0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("asom")
+            .setContentText(text)
+            .setSmallIcon(android.R.drawable.stat_notify_sync_noanim)
+            .setOngoing(true)
+            .setContentIntent(tap)
+        // §9 persistent verbose-mode notice. §1.6: glyph + label, never hue.
+        if (ServiceLocator.verboseMode.value) {
+            builder.setSubText(VERBOSE_NOTICE)
+                .setStyle(NotificationCompat.BigTextStyle().bigText("$text\n$VERBOSE_NOTICE"))
+        }
+        return builder.build()
+    }
+
+    /** Live daemon state (§11 P8) — never derived from ledger/body content. */
+    sealed interface Activity {
+        data object Idle : Activity
+        data object Serving : Activity
+        data class Streaming(val providerId: String) : Activity
+    }
+
+    companion object {
+        const val CHANNEL_ID = "asom-daemon"
+        const val NOTIFICATION_ID = 1
+
+        /** Shown for as long as §9 verbose mode is capturing. */
+        const val VERBOSE_NOTICE = "⦿ verbose ledger ON — request bodies stored on this device"
+
+        /** Observed by the dashboard Status tab. */
+        val running = MutableStateFlow(false)
+
+        /** Observed by the dashboard Status tab + QS tile. */
+        val activity = MutableStateFlow<Activity>(Activity.Idle)
+
+        /** Why the last start attempt did not produce a listening daemon. */
+        val startError = MutableStateFlow<String?>(null)
+
+        fun start(context: android.content.Context) {
+            context.startForegroundService(Intent(context, AsomService::class.java))
+        }
+
+        fun stop(context: android.content.Context) {
+            context.stopService(Intent(context, AsomService::class.java))
+        }
+    }
+}

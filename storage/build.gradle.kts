@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -25,9 +26,14 @@ kotlin {
 
 dependencies {
     implementation(project(":core:contract"))
-    implementation(project(":core:catalogue"))
+    api(project(":core:catalogue")) // ModelDownloadManager's ctor takes Catalogue
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.work.runtime.ktx)
+    // api: WorkManager enqueue/observe types + Room DAO Flow appear in the
+    // public surface consumed by :app.
+    api(libs.androidx.work.runtime.ktx)
+    api(libs.room.runtime)
+    api(libs.room.ktx)
+    ksp(libs.room.compiler)
     testImplementation(libs.kotlin.test)
 }
 

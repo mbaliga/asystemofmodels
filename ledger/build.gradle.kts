@@ -27,8 +27,14 @@ kotlin {
 dependencies {
     implementation(project(":core:contract"))
     implementation(libs.androidx.core.ktx)
-    implementation(libs.room.runtime)
-    implementation(libs.room.ktx)
+    // Runtime JsonElement DSL only (no serialization compiler plugin) — the
+    // §9 export payload must be escaped correctly, not hand-rolled.
+    implementation(libs.kotlinx.serialization.json)
+    // api: LedgerDatabase (extends RoomDatabase) and Flow-returning DAOs are
+    // part of this module's public surface consumed by :app.
+    api(libs.room.runtime)
+    api(libs.room.ktx)
+    api(libs.androidx.work.runtime.ktx) // VerbosePurgeWorker.schedule/cancel in the public surface
     ksp(libs.room.compiler)
     testImplementation(libs.kotlin.test)
 }

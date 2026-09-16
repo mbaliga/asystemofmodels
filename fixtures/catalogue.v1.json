@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "updatedAt": "2026-07-04T00:00:00Z",
+  "providers": [
+    {
+      "id": "openrouter",
+      "displayName": "OpenRouter",
+      "kind": "openai-compat",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "auth": { "type": "bearer" },
+      "trainsOnData": false,
+      "programmaticAllowed": true,
+      "rate": { "rpm": 60, "rpd": 10000 },
+      "pricing": {
+        "llama-3.3-70b": { "inPerMTok": 0.10, "outPerMTok": 0.30 },
+        "deepseek-v3": { "inPerMTok": 0.25, "outPerMTok": 0.85 }
+      },
+      "models": ["llama-3.3-70b", "deepseek-v3"]
+    },
+    {
+      "id": "groq",
+      "displayName": "Groq",
+      "kind": "openai-compat",
+      "baseUrl": "https://api.groq.com/openai/v1",
+      "auth": { "type": "bearer" },
+      "trainsOnData": false,
+      "programmaticAllowed": true,
+      "rate": { "rpm": 30, "rpd": 14400 },
+      "pricing": {
+        "llama-3.3-70b": { "inPerMTok": 0.59, "outPerMTok": 0.79 }
+      },
+      "models": ["llama-3.3-70b"]
+    },
+    {
+      "id": "trainy-ai",
+      "displayName": "Trainy AI (trains on your data)",
+      "kind": "openai-compat",
+      "baseUrl": "https://api.trainy.example/v1",
+      "auth": { "type": "bearer" },
+      "trainsOnData": true,
+      "programmaticAllowed": true,
+      "rate": { "rpm": 120, "rpd": 50000 },
+      "pricing": {
+        "llama-3.3-70b": { "inPerMTok": 0.02, "outPerMTok": 0.06 }
+      },
+      "models": ["llama-3.3-70b"]
+    },
+    {
+      "id": "anthropic",
+      "displayName": "Anthropic",
+      "kind": "anthropic",
+      "baseUrl": "https://api.anthropic.com",
+      "auth": { "type": "bearer" },
+      "trainsOnData": false,
+      "programmaticAllowed": true,
+      "rate": { "rpm": 50, "rpd": 5000 },
+      "pricing": {
+        "claude-sonnet-4-5": { "inPerMTok": 3.00, "outPerMTok": 15.00 }
+      },
+      "models": ["claude-sonnet-4-5"]
+    },
+    {
+      "id": "webchat-only",
+      "displayName": "WebChat Only (no programmatic use)",
+      "kind": "openai-compat",
+      "baseUrl": "https://api.webchat.example/v1",
+      "auth": { "type": "bearer" },
+      "trainsOnData": false,
+      "programmaticAllowed": false,
+      "pricing": {
+        "llama-3.3-70b": { "inPerMTok": 0.01, "outPerMTok": 0.01 }
+      },
+      "models": ["llama-3.3-70b"]
+    }
+  ],
+  "models": [
+    {
+      "id": "llama-3.3-70b",
+      "family": "llama",
+      "kind": "chat",
+      "ctx": 131072,
+      "rank": 3,
+      "files": [
+        {
+          "url": "https://huggingface.co/bartowski/Llama-3.3-70B-Instruct-GGUF/resolve/main/Llama-3.3-70B-Instruct-Q4_K_M.gguf",
+          "sha256": "4f0f9dd9a8b3d2a2fd1a5b7c8e9d0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e",
+          "bytes": 42520397952,
+          "quant": "Q4_K_M"
+        }
+      ]
+    },
+    {
+      "id": "deepseek-v3",
+      "family": "deepseek",
+      "kind": "chat",
+      "ctx": 65536,
+      "rank": 2
+    },
+    {
+      "id": "claude-sonnet-4-5",
+      "family": "claude",
+      "kind": "chat",
+      "ctx": 200000,
+      "rank": 1
+    }
+  ]
+}
