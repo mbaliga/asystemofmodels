@@ -141,6 +141,7 @@ jobs:
       - name: Lines mode
         run: |
           mkdir -p out
+          ./gradlew --version > /dev/null 2>&1
           ./gradlew -p lab :conformance-runner:run --args='lines M01,M02,M03,M04,M05,M06' --quiet > out/jvm.lines
           wc -l out/jvm.lines
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

@@ -44,6 +44,10 @@ chmod 755 "$work"
 trap 'rm -rf "$work"' EXIT
 # the unprivileged user must be able to read the probe, wherever the caller built it
 mkdir -p "$work/probe"; cp "$probe/probe.jar" "$probe/probe-ec.p12" "$work/probe/"; chmod -R a+rX "$work/probe"; probe="$work/probe"
+# likewise the installers, the archive and the pty helper: the runner's checkout is often not traversable by uid 65534
+mkdir -p "$work/dist"; cp "$dist"/install.sh "$dist"/uninstall.sh "$dist"/SHA256SUMS "$tar_gz" "$work/dist/"; chmod -R a+rX "$work/dist"
+cp "$here/pty-run.py" "$work/pty-run.py"; chmod a+rx "$work/pty-run.py"
+dist="$work/dist"; tar_gz="$dist/$(basename "$tar_gz")"; ptyrun="$work/pty-run.py"
 
 pass=0; fail=0
 declare -A fam_n
@@ -199,11 +203,11 @@ mkdir -p "$H/.local/state/asom" "$H/.local/share/asom"; echo row > "$H/.local/st
 out="$(runh "$H" setsid -w bash "$dist/uninstall.sh" --home "$H" --purge </dev/null 2>&1)"; rc=$?
 [ "$rc" != "0" ] && echo "$out" | grep -q "needs a terminal" && ok "--purge without a terminal refuses" || bad "purge without a tty: exit $rc, $out"
 [ -d "$H/.local/opt/asom/current" ] && [ -f "$H/.local/state/asom/l" ] && ok "  ...and changed NOTHING (install and state intact)" || bad "  ...but something was changed"
-out="$(runh "$H" python3 "$here/pty-run.py" "yes" -- bash "$dist/uninstall.sh" --home "$H" --purge 2>&1)"
+out="$(runh "$H" python3 "$ptyrun" "yes" -- bash "$dist/uninstall.sh" --home "$H" --purge 2>&1)"
 echo "$out" | grep -q "exit=1" && echo "$out" | grep -q "confirmation did not match" && ok "--purge with a wrong phrase on a terminal refuses" || bad "wrong phrase: $out"
 [ -d "$H/.local/opt/asom/current" ] && [ -f "$H/.local/state/asom/l" ] && [ -f "$H/.local/share/asom/k" ] && ok "  ...and changed NOTHING" || bad "  ...but something was changed"
 echo "$out" | grep -q "the ledger" && echo "$out" | grep -q "re-pairing" && ok "the prompt names what is lost (ledger, identity, re-pairing)" || bad "prompt does not name what is lost: $out"
-out="$(runh "$H" python3 "$here/pty-run.py" "delete asom state" -- bash "$dist/uninstall.sh" --home "$H" --purge 2>&1)"
+out="$(runh "$H" python3 "$ptyrun" "delete asom state" -- bash "$dist/uninstall.sh" --home "$H" --purge 2>&1)"
 echo "$out" | grep -q "exit=0" && [ ! -e "$H/.local/state/asom" ] && [ ! -e "$H/.local/share/asom" ] && [ ! -e "$H/.local/opt/asom" ] && ok "--purge with the exact phrase on a terminal deletes state, data and the install" || bad "exact phrase: $out"
 
 # =====================================================================================================================

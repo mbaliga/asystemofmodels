@@ -83,7 +83,7 @@ enum Probes {
 
     static func screenLocked() -> HValue {
         // Nil when there is no window-server session (for example over SSH): unknown, which the node treats as present.
-        guard let dict = CGSessionCopyCurrentDictionary()?.takeRetainedValue() as? [String: Any] else { return .null }
+        guard let raw = CGSessionCopyCurrentDictionary(), let dict = raw as? [String: Any] else { return .null }
         return .bool((dict["CGSSessionScreenIsLocked"] as? Bool) ?? false)
     }
 

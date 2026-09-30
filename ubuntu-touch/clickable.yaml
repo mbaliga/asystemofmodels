@@ -9,16 +9,16 @@ kill: qmlscene
 
 # Static checks that need nothing but python3, run before the build so a bad token, a drifted text or a wrong AppArmor group fails first.
 prebuild:
-  - python3 tools/check_tokens.py
-  - python3 tools/check_texts.py
-  - python3 apparmor-ci/check-groups.py asom.apparmor.in --substitute
+  - cd ${ROOT} && python3 tools/check_tokens.py
+  - cd ${ROOT} && python3 tools/check_texts.py
+  - cd ${ROOT} && python3 apparmor-ci/check-groups.py asom.apparmor.in --substitute
 
 # `clickable test` runs the QML tests against the REAL Lomiri.Components in this image (the local runner uses a stand-in).
-test: bash tests/run_qml_ci.sh
+test: cd ${ROOT} && bash tests/run_qml_ci.sh
 
 scripts:
-  native-tests: bash tests/run_native_ci.sh
-  static-checks: python3 tools/check_tokens.py && python3 tools/check_texts.py && python3 apparmor-ci/check-groups.py --selftest
+  native-tests: cd ${ROOT} && bash tests/run_native_ci.sh
+  static-checks: cd ${ROOT} && python3 tools/check_tokens.py && python3 tools/check_texts.py && python3 apparmor-ci/check-groups.py --selftest
 
 # The runtime image (runtime/jlink.sh) and the node jar (jvm: utNodeJar, then tools/stage_node.sh) are built OUTSIDE this image, by the
 # ut-runtime and ut-jvm jobs, and staged under runtime/stage: the JDK toolchain is not in the Clickable image (ubuntu-touch.md 11.2,
