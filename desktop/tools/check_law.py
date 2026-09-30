@@ -6,7 +6,8 @@
   * :node-core depends on the mapped root projects only; :node on :node-core only (no lab, no Android module);
   * no `android.` / `com.android` / `com.google.android` import anywhere under desktop/;
   * no wildcard bind address; no listener API (ServerSocket, ServerSocketChannel, DatagramSocket, embeddedServer,
-    AsomServer) in any main source (nothing listens this wave; tests may bind loopback);
+    AsomServer) in any main source EXCEPT the single AF_UNIX control server (ControlServer.kt, ERR-DL2-3), which must
+    open StandardProtocolFamily.UNIX and name no Internet socket API; tests may bind loopback;
   * no bare print/println and no System.out/System.err in a main source except NodeEnv.kt (T17(c), H3);
   * no `Egress.PEER` (the frozen egress enum never grows a member here);
   * every fixture host directory carries a SYNTHETIC.txt label.
@@ -17,6 +18,7 @@ import re
 import sys
 
 DESKTOP = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+CONTROL_SERVER = "ControlServer.kt"
 PEER_ENUM = "Egress" + "." + "PEER"  # built from pieces so this file does not contain the literal itself
 
 MAPPED = {":core", ":core:contract", ":core:catalogue", ":core:routing", ":core:inference-api", ":server"}
@@ -61,6 +63,7 @@ def main():
     print(f"law: {len(ALLOWED_DEPS)} module build files checked against the desktop dependency table")
 
     n = 0
+    control_servers = []
     for f in files((".kt", ".kts", ".java")):
         n += 1
         text = open(f, encoding="utf-8").read()
@@ -73,13 +76,22 @@ def main():
         if main_src:
             if "0.0.0.0" in text or re.search(r'"::"', text):
                 bad.append(f"{rel}: names a wildcard address")
-            if re.search(r"\b(ServerSocket|ServerSocketChannel|DatagramSocket|embeddedServer|AsomServer\()", text):
-                bad.append(f"{rel}: creates a listener in a main source (nothing listens this wave)")
+            if os.path.basename(f) == CONTROL_SERVER:
+                # ERR-DL2-3: the one allowed listener, AF_UNIX only.
+                if not re.search(r"ServerSocketChannel\.open\(StandardProtocolFamily\.UNIX\)", text) or re.search(
+                    r"InetSocketAddress|InetAddress|StandardProtocolFamily\.INET|ServerSocket\(|DatagramSocket|DatagramChannel|localhost|127\.0\.0\.1", text
+                ):
+                    bad.append(f"{rel}: the control server must open an AF_UNIX listener and name no Internet socket API")
+                control_servers.append(rel)
+            elif re.search(r"\b(ServerSocket|ServerSocketChannel|DatagramSocket|embeddedServer|AsomServer\()", text):
+                bad.append(f"{rel}: creates a listener in a main source (only the AF_UNIX control server may)")
             if os.path.basename(f) != "NodeEnv.kt" and (
                 re.search(r"(?<![\w.])(?<!fun )(println|print)\(", text) or re.search(r"System\.(out|err)", text)
             ):
                 bad.append(f"{rel}: prints outside the injected streams (T17(c))")
-    print(f"law: {n} Kotlin/Java sources scanned (no android imports, no frozen-enum reuse, no wildcard bind, no listener, no bare print)")
+    print(f"law: {n} Kotlin/Java sources scanned (no android imports, no frozen-enum reuse, no wildcard bind, no listener but the AF_UNIX control server, no bare print)")
+    if len(control_servers) > 1:
+        bad.append(f"more than one control server source: {control_servers}")
 
     fx = os.path.join(DESKTOP, "node", "src", "test", "resources", "fixtures", "sysfs")
     hosts = sorted(os.listdir(fx)) if os.path.isdir(fx) else []

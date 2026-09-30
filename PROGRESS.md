@@ -817,3 +817,87 @@ Findings for the owner (ERRATA ERR-LL-*, ERR-LP-*): (1) the spec's enum with a p
 Not verified here: JDK 17 lane; the real `SSLEngine` accounting (the meter and tap are a MODEL of RFC 8446 records, L0.5 owns the JSSE lane); death of ONE node while the other continues (L-L11 kills both); power loss (only process death is claimed); the runner still reports `W01b-reach` as proposed-skipped (covered by `RequestReachAndBytesTest` and L02-018, ERR-LL-10); no independent oracle: all 241 vectors are `oracle: self`, and the Python cross-check was written in the same session.
 Oracle status: self-oracled (no independent implementation has agreed yet)
 Result: PASSED (local LAB evidence only)
+
+## Desktop DL2 gate (track `linux-host-dl2`: host integration) — 2026-09-30 — LAB and CI-ONLY (not device evidence)
+Base: `95b4c97d3d820419f1bf8b937c36c65dc6eb9d48` (worktree was created at `98ab632f`, reset with `git fetch origin claude/asom-v1-build-brief-vw83oh && git reset --hard 95b4c97d...`, `HEAD` and `docs/design/mesh/LAB_SPEC.md` confirmed) + the uncommitted `linux-host-dl2` working tree.   JDK: openjdk 21.0.10 and Temurin 17.0.20.1+1 (a second copy under `/tmp`, because uid 65534 must be able to read the JDK)   Runner: local container (Ubuntu 24.04, NO Android SDK, run as root, `dbus-daemon` 1.14.10, systemd 255 tools only, NO running systemd, NO logind, NO polkitd)
+Scope: PLATFORM_PLAN section 3 step DL2. NEW in `desktop/node`: `control/{ControlServer,ControlClient,PeerCredentials}`, `dbus/{DbusWire,MiniDbus}`, `power/{Inhibitor,SleepWatcher,InhibitorProbeMain}`, `LinuxPlatform` wiring; `desktop/packaging/linux/{systemd/asom.service,systemd/asom-user.service,sysusers.d/asom.conf,polkit/50-asom-inhibit.rules,test/journal-hygiene.sh,test/systemd-vm.sh}`; `desktop/docs/{LINUX,STEAM_DECK}.md`; a `systemd-vm` job in `desktop-linux.yml`; rows ERR-DL2-1 to ERR-DL2-14 in `desktop/ERRATA.md`. Two small edits outside the track's directories, both logged as ERR-DL2-3: `SourceHygieneTest` (`:node-core` test) and `desktop/tools/check_law.py` now allow ONE named listener, the AF_UNIX `ControlServer.kt`. Nothing in `:node-core` main, the root build, `core/`, `server/` or `ci.yml` was touched. NOT built (not in the assignment or blocked): the identity store (`nikStore`), starting the control socket from `asom-node` (BLOCKED, ERR-DL2-4), a consumer of the FSM effects that takes and releases the locks.
+
+SO_PEERCRED (ERR-DL2-1), probed on both JDKs with a 20-line program (bind AF_UNIX server, connect, accept, read the option on both sockets):
+```
+$ java Peer.java                     (OpenJDK 21.0.10)
+21.0.10 supported(accepted)=true / accepted peer=UnixDomainPrincipal[user=root, group=root] / client sees server=UnixDomainPrincipal[user=root, group=root] / client supports=true
+$ /tmp/.../jdk-17.0.20.1+1/bin/java Peer.java     (Temurin 17.0.20.1)
+17.0.20.1 supported(accepted)=true / (same three lines)
+```
+Available on both: NOT BLOCKED. A runtime without it refuses to start the control socket (no weaker fallback).
+
+DL2 gate 1, `./gradlew -p desktop desktopTest --rerun-tasks` with `ASOM_REQUIRE_DBUS=1 ASOM_REQUIRE_SYSTEMD_TOOLS=1 ASOM_REQUIRE_NODE=1` (so a missing tool FAILS instead of skipping), JDK 21 then JDK 17:
+```
+BUILD SUCCESSFUL in 2m 37s     24 actionable tasks: 24 executed        (JDK 21.0.10)
+BUILD SUCCESSFUL in 2m 47s     24 actionable tasks: 24 executed        (JDK 17.0.20.1)
+:node tests 117, skipped 0, failures 0     :node-core tests 68, skipped 0, failures 0
+law MiniDbusVectors/recorded-accepted-le: 2   recorded-accepted-be: 2   recorded-ignored: 2   recorded-method-return: 2   outbound-bytes-equal: 2
+law MiniDbusVectors/truncated-every-prefix: 1457   oversize-refused-before-read: 10   malformed-rejected: 33   accept-rule-table: 10   sasl-line: 4   stream-framing: 1   unknown-header-field-skipped: 1
+MiniDbusIT: connect/Hello/AddMatch and PrepareForSleep true+false in LE and BE against a private dbus-daemon: OK (LAB, NOT DEVICE EVIDENCE)
+SleepWatcherIT: PrepareForSleep -> SLEEP_IMMINENT/RESUMED against a private dbus-daemon, LE and BE: OK (LAB, NOT DEVICE EVIDENCE)
+law SleepWatcherGap/*: 1 each (7 laws: no-gap-quiet, unannounced-gap-emits-pair, threshold-exact, announced-gap-no-duplicate, stale-announce-does-not-mask, uptime-unreadable, listener-exception-survived)
+ControlServer: a real client process at uid 65534 (server user "root") was refused FORBIDDEN by SO_PEERCRED (LAB, this container)
+Inhibitor: lock holder ended after its JVM was SIGKILLed (exit 137): OK (LAB, fake systemd-inhibit)
+Inhibitor: real systemd-inhibit REFUSED (exit 1: Failed to connect to bus: No such file or directory) in this environment (LAB; a refusal here is expected without logind)
+```
+`MiniDbusVectorsTest` reads `desktop/node/src/test/resources/dbus/recorded.txt`: REAL bytes recorded from `dbus-daemon 1.14.10` by `record_vectors.py`, an independent Python implementation (LE and BE fake logind, a spoofer, and the bytes the Python encoder makes for `Hello` and `AddMatch`, which the Kotlin encoder must equal byte for byte). The recording showed the daemon delivering a forged UNICAST `PrepareForSleep` to a subscriber whose match rule names `sender='org.freedesktop.login1'`; the client therefore drops unicast signals (ERR-DL2-8).
+
+DL2 gate 2, `systemd-analyze` (real tool, this container, no running systemd). The plan's literal command on the repository file prints a line, because the binary it names is not installed here:
+```
+$ systemd-analyze verify desktop/packaging/linux/systemd/asom.service
+asom.service: Command /opt/asom/current/bin/asom-node is not executable: No such file or directory          exit=1
+$ (UnitFilesTest: same unit in a synthetic root holding a copy of the host's unit dir + a stub asom-node + passwd/group)
+$ systemd-analyze --root=<synthetic root> verify /usr/lib/systemd/system/asom.service                          (no output)  exit=0
+   4 broken copies (Nice=banana, missing ExecStart, unknown directive, unknown section): each prints or fails   (law UnitVerify/broken-unit-is-caught: 4)
+$ systemd-analyze --user verify asom-user.service      only "Failed to connect to system bus: No such file or directory" (a container notice), exit 0; a broken copy is caught
+$ systemd-sysusers --root=<tmp> desktop/packaging/linux/sysusers.d/asom.conf   ->   asom:x:999:999:asom node:/var/lib/asom:/usr/sbin/nologin
+```
+The plan's exact command on the INSTALLED unit is step 1 of `systemd-vm.sh` (CI-ONLY, never run). Both units are asserted directive by directive against linux.md 3.2 (`StandardOutput=null`, `StandardError=null`, `LimitCORE=0`, `MemorySwapMax=0`, ...), the packaging tree holds no symlink, `.wants` or `systemctl enable|start`, and the polkit rule is evaluated under `node` with a mock `polkit` object: 15 (action, user) cases, exactly one grant (`asom`, `inhibit-block-sleep`), widened and re-targeted mutants caught. The real polkitd is CI-ONLY.
+
+DL2 gate 3, CI-ONLY items (WRITTEN, NEVER RUN: no systemd, logind or polkit here):
+- `desktop/packaging/linux/test/systemd-vm.sh` (real systemd, real logind, real polkit; disposable VM, root) and the `systemd-vm` job in `desktop-linux.yml` (`ubuntu-24.04` only, ERR-DL2-12). `bash -n` passes; `shellcheck 0.11.0` reported only SC2015 info notes on `A && B || C` (where `ok` cannot fail) and one SC2034 warning, which was fixed (shellcheck itself exits 1 on the info notes). Its checks are labelled in the script header; the plan's "`asom status --json | jq -r .host` as a group-`asom` user" is BLOCKED (ERR-DL2-4) and replaced by the local snapshot run as `asom` under `systemd-run`.
+- `journal-hygiene.sh` (real journal, CI-ONLY). Its LOGIC is tested against a stubbed journal, logger and CLI (LAB): clean = `PASS: 0 token matches, 0 ledger rows`; a planted canary = `FAIL: 2 token matches, 0 ledger rows`; a planted ledger row = FAIL; a dead positive control = `ERROR` exit 2; an empty unit journal = `ERROR` exit 2. It cannot yet prove the request pipeline (no request path carries a prompt, ERR-DL2-4).
+- Real suspend/resume, real logind delay/block behaviour, the polkit rule under a real `polkitd`, the Deck (DV-D4, DV-L2, DV-L3): NEEDS-DEVICE-VALIDATION.
+
+DL2 gate 4, the forked-JVM SIGKILL durability test of the JSONL sink (`:node-core`, run inside `desktopTest` on both JDKs):
+```
+sigkill harness: 20 kills at 10 (model, point) pairs; claim: process death only, not power loss
+transitions exercised: 36/36
+```
+
+Isolation and root (real output, `ANDROID_HOME` empty; check 2 with a real SDK is NOT run here):
+```
+$ desktop/tools/isolation.sh
+isolation check 1: 0   check 2: 0 (positive control 19 > 0)   check 3: 0 (positive control 8 = 8)
+isolation check 4: base 770a44da21e7... 136 protected files compared byte-for-byte: OK (shipped tree byte-identical to the pinned base)
+law: 79 Kotlin/Java sources scanned (no android imports, no frozen-enum reuse, no wildcard bind, no listener but the AF_UNIX control server, no bare print)   law: OK
+ISOLATION: all checks passed                 $ python3 desktop/tools/isolation.py --selftest  ->  selftest OK
+$ ./gradlew jvmTest --rerun-tasks            BUILD SUCCESSFUL in 1m 48s      root tests: 139 (core+server XML count), 0 failures      (baseline 139)
+```
+
+Mutation checks (each applied to the real source, the targeted tests run, the original restored; every one is now CAUGHT). Two mutants first SURVIVED and exposed test gaps, which were fixed and re-run: M5 (the first attempt hit the KDoc comment, not the code) and M9 (no test corrupted a padding byte INSIDE a header field, only the one before the body).
+```
+M1  control server authorises every peer                 : CAUGHT (3 tests: mock denial, cross-uid uid 65534, platform wiring)
+M2  client skips the server-identity check               : CAUGHT (2 tests, one of them run as uid 65534)
+M3  control server ignores the socket directory mode     : CAUGHT
+M4  block-lock policy check removed (Deck takes a block) : CAUGHT (InhibitorTest, LinuxPlatformTest Deck cases)
+M5  lock holder `exec sleep infinity` instead of `cat`   : CAUGHT (SIGKILL leak test)
+M6  MiniDbus accepts unicast signals                     : CAUGHT (vectors, IT, SleepWatcherIT)
+M7  MiniDbus accepts a non-unique-name sender            : CAUGHT
+M8  D-Bus decoder has no size cap                        : CAUGHT
+M9  D-Bus decoder tolerates non-zero padding             : CAUGHT (after the added case)
+M10 journal-hygiene drops its positive control           : CAUGHT
+M11 polkit rule granted to every user                    : CAUGHT
+M12 system unit lets stdout reach the journal            : CAUGHT
+M13 SleepWatcher never emits RESUMED                     : CAUGHT
+M14 a second main source names a listener / the control server names InetSocketAddress : check_law.py exit 1 with VIOLATION (both)
+```
+One real bug found by a test and fixed: a server that answered `FORBIDDEN` and closed at once made the kernel reset the connection, and the other-uid client saw `Broken pipe` instead of the answer (ERR-DL2-13: graceful close with a 500 ms drain, and the client reads one frame if its write fails). One test-setup trap: a mode passed at directory creation is cut by the process umask, so the directory-mode tests now `chmod` explicitly.
+
+Not verified here: everything CI-ONLY above; the workflow's new job on a hosted runner; JDK behaviour of `SO_PEERCRED` on other kernels (only this Linux 6.18 container); a real logind, polkitd, user manager, suspend, or a Steam Deck; the `ubuntu-24.04-arm` lane; shell scripts other than by `bash -n`, shellcheck and the stubbed journal test. `desktop/README.md` (not owned by this track) still describes DL2 as unbuilt.
+Result: PASSED for the LAB parts of DL2 (as amended by ERRATA ERR-DL2-*); BLOCKED for "live `asom status` via a running node's control socket" (ERR-DL2-4); CI-ONLY items written and unrun.

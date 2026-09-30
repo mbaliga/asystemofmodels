@@ -3,6 +3,7 @@ package xyz.mdhv.asom.desktop.linux
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission
+import java.nio.file.attribute.PosixFilePermissions
 import xyz.mdhv.asom.desktop.DesktopPlatform
 import xyz.mdhv.asom.desktop.GpuContentionPort
 import xyz.mdhv.asom.desktop.HostMode
@@ -15,12 +16,8 @@ import xyz.mdhv.asom.desktop.MonotonicClock
 import xyz.mdhv.asom.desktop.NikStore
 import xyz.mdhv.asom.desktop.NodeConfig
 import xyz.mdhv.asom.desktop.NodePaths
-import xyz.mdhv.asom.desktop.NotYetImplementedControlSocket
-import xyz.mdhv.asom.desktop.NotYetImplementedException
-import xyz.mdhv.asom.desktop.NotYetImplementedFeature
 import xyz.mdhv.asom.desktop.NotYetImplementedNikStore
 import xyz.mdhv.asom.desktop.OpenListenerGate
-import xyz.mdhv.asom.desktop.PartiallyImplemented
 import xyz.mdhv.asom.desktop.PowerPort
 import xyz.mdhv.asom.desktop.PowerReading
 import xyz.mdhv.asom.desktop.PresencePort
@@ -38,6 +35,13 @@ import xyz.mdhv.asom.desktop.linux.host.LinuxHostModeRules
 import xyz.mdhv.asom.desktop.linux.host.LinuxPaths
 import xyz.mdhv.asom.desktop.linux.host.OsRelease
 import xyz.mdhv.asom.desktop.linux.host.SteamOsPolicy
+import xyz.mdhv.asom.desktop.linux.control.ControlClient
+import xyz.mdhv.asom.desktop.linux.control.ControlServer
+import xyz.mdhv.asom.desktop.linux.control.PeerAuthorizers
+import xyz.mdhv.asom.desktop.linux.control.SocketDirRule
+import xyz.mdhv.asom.desktop.linux.dbus.MiniDbus
+import xyz.mdhv.asom.desktop.linux.power.Inhibitor
+import xyz.mdhv.asom.desktop.linux.power.SleepWatcher
 import xyz.mdhv.asom.desktop.linux.probes.CpuProbe
 import xyz.mdhv.asom.desktop.linux.probes.FileSource
 import xyz.mdhv.asom.desktop.linux.probes.GpuProbe
@@ -76,14 +80,18 @@ class LinuxEnv(
 }
 
 /**
- * The Linux host: probes and Deck rules only this wave (DL0 + DL1). The control socket, the sleep watcher, the
- * keep-awake locks and the identity store belong to DL2 and are declared NOT_YET_IMPLEMENTED, not faked.
+ * The Linux host: probes and Deck rules (DL0, DL1) and the host integration of DL2: the control socket, the logind
+ * sleep watcher and the keep-awake locks. None of them starts by itself: [controlSocket] only builds a server that a
+ * caller must [xyz.mdhv.asom.desktop.ControlSocketServer.start], [PowerPort.hold] takes a lock only when called and
+ * [PowerPort.onSleepEvents] connects to the bus only when called. The identity store is still NOT_YET_IMPLEMENTED.
  */
 class LinuxPlatform(
     private val fs: FileSource = RealFileSource(),
     private val env: LinuxEnv = LinuxEnv.system(),
     private val clock: MonotonicClock = SystemMonotonicClock,
     private val thresholds: NodeConfig = NodeConfig(),
+    private val busSocket: Path = Path.of(MiniDbus.DEFAULT_SYSTEM_BUS),
+    private val inhibitCommand: List<String> = listOf("systemd-inhibit"),
 ) : DesktopPlatform, HostRulesProvider, HostSignalsProvider {
     override val id: String = "linux"
 
@@ -93,7 +101,14 @@ class LinuxPlatform(
     private val cpuProbe = CpuProbe(fs)
     private val thermalProbe = ThermalProbe(fs, thresholds.thermalHysteresisMilliC, thresholds.thermalDwellMs, thresholds.thermalNoTripHoldMilliC, clock)
     private val gpuProbe: GpuProbe? by lazy { GpuProbe.find(fs, clock) }
-    private val powerPort = LinuxPowerPort(powerProbe)
+    private val inhibitor: Inhibitor by lazy {
+        Inhibitor(blockLockAllowed = hostRules(thresholds, HostMode.USER).blockLockAllowed && thresholds.keepAwake, inhibitCommand = inhibitCommand)
+    }
+    private val powerPort = LinuxPowerPort(
+        powerProbe,
+        holdLock = { inhibitor.hold(it) },
+        watchSleep = { listener -> SleepWatcher(busSocket, { uids().first }, listener).start() },
+    )
 
     override fun paths(mode: HostMode): NodePaths {
         val (real, effective) = uids()
@@ -117,7 +132,29 @@ class LinuxPlatform(
 
     override fun listenerGate(): ListenerGate = OpenListenerGate
 
-    override fun controlSocket(paths: NodePaths) = NotYetImplementedControlSocket(paths.controlSocket)
+    /** Builds the owner-CLI control socket for [paths]. Nothing is bound until the caller starts it. */
+    override fun controlSocket(paths: NodePaths): ControlServer {
+        val system = paths.mode == HostMode.SYSTEM
+        val authorizer = if (system) {
+            PeerAuthorizers.serviceGroup(LinuxHostModeRules.SYSTEM_USER, LinuxHostModeRules.SYSTEM_USER) { g ->
+                PeerAuthorizers.membersFromGroupFile(fs.read("/etc/group"), g)
+            }
+        } else {
+            PeerAuthorizers.sameUser(env.userName)
+        }
+        return ControlServer(
+            path = paths.controlSocket,
+            authorizer = authorizer,
+            dirRule = if (system) SocketDirRule.GROUP_TRAVERSE else SocketDirRule.PRIVATE,
+            socketPermissions = PosixFilePermissions.fromString(if (system) "rw-rw----" else "rw-------"),
+            ownUid = { uids().first },
+            dirMeta = env.dirMeta,
+        )
+    }
+
+    /** The CLI side: the server must be `asom` in SYSTEM mode and the caller itself otherwise (T17(d), both directions). */
+    fun controlClient(paths: NodePaths): ControlClient =
+        ControlClient(paths.controlSocket, if (paths.mode == HostMode.SYSTEM) LinuxHostModeRules.SYSTEM_USER else env.userName)
 
     override fun hostRules(config: NodeConfig, mode: HostMode): HostRules =
         if (osRelease.isSteamOS) SteamOsPolicy(config) else DesktopRules(config)
@@ -138,17 +175,15 @@ class LinuxPlatform(
     }
 }
 
-/** `read()` is real (sysfs). Keep-awake locks and sleep events are the DL2 Inhibitor and SleepWatcher; not built here. */
-class LinuxPowerPort(private val probe: PowerProbe) : PowerPort, PartiallyImplemented {
+/** `read()` is sysfs; `hold` is the [Inhibitor]; `onSleepEvents` is the [SleepWatcher]. Both act only when called. */
+class LinuxPowerPort(
+    private val probe: PowerProbe,
+    private val holdLock: (LockKind) -> KeepAwakeHold,
+    private val watchSleep: ((SleepEvent) -> Unit) -> AutoCloseable,
+) : PowerPort {
     override fun read(): PowerReading = probe.read()
 
-    override fun hold(kind: LockKind): KeepAwakeHold = throw NotYetImplementedException("keep-awake locks (Inhibitor)", "DL2")
+    override fun hold(kind: LockKind): KeepAwakeHold = holdLock(kind)
 
-    override fun onSleepEvents(listener: (SleepEvent) -> Unit): AutoCloseable =
-        throw NotYetImplementedException("sleep watcher (logind PrepareForSleep)", "DL2")
-
-    override val notYetImplemented: List<NotYetImplementedFeature> = listOf(
-        NotYetImplementedFeature("keep-awake locks (Inhibitor)", "DL2") { hold(LockKind.DELAY) },
-        NotYetImplementedFeature("sleep watcher (logind PrepareForSleep)", "DL2") { onSleepEvents { } },
-    )
+    override fun onSleepEvents(listener: (SleepEvent) -> Unit): AutoCloseable = watchSleep(listener)
 }

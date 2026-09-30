@@ -6,6 +6,7 @@ import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -88,12 +89,46 @@ class LinuxPlatformTest {
         assertTrue(platform("deck-lcd").hostRules(NodeConfig(), HostMode.USER) is SteamOsPolicy)
     }
 
+    private fun wired(host: String, config: NodeConfig = NodeConfig()): LinuxPlatform {
+        val fs = MapFileSource.ofFixture(host)
+        fs.files["/proc/self/status"] = "Name:\tjava\nUid:\t1000\t1000\t1000\t1000\n"
+        return LinuxPlatform(
+            fs, LinuxEnv("alice", vars, Path.of("/home/alice")) { DirMeta(1000, 0b111_000_000) }, FakeClock(), config,
+            busSocket = Path.of("/nonexistent/asom-no-bus"), inhibitCommand = listOf("/nonexistent/asom-no-systemd-inhibit"),
+        )
+    }
+
     @Test
-    fun `keep-awake and sleep events are declared not yet implemented and really throw`() {
-        val p = platform("dell").power()
-        assertFailsWith<NotYetImplementedException> { p.hold(LockKind.DELAY) }
-        assertFailsWith<NotYetImplementedException> { p.onSleepEvents { } }
-        assertFailsWith<NotYetImplementedException> { platform("dell").controlSocket(platform("dell").paths(HostMode.USER)).start { _, _ -> error("unreachable") } }
+    fun `keep-awake and sleep events are real members - the Deck never takes a block lock, other hosts try and report`() {
+        // Deck: the policy refuses a block lock BEFORE anything is spawned (the detail names the policy, not a spawn failure)
+        for (h in listOf("deck-oled", "deck-lcd")) {
+            val block = wired(h).power().hold(LockKind.BLOCK) as xyz.mdhv.asom.desktop.linux.power.InhibitHold
+            assertEquals(xyz.mdhv.asom.desktop.linux.power.HoldState.REFUSED, block.state)
+            assertTrue("never taken on this host" in block.detail, "$h: ${block.detail}")
+            val delay = wired(h).power().hold(LockKind.DELAY) as xyz.mdhv.asom.desktop.linux.power.InhibitHold
+            assertTrue("cannot run" in delay.detail, "$h: a delay lock is attempted on the Deck (and fails here only because the binary is fake): ${delay.detail}")
+        }
+        // Dell: a block lock is attempted (the spawn is what fails here), not refused by policy
+        val dell = wired("dell").power().hold(LockKind.BLOCK) as xyz.mdhv.asom.desktop.linux.power.InhibitHold
+        assertTrue("cannot run" in dell.detail, dell.detail)
+        // keepAwake=false in the config forbids the block lock everywhere, and still allows the delay lock
+        val off = wired("dell", NodeConfig(keepAwake = false)).power().hold(LockKind.BLOCK) as xyz.mdhv.asom.desktop.linux.power.InhibitHold
+        assertTrue("never taken on this host" in off.detail, off.detail)
+        // sleep events: with no bus the watcher reports UNAVAILABLE and closes cleanly
+        val handle = wired("dell").power().onSleepEvents { }
+        handle.close()
+    }
+
+    @Test
+    fun `the control socket is a real ControlServer now, still unstarted, and declared as not started by the node`() {
+        val p = wired("dell")
+        val server = p.controlSocket(p.paths(HostMode.USER))
+        assertTrue(server is xyz.mdhv.asom.desktop.linux.control.ControlServer)
+        assertEquals(Path.of("/run/user/1000/asom/ctl.sock"), server.path)
+        assertFalse(java.nio.file.Files.exists(server.path), "building the server binds nothing")
+        val declared = (server as xyz.mdhv.asom.desktop.PartiallyImplemented).notYetImplemented
+        assertEquals(1, declared.size)
+        assertFailsWith<NotYetImplementedException> { declared.single().probe() }
     }
 
     private fun tick(rt: NodeRuntime, clock: FakeClock, seconds: Int = 2) { clock.now += seconds * 1000L; rt.tick() }
@@ -208,7 +243,8 @@ class LinuxPlatformTest {
         assertEquals("amdgpu", (gov["gpuContention"] as JsonPrimitive).content)
         assertEquals("steamos-deck", (gov["rules"] as JsonPrimitive).content)
         val nyi = (o["notYetImplemented"] as JsonArray).joinToString("|") { (it as JsonPrimitive).content }
-        for (f in listOf("control-socket", "nik-store", "keep-awake locks", "sleep watcher")) assertTrue(f in nyi, "$f missing from: $nyi")
+        for (f in listOf("control-socket", "nik-store")) assertTrue(f in nyi, "$f missing from: $nyi")
+        for (f in listOf("keep-awake locks", "sleep watcher")) assertFalse(f in nyi, "$f is built in DL2 and must no longer be declared not-yet-implemented: $nyi")
         Report.line("status --json (deck-oled SYNTHETIC fixture): " + out.trim().take(200) + " ...")
     }
 
@@ -216,9 +252,10 @@ class LinuxPlatformTest {
     fun `selftest on the deck fixture reports the DL2 members honestly and passes everything else`() {
         val (code, out, _) = output { NodeMain.run(listOf("--mode=selftest"), it, HostFinder.find(listOf(platform("deck-oled"))) ) {} }
         assertEquals(ExitCodes.OK, code, out)
-        for (f in listOf("control-socket", "nik-store", "keep-awake locks (Inhibitor)", "sleep watcher (logind PrepareForSleep)")) {
+        for (f in listOf("control-socket", "nik-store")) {
             assertTrue(out.lines().any { it.startsWith("  [not-yet-implemented] $f") }, "$f: $out")
         }
+        for (f in listOf("keep-awake locks", "sleep watcher")) assertFalse(out.contains("[not-yet-implemented] $f"), "$f is built in DL2: $out")
         assertTrue("[ok] ledger-roundtrip" in out && out.trim().endsWith("0 failed"), out)
         Report.line(out.trim().lines().last())
     }
