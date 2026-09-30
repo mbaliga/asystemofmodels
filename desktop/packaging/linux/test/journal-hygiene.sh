@@ -20,18 +20,23 @@
 # this proves the unit's output plumbing (StandardOutput=null, StandardError=null, the launcher, the JVM) and not the
 # request pipeline. Re-run it unchanged when a real request path lands (DL4/DL6).
 #
-# Usage: journal-hygiene.sh [--unit asom.service] [--user-unit] [--canary TEXT]
+# Usage: journal-hygiene.sh [--unit asom.service] [--user-unit] [--canary TEXT] [--since 'YYYY-MM-DD HH:MM:SS']
+# --since matters: the unit-journal positive control needs systemd's own Started line for the unit, so the window must
+# open BEFORE the unit was started. Without it the window is the last 2 seconds, which is only right when the unit was
+# started a moment ago (the first hosted run failed exactly here: the unit had been up for minutes).
 # Environment overrides (used by the script's own test with stubs): JOURNALCTL, LOGGER, ASOM_CLI, SLEEP.
 set -u
 
 unit="asom.service"
 user_flag=""
 canary=""
+since_arg=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --unit) unit="$2"; shift 2 ;;
     --user-unit) user_flag="--user"; shift ;;
     --canary) canary="$2"; shift 2 ;;
+    --since) since_arg="$2"; shift 2 ;;
     -h|--help) sed -n '2,26p' "$0"; exit 0 ;;
     *) echo "ERROR: unknown argument: $1"; exit 2 ;;
   esac
@@ -46,6 +51,7 @@ stamp="$(date +%s)-$$-${RANDOM:-0}"
 [ -n "$canary" ] || canary="ASOMCANARY-${stamp}-bearer-token"
 control="ASOMCONTROL-${stamp}"
 since="$(date -d '2 seconds ago' '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date '+%Y-%m-%d %H:%M:%S')"
+[ -z "$since_arg" ] || since="$since_arg"
 
 # 1. Positive control: write a line that MUST be visible to the journal reader.
 "$LOGGER" -t asom-hygiene-control "$control" || { echo "ERROR: could not write the control line with logger"; exit 2; }

@@ -39,7 +39,19 @@ object Fixtures {
     private val base: Path = Path.of(System.getProperty("asom.fixtures") ?: error("asom.fixtures is not set (run through Gradle)"))
 
     fun dir(host: String): Path = base.resolve(host).also { check(it.toFile().isDirectory) { "missing fixture host $host" } }
-    fun fs(host: String): FileSource = RootedFileSource(dir(host))
+    fun fs(host: String): FileSource = ColonDecodingFileSource(RootedFileSource(dir(host)))
+}
+
+/**
+ * Real sysfs names contain ':' (a HID battery is "hid-0003:28DE:1205.0001-battery"), which Windows cannot store in a
+ * file name, so the repository stores ':' as "%3A" and the code under test still sees the real name.
+ */
+const val COLON_ENCODED = "%3A"
+
+class ColonDecodingFileSource(private val delegate: FileSource) : FileSource {
+    override fun read(path: String): String? = delegate.read(path.replace(":", COLON_ENCODED))
+    override fun list(path: String): List<String> =
+        delegate.list(path.replace(":", COLON_ENCODED)).map { it.replace(COLON_ENCODED, ":") }
 }
 
 /** An in-memory file tree that tests mutate between samples. */
@@ -59,7 +71,7 @@ class MapFileSource(files: Map<String, String> = emptyMap()) : FileSource {
             val root = Fixtures.dir(host)
             val m = LinkedHashMap<String, String>()
             root.toFile().walkTopDown().filter { it.isFile }.forEach { f ->
-                m["/" + root.relativize(f.toPath()).toString().replace(File.separatorChar, '/')] = f.readText(Charsets.UTF_8)
+                m["/" + root.relativize(f.toPath()).toString().replace(File.separatorChar, '/').replace(COLON_ENCODED, ":")] = f.readText(Charsets.UTF_8)
             }
             return MapFileSource(m)
         }

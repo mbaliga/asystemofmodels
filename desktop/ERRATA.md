@@ -57,3 +57,23 @@ implements, the CONSERVATIVE reading was taken and is recorded here. Nothing was
 | Date | From | To | Reason |
 |---|---|---|---|
 | 2026-09-30 | 74fe9a04 | 770a44da | Same reviewed change as lab/ERRATA.md: a race fix in two v1 streaming integration tests (server/src/test only). Pinned to the same commit as `lab/LAB_BASE_SHA`. |
+
+## ERR-DL2-13 (orchestrator, first hosted run 2026-09-30): three defects only a hosted run could show
+
+The first hosted runs of the Windows workflows and the live systemd job failed. Causes and fixes:
+
+1. **The repository could not be checked out on Windows.** A synthetic Steam Deck controller-battery fixture directory was named
+   `hid-0003:28DE:1205.0001-battery`; ':' is illegal in a Windows file name, so `git checkout` died and every Windows job failed
+   before running anything. The directory is now stored with ':' encoded as `%3A` and `ColonDecodingFileSource` (test code) gives
+   the code under test the real name; `FixtureEncodingTest` pins both halves. `desktop/tools/check_paths.py` now fails Linux CI if
+   any tracked path is Windows-unsafe (illegal characters, reserved device names, trailing dot or space, case collisions).
+2. **journal-hygiene.sh's window opened after the unit started.** Its "since" was 2 seconds before the script ran, but the unit had
+   been up for minutes, so systemd's own Started line for the unit fell outside the window and the positive control
+   ("the unit's journal is non-empty") failed. That was a script bug, not a leak. `--since` is now explicit and systemd-vm.sh
+   stamps the time immediately before `systemctl start`.
+3. **A JVM stopped by SIGTERM exits 143 (128+15), which systemd counted as a failure**, so the unit was `failed`, not `inactive`,
+   after `systemctl stop`. Both units now carry `SuccessExitStatus=143`. This adds a directive beyond the normative list in
+   linux.md 3.2 (a clean stop is a correctness requirement, not a hardening choice), and UnitFilesTest's expected list was updated
+   with it. The failing check now also prints the unit's Result and ExecMainStatus.
+
+Lesson recorded for every track: a workflow that has never run on a hosted runner has not been shown to pass.

@@ -101,6 +101,7 @@ systemctl daemon-reload
 [ "$(systemctl is-active asom 2>/dev/null)" = "inactive" ] && ok "2 unit is inactive after install" || bad "2 unit is not inactive after install"
 
 # 3
+unit_start_stamp="$(date '+%Y-%m-%d %H:%M:%S')"
 systemctl start asom || bad "3 systemctl start asom failed"
 sleep 3
 [ "$(systemctl is-active asom 2>/dev/null)" = "active" ] && ok "3 unit is active after an explicit start" || bad "3 unit is not active: $(systemctl status asom --no-pager 2>&1 | tail -5)"
@@ -167,13 +168,14 @@ probe block 3 >/tmp/asom-probe-block-withdrawn.out 2>&1
 grep -q 'state=REFUSED' /tmp/asom-probe-block-withdrawn.out && ok "7 withdrawing the polkit rule refuses the block lock again" || bad "7 after withdrawing the rule: $(cat /tmp/asom-probe-block-withdrawn.out)"
 
 # 9
-hy="$("$here/journal-hygiene.sh" --unit asom.service --canary "ASOMCANARY-$$-vm" 2>&1)"; hrc=$?
+hy="$("$here/journal-hygiene.sh" --unit asom.service --since "$unit_start_stamp" --canary "ASOMCANARY-$$-vm" 2>&1)"; hrc=$?
 echo "$hy" | tail -3
 [ "$hrc" = "0" ] && [ "$(echo "$hy" | tail -1)" = "PASS: 0 token matches, 0 ledger rows" ] && ok "9 journal hygiene" || bad "9 journal hygiene rc=$hrc: $hy"
 
 # 10
 systemctl stop asom
-[ "$(systemctl is-active asom 2>/dev/null)" = "inactive" ] && ok "10 the unit is inactive after stop" || bad "10 the unit is not inactive after stop"
+state_after_stop="$(systemctl is-active asom 2>/dev/null)"
+[ "$state_after_stop" = "inactive" ] && ok "10 the unit is inactive after stop" || bad "10 the unit is not inactive after stop: is-active=$state_after_stop $(systemctl show asom -p Result -p ExecMainStatus 2>/dev/null | tr '\n' ' ')"
 
 echo "systemd-vm: $pass passed, $fail failed (CI-ONLY: real systemd and real logind on a hosted VM; NOT DEVICE EVIDENCE; real suspend/resume is NEEDS-DEVICE-VALIDATION)"
 [ "$fail" = "0" ]

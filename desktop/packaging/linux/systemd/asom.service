@@ -50,6 +50,8 @@ DeviceAllow=char-drm rw
 SupplementaryGroups=render video
 # 30 s desktop drain grace plus shutdown.
 TimeoutStopSec=35
+# A JVM stopped by SIGTERM runs its shutdown hooks and exits 143 (128+15): a clean stop, not a failure.
+SuccessExitStatus=143
 Restart=on-failure
 RestartSec=5
 

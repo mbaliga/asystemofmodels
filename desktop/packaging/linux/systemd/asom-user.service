@@ -30,6 +30,8 @@ LockPersonality=yes
 SystemCallArchitectures=native
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
 TimeoutStopSec=35
+# A JVM stopped by SIGTERM runs its shutdown hooks and exits 143 (128+15): a clean stop, not a failure.
+SuccessExitStatus=143
 Restart=on-failure
 RestartSec=5
 

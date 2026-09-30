@@ -58,6 +58,13 @@ jobs:
       - name: Desktop tests (prints the per-law report lines, LAB evidence)
         run: ./gradlew -p desktop desktopTest --stacktrace
 
+      # First hosted Windows run (2026-09-30): the repository could not be checked out on Windows because a tracked path
+      # contained ':'. Every Windows job died before running anything. Fail here, on Linux, in seconds instead.
+      - name: No tracked path that Windows cannot store (check_paths.py, with its self-test)
+        run: |
+          python3 desktop/tools/check_paths.py --selftest
+          python3 desktop/tools/check_paths.py
+
       - name: Isolation checks 1 to 4 against the pinned base, and the static law checks
         run: |
           python3 desktop/tools/isolation.py --selftest

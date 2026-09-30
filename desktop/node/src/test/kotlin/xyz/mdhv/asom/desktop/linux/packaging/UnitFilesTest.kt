@@ -44,7 +44,7 @@ class UnitFilesTest {
             "CapabilityBoundingSet" to "", "AmbientCapabilities" to "", "SystemCallArchitectures" to "native",
             "RestrictAddressFamilies" to "AF_UNIX AF_INET AF_INET6 AF_NETLINK",
             "DevicePolicy" to "closed", "DeviceAllow" to "char-drm rw", "SupplementaryGroups" to "render video",
-            "TimeoutStopSec" to "35", "Restart" to "on-failure", "RestartSec" to "5",
+            "TimeoutStopSec" to "35", "SuccessExitStatus" to "143", "Restart" to "on-failure", "RestartSec" to "5",
         )
         for ((k, v) in expect) assertEquals(v, s.one(k), k)
         assertEquals(expect.keys, s.map { it.first }.toSet(), "no directive beyond the normative list")
