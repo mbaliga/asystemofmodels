@@ -50,6 +50,17 @@ Android: `:vault` → contract · `:pairing` → contract · `:storage` → cont
 - P8 polish → execute + commit `QA_V1.md`
 - Phase 2 (local engine, semantic routing, loops): **do not start.**
 
+## Multi-platform mesh program (owner directives 2026-09-30 — roadmap §14)
+
+The owner has expanded scope: Apple, Windows and Ubuntu Touch platforms; a symmetric, holonic mesh of the
+owner's own devices; sequencing v2 → mesh-1 → v2.5 → v3; a declared third invariant amendment. Read
+`ASOM_ROADMAP_BRIEF.md` §14 and `docs/design/mesh/OWNER_DIRECTIVES_2026-09-30.md` before touching
+`lab/`, `desktop/`, `apple/` or `ubuntu-touch/`. Rules that still bind: the v1 HTTP contract stays frozen
+(additive only, owner sign-off); `:core:*`/`:server` stay pure JVM; no KMP; `app/` and the other Android
+modules are untouched until v1 device validation; the root build and `./gradlew jvmTest` are unchanged
+(`lab/` and `desktop/` are separate Gradle builds with their own CI jobs); Opus for design/review, Sonnet for
+implementation.
+
 ## Discipline (brief §12)
 
 Never mark a gate passed without pasting real command output into `PROGRESS.md`. No fabricated logs. If blocked: `BLOCKED(<reason>)` and stop. Device-only items stay open as `NEEDS-DEVICE-VALIDATION` until the owner confirms. Where `OWNER-FILL` appears (e.g. `CATALOGUE_URL`), use the committed fixture `fixtures/catalogue.v1.json` — never invent values.

@@ -165,3 +165,50 @@ v1 §1 applies to every version. **Exactly two amendments exist in this entire r
 2. **Invariant 2, at v4 (private-overlay networking)**, under §7's conditions — an off-by-default, token-gated, private-overlay-only listener; never a public interface.
 
 Any session finding itself wanting a *third* amendment must stop and escalate to the owner.
+
+---
+
+## 14. Owner directives log (post-freeze; each entry dated and attributable)
+
+This section is the sanctioned place for owner decisions taken after the freeze. Entries are recorded by
+the session on the owner's instruction and are binding on later sessions; wording is the session's and
+remains subject to owner ratification. The full record, including the acting decisions the owner delegated,
+is `docs/design/mesh/OWNER_DIRECTIVES_2026-09-30.md`.
+
+**2026-09-29 / 2026-09-30 — the multi-platform mesh program.**
+
+1. **Apple platforms are in scope** (macOS, iOS, iPadOS). Supersedes this document's silence on Apple.
+2. **Platforms in scope:** Android (v1), Linux, Steam Deck, **Windows**, macOS, iOS/iPadOS, **Ubuntu Touch**.
+3. **The mesh is symmetric and holonic.** No device is a privileged "brain". Every node is whole on its own
+   and part of a whole: it serves its own apps alone (with the mesh off it behaves exactly as v2) and can
+   borrow from and lend to any *owner-paired* node. Rich-IO devices (a car head unit, an appliance with a
+   radio) are requesters that borrow intelligence living elsewhere. §11's stop-line is unchanged: only
+   owner-paired, owner-controlled devices are inside it; anything that pairs itself or serves unpaired
+   parties is outside; an appliance with no radio is not a target.
+4. **Positioning (verified 2026-09-29):** the router is ASOM's differentiator; the benchmark harness is not.
+   MLCommons ships consumer benchmark apps already (MLPerf Mobile v6.0; MLPerf Client v1.6 incl. iOS/Mac App
+   Store). v2 P6/P7 are amended accordingly: adopt MLPerf Mobile's model set and metric definitions as the
+   comparability baseline where licences permit; differentiate only on the signed verifiable manifest,
+   plain-text reports rendered from the same data, and results feeding the router. Never self-stamp
+   "MLPerf-comparable".
+5. **Sequencing (revises §2 by directive; acting decision AD-1, submitted for ratification):** after v1
+   device validation and v1.1: **v2 → mesh-1 (the v4 core: node identity, pairing, transport, signed
+   manifest, mesh router, asom-desktop) → v2.5 → v3 → remaining v4 items.** v2.5's per-app cloud-ban column
+   is pulled forward into mesh-1. The v4 "design session" entry criterion is satisfied by the mesh design
+   brief (`docs/design/mesh/`); the "v3 shipped" and "tailnet exists" criteria are replaced by "v2 shipped"
+   and "at least one Linux/Deck node commissioned".
+6. **A third invariant amendment is declared (acting decision AD-2, submitted for ratification).** §13's
+   count becomes three. Amendment 2 is unchanged. **Amendment 3 (mesh):** Invariant 1 — *narrowly relaxed*:
+   banded live state and owner-approved capability manifests may be transmitted automatically, but only to
+   explicitly paired nodes, and prompt/response content is never transmitted automatically (this is a
+   relaxation and is stated as one in user-facing copy); Invariant 3 — a new egress class `peer` (never
+   called `lan`, since overlay traffic may be relayed); Invariant 5 — node identity across devices is a
+   pinned node key verified at the transport layer (on-device app identity stays Binder-verified). Exact
+   wording: `docs/design/mesh/ASOM_MESH_DESIGN.md` §8.2.
+7. **The lab is authorised** (`lab/`, a separate pure-JVM Gradle build; ships nothing) as the sanctioned
+   exception to "do not start later versions", together with `desktop/`, `apple/` and `ubuntu-touch/`
+   scaffolds gated by hosted CI. The root build and `./gradlew jvmTest` are unchanged. Android app code is
+   untouched until v1 device validation.
+8. **Delegation:** "finish everything you can without my intervention; take the most sensible approach; set
+   different agents to work on different platforms." Verification honesty (§12 of the build brief) is not
+   relaxed: anything not compiled or run is labelled so; device-only items stay `NEEDS-DEVICE-VALIDATION`.
