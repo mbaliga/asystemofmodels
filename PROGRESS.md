@@ -525,3 +525,98 @@ they were re-run after fixing the harness and all were killed. M23 first failed 
 
 Oracle status: **self-oracled**. This lane was written with the spikes and `VerifyDsse.java` in view and in a full checkout, so it does not clear the `self` tag (ERRATA E-02).
 Result: PARTIAL — I0a Linux gates PASSED (LAB); macOS, simulator, container and lane-diff gates NOT RUN.
+## Lab L0.2a-json gate (track `lab-json`: `:json` and vector family M01) — 2026-09-30 — LAB (not device evidence)
+Base: 74fe9a04abcace8ebecfff906821e9efc7afa007 + uncommitted working tree   JDK: openjdk 21.0.10 (JDK 17 NOT available in this container, see below)   Runner: local (4 CPU container, `--no-daemon --max-workers=2`)
+Scope: LAB_SPEC 4.2 as `xyz.mdhv.asom.lab.json` (typed `JValue`, strict tokenizer/parser with the six reject codes, JCS integer profile, strict base64) and vector family M01. NOT done here: M01-201..206 (DER/raw signature codec, belongs to `:manifest`). Reading choices: `lab/ERRATA.md` ERR-JSON-1..10.
+
+```
+$ ./gradlew -p lab :json:test :conformance-runner:run --args='lines M01' --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process --rerun-tasks
+> Task :json:test
+> Task :conformance-runner:run
+BUILD SUCCESSFUL in 3m 16s
+(:json:test: 42 tests in 6 classes, 0 failures: RejectTableTest 11, CheckOrderTest 6, JcsTest 10, Base64StrictTest 7, PropertyTest 5, M01VectorFileTest 3)
+lines mode: 93 lines, e.g.
+M01-001 ok
+M01-002 ok
+M01-003 ok
+...
+M01-138 reject TRAILING_DATA
+M01-140 reject DUPLICATE_KEY
+M01-141 reject NON_INTEGER_NUMBER
+M01-142 reject NUMBER_RANGE
+...
+M01-323 reject ENCODING
+M01-324 reject ENCODING
+M01-325 ok
+verdict counts: ok 26, reject DUPLICATE_KEY 5, reject ENCODING 15, reject INVALID_UNICODE 13, reject MALFORMED_JSON 13, reject NON_INTEGER_NUMBER 11, reject NUMBER_RANGE 5, reject TRAILING_DATA 5
+
+$ ./gradlew -p lab labTest --stacktrace --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process --rerun-tasks
+BUILD SUCCESSFUL in 2m
+family W00: 7 vectors, 7 pass, 0 fail, 5 proposed-skipped, oracle: self=12
+family W01: 14 vectors, 14 pass, 0 fail, 0 proposed-skipped, proposed-lane 200 run: 200 pass, 0 fail, oracle: self=214
+family W01b: 9 vectors, 9 pass, 0 fail, 1 proposed-skipped, oracle: self=10
+family W02: 9 vectors, 9 pass, 0 fail, 0 proposed-skipped, oracle: self=9
+family W03: 7 vectors, 7 pass, 0 fail, 0 proposed-skipped, oracle: self=7
+family M01: 93 vectors, 93 pass, 0 fail, 0 proposed-skipped, oracle: self=93
+family R04: 28 vectors, 28 pass, 0 fail, 0 proposed-skipped, oracle: self=28
+law M01/b64-ok: 9 cases
+law M01/b64-reject: 15 cases
+law M01/jcs-idempotent: 17 cases
+law M01/jcs-ok: 17 cases
+law M01/reject-DUPLICATE_KEY: 5 cases
+law M01/reject-INVALID_UNICODE: 13 cases
+law M01/reject-MALFORMED_JSON: 13 cases
+law M01/reject-NON_INTEGER_NUMBER: 11 cases
+law M01/reject-NUMBER_RANGE: 5 cases
+law M01/reject-TRAILING_DATA: 5 cases
+law M01/utf16-key-order-trap: 3 cases
+
+$ python3 lab/tools/xcheck.py lab/conformance
+xcheck W01: 214 agree, 0 disagree
+xcheck keys: 2 agree, 0 disagree
+xcheck INDEX: 10 agree, 0 disagree
+xcheck M01: 94 agree, 0 disagree
+xcheck M02: absent
+xcheck M03: absent
+xcheck W05: absent
+$ python3 lab/json/tools/xcheck_m01.py lab/conformance --corpus lab/build/json-fuzz-corpus.tsv   (corpus = 4,000 mutated inputs written by the Kotlin PropertyTest: 113 ok, 2890 MALFORMED_JSON, 501 INVALID_UNICODE, 372 TRAILING_DATA, 69 NON_INTEGER_NUMBER, 53 NUMBER_RANGE, 2 DUPLICATE_KEY)
+xcheck M01 corpus: 4000 inputs
+xcheck M01: 4094 agree, 0 disagree
+
+$ lab/tools/isolation.sh --with-sdk
+isolation check 1 (root settings never name the lab): 0   expected 0
+isolation check 2 (no Android tooling in the lab classpath; ANDROID_HOME='' ANDROID_SDK_ROOT=''): 0   expected 0
+isolation check 2 positive control (the same output does list the Kotlin plugin, so a 0 above is not an empty read): 19   expected > 0
+isolation check 2 again with ANDROID_HOME=/tmp/tmp.gn44JrjGY3 (a directory standing in for an SDK): 0   expected 0   [CI-APPROX]
+isolation check 3 (no Android module in the lab build): 0   expected 0
+isolation check 3 positive control (the mapped root projects and the nine lab modules are listed): 15   expected 15
+isolation check 4: base 1963166c500d9e83b6b5b076bb3c11263ef3e429 (from lab/LAB_BASE_SHA), ancestor of HEAD confirmed
+isolation check 4: 136 protected files compared byte-for-byte against base 1963166c500d
+isolation check 4: OK (shipped tree byte-identical to the pinned base)
+law: 9 module build files checked against the LAB_SPEC 1.2 dependency table
+law: 52 Kotlin/Java sources scanned (no android imports, no frozen-enum reuse, no wildcard bind, listeners only in the harness or tests)
+law: OK
+ISOLATION: all checks passed
+Check 2 with a real Android SDK is NOT verified here (no SDK in this container; the directory stand-in is CI-APPROX).
+
+$ ./gradlew jvmTest --rerun-tasks --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process     (root build)
+run 1: BUILD FAILED, root tests: 139, failures: 1  -> AsomServerIntegrationTest.a stream with no usage still bills output tokens heuristically: NoSuchElementException: List is empty (the ledger-read race of ERRATA ERR-W01B-3; a root test, untouched by this track)
+run 2: BUILD SUCCESSFUL in 1m 27s, root tests: 139, failures: 0   (baseline: 139)
+
+Mutation checks (each edit made in the working tree, `:json:test` run, then the original restored byte for byte; every one FAILED as required):
+key sort by code point instead of code unit                -> FAILED (gradle exit 1), tests run=42, FAILED=4
+duplicate-key detection removed                            -> FAILED (gradle exit 1), tests run=42, FAILED=9
+trailing-data check removed                                -> FAILED (gradle exit 1), tests run=42, FAILED=5
+range check removed                                        -> FAILED (gradle exit 1), tests run=42, FAILED=9
+lone-surrogate check removed                               -> FAILED (gradle exit 1), tests run=42, FAILED=6
+depth limit off by one (17 allowed)                        -> FAILED (gradle exit 1), tests run=42, FAILED=2
+check order: duplicate outranks non-integer                -> FAILED (gradle exit 1), tests run=42, FAILED=6
+base64 unused-bits check removed (3-char tail)             -> FAILED (gradle exit 1), tests run=42, FAILED=5
+invalid UTF-8 whole-input check removed                    -> FAILED (gradle exit 1), tests run=42, FAILED=7
+-0 accepted as zero                                        -> FAILED (gradle exit 1), tests run=42, FAILED=3
+Under the key-sort mutation `:conformance-runner:test` also fails the M01 family: FAIL M01-001, FAIL M01-008, FAIL M01-012 (expected canonical bytes differ). `lines M01` was IDENTICAL under that mutation: the lines format is a verdict only (`ok` / `reject <CODE>`), so it cannot see canonical-byte differences; JUnit mode pins them.
+```
+Non-vacuity: every Cases group asserts a minimum case count (RejectTableTest rows 20 to 150, CheckOrderTest 56 pairs and 56 triples, PropertyTest 12,000 round-trip and 18,000 rendering checks, Base64StrictTest 177,156 exhaustive strings); the runner family requires each of the six reject codes, ENCODING, jcs-ok, jcs-idempotent, utf16-key-order-trap, b64-ok and b64-reject to be exercised (law counts above).
+Oracle status: self-oracled (no independent implementation has agreed yet). The Python second implementation and the Kotlin module were written in one session; their agreement (4,094 checks) does not clear the tag.
+Not verified here: JDK 17 (only JDK 21 in this container; the module targets JVM 17 bytecode and avoids JDK 21-only APIs, but that is unrun); ART, Swift lane; hosted CI.
+Result: PASSED (`:json` and M01, self-oracled; local LAB evidence only). The root suite showed one known ledger-race failure on its first cold run and passed on the second.

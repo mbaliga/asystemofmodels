@@ -13,6 +13,7 @@ fun checkerFor(family: String): FamilyChecker? = when (family) {
     "W02" -> W02Checker()
     "W03" -> W03Checker()
     "R04" -> R04Checker()
+    "M01" -> M01Checker()
     else -> null
 }
 

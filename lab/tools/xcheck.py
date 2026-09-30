@@ -25,7 +25,7 @@ import os
 import sys
 from decimal import ROUND_HALF_UP, Decimal
 
-VECTOR_DIRS = ["wire", "manifest", "router", "ledger"]
+VECTOR_DIRS = ["wire", "manifest", "router", "ledger", "json"]
 DEFAULT_FAMILIES = ["W01", "keys", "INDEX", "M01", "M02", "M03", "W05"]
 
 P256_P = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF
@@ -149,6 +149,16 @@ def check_index(root):
     return agree, disagree
 
 
+def check_m01(root):
+    """M01 is checked by the :json track's own Python implementation (lab/json/tools/xcheck_m01.py)."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("xcheck_m01", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "json", "tools", "xcheck_m01.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.check_m01(root)
+
+
 def family_present(root, family):
     return any(doc.get("family") == family for _, doc in load_vector_files(root))
 
@@ -168,6 +178,8 @@ def main(argv):
             res = check_keys(root)
         elif fam == "INDEX":
             res = check_index(root)
+        elif fam == "M01":
+            res = check_m01(root)
         elif family_present(root, fam):
             print(f"xcheck {fam}: present but not covered by this xcheck build", file=sys.stderr)
             bad += 1

@@ -18,7 +18,7 @@ val ALL_FAMILIES: List<String> = listOf(
 val L01_FAMILIES: List<String> = listOf("W00", "W01", "W01b", "W02", "W03", "R04")
 
 /** Directories of `lab/conformance` that hold vector envelopes (not scenarios, schemas, keys or history). */
-val VECTOR_DIRS: List<String> = listOf("wire", "manifest", "router", "ledger")
+val VECTOR_DIRS: List<String> = listOf("wire", "manifest", "router", "ledger", "json")
 
 val STATUSES = setOf("normative", "proposed", "illustrative")
 val ORIGINS = setOf("hand", "generated")

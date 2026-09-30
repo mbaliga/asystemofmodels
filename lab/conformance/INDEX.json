@@ -1,5 +1,11 @@
 [
   {
+    "path": "json/M01-jcs.json",
+    "sha256": "e3d14d2a084aa8f1492579b3d8b202d79a1075273134a7e7576b8b812a3c8bf5",
+    "family": "M01",
+    "status": "normative"
+  },
+  {
     "path": "keys/TEST-ONLY-keys.json",
     "sha256": "c8d70907827b473154235c0d9c92d5f5631bc721106eecde4c9bf1b9a07ea9fb",
     "family": "keys",
