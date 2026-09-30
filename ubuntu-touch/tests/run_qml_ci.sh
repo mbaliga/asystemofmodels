@@ -17,7 +17,17 @@ if command -v dbus-run-session >/dev/null; then runner=(dbus-run-session -- "${r
 failed=()
 for f in "$root"/tests/qml/tst_*.qml; do
   echo "run_qml_ci: == $(basename "$f")"
-  if ! "${runner[@]}" -input "$f"; then failed+=("$(basename "$f")"); fi
+  if "${runner[@]}" -input "$f"; then continue; fi
+  rc=$?
+  # A native crash (signal, exit >= 128 or -11 seen as 245) under the offscreen platform is retried once under a virtual X display,
+  # which is what the widgets are written for; the retry runs the same tests and both outcomes are printed.
+  if command -v xvfb-run >/dev/null && { [ "$rc" -ge 128 ] || [ "$rc" -eq 245 ]; }; then
+    echo "run_qml_ci: $(basename "$f") crashed under offscreen (exit $rc); retrying under xvfb"
+    if xvfb-run -a "${runner[@]/offscreen/xcb}" -input "$f"; then echo "run_qml_ci: $(basename "$f") passed under xvfb (offscreen crashed)"; continue; fi
+  else
+    echo "run_qml_ci: $(basename "$f") failed with exit $rc (no xvfb retry: exit is not a crash or xvfb-run is absent)"
+  fi
+  failed+=("$(basename "$f")")
 done
 if [ "${#failed[@]}" -gt 0 ]; then
   echo "run_qml_ci: FAILED test files: ${failed[*]}" >&2
