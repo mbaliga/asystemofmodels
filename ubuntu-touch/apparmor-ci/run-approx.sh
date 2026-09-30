@@ -30,6 +30,10 @@ sudo aa-status --enabled >/dev/null 2>&1 || die "AppArmor is not enabled on this
 profile="$here/.cache/xyz.mdhv.asom.ut.$policy.profile"
 "$here/make-profile.sh" --policy "$policy" --out "$profile" || die "the profile could not be generated from the pinned template"
 
+# The UBports template refers to @{CLICK_DIR}, which Ubuntu Touch declares in its own tunables; stock Ubuntu does not, and the parser
+# refuses the profile ("Found reference to variable CLICK_DIR, but is never declared"). Declare it here, as on the phone.
+grep -q '^@{CLICK_DIR}' "$profile" || { printf '@{CLICK_DIR}=/opt/click.ubuntu.com\n' | cat - "$profile" > "$profile.tmp" && mv "$profile.tmp" "$profile"; }
+
 pkg="xyz.mdhv.asom.ut"
 version="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$root/manifest.json.in")"
 name="${pkg}_asom_${version}"
