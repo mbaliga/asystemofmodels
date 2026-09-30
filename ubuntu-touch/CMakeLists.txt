@@ -18,10 +18,13 @@ else()
 endif()
 
 # The manifest and the desktop file keep their @CLICK_ARCH@ and @CLICK_FRAMEWORK@ placeholders: Clickable replaces them in the
-# install dir. They are copied, never configure_file()d (CMake would blank them). The AppArmor file is real JSON already (policy
-# 2404.1): Clickable parses it before any substitution, so a placeholder there fails the build (ERR-UT-CLICK-2).
+# install dir. They are copied, never configure_file()d (CMake would blank them). The AppArmor file is configure_file()d with
+# the policy version (2404.1) because Clickable parses it as JSON before any substitution (ERR-UT-CLICK-2); the .in keeps the
+# placeholder so the AppArmor approximation can test other policy versions.
 install(FILES manifest.json.in DESTINATION . RENAME manifest.json)
-install(FILES asom.apparmor.in DESTINATION . RENAME asom.apparmor)
+set(APPARMOR_POLICY 2404.1)
+configure_file(asom.apparmor.in ${CMAKE_CURRENT_BINARY_DIR}/asom.apparmor @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/asom.apparmor DESTINATION .)
 install(FILES asom.desktop.in DESTINATION . RENAME asom.desktop)
 install(FILES assets/asom.svg DESTINATION assets)
 install(DIRECTORY qml/ DESTINATION qml)
