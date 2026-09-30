@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    application
 }
 
 java {
@@ -13,6 +14,10 @@ kotlin {
     }
 }
 
+application {
+    mainClass.set("xyz.mdhv.asom.lab.sim.SimMainKt")
+}
+
 dependencies {
     api(project(":mesh-router"))
     api(project(":mesh-policy"))
@@ -23,5 +28,16 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    testLogging {
+        showStandardStreams = true
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+    systemProperty("asom.repoRoot", rootProject.projectDir.parentFile.absolutePath)
+}
+
+tasks.named<JavaExec>("run") {
     systemProperty("asom.repoRoot", rootProject.projectDir.parentFile.absolutePath)
 }

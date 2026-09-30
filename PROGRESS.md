@@ -988,3 +988,66 @@ Two design faults found and fixed while writing (not by a run on Windows): the L
 
 NOT VERIFIED (every item is `CI-ONLY / NOT RUN` or `NEEDS-DEVICE-VALIDATION`): anything on Windows: every `NCrypt*`, `Pdh*`, `Wts*`, `Power*`, `Wer*`, `OpenMutexW`/`CreateMutexW`, `GetLastInputInfo`, `SHQueryUserNotificationState`, `GetIfEntry2` binding (written from the documentation, layouts cross-checked against JNA `Structure` offsets on Linux only); that JNA raises the right `LastErrorException` for the mutex; the netsh parser on REAL netsh output (the fixtures are SYNTHETIC hand-written listings); the `lab-windows` and `winplatform` jobs and whether `actions/setup-python` has Python for `windows-11-arm`; the TPM tier (S-W1, AW01, AW02), the service-account key (S-W2), AF_UNIX peer credentials (S-W3), GPU counters (S-W4), thermal zones (S-W5), lock polarity and display state (S-W6), sleep, lid, Modern Standby, battery saver, presence with a person, Tailscale, real firewall profiles. `desktop-linux.yml`'s `desktop-isolation-with-sdk` job (real SDK) has not run. The control socket does NOT bind (WIN-CTL-1), the firewall helper only prints (WIN-FW-1), and JNA is a new dependency awaiting D23. `desktop/build.gradle.kts` `desktopTest` and `check_law.py` `ALLOWED_DEPS` still omit this module (WIN-GATE-1; not this track's files).
 Result: PARTIAL by design. W0 and W1/W2 as far as a Linux container can honestly go: PASSED (LAB and CI-APPROX); the Windows halves of the W0 and W1/W2 gates are written and NOT RUN.
+
+## Lab L0.6 gate (track `lab-router-sim`: `:mesh-router`, `:mesh-sim`, vector families R01, R02, R03, R05, R06, M08) — 2026-09-30 — LAB and SIMULATED (not device evidence)
+Base: dc8a45dc4ced1cb9c4b80eaf54c4ad17b7758b4e (working tree, uncommitted, not pushed)   JDK: openjdk 21.0.10 (JDK 17 lane NOT run here)   Runner: local   Every simulator line below is SIMULATED — NOT DEVICE EVIDENCE.
+```
+$ ./gradlew -p lab :mesh-router:test :mesh-sim:test :conformance-runner:run --args='lines R01,R02,R03,R04,R05,R06,M08'     BUILD SUCCESSFUL in 1m 10s
+tests: mesh-router 35, mesh-sim 36, 0 failures, 0 errors, 0 skipped (the test tasks are never up-to-date and never cached: outputs.upToDateWhen { false })
+lines mode: 343 vector lines (R01 81, R02 46, R03 31, R04 28, R05 44, R06 54, M08 59), every one `ok` or `reject <CODE>`, none an error
+$ ./gradlew -p lab :conformance-runner:test      BUILD SUCCESSFUL
+family R01: 81 vectors, 81 pass, 0 fail   R02: 46/46   R03: 31/31   R04: 28/28 (unchanged)   R05: 44/44   R06: 54/54   M08: 59/59      oracle: self on every line
+```
+Router laws (`:mesh-router:test`, property tests with an independent oracle, seeds 1..20, floor 100; the count is what exercised the law):
+```
+RL1a 1365   RL1b 330   RL1c 412   RL1 (the 28 R04 vectors through MeshRouter, 4 variants each) 112   RL2 438   RL3 1600   RL4 143   RL5 495   RL6 1600   RL7 1098   RL8 179   RL9 115
+RL10 702   RL10b 420   RL11 130   RL12 1086   RL13a 256   RL13b 156   RL18 171   RL20 20000 (largest P x 10^6 = 1,048,489,000,000 < 2^53)   RL20b 600   RL-H 1097   M08 no-peer-number 300
+every line reads `violations: 0`
+```
+Simulator laws (`:mesh-sim:test`; the oracles read the run records, the event log and the wire trace; floor 100 asserted for each):
+```
+RL4 8942   RL14 104019 (L-L1, L-L2, L-L3, L-L16 frame-byte sum, join on attemptId)   RL15 50403 (L-L4, L-L5)   RL15b 11101 (L-L5b over 10,786 requests, plus 315 error-path requests checked one by one: terminal row, header, status, reach)   RL16 10790   RL17 9154   RL18 236 (+ returned after cooldown, asserted > 0)
+RL19 100 runs (Jain minimum 965 permille; on-time at most 258 permille, so every run is saturated)   RL21 10790 decisions replayed, diff empty   RL22 406        L-L1..L-L14 over every trace: 0 violations; L-L13 24 cases (F-ledger-full)
+scenarios for seeds 1..20: SC01 (Mac serves >= 950 permille of chat, phone energy below B1 by >= 800 permille), SC04 (20 of 20 seeds: typed MESH_STREAM_INTERRUPTED, joined ledgers, no attempt after delivered bytes),
+   SC06 (DISCREPANT within 5 kept observations; the liar's share after request 50 <= B4's + 100 permille), SC09 (zero peer or cloud attempts for device-only and local-only requests): all pass
+fault kinds: all 17 exercised by their own scenario under seeds 1..3 and pass the laws (FaultInjectionTest); T-RL4 flips the registry 1 ms after offers: 366 attempts cancelled before the body
+```
+Simulator run (per-scenario table; `./gradlew -p lab :mesh-sim:run --args='--replay --out /tmp/simgate'`; output files `events.jsonl` and `decisions.jsonl` each start with the record {"label":"SIMULATED — NOT DEVICE EVIDENCE"}):
+```
+scenario | seed | variant | decision | reason | ledger rows | law violations | SIMULATED — NOT DEVICE EVIDENCE
+SC01  | seed 1   | B3        | decision: mac first (988 permille)   | reason: peer:best-score/time         | ledger rows: 11821  | law violations: 0 | SIMULATED — NOT DEVICE EVIDENCE
+    replay SC01: 1067 decisions replayed from events.jsonl, diff EMPTY | SIMULATED — NOT DEVICE EVIDENCE
+SC04  | seed 4   | B3        | decision: phone first (854 permille) | reason: self:only-eligible           | ledger rows: 201    | law violations: 0 | SIMULATED — NOT DEVICE EVIDENCE
+    replay SC04: 55 decisions replayed from events.jsonl, diff EMPTY | SIMULATED — NOT DEVICE EVIDENCE
+SC06  | seed 6   | B3        | decision: mac first (658 permille)   | reason: peer:best-score/time         | ledger rows: 3594   | law violations: 0 | SIMULATED — NOT DEVICE EVIDENCE
+    replay SC06: 390 decisions replayed from events.jsonl, diff EMPTY | SIMULATED — NOT DEVICE EVIDENCE
+SC09  | seed 9   | B3        | decision: phone first (780 permille) | reason: self:only-eligible           | ledger rows: 367    | law violations: 0 | SIMULATED — NOT DEVICE EVIDENCE
+    replay SC09: 100 decisions replayed from events.jsonl, diff EMPTY | SIMULATED — NOT DEVICE EVIDENCE
+SIMULATED — NOT DEVICE EVIDENCE: 4 run(s) of 4 scenario(s), 0 with law violations
+```
+Isolation and root:
+```
+$ lab/tools/isolation.sh      check 1: 0 (expected 0)   check 2: 0 (positive control 19)   check 3: 0 (positive control 15)   check 4: 136 protected files byte-identical to base 770a44da21e7   law: 157 sources scanned, OK   ISOLATION: all checks passed
+   (the first run FAILED, honestly: `mesh-sim` named `:json` and two test files spelled the frozen egress enum member; both fixed, then re-run)
+$ ./gradlew cleanTest jvmTest --no-build-cache      root tests: 139, failures 0 (baseline 139)
+   The FIRST uncached run failed one test, `AsomServerIntegrationTest.every routed request writes exactly one ledger row` (a read of the ledger straight after the response, the race ERR-W01B-3 describes); nothing under core/ or server/ is touched by this track; the re-run passed 139/0. Reported, not hidden.
+```
+Mutation checks (each applied to the real source, the targeted tests run, the original restored and diffed against the saved copy; every one FAILED as required except where stated):
+```
+tracker reads a peer-reported token count (AttemptObserver, usage.completion_tokens)     : noPeerSuppliedNumberCanRaiseAClaim FAILS ("changed the answer length: expected 1200 but was 40000000")
+tracker no longer only lowers (clamp min(1000, ..) and final min(rate, claim) removed)    : 2 tests fail (observationOnlyLowersAClaim, paddingToTheCapInflates...)
+tracker never says DISCREPANT (best < DISC returns WEAK)                                  : SC06 fails ("the liar never reached DISCREPANT")
+cap bound weakened (ceilDiv(wouldWin, 4) -> ceilDiv(wouldWin, 2))                         : RL11 fails
+merge order (auto: cloud placed before usable sovereign)                                  : 4 laws fail (RL1c, RL10, RL1, RL11)
+hard filter F9 removed (peer FSM not SERVING)                                             : RL5 fails
+peer transport cooldown shortened (30 s -> 10 s)                                          : RL18 fails in the simulator (20 violations in the suite run, 28 in T-RL18)
+provider breaker curve changed (cap 900 s -> 600 s)                                       : R06-050 (breaker pinned to the real CooldownRegistry) fails
+failover: mid-stream loss retried instead of failing in band                              : SC04 fails ("the mid-stream vanish interrupted no request")
+body-send guards removed (eligibleNow and worseNow)                                       : T-RL4 fails (494 RL4 violations)
+body-send guard `eligibleNow` alone removed                                               : NOT CAUGHT (the re-plan in worseNow already drops an ineligible peer; the two guards are redundant against this test)
+plan computed from state that is not in the event log (hidden reservation on the Mac)     : RL21 fails (19,238 violations)
+```
+Findings for the owner (lab/ERRATA.md ERR-R6-*): (1) R3-OVERCLAIM-1 stands: the padding worst case is 6.8x in bytes and 5.4x in predicted time, not 2x; the tracker still only lowers a claim. (2) R6-FINDING-COLD (ERR-R6-14): a lender's cold-load time is in `elapsed` but not in `predicted`, so an HONEST lender used less often than every 300 s reaches DISCREPANT after 5 kept observations (7 of 8 seeds of T-COLD); not fixed, pinned by FindingsTest. (3) SC01's 950 permille cannot hold over a short run because RL11 gives an UNVERIFIED key 1 win in 4 (ERR-R6-15). (4) BLOCKED and not invented: classCeiling, signedReferenceP90 values, confFloor, knownBadConf, the 1-in-10 brand-new-peer cap (ERR-R6-3).
+Not verified here: JDK 17 lane; any device; the simulator's numbers are invented lab values, not measurements, and its thermal model is a threshold; RL19 is a weak law in a simulator without per-app scheduling (ERR-R6-17); the `duplicate-attempt` scenario skips L-L12, L-L16 and RL22 by construction (ERR-R6-20); the scenarios live in lab/mesh-sim/, not lab/conformance/scenarios/ (ERR-R6-13); no independent implementation has agreed with the vectors yet (`ref.py` is same-session).
+Oracle status: self-oracled (hand-typed expectations cross-checked by `lab/mesh-router/tools/ref.py`, an independent reference written in the same session; it never clears the oracle tag)
+Result: PASSED (local LAB and SIMULATED evidence only)
