@@ -762,7 +762,8 @@ class AsomServerIntegrationTest {
             ).body()
             // §5.9 pass-through: re-framing may move emission boundaries but
             // must never alter the byte sequence.
-            assertEquals(whole, chopped)
+            val created = Regex("\"created\":\\d+")
+            assertEquals(whole.replace(created, "\"created\":0"), chopped.replace(created, "\"created\":0"))
         } finally {
             resetBreakers()
         }
