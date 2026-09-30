@@ -80,14 +80,14 @@ class SinkTest {
 
     @Test
     fun aNewLedgerFileIsCreatedWithMode0600() {
-        org.junit.jupiter.api.Assumptions.assumeTrue(
-            java.nio.file.FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),
-            "no POSIX permissions on this file system",
-        )
         val f = tmp()
         Files.delete(f)
         JsonlSink(f).use { it.append(row(1)) }
-        assertEquals("rw-------", java.nio.file.attribute.PosixFilePermissions.toString(Files.getPosixFilePermissions(f)))
+        if (java.nio.file.FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+            assertEquals("rw-------", java.nio.file.attribute.PosixFilePermissions.toString(Files.getPosixFilePermissions(f)))
+        } else {
+            assertTrue(Files.isRegularFile(f), "the sink still creates the file where there are no POSIX permissions")
+        }
         Files.delete(f)
     }
 
