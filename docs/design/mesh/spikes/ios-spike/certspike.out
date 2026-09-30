@@ -1,0 +1,12 @@
+[0/1] Planning build
+Building for debugging...
+[0/3] Write swift-version-6A52383ED409C6A7.txt
+Build of product 'CertSpike' complete! (2.78s)
+nik subject: CN=asom-node sigAlg: SignatureAlgorithm.ecdsaWithSHA256
+leaf issuer: CN=asom-node version: X509v1
+leaf signed by nik key: true
+leaf self-signed (must be false): false
+nik self-signed: true
+SPKI bytes: 91 equal to openssl extraction: true
+tbsCertificateBytes available: 185 bytes
+tampered leaf verifies (must be false): false

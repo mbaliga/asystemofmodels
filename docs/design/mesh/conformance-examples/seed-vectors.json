@@ -1,0 +1,135 @@
+{
+ "M01": {
+  "id": "M01-001",
+  "origin": "hand",
+  "status": "illustrative",
+  "description": "UTF-16 code-unit key order (U+1F600 sorts BEFORE U+FF21), '/' not escaped, control chars as lowercase \\u00XX, no Unicode normalization",
+  "input_json_escaped": "{\"b\": 1, \"a\": 2, \"\\u00e9\": 3, \"\\ud83d\\ude00\": 4, \"\\uff21\": 5, \"url\": \"https://x/y\", \"ctl\": \"\\u0001\\n\", \"nfd\": \"e\\u0301\"}",
+  "expect_utf8_hex": "7b2261223a322c2262223a312c2263746c223a225c75303030315c6e222c226e6664223a2265cc81222c2275726c223a2268747470733a2f2f782f79222c22c3a9223a332c22f09f9880223a342c22efbca1223a357d",
+  "expect_text": "{\"a\":2,\"b\":1,\"ctl\":\"\\u0001\\n\",\"nfd\":\"é\",\"url\":\"https://x/y\",\"é\":3,\"😀\":4,\"Ａ\":5}",
+  "trap_codepoint_order_WRONG": "{\"a\":2,\"b\":1,\"ctl\":\"\\u0001\\n\",\"nfd\":\"é\",\"url\":\"https://x/y\",\"é\":3,\"Ａ\":5,\"😀\":4}"
+ },
+ "KEY": {
+  "TEST_ONLY": true,
+  "curve": "P-256",
+  "jwk": {
+   "kty": "EC",
+   "crv": "P-256",
+   "x": "wCAcRYew3_8Us5ZsqSBtOOuMMdZszDoGBK8QHlJo9Co",
+   "y": "JksSDlYCCf7hFaqCkemicNNR0bSeUVdtVuqq7Q2EWPc"
+  },
+  "spki_der_b64": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwCAcRYew3/8Us5ZsqSBtOOuMMdZszDoGBK8QHlJo9ComSxIOVgIJ/uEVqoKR6aJw01HRtJ5RV21W6qrtDYRY9w==",
+  "W05_spki_sha256_b64url": "OcEjhCYiYrqpV_-aermCh1stfS6wFdwEicGWmkHbHJ0",
+  "openssl_verify_of_M02_001_der": "Verified OK"
+ },
+ "M02": [
+  {
+   "id": "M02-001",
+   "description": "ES256 raw r||s over JCS bytes; r has a leading zero octet (must be kept: fixed 32-octet width)",
+   "signed_text": "{\"decodeMilliTokPerSec\":12345,\"expiresAtMs\":1759708800000,\"issuedAtMs\":1759104000000,\"nodeId\":\"n_test\",\"schema\":\"asom.manifest/0-example\"}",
+   "sig_raw_b64url": "AP5y_3aHjwf81rIj98N5_oy87HKdZ0T6yNvW_OYdkxkUcHFAC-mjvsFPPg3G6BWO_gkTXyQe1GVzWeBSqgxQuA",
+   "r_leading_zero_octets": 1,
+   "expect": "accept",
+   "selfcheck": true,
+   "tries_to_find": 423
+  },
+  {
+   "id": "M02-002",
+   "description": "same signature with S replaced by its high form (n - s where needed): ECDSA verification accepts it; implementations MUST accept and MUST NOT use signature bytes as an identifier",
+   "sig_raw_b64url": "AP5y_3aHjwf81rIj98N5_oy87HKdZ0T6yNvW_OYdkxnrj46-9BZcQj6wwfI5F-pwvt3nToL4yh-AX-pwUlbUmQ",
+   "expect": "accept",
+   "selfcheck": true
+  }
+ ],
+ "M03": [
+  {
+   "id": "M03-001",
+   "description": "one integer changed after signing",
+   "signed_text": "{\"decodeMilliTokPerSec\":12346,\"expiresAtMs\":1759708800000,\"issuedAtMs\":1759104000000,\"nodeId\":\"n_test\",\"schema\":\"asom.manifest/0-example\"}",
+   "sig_raw_b64url": "AP5y_3aHjwf81rIj98N5_oy87HKdZ0T6yNvW_OYdkxkUcHFAC-mjvsFPPg3G6BWO_gkTXyQe1GVzWeBSqgxQuA",
+   "expect": "reject:SIGNATURE_INVALID",
+   "selfcheck_verify_result": false
+  },
+  {
+   "id": "M03-002",
+   "description": "DER-encoded signature supplied where the envelope requires 64-octet raw r||s",
+   "sig_b64url": "MEQCIAD-cv92h48H_NayI_fDef6MvOxynWdE-sjb1vzmHZMZAiAUcHFAC-mjvsFPPg3G6BWO_gkTXyQe1GVzWeBSqgxQuA",
+   "len": 70,
+   "expect": "reject:SIGNATURE_ENCODING"
+  },
+  {
+   "id": "M03-003",
+   "description": "valid signature by a different key than the pinned node key",
+   "sig_raw_b64url": "Pd337XSyJz7y9WLMCpiEeqNRnpTxL7sIDBgTyMtwtEjKj1H8_WpHwsu5jBQSkXMOupwjPxOXr22vuYVGQ0p7-A",
+   "expect": "reject:KEY_NOT_PINNED",
+   "selfcheck_verifies_under_other_key": true
+  },
+  {
+   "id": "M03-004",
+   "description": "non-integer number in signed object",
+   "input_text": "{\"decodeMilliTokPerSec\":12.5}",
+   "expect": "reject:NON_INTEGER_NUMBER"
+  },
+  {
+   "id": "M03-005",
+   "description": "duplicate member name",
+   "input_text": "{\"a\":1,\"a\":1}",
+   "expect": "reject:DUPLICATE_KEY"
+  }
+ ],
+ "W01_usd": [
+  {
+   "costEst_double_repr": "0.00012",
+   "expect": "0.00012",
+   "trap_exact_binary_then_half_up": "0.00012",
+   "trap_half_even_on_decimal": "0.00012"
+  },
+  {
+   "costEst_double_repr": "1.25e-09",
+   "expect": "0",
+   "trap_exact_binary_then_half_up": "0",
+   "trap_half_even_on_decimal": "0"
+  },
+  {
+   "costEst_double_repr": "1.25e-07",
+   "expect": "0.00000013",
+   "trap_exact_binary_then_half_up": "0.00000012",
+   "trap_half_even_on_decimal": "0.00000012"
+  },
+  {
+   "costEst_double_repr": "2.5e-08",
+   "expect": "0.00000003",
+   "trap_exact_binary_then_half_up": "0.00000002",
+   "trap_half_even_on_decimal": "0.00000002"
+  },
+  {
+   "costEst_double_repr": "123.456789125",
+   "expect": "123.45678913",
+   "trap_exact_binary_then_half_up": "123.45678913",
+   "trap_half_even_on_decimal": "123.45678912"
+  },
+  {
+   "costEst_double_repr": "0.30000000000000004",
+   "expect": "0.3",
+   "trap_exact_binary_then_half_up": "0.3",
+   "trap_half_even_on_decimal": "0.3"
+  }
+ ],
+ "W03": {
+  "id": "W03-001",
+  "description": "events split across reads, comment line, CRLF terminator, [DONE]",
+  "chunks_b64": [
+   "ZGF0YTog",
+   "eyJhIjoxfQoK",
+   "OiBrZWVwLWFsaXZlCgpkYXRhOiB7ImIi",
+   "OjJ9DQoNCmRhdGE6IFtET05FXQoK"
+  ],
+  "expect": {
+   "events": [
+    "{\"a\":1}",
+    "{\"b\":2}"
+   ],
+   "done": true
+  }
+ }
+}

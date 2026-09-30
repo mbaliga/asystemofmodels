@@ -1,0 +1,197 @@
+Updating https://github.com/apple/swift-crypto.git
+Updating https://github.com/apple/swift-asn1.git
+Updated https://github.com/apple/swift-asn1.git (0.61s)
+Updated https://github.com/apple/swift-crypto.git (0.65s)
+Computing version for https://github.com/apple/swift-crypto.git
+Computed https://github.com/apple/swift-crypto.git at 4.5.2 (2.41s)
+Computing version for https://github.com/apple/swift-asn1.git
+Computed https://github.com/apple/swift-asn1.git at 1.7.3 (0.02s)
+Working copy of https://github.com/apple/swift-crypto.git resolved at 4.5.2
+[0/1] Planning build
+Building for debugging...
+[0/16] Write sources
+[1/21] Compiling KeccakHash.c
+[1/21] Write sources
+[3/21] Compiling CXKCPShims shims.c
+[4/21] Compiling SimpleFIPS202.c
+[5/21] Compiling KeccakSponge.c
+[6/21] Compiling KeccakP-1600-opt64.c
+[6/21] Write swift-version-6A52383ED409C6A7.txt
+[8/21] Compiling CCryptoBoringSSLShims shims.c
+[10/28] Emitting module CryptoBoringWrapper
+[11/29] Compiling CryptoBoringWrapper RandomBytes.swift
+[12/29] Compiling CryptoBoringWrapper EllipticCurve.swift
+[13/29] Compiling CryptoBoringWrapper EllipticCurvePoint.swift
+[14/29] Compiling CryptoBoringWrapper ArbitraryPrecisionInteger.swift
+[15/29] Compiling CryptoBoringWrapper FiniteFieldArithmeticContext.swift
+[16/29] Compiling CryptoBoringWrapper BoringSSLAEAD.swift
+[17/29] Compiling CryptoBoringWrapper CryptoKitErrors_boring.swift
+[18/30] Wrapping AST for CryptoBoringWrapper for debugging
+[20/102] Compiling Crypto AES-GCM.swift
+[21/102] Compiling Crypto AES-GCM_boring.swift
+[22/102] Compiling Crypto ChaChaPoly_boring.swift
+[23/102] Compiling Crypto ChaChaPoly.swift
+[24/102] Compiling Crypto Cipher.swift
+[25/102] Compiling Crypto Nonces.swift
+[26/102] Compiling Crypto ASN1.swift
+[27/102] Compiling Crypto ASN1Any.swift
+[28/102] Compiling Crypto ASN1BitString.swift
+[29/102] Compiling Crypto ASN1Boolean.swift
+[30/102] Compiling Crypto ASN1Identifier.swift
+[31/102] Compiling Crypto ASN1Integer.swift
+[32/102] Compiling Crypto ASN1Null.swift
+[33/102] Compiling Crypto ASN1OctetString.swift
+[34/102] Compiling Crypto ASN1Strings.swift
+[35/102] Compiling Crypto ArraySliceBigint.swift
+[36/102] Compiling Crypto GeneralizedTime.swift
+[37/102] Compiling Crypto ObjectIdentifier.swift
+[38/102] Compiling Crypto ECDSASignature.swift
+[39/102] Compiling Crypto PEMDocument.swift
+[40/102] Compiling Crypto PKCS8PrivateKey.swift
+[41/102] Compiling Crypto SEC1PrivateKey.swift
+[42/102] Compiling Crypto SubjectPublicKeyInfo.swift
+[43/102] Compiling Crypto CryptoError_boring.swift
+[44/102] Emitting module Crypto
+[45/125] Compiling Crypto Insecure_HashFunctions.swift
+[46/125] Compiling Crypto MLKEM_boring.swift
+[47/125] Compiling Crypto MLKEM_wrapper.swift
+[48/125] Compiling Crypto XWing_boring.swift
+[49/125] Compiling Crypto KEM-Errors.swift
+[50/125] Compiling Crypto KEM.swift
+[51/125] Compiling Crypto MLKEM.swift
+[52/125] Compiling Crypto XWing.swift
+[53/125] Compiling Crypto ECDH_boring.swift
+[54/125] Compiling Crypto DH.swift
+[55/125] Compiling Crypto ECDH.swift
+[56/125] Compiling Crypto ANSIx963.swift
+[57/125] Compiling Crypto HKDF.swift
+[58/125] Compiling Crypto AESWrap.swift
+[59/125] Compiling Crypto AESWrap_boring.swift
+[60/125] Compiling Crypto Ed25519_boring.swift
+[61/125] Compiling Crypto NISTCurvesKeys_boring.swift
+[62/125] Compiling Crypto X25519Keys_boring.swift
+[63/125] Compiling Crypto Curve25519.swift
+[64/125] Compiling Crypto Ed25519Keys.swift
+[65/125] Compiling Crypto NISTCurvesKeys.swift
+[66/125] Compiling Crypto X25519Keys.swift
+[67/125] Compiling Crypto SymmetricKeys.swift
+[68/125] Compiling Crypto CryptoKitErrors.swift
+[69/125] Compiling Crypto Digest_boring.swift
+[70/125] Compiling Crypto Digest.swift
+[71/125] Compiling Crypto Digests.swift
+[72/125] Compiling Crypto HashFunctions.swift
+[73/125] Compiling Crypto HashFunctions_SHA2.swift
+[74/125] Compiling Crypto HashFunctions_SHA3.swift
+[75/125] Compiling Crypto Digest_xkcp.swift
+[76/125] Compiling Crypto HPKE-AEAD.swift
+[77/125] Compiling Crypto HPKE-Ciphersuite.swift
+[78/125] Compiling Crypto HPKE-KDF.swift
+[79/125] Compiling Crypto HPKE-KexKeyDerivation.swift
+[80/125] Compiling Crypto HPKE-LabeledExtract.swift
+[81/125] Compiling Crypto HPKE-Utils.swift
+[82/125] Compiling Crypto DHKEM.swift
+[83/125] Compiling Crypto HPKE-KEM-Curve25519.swift
+[84/125] Compiling Crypto HPKE-NIST-EC-KEMs.swift
+[85/125] Compiling Crypto HPKE-KEM.swift
+[86/125] Compiling Crypto HPKE-Errors.swift
+[87/125] Compiling Crypto HPKE.swift
+[88/125] Compiling Crypto HPKE-Context.swift
+[89/125] Compiling Crypto HPKE-KeySchedule.swift
+[90/125] Compiling Crypto HPKE-Modes.swift
+[91/125] Compiling Crypto Insecure.swift
+[92/125] Compiling Crypto HMAC.swift
+[93/125] Compiling Crypto MACFunctions.swift
+[94/125] Compiling Crypto MessageAuthenticationCode.swift
+[95/125] Compiling Crypto AES.swift
+[96/125] Compiling Crypto ECDSASignature_boring.swift
+[97/125] Compiling Crypto ECDSA_boring.swift
+[98/125] Compiling Crypto EdDSA_boring.swift
+[99/125] Compiling Crypto MLDSA_boring.swift
+[100/125] Compiling Crypto MLDSA_wrapper.swift
+[101/125] Compiling Crypto ECDSA.swift
+[102/125] Compiling Crypto Ed25519.swift
+[103/125] Compiling Crypto MLDSA.swift
+[104/125] Compiling Crypto Signature.swift
+[105/125] Compiling Crypto CryptoKitErrors_boring.swift
+[106/125] Compiling Crypto Optional+withUnsafeBytes_boring.swift
+[107/125] Compiling Crypto RNG_boring.swift
+[108/125] Compiling Crypto SafeCompare_boring.swift
+[109/125] Compiling Crypto Zeroization_boring.swift
+[110/125] Compiling Crypto _CryptoModuleAnchor.swift
+[111/125] Compiling Crypto PrettyBytes.swift
+[112/125] Compiling Crypto SafeCompare.swift
+[113/125] Compiling Crypto SecureBytes.swift
+[114/125] Compiling Crypto Zeroization.swift
+[115/126] Wrapping AST for Crypto for debugging
+[117/128] Emitting module AsomDSSE
+[118/128] Compiling AsomDSSE AsomDSSE.swift
+[120/130] Emitting module AsomDSSETests
+[121/130] Compiling AsomDSSETests CrossCheckTests.swift
+[123/131] Emitting module AsomKitSpikePackageDiscoveredTests
+[124/131] Compiling AsomKitSpikePackageDiscoveredTests AsomDSSETests.swift
+[125/131] Compiling AsomKitSpikePackageDiscoveredTests all-discovered-tests.swift
+[127/131] Emitting module AsomKitSpikePackageTests
+[128/131] Compiling AsomKitSpikePackageTests runner.swift
+[129/132] Wrapping AST for AsomKitSpikePackageTests for debugging
+[130/132] Write Objects.LinkFileList
+[131/132] Linking AsomKitSpikePackageTests.xctest
+Build complete! (24.66s)
+Test Suite 'All tests' started at 2026-09-30 03:53:07.323
+Test Suite 'debug.xctest' started at 2026-09-30 03:53:07.325
+Test Suite 'CrossCheckTests' started at 2026-09-30 03:53:07.325
+Test Case 'CrossCheckTests.testCrossCheckAgainstJCA' started at 2026-09-30 03:53:07.325
+SWIFT-CROSSCHECK-BEGIN
+M02-101 sigValidUnderKey1=true
+M02-102 sigValidUnderKey1=true
+M02-103 sigValidUnderKey1=true
+M02-104 sigValidUnderKey1=true
+M02-105 sigValidUnderKey1=true
+M02-106 sigValidUnderKey1=true
+M02-107 sigValidUnderKey1=true
+M02-108 sigValidUnderKey1=true
+M02-109 sigValidUnderKey1=true
+M03-101 sigValidUnderKey1=false
+M03-102 sigValidUnderKey1=false
+M03-103 sigValidUnderKey1=false
+M03-104 sigValidUnderKey1=true
+M03-105 sigValidUnderKey1=true
+M03-106 sigValidUnderKey1=true
+M03-107 sigValidUnderKey1=true
+M03-108 sigValidUnderKey1=true
+M03-109 sigValidUnderKey1=true
+M03-110 sigValidUnderKey1=true
+M03-111 sigValidUnderKey1=true
+M03-112 sigValidUnderKey1=true
+M03-113 sigValidUnderKey1=false
+M03-114 sigValidUnderKey1=true
+M03-115 sigValidUnderKey1=true
+M03-116 sigValidUnderKey1=true
+M03-117 sigValidUnderKey1=true
+M03-118 sigValidUnderKey1=false
+M03-119 sigValidUnderKey1=true
+M03-120 sigValidUnderKey1=true
+M03-121 sigValidUnderKey1=true
+M03-122 sigValidUnderKey1=false
+M03-123 sigValidUnderKey1=true
+M03-124 sigValidUnderKey1=true
+M03-125 sigValidUnderKey1=false
+M03-126 sigValidUnderKey1=true
+M03-127 sigValidUnderKey1=true
+M03-128 sigValidUnderKey1=true
+SWIFT-CROSSCHECK-END
+Test Case 'CrossCheckTests.testCrossCheckAgainstJCA' passed (0.041 seconds)
+Test Case 'CrossCheckTests.testHighSAcceptedAndLowSNormalisation' started at 2026-09-30 03:53:07.366
+SIGNER-HIGH-S 199/400
+Test Case 'CrossCheckTests.testHighSAcceptedAndLowSNormalisation' passed (0.109 seconds)
+Test Case 'CrossCheckTests.testStrictSPKIRejectsCompressedAndTrailing' started at 2026-09-30 03:53:07.475
+Test Case 'CrossCheckTests.testStrictSPKIRejectsCompressedAndTrailing' passed (0.001 seconds)
+Test Suite 'CrossCheckTests' passed at 2026-09-30 03:53:07.476
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.151 (0.151) seconds
+Test Suite 'debug.xctest' passed at 2026-09-30 03:53:07.476
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.151 (0.151) seconds
+Test Suite 'All tests' passed at 2026-09-30 03:53:07.476
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.151 (0.151) seconds
+◇ Test run started.
+↳ Testing Library Version: 6.1 (43b6f88e2f2712e)
+↳ Target Platform: x86_64-unknown-linux-gnu
+✔ Test run with 0 tests passed after 0.001 seconds.
