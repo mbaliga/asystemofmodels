@@ -57,12 +57,14 @@ import xyz.mdhv.asom.desktop.win.service.ServiceHost
 /** The Windows host as a whole: the seam, the control socket's ACL policy, the service entry, the doctor, and stdout hygiene (H3). */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class HostTest {
+    private val onWindows = System.getProperty("os.name").orEmpty().startsWith("Windows")
+
     private val laws = LawCounter(
         listOf(
             "seam-paths", "seam-refuses-system-account", "seam-gate-closed-by-default", "seam-no-listener", "selftest-no-failures",
             "ctl-identity", "ctl-precheck", "ctl-start-not-yet-implemented", "service-lifecycle", "service-single-identity",
-            "main-mutex", "doctor-lines", "doctor-tailscale", "doctor-lid", "stdout-no-secrets", "unavailable-off-windows",
-        ),
+            "main-mutex", "doctor-lines", "doctor-tailscale", "doctor-lid", "stdout-no-secrets",
+        ) + if (onWindows) emptyList() else listOf("unavailable-off-windows"),
     )
 
     private fun platform(native: FakeNative = FakeNative(), user: String = "alice", clock: FakeClock = FakeClock()) =
@@ -105,6 +107,7 @@ class HostTest {
     }
 
     @Test
+    @org.junit.jupiter.api.condition.DisabledOnOs(org.junit.jupiter.api.condition.OS.WINDOWS)
     fun `constructing the host on a machine without Windows touches no Windows API, and the first real call says so`() {
         val p = WinPlatform() // real ports, no Windows here
         assertEquals("windows", p.id)
