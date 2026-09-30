@@ -103,6 +103,9 @@ class HttpResult(
     val xAsom: Map<String, String> get() = headers.filterKeys { it.startsWith("x-asom-") }
 }
 
+/** A server that kills the socket mid-stream can reset the connection before the client has parsed the head (seen on a Windows runner); only this loss is retried, on a fresh server, at most twice. */
+const val NO_HEAD = "no response head received"
+
 /** One request against a fresh real `AsomServer` on `127.0.0.1:<ephemeral>`; test scope only (LAB_SPEC R5). */
 class ServerHarness(
     catalogue: Catalogue,
@@ -167,7 +170,7 @@ class ServerHarness(
         } catch (e: IOException) {
             incomplete = true
         }
-        val ri = info ?: throw LawViolation("no response head received")
+        val ri = info ?: throw LawViolation(NO_HEAD)
         val headers = LinkedHashMap<String, String>()
         ri.headers().map().forEach { (k, v) -> headers[k.lowercase()] = v.first() }
         return HttpResult(ri.statusCode(), headers, body, incomplete)
@@ -287,6 +290,20 @@ fun verifyExchangeLaws(x: Exchange, counters: (String) -> Unit) {
 
 /** Runs one request and returns the exchange with the rows the request appended (waits for streamed rows). */
 fun runExchange(input: JsonObject, expectedRows: Int?, wrap: (ProviderDriver) -> ProviderDriver = { it }): Exchange {
+    var last: LawViolation? = null
+    repeat(3) { attempt ->
+        try {
+            return runExchangeOnce(input, expectedRows, wrap)
+        } catch (e: LawViolation) {
+            if (e.message != NO_HEAD) throw e
+            last = e
+            if (attempt < 2) System.err.println("conformance: ${input.strOrNull("id") ?: "request"}: the response head was lost to a reset socket, retrying on a fresh server (attempt ${attempt + 2} of 3)")
+        }
+    }
+    throw last!!
+}
+
+private fun runExchangeOnce(input: JsonObject, expectedRows: Int?, wrap: (ProviderDriver) -> ProviderDriver): Exchange {
     ServerHarness(ServerHarness.catalogueFor(input), ServerHarness.keyMap(input), wrap(ServerHarness.driverFor(input)), input.strList("cooling")).start().use { h ->
         val http = h.send(input.obj("request"))
         val rows = h.awaitRows(expectedRows ?: 1)
