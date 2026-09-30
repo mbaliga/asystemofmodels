@@ -17,8 +17,9 @@ else()
     set(ASOM_UT_TRIPLET aarch64-linux-gnu)
 endif()
 
-# The manifest, the AppArmor policy and the desktop file keep their @CLICK_ARCH@, @CLICK_FRAMEWORK@ and @APPARMOR_POLICY@
-# placeholders: Clickable replaces them in the install dir. They are copied, never configure_file()d (CMake would blank them).
+# The manifest and the desktop file keep their @CLICK_ARCH@ and @CLICK_FRAMEWORK@ placeholders: Clickable replaces them in the
+# install dir. They are copied, never configure_file()d (CMake would blank them). The AppArmor file is real JSON already (policy
+# 2404.1): Clickable parses it before any substitution, so a placeholder there fails the build (ERR-UT-CLICK-2).
 install(FILES manifest.json.in DESTINATION . RENAME manifest.json)
 install(FILES asom.apparmor.in DESTINATION . RENAME asom.apparmor)
 install(FILES asom.desktop.in DESTINATION . RENAME asom.desktop)

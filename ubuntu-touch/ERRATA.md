@@ -54,3 +54,7 @@ CONSERVATIVE reading was taken and is recorded here. Nothing was silently guesse
 | Date | From | To | Reason |
 |---|---|---|---|
 | 2026-09-30 | dc8a45dc | 70eb11d1 | The UT pin was taken before the orchestrator's reviewed race and flake fixes to two v1 tests (`server/src/test` only, no production code; see lab/ERRATA.md re-pin history). Same commit as `lab/LAB_BASE_SHA`; the protected tree is byte-identical to it. Re-pinned in a later commit than the change. |
+
+## ERR-UT-CLICK-2 (orchestrator, first hosted Clickable run 2026-09-30)
+
+ERR-UT-CLICK-1 assumed Clickable substitutes `@APPARMOR_POLICY@` in the install directory. It does not: `clickable build` failed with "Failed reading .../install/asom.apparmor, it is not valid json", because Clickable parses the AppArmor file as JSON first. `asom.apparmor.in` now carries the literal policy version `2404.1` (the value the framework `ubuntu-touch-24.04-1.x` maps to; Clickable rewrites it itself). `@CLICK_ARCH@` and `@CLICK_FRAMEWORK@` in the manifest and desktop file are unchanged. The static checks still accept the old placeholder form.
