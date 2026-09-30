@@ -901,3 +901,90 @@ One real bug found by a test and fixed: a server that answered `FORBIDDEN` and c
 
 Not verified here: everything CI-ONLY above; the workflow's new job on a hosted runner; JDK behaviour of `SO_PEERCRED` on other kernels (only this Linux 6.18 container); a real logind, polkitd, user manager, suspend, or a Steam Deck; the `ubuntu-24.04-arm` lane; shell scripts other than by `bash -n`, shellcheck and the stubbed journal test. `desktop/README.md` (not owned by this track) still describes DL2 as unbuilt.
 Result: PASSED for the LAB parts of DL2 (as amended by ERRATA ERR-DL2-*); BLOCKED for "live `asom status` via a running node's control socket" (ERR-DL2-4); CI-ONLY items written and unrun.
+## Windows W0 + W1 + W2 gate (track `windows-w0-w2`) — 2026-09-30 — LAB and CI-APPROX; every Windows result is CI-ONLY / NOT RUN (not device evidence)
+Base: `95b4c97d3d820419f1bf8b937c36c65dc6eb9d48` + the uncommitted `windows-w0-w2` working tree (`desktop/packaging/windows/**`, `.github/workflows/desktop-windows.yml`, one include line in `desktop/settings.gradle.kts`, three lines in `.gitattributes`)   JDK: openjdk 21.0.10 and Temurin 17.0.20.1+1   Runner: local container (Ubuntu 24.04 x86_64, NO Android SDK, NO Windows, no Docker daemon, no way to run GitHub Actions). The worktree was created at `98ab632` and was reset to the base exactly as instructed (`git fetch origin claude/asom-v1-build-brief-vw83oh && git reset --hard 95b4c97...`); `git rev-parse HEAD` then printed `95b4c97d3d820419f1bf8b937c36c65dc6eb9d48` and `ls docs/design/mesh/LAB_SPEC.md` succeeded.
+Scope: PLATFORM_PLAN section 4 steps W0, W1, W2 (`windows.md` 3 to 10). W0: the `lab-windows` workflow job, the eol check, `.gitattributes`. W1 and W2: module `:packaging:windows:winplatform` (pure JVM, JNA 5.19.1, Kotlin `--release 17` API surface via `-Xjdk-release=17`): `WinPlatform`, `WinPaths`, `NodeMutex`, the JNA bindings behind fakeable ports, keys (`NcryptNik` T2 and T1, `FileNik` T0, `NikTierSelector`), power (request hold and release, suspend watcher), presence, GPU engine probe, thermal zones, `InterfaceEligibility`, `FirewallGate`, `FirewallCommand` (prints, never applies), `WinControlSocket` (ACL policy; does NOT bind), `ServiceHost` and `ServiceEntry`, `WinDoctor`. NOT built (stubs marked NOT-YET-IMPLEMENTED): W3 to W7 (`wix/`, `scripts/*.ps1`, `winget/`, `native/`, `service/`), the tray, the elevated firewall apply step, the control-socket bind. Every spec defect met is in `desktop/packaging/windows/ERRATA.md` (27 rows).
+
+Gate: `./gradlew -p desktop :packaging:windows:winplatform:test` on Linux, Windows ITs SKIPPED, count printed (LAB):
+```
+$ ./gradlew -p desktop :packaging:windows:winplatform:test --no-daemon ...          (JDK 21.0.10)
+winplatform test summary: 141 tests, 114 passed, 0 failed, 27 skipped   (os=Linux; skipped tests are the @EnabledOnOs(WINDOWS) integration tests and the assumption-gated ones)
+BUILD SUCCESSFUL in 47s
+$ JAVA_HOME=/tmp/asom-jdk17 ./gradlew -p desktop :packaging:windows:winplatform:test --rerun-tasks ...          (Temurin 17.0.20.1, as configured: UTF-8 daemon)
+winplatform test summary: 141 tests, 114 passed, 0 failed, 27 skipped
+BUILD SUCCESSFUL in 1m 52s
+$ JAVA_HOME=/tmp/asom-jdk17 ./gradlew -p desktop :packaging:windows:winplatform:test --rerun-tasks "-Dorg.gradle.jvmargs=-Xmx1500m" ...          (Temurin 17: the daemon and test workers default to US-ASCII, the container locale)
+winplatform test summary: 141 tests, 114 passed, 0 failed, 27 skipped
+BUILD SUCCESSFUL in 1m 34s
+$ python3 desktop/packaging/windows/scripts/check_it_results.py --expect skipped desktop/packaging/windows/winplatform/build/test-results/test
+integration tests: 27 found, 0 passed, 27 skipped, 0 failed (expecting: skipped)
+integration tests: OK for mode skipped
+```
+The 27 skipped tests are the `@EnabledOnOs(OS.WINDOWS)` integration tests in `windows/*IT.kt` (DpapiIT 2, SoftwareKspIT 3, PcpIT 1, PowerRequestIT 3, PdhIT 2, AfUnixAclIT 2, MutexIT 2, FirewallProbeIT 2, SystemStateIT 4, IdentityIT 1, WerIT 1, WinPlatformIT 4). `check_it_results.py --expect windows` on the same Linux results FAILS (violations listed, no test passed), which is its negative control. **On Windows every one of them is CI-ONLY / NOT RUN**; the `winplatform` job of `desktop-windows.yml` is what runs them. Law counters (non-vacuity): 9 families, 112 laws, each with a printed non-zero case count, e.g. `law firewall-command/hostile-refused: cases exercised: 43`, `law nik-tier/es256-roundtrip: cases exercised: 200`.
+
+Isolation and law checks (LAB; check 2 with a REAL Android SDK is NOT verified here, the `desktop-isolation-with-sdk` job in `desktop-linux.yml` is its proof):
+```
+$ ASOM_GRADLE_FLAGS='--no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process' desktop/tools/isolation.sh --with-sdk
+isolation check 1 (root settings never name the desktop build): 0   expected 0
+isolation check 2 (no Android tooling in the desktop classpath; ANDROID_HOME='' ANDROID_SDK_ROOT=''): 0   expected 0
+isolation check 2 positive control (the same output does list the Kotlin plugin, so a 0 above is not an empty read): 19   expected > 0
+isolation check 2 again with ANDROID_HOME=/tmp/tmp.OqNRz8lzZX (a directory standing in for an SDK): 0   expected 0   [CI-APPROX]
+isolation check 3 (no Android module in the desktop build): 0   expected 0
+isolation check 3 positive control (the mapped root projects and the desktop modules are listed): 8   expected 8
+isolation check 4: base 770a44da21e7a917071ea1e12f1eed98a91aff03 (from desktop/DESKTOP_BASE_SHA), ancestor of HEAD confirmed
+isolation check 4: 136 protected files compared byte-for-byte against base 770a44da21e7
+isolation check 4: OK (shipped tree byte-identical to the pinned base)
+law: 124 Kotlin/Java sources scanned (no android imports, no frozen-enum reuse, no wildcard bind, no listener, no bare print)
+law: OK        ISOLATION: all checks passed
+$ python3 desktop/tools/isolation.py --selftest   -> selftest OK (12 negative controls)      $ python3 lab/tools/isolation.py -> check 4: OK
+```
+Root build unchanged:
+```
+$ ANDROID_HOME= ./gradlew jvmTest --rerun-tasks --no-daemon ...
+BUILD SUCCESSFUL in 1m 9s     21 actionable tasks: 21 executed
+root tests: 139   failures+errors: 0   (baseline: 139)
+$ git status --short  ->   M .gitattributes    M desktop/settings.gradle.kts    ?? .github/workflows/desktop-windows.yml    ?? desktop/packaging/       (nothing else; taken before this entry was appended to PROGRESS.md)
+```
+Workflow syntax (the Windows jobs themselves have NEVER run):
+```
+$ actionlint 1.7.12 .github/workflows/desktop-windows.yml desktop/packaging/windows/ci/desktop-windows.yml     -> no findings, exit 0
+$ actionlint 1.7.7  .github/workflows/desktop-windows.yml   -> only: label "windows-11-arm" is unknown (1.7.7's label list predates it; FW39 documents it)
+$ python3 -c "yaml.safe_load(...)" -> parsed; jobs: lab-linux-reference, lab-windows, root-unchanged, winplatform, winplatform-linux; the ci/ copy is byte-identical (a test keeps it so)
+```
+
+W0 pieces that WERE run here (LAB / CI-APPROX):
+```
+$ python3 desktop/packaging/windows/scripts/check_eol.py
+eol check: 12 files under lab/conformance: all -text and LF
+eol check: 4 files under docs/design/mesh/conformance-examples: all -text and LF
+eol check: 20 files under docs/design/mesh/manifest-vectors: all -text and LF
+eol check: 4 files under desktop/packaging/windows/winplatform/src/test/resources/fixtures: all -text and LF
+eol check: OK (40 files under 4 paths)                                          exit=0
+negative controls: docs/design/mesh/router-examples (no attribute) -> 3 VIOLATIONs, exit 1;   no/such/dir -> "refusing to pass by scanning nothing", exit 2;
+                   scratch repository with a CRLF file in a -text directory -> "VIOLATION: v/x.json: line endings are i/crlf w/crlf", exit 1
+$ ./gradlew -p lab labTest --rerun-tasks --no-build-cache ...         (as the spec writes it, JDK 21)      BUILD SUCCESSFUL in 1m 38s, 46 executed
+$ ./gradlew -p lab labTest --rerun-tasks --no-build-cache "-Dorg.gradle.jvmargs=-Xmx1500m -Dfile.encoding=windows-1252" ...   (JDK 21)    BUILD SUCCESSFUL in 1m 36s
+$ JAVA_HOME=/tmp/asom-jdk17 ./gradlew -p lab labTest ... "-Dorg.gradle.jvmargs=-Xmx1500m"   (Temurin 17, default charset US-ASCII)   BUILD SUCCESSFUL in 1m 48s
+$ python3 desktop/packaging/windows/scripts/lab_counts.py lab      TOTAL tests=448 failures=0 errors=0 skipped=7     (10 lines, identical in all three runs; --compare exits 0)
+   negative controls of the comparison: one changed count -> "lab counts differ", exit 1;  an empty directory -> "no test result files found", exit 2
+$ ./gradlew -p lab :json:test --rerun --debug ... "-Dorg.gradle.jvmargs=-Xmx1500m"   ->  Test Executor started by /tmp/asom-jdk17/bin/java with -Dfile.encoding=US-ASCII
+```
+FINDING (windows ERRATA WIN-LANE-1): `lab/gradle.properties` sets `-Dfile.encoding=UTF-8` in `org.gradle.jvmargs`, so the lab's test workers run UTF-8 whatever the JDK defaults to, and the W0 lane as the spec writes it CANNOT catch a default-charset regression (AW20). The workflow therefore also runs the lab with the override above. Module-level control (LAB, JDK 21): a deliberate default-charset regression in `JdkTextFiles` PASSES `NativeBindingsTest` under Gradle as configured and FAILS it under the `-Dfile.encoding=windows-1252` override; the restored source passes both. NOT shown: the lab on a real Windows JDK 17, and the plan's own control (a regression injected into the lab fails the JDK 17 lane).
+
+Mutation checks (each applied to the real source, the WHOLE `winplatform` test task run, then the original restored; all 20 KILLED, none survived, none failed to compile):
+```
+M01 probe failure read as OPEN                           KILLED (5 tests)   M11 store creates a key when only asked its tier        KILLED (3)
+M02 block rules ignored                                  KILLED (5)         M12 hold release does not clear the power request       KILLED (2)
+M03 AUTO falls through to the file tier                  KILLED (2)         M13 T0 file written without checking the directory DACL KILLED (2)
+M04 key self-test skipped                                KILLED (2)         M14 display-off is not a drain                          KILLED (2)
+M05 ACL verifier ignores foreign principals              KILLED (5)         M15 own GPU load not subtracted                         KILLED (3)
+M06 firewall command alias not validated                 KILLED (2)         M16 roaming profile accepted                            KILLED (1)
+M07 unreadable input idle counted as absent              KILLED (3)         M17 firewall probe: no judgeable rules is not a failure KILLED (3)
+M08 lock accepted from one signal only                   KILLED (2)         M18 Everyone/Users may be planned into a DACL           KILLED (1)
+M09 loopback allowed as a peer address                   KILLED (1)         M19 service key DACL adds Everyone                      KILLED (2)
+M10 process allowlist removed                            KILLED (1)         M20 control socket start binds instead of refusing      KILLED (5)
+```
+Two design faults found and fixed while writing (not by a run on Windows): the LAN interface rule accepted Tailscale's own ULA block (`fd7a:115c:a1e0::/48` lies inside `fc00::/7`; WIN-NET-2), and the named mutex would have leaked a handle that keeps the object alive (WIN-MUTEX-1).
+
+NOT VERIFIED (every item is `CI-ONLY / NOT RUN` or `NEEDS-DEVICE-VALIDATION`): anything on Windows: every `NCrypt*`, `Pdh*`, `Wts*`, `Power*`, `Wer*`, `OpenMutexW`/`CreateMutexW`, `GetLastInputInfo`, `SHQueryUserNotificationState`, `GetIfEntry2` binding (written from the documentation, layouts cross-checked against JNA `Structure` offsets on Linux only); that JNA raises the right `LastErrorException` for the mutex; the netsh parser on REAL netsh output (the fixtures are SYNTHETIC hand-written listings); the `lab-windows` and `winplatform` jobs and whether `actions/setup-python` has Python for `windows-11-arm`; the TPM tier (S-W1, AW01, AW02), the service-account key (S-W2), AF_UNIX peer credentials (S-W3), GPU counters (S-W4), thermal zones (S-W5), lock polarity and display state (S-W6), sleep, lid, Modern Standby, battery saver, presence with a person, Tailscale, real firewall profiles. `desktop-linux.yml`'s `desktop-isolation-with-sdk` job (real SDK) has not run. The control socket does NOT bind (WIN-CTL-1), the firewall helper only prints (WIN-FW-1), and JNA is a new dependency awaiting D23. `desktop/build.gradle.kts` `desktopTest` and `check_law.py` `ALLOWED_DEPS` still omit this module (WIN-GATE-1; not this track's files).
+Result: PARTIAL by design. W0 and W1/W2 as far as a Linux container can honestly go: PASSED (LAB and CI-APPROX); the Windows halves of the W0 and W1/W2 gates are written and NOT RUN.

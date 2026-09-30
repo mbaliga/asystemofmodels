@@ -1,3 +1,6 @@
 lab/conformance/** -text
 lab/**/fixtures/** -text
 lab/**/*.jsonl -text
+docs/design/mesh/conformance-examples/** -text
+docs/design/mesh/manifest-vectors/** -text
+desktop/**/fixtures/** -text

@@ -38,4 +38,5 @@ include(":node")
 
 // ---- One include line per later track (PLATFORM_PLAN P1). Append-only; do not reorder or edit the lines above. ----
 // WINDOWS TRACK adds exactly one line directly below this comment:   include(":packaging:windows:winplatform")
+include(":packaging:windows:winplatform")
 // MACOS TRACK adds exactly one line directly below this comment:     include(":packaging:macos:macplatform")

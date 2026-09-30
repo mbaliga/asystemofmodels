@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  NOT-YET-IMPLEMENTED: PLATFORM_PLAN step W4/W5 (D-v2). This is a placeholder, not an installer source.
+
+  It will hold (windows.md 8.1): MajorUpgrade with a fixed UpgradeCode; feature "Node" (default: files, Start-menu shortcut,
+  WER exclusions for asom.exe, asom-service.exe and asom-cli.exe, never java.exe); feature "Service" (default OFF: ServiceInstall
+  Name="asom" Account="NT SERVICE\asom", procrun Parameters registry values, %ProgramData%\asom DACL via PermissionEx,
+  ServiceControl Stop="both" Remove="uninstall"). NO firewall rules, NO autostart, NO Tailscale changes, NO in-app updater.
+  Signing (SignPath, Azure Artifact Signing or an OV token) is the owner's ruling D22 and is not decided.
+
+  Nothing builds this file. The empty root below is deliberately not a valid Package.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" />

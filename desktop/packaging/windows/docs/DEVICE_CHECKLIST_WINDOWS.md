@@ -1,0 +1,24 @@
+# Device checklist: Windows (W0 to W2 items only; the full W7 checklist is D-v2 work)
+
+Every item is `NEEDS-DEVICE-VALIDATION` (NDV) or `NEEDS-OWNER-VALIDATION` (NOV) until the owner pastes real output. Nothing here
+was run on Windows by the builder. Hosted-runner results are `CI (hosted VM) evidence` and never close an item of this list.
+Commands run in an ordinary PowerShell unless marked (elevated). Expected outputs are what a PASS looks like, not results.
+
+| id | what | command | expected on a pass |
+|---|---|---|---|
+| S-W1 | Platform Crypto Provider holds ECDSA P-256 on the owner's TPM 2.0 (AW01) | run `PcpIT` on the machine: `./gradlew.bat -p desktop :packaging:windows:winplatform:test --tests "*PcpIT*"` | the test PASSES (not skipped) and prints `IT PcpIT: keyStorage=tpm sign latency p50=...us p95=...us`; a `SKIPPED: no TPM` means the provider or P-256 is not available: T1 is used and S-W1 stays open |
+| S-W1b | the r\|\|s form and JCA verification on the TPM (AW02) | the same test | every one of 50 signatures verifies with the JCA (`assertTrue(Es256.verify(...))` inside the test) |
+| S-W2 | machine-scope key named `asom-nik-v1-svc`, DACL `SYSTEM` + `NT SERVICE\asom`, opens and signs from the service (AW03) | W5 install smoke (not built) | NOT TESTABLE until W5; record here when it exists |
+| S-W3 | the JDK exposes no peer credentials for AF_UNIX on Windows (AW04) and `SO_EXCLUSIVEADDRUSE` behaviour (AW17) | `jshell` on the Windows JDK: `var c = java.nio.channels.SocketChannel.open(java.net.StandardProtocolFamily.UNIX); c.supportedOptions()` | no `SO_PEERCRED`-like option in the printed set |
+| S-W4 | `\GPU Engine(*)\Utilization Percentage` readable without admin, per process (AW05) | `Get-Counter '\GPU Engine(*)\Utilization Percentage' \| Select -Expand CounterSamples \| Select -First 5` while a GPU load runs, and `PdhIT` on the machine | instances named `pid_<n>_luid_..._engtype_...` with values; `IT PdhIT: GPU sample after two collections = GpuSample(...)` non-null and `otherBusyPermille` rises when another process loads the GPU |
+| S-W5 | thermal zone counters (AW06) | `Get-Counter '\Thermal Zone Information(*)\Temperature'` (Kelvin) | either values that change with load (a signal) or absent or constant (then `asom doctor` must say NO_THERMAL_SIGNAL) |
+| S-W6 | lock-flag polarity and console display state (AW07, AW18) | lock the workstation, then from another session run the WTS query (or `SystemStateIT`) | the WTS lock flag and `SHQueryUserNotificationState` agree it is locked; record which polarity this Windows version reports; display-off delivers `GUID_CONSOLE_DISPLAY_STATE = 0` |
+| D-FW1 | the real firewall on a real network: the printed rule opens the gate, a Public profile does not | print the rule (`FirewallCommand`), review it, run it elevated; then `asom doctor` | `[ok] firewall: allow rule "asom peer listener (overlay)" found and no asom block rule`; on a Public network the listener stays closed |
+| D-FW2 | a dismissed first-listen prompt creates block rules, and the gate names them | (do not do this on a machine you care about) start any listener and cancel the prompt | `FIREWALL_BLOCK_RULE_PRESENT` with the rule names |
+| D-FW3 | a non-English Windows fails closed | `asom doctor` on a German or French Windows | `FIREWALL_PROBE_FAILED: netsh output was not recognised` and the listener stays closed |
+| D-PWR1 | sleep, lid, Modern Standby matrix (RW1, WIN-SLEEP-1) | (elevated) `powercfg /requests` while SERVING; close the lid; press Sleep; let the display time out | asom's request is listed while SERVING; the node drains on display-off and suspend; record the real lending window on this hardware |
+| D-PWR2 | lid action reading | `powercfg /query SCHEME_CURRENT 4f971e89-eebd-4455-a8de-9e59040e7347 5ca83367-6e45-459f-a27b-476b1d01c936` | the two `0x...` values equal what `asom doctor` prints for AC and DC |
+| D-PRES1 | presence with a person: 10 minutes idle, locked, full-screen game, gamepad-only play | use the machine normally | never lends while you type; lends 20 minutes after your last input; never with a full-screen game; a gamepad-only session is the known gap |
+| D-TS1 | Tailscale log opt-out and "Run unattended" (FW01, FW03) | `Get-Content C:\ProgramData\Tailscale\tailscaled-env.txt`; `tailscale debug prefs` | `TS_NO_LOGS_NO_SUPPORT=true` present; `RunUnattended` true if lending while logged out is wanted (`asom doctor` does not read this yet) |
+| D-KEY1 | the T2 key survives a TPM clear only as an error, not silently | (destructive; on a test machine) clear the TPM, start the node | the node reports that its identity is gone and does not create a new one silently (a new identity needs the explicit first-mesh-enable) |
+| NOV-DEP1 | JNA as a dependency (D23) | owner ruling | recorded in the CD-D registry |
