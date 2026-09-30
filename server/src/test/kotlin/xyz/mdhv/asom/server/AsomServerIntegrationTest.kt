@@ -134,7 +134,7 @@ class AsomServerIntegrationTest {
         return bodies.all()
     }
 
-    /** The ledger row for an aborted stream is written after the socket dies. */
+    /** A streamed exchange appends its row after the client has read the last byte, so the row lands late. */
     private fun rowsSince(before: Int, expected: Int): List<RouteRecord> {
         val deadline = System.currentTimeMillis() + 5_000
         while (ledger.all().size - before < expected && System.currentTimeMillis() < deadline) {
@@ -313,7 +313,7 @@ class AsomServerIntegrationTest {
         assertEquals("fake:trainy-ai/llama-3.3-70b:stream me", text)
 
         // include_usage was injected (§5.9) → final record has usage-based cost.
-        val record = ledger.all().drop(before).single()
+        val record = rowsSince(before, 1).single()
         assertEquals(CostBasis.USAGE, record.costBasis)
         assertNotNull(record.costEst)
         assertTrue(record.tokensOut!! > 0)
@@ -704,7 +704,7 @@ class AsomServerIntegrationTest {
             val r = request("POST", "/v1/chat/completions", chatBody("cheapest", "stream me", stream = true))
             assertEquals(200, r.statusCode())
 
-            val record = ledger.all().drop(before).single()
+            val record = rowsSince(before, 1).single()
             assertEquals(CostBasis.HEURISTIC, record.costBasis)
             assertNotNull(record.tokensOut, "output tokens must be estimated, not dropped")
             assertTrue(record.tokensOut!! > 0, "output billed as zero understates the row")
