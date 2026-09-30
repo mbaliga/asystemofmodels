@@ -37,3 +37,9 @@ implements, the CONSERVATIVE reading was taken and is recorded here. Nothing was
 | ERR-GATE-1 | PLATFORM_PLAN 3 DL1 gate (`:node:test --tests '*Probe*' --tests '*Fsm*'`) | The plan moved `ProviderFsm` to `:node-core` (section 2) but the gate still runs the FSM tests in `:node`. | The probe tests are in `:node`, the FSM tests in `:node-core` (`ProviderFsmExhaustiveTest`, `PresenceLawsTest`). Both commands are run and pasted in PROGRESS.md; in `:node` the `*Fsm*` filter matches nothing. |
 | ERR-ENV-1 | this container is shared | Another builder's `./gradlew --stop` killed this track's single-use daemon once (`Gradle build daemon has been stopped: stop command received`). | The command was re-run unchanged; the failed attempt is not a result. |
 | ERR-FIX-1 | linux.md 10.2 ("captured /sys and /proc subsets per host; synthetic until the owner captures real ones") | No real capture exists. | The four hosts (`deck-oled`, `deck-lcd`, `dell`, `ci-vm`) are hand-written, each carries `SYNTHETIC.txt`, and `check_law.py` and a test fail if a host lacks the label. The Dell tree ASSUMES Intel + NVIDIA only to exercise the no-battery and no-GPU-attribution paths (DV-L1 is unknown). No test is evidence about a real device. |
+
+## Re-pin history (reviewed re-pins of DESKTOP_BASE_SHA)
+
+| Date | From | To | Reason |
+|---|---|---|---|
+| 2026-09-30 | 74fe9a04 | 770a44da | Same reviewed change as lab/ERRATA.md: a race fix in two v1 streaming integration tests (server/src/test only). Pinned to the same commit as `lab/LAB_BASE_SHA`. |
