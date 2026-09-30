@@ -1,0 +1,50 @@
+[
+  {
+    "path": "keys/TEST-ONLY-keys.json",
+    "sha256": "c8d70907827b473154235c0d9c92d5f5631bc721106eecde4c9bf1b9a07ea9fb",
+    "family": "keys",
+    "status": "test-only"
+  },
+  {
+    "path": "router/R04-v1-pins.json",
+    "sha256": "3a9776393eed1904cfa37b81ade007b5675a3c8bbdda098de25daf2705ef76c6",
+    "family": "R04",
+    "status": "normative"
+  },
+  {
+    "path": "wire/W00-constants.json",
+    "sha256": "28fc0d9e21feae33ae5a61f4bd6a4c5327440ade0bae6983e051838237da6a02",
+    "family": "W00",
+    "status": "normative"
+  },
+  {
+    "path": "wire/W01-echo-headers.json",
+    "sha256": "3153a3049cdf14fec0c99ebd76b4042bdf72577fc80ba200c3f766ab880e9ed6",
+    "family": "W01",
+    "status": "normative"
+  },
+  {
+    "path": "wire/W01-generated.json",
+    "sha256": "da579e07b76baf06e5bc9319d8b15edf3b2ab098d150d3fdc88f738e6a3bf614",
+    "family": "W01",
+    "status": "proposed"
+  },
+  {
+    "path": "wire/W01b-one-record.json",
+    "sha256": "9ce2ee44f6120d1d3417e6a6a0adc23b429d9bc43d028c849e9f85f150208579",
+    "family": "W01b",
+    "status": "normative"
+  },
+  {
+    "path": "wire/W02-error-envelopes.json",
+    "sha256": "1cb702c6fc599c1df1bc854d0bc86f7c0409f3f0f45054bb7e88cc535bf6e8dc",
+    "family": "W02",
+    "status": "normative"
+  },
+  {
+    "path": "wire/W03-sse.json",
+    "sha256": "9164ae541d422b84d6e6ddbfbeb96949afdd30806ba2060bb736dfb436a12557",
+    "family": "W03",
+    "status": "normative"
+  }
+]

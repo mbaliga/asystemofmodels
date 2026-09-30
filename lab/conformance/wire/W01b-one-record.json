@@ -1,0 +1,549 @@
+{
+  "family": "W01b",
+  "confVersion": "0.2.0",
+  "specRefs": [
+    "ASOM_BUILD_BRIEF.md 5.4, 1.9",
+    "LAB_SPEC.md 3.6",
+    "REVIEW_ROUND3.md R3-CLOSURE-3"
+  ],
+  "vectors": [
+    {
+      "id": "W01b-001",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "non-stream chat, FakeDriver, key present: 200, egress cloud, tokens from usage, basis usage",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": false,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter",
+          "groq"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "status": 200,
+          "headers": {
+            "X-Asom-Cost-Basis": "usage",
+            "X-Asom-Cost-Est": "0.0000029",
+            "X-Asom-Egress": "cloud",
+            "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+          },
+          "rows": [
+            {
+              "callerPkg": "w.caller",
+              "requestedModel": "llama-3.3-70b",
+              "servedProvider": "openrouter",
+              "servedModel": "llama-3.3-70b",
+              "egress": "cloud",
+              "bytesOut": 91,
+              "tokensIn": 2,
+              "tokensOut": 9,
+              "costEst": "2.8999999999999998E-6",
+              "costBasis": "usage",
+              "status": 200
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "W01b-002",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "stream chat with a usage chunk: 200, basis usage; the committed stream headers carry no cost (CLOSURE-3)",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": true,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter",
+          "groq"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "status": 200,
+          "headers": {
+            "X-Asom-Egress": "cloud",
+            "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+          },
+          "rows": [
+            {
+              "callerPkg": "w.caller",
+              "requestedModel": "llama-3.3-70b",
+              "servedProvider": "openrouter",
+              "servedModel": "llama-3.3-70b",
+              "egress": "cloud",
+              "bytesOut": 130,
+              "tokensIn": 2,
+              "tokensOut": 9,
+              "costEst": "2.8999999999999998E-6",
+              "costBasis": "usage",
+              "status": 200
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "W01b-003",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "stream chat, omitStreamUsage = true: 200, basis heuristic",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": true,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter",
+          "groq"
+        ],
+        "driver": {
+          "fake": {
+            "omitStreamUsage": true
+          }
+        }
+      },
+      "expect": {
+        "ok": {
+          "status": 200,
+          "headers": {
+            "X-Asom-Egress": "cloud",
+            "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+          },
+          "rows": [
+            {
+              "callerPkg": "w.caller",
+              "requestedModel": "llama-3.3-70b",
+              "servedProvider": "openrouter",
+              "servedModel": "llama-3.3-70b",
+              "egress": "cloud",
+              "bytesOut": 130,
+              "tokensIn": 2,
+              "tokensOut": 9,
+              "costEst": "2.8999999999999998E-6",
+              "costBasis": "heuristic",
+              "status": 200
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "W01b-004",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "first provider 503 (failWith), second serves: Served-By is the second provider; the request appends an attempt row for the failed candidate then the terminal row (the spec's 'one row' is wrong for v1, see ERRATA)",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": false,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter",
+          "groq"
+        ],
+        "driver": {
+          "fake": {
+            "failWith": {
+              "openrouter": 503
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": {
+          "status": 200,
+          "headers": {
+            "X-Asom-Cost-Basis": "usage",
+            "X-Asom-Cost-Est": "0.0000075",
+            "X-Asom-Egress": "cloud",
+            "X-Asom-Served-By": "groq/llama-3.3-70b"
+          },
+          "rows": [
+            {
+              "callerPkg": "w.caller",
+              "requestedModel": "llama-3.3-70b",
+              "servedProvider": "openrouter",
+              "servedModel": "llama-3.3-70b",
+              "egress": "cloud",
+              "bytesOut": 91,
+              "tokensIn": null,
+              "tokensOut": null,
+              "costEst": null,
+              "costBasis": "none",
+              "status": 503
+            },
+            {
+              "callerPkg": "w.caller",
+              "requestedModel": "llama-3.3-70b",
+              "servedProvider": "groq",
+              "servedModel": "llama-3.3-70b",
+              "egress": "cloud",
+              "bytesOut": 91,
+              "tokensIn": 2,
+              "tokensOut": 8,
+              "costEst": "7.5E-6",
+              "costBasis": "usage",
+              "status": 200
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "W01b-005",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "model local-only: 501 LOCAL_ENGINE_ABSENT, egress local, no Served-By",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "local-only",
+            "stream": false,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter",
+          "groq"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "status": 501,
+          "headers": {
+            "X-Asom-Egress": "local"
+          },
+          "rows": [
+            {
+              "callerPkg": "w.caller",
+              "requestedModel": "local-only",
+              "servedProvider": null,
+              "servedModel": null,
+              "egress": "local",
+              "bytesOut": 0,
+              "tokensIn": null,
+              "tokensOut": null,
+              "costEst": null,
+              "costBasis": "none",
+              "status": 501
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "W01b-006",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "unknown concrete model: 404 MODEL_UNKNOWN, egress local",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "no-such-model",
+            "stream": false,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter",
+          "groq"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "status": 404,
+          "headers": {
+            "X-Asom-Egress": "local"
+          },
+          "rows": [
+            {
+              "callerPkg": "w.caller",
+              "requestedModel": "no-such-model",
+              "servedProvider": null,
+              "servedModel": null,
+              "egress": "local",
+              "bytesOut": 0,
+              "tokensIn": null,
+              "tokensOut": null,
+              "costEst": null,
+              "costBasis": "none",
+              "status": 404
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "W01b-007",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "failMidStream after 2 chunks: the row written after the socket closes still agrees with the headers sent at stream start (egress cloud, same provider)",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": true,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter",
+          "groq"
+        ],
+        "driver": {
+          "fake": {
+            "failMidStream": {
+              "openrouter": 2
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": {
+          "status": 200,
+          "headers": {
+            "X-Asom-Egress": "cloud",
+            "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+          },
+          "rows": [
+            {
+              "callerPkg": "w.caller",
+              "requestedModel": "llama-3.3-70b",
+              "servedProvider": "openrouter",
+              "servedModel": "llama-3.3-70b",
+              "egress": "cloud",
+              "bytesOut": 130,
+              "tokensIn": 2,
+              "tokensOut": 4,
+              "costEst": "1.4E-6",
+              "costBasis": "heuristic",
+              "status": 502
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "W01b-008",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "fatal upstream 400 relayed verbatim: egress cloud, Served-By names the provider, no cost",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": false,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter"
+        ],
+        "driver": {
+          "scripts": {
+            "openrouter": {
+              "kind": "error",
+              "status": 400,
+              "bodyText": "{\"error\":{\"message\":\"bad request\",\"type\":\"invalid_request_error\"}}"
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": {
+          "status": 400,
+          "headers": {
+            "X-Asom-Egress": "cloud",
+            "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+          },
+          "rows": [
+            {
+              "callerPkg": "w.caller",
+              "requestedModel": "llama-3.3-70b",
+              "servedProvider": "openrouter",
+              "servedModel": "llama-3.3-70b",
+              "egress": "cloud",
+              "bytesOut": 91,
+              "tokensIn": null,
+              "tokensOut": null,
+              "costEst": null,
+              "costBasis": "none",
+              "status": 400
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "W01b-009",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "non-stream reply without usage, priced model: basis heuristic and the cost headers are present",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": false,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter"
+        ],
+        "driver": {
+          "scripts": {
+            "openrouter": {
+              "kind": "json",
+              "body": {
+                "id": "scripted-1",
+                "object": "chat.completion",
+                "created": 0,
+                "model": "llama-3.3-70b",
+                "choices": [
+                  {
+                    "index": 0,
+                    "message": {
+                      "role": "assistant",
+                      "content": "twelve chars"
+                    },
+                    "finish_reason": "stop"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": {
+          "status": 200,
+          "headers": {
+            "X-Asom-Cost-Basis": "heuristic",
+            "X-Asom-Cost-Est": "0.0000002",
+            "X-Asom-Egress": "cloud",
+            "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+          },
+          "rows": [
+            {
+              "callerPkg": "w.caller",
+              "requestedModel": "llama-3.3-70b",
+              "servedProvider": "openrouter",
+              "servedModel": "llama-3.3-70b",
+              "egress": "cloud",
+              "bytesOut": 91,
+              "tokensIn": 2,
+              "tokensOut": null,
+              "costEst": "2.0000000000000002E-7",
+              "costBasis": "heuristic",
+              "status": 200
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "W01b-reach",
+      "origin": "hand",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "LabRouteRecord: the peer attempt receives the body, then SELF serves: header X-Asom-Egress: peer; the terminal row has egress = peer and servedClass = local; header value = row value (design 7.6; ruled by D3). Runs once :ledger-model (L0.4) exists.",
+      "input": {
+        "lane": "lab-types",
+        "decision": "D3"
+      },
+      "expect": {
+        "ok": {
+          "headers": {
+            "X-Asom-Egress": "peer"
+          },
+          "terminalRow": {
+            "egress": "peer",
+            "servedClass": "local"
+          }
+        }
+      }
+    }
+  ]
+}

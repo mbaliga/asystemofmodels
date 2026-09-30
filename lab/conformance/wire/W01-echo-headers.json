@@ -1,0 +1,299 @@
+{
+  "family": "W01",
+  "confVersion": "0.2.0",
+  "specRefs": [
+    "ASOM_BUILD_BRIEF.md 5.4",
+    "LAB_SPEC.md 3.5",
+    "docs/design/mesh/conformance-examples/usdcheck.out"
+  ],
+  "vectors": [
+    {
+      "id": "W01-001",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Served-By only when both provider and model are known; Egress always",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": null,
+        "costBasis": "none"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b",
+          "X-Asom-Egress": "cloud"
+        }
+      }
+    },
+    {
+      "id": "W01-002",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "provider known, model null: no Served-By; Egress present",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": null,
+        "egress": "cloud",
+        "costEst": null,
+        "costBasis": "none"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Egress": "cloud"
+        }
+      }
+    },
+    {
+      "id": "W01-003",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "egress local, error path (status 501): only Egress: local",
+      "input": {
+        "servedProvider": null,
+        "servedModel": null,
+        "egress": "local",
+        "costEst": null,
+        "costBasis": "none",
+        "status": 501
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Egress": "local"
+        }
+      }
+    },
+    {
+      "id": "W01-004",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cost 1.25E-7, basis usage: HALF_UP at 8 places gives 0.00000013",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.25E-7",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Cost-Est": "0.00000013",
+          "X-Asom-Cost-Basis": "usage"
+        }
+      }
+    },
+    {
+      "id": "W01-005",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cost 2.5E-8, basis heuristic: 0.00000003",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.5E-8",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Cost-Est": "0.00000003",
+          "X-Asom-Cost-Basis": "heuristic"
+        }
+      }
+    },
+    {
+      "id": "W01-006",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cost 123.456789125, basis usage: 123.45678913",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "123.456789125",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Cost-Est": "123.45678913",
+          "X-Asom-Cost-Basis": "usage"
+        }
+      }
+    },
+    {
+      "id": "W01-007",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cost 1.25E-9, basis usage: rounds to 0 but both cost headers stay",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.25E-9",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Cost-Est": "0",
+          "X-Asom-Cost-Basis": "usage"
+        }
+      }
+    },
+    {
+      "id": "W01-008",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cost present, basis none: no cost headers",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.5",
+        "costBasis": "none"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b",
+          "X-Asom-Egress": "cloud"
+        }
+      }
+    },
+    {
+      "id": "W01-009",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cost null, basis usage: no cost headers",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": null,
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b",
+          "X-Asom-Egress": "cloud"
+        }
+      }
+    },
+    {
+      "id": "W01-010",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "whole-dollar cost 100.0 renders in plain notation, no exponent, no trailing zeros",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "100.0",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Cost-Est": "100",
+          "X-Asom-Cost-Basis": "usage"
+        }
+      }
+    },
+    {
+      "id": "W01-011",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "0.1 + 0.2 as the shortest round-trip string 0.30000000000000004 renders 0.3",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.30000000000000004",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Cost-Est": "0.3",
+          "X-Asom-Cost-Basis": "usage"
+        }
+      }
+    },
+    {
+      "id": "W01-012",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "egress catalogue is echoed as its wire value",
+      "input": {
+        "servedProvider": null,
+        "servedModel": null,
+        "egress": "catalogue",
+        "costEst": null,
+        "costBasis": "none"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Egress": "catalogue"
+        }
+      }
+    },
+    {
+      "id": "W01-013",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "egress download is echoed as its wire value",
+      "input": {
+        "servedProvider": null,
+        "servedModel": null,
+        "egress": "download",
+        "costEst": null,
+        "costBasis": "none"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Egress": "download"
+        }
+      }
+    },
+    {
+      "id": "W01-014",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "model known, provider null: no Served-By",
+      "input": {
+        "servedProvider": null,
+        "servedModel": "llama-3.3-70b",
+        "egress": "local",
+        "costEst": null,
+        "costBasis": "none"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Egress": "local"
+        }
+      }
+    }
+  ]
+}

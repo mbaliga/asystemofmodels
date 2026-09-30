@@ -316,3 +316,97 @@ have worked on the test device.
 
 `ASOM_ROADMAP_BRIEF.md` (v1.1→v4) is committed but explicitly **not started**,
 per its own entry criteria.
+
+---
+
+## Lab L0.1 gate — 2026-09-30 — LAB (not device evidence)
+Commit: 1963166c500d9e83b6b5b076bb3c11263ef3e429 (the pinned base) + the uncommitted `lab-skeleton` working tree   JDK: openjdk version "21.0.10" 2026-01-20 (also Temurin 17.0.20.1+1)   Runner: local container (Ubuntu 24.04, NO Android SDK, no hosted CI run)
+Scope: LAB_SPEC L0.1 plus the shared skeleton: `lab/` build isolation, nine empty-shell modules, `:conformance-runner` with families W00, W01, W01b, W02, W03, R04, `lab/tools/xcheck.py`, `.github/workflows/lab.yml`. Spec defects met and the readings taken: `lab/ERRATA.md` (notably ERR-ISO-1, the pinned-base isolation check, and ERR-W01B-1, the streaming header law).
+
+```
+$ ./gradlew -p lab labTest --stacktrace --rerun-tasks        (JDK 21.0.10)
+    family W00: 7 vectors, 7 pass, 0 fail, 5 proposed-skipped, oracle: self=12
+    family W01: 14 vectors, 14 pass, 0 fail, 0 proposed-skipped, proposed-lane 200 run: 200 pass, 0 fail, oracle: self=214
+    family W01b: 9 vectors, 9 pass, 0 fail, 1 proposed-skipped, oracle: self=10
+    family W02: 9 vectors, 9 pass, 0 fail, 0 proposed-skipped, oracle: self=9
+    family W03: 7 vectors, 7 pass, 0 fail, 0 proposed-skipped, oracle: self=7
+    family R04: 28 vectors, 28 pass, 0 fail, 0 proposed-skipped, oracle: self=28
+BUILD SUCCESSFUL in 25s
+46 actionable tasks: 46 executed
+(every other family prints `family <F>: not-implemented`; 313 lab tests, 7 skipped = 6 proposed-skipped + the regenerate-only test, 0 failures)
+
+$ JAVA_HOME=<Temurin 17.0.20.1+1> ./gradlew -p lab labTest --stacktrace --rerun-tasks
+    (the same six family lines, byte-identical counts)
+BUILD SUCCESSFUL in 28s
+46 actionable tasks: 46 executed
+```
+
+Non-vacuity (law counters, normative vectors only; the run fails on a zero): W00 constants 7, headers-exhaustive 2; W01 echo-map 14, served-by-present 9, served-by-absent 5, cost-present 6, cost-absent 8; W01b exchanges 9, header-equal-nonstream 6, header-commit-stream 3, key-leak-checks 9, no-new-headers 9; W02 exchanges 9, header-equal-nonstream 9, key-leak-checks 9; W03 byte-passthrough 7, parse 7, header-commit-stream 7; R04 plans 28, orders 18, rejects 10, permutation-invariant 186.
+
+```
+$ ./gradlew -p lab :conformance-runner:run --args='lines W00,W01,W01b,W02,W03,R04' --quiet | tail -n 3
+W03-005 ok
+W03-006 ok
+W03-007 ok
+(274 lines in all: 7 + 214 + 9 + 9 + 7 + 28; e.g. `R04-003 reject ALL_PROVIDERS_COOLING`, `W02-001 reject NOT_PAIRED`)
+
+$ python3 lab/tools/xcheck.py lab/conformance
+xcheck W01: 214 agree, 0 disagree
+xcheck keys: 2 agree, 0 disagree
+xcheck INDEX: 9 agree, 0 disagree
+xcheck M01: absent
+xcheck M02: absent
+xcheck M03: absent
+xcheck W05: absent
+```
+
+Isolation (LAB_SPEC 2.4; check 4 is pinned to `lab/LAB_BASE_SHA`, see ERRATA ERR-ISO-1):
+```
+$ lab/tools/isolation.sh --with-sdk
+isolation check 1 (root settings never name the lab): 0   expected 0
+isolation check 2 (no Android tooling in the lab classpath; ANDROID_HOME='' ANDROID_SDK_ROOT=''): 0   expected 0
+isolation check 2 positive control (the same output does list the Kotlin plugin, so a 0 above is not an empty read): 19   expected > 0
+isolation check 2 again with ANDROID_HOME=/tmp/tmp.Uejge0BscF (a directory standing in for an SDK): 0   expected 0   [CI-APPROX]
+isolation check 3 (no Android module in the lab build): 0   expected 0
+isolation check 3 positive control (the mapped root projects and the nine lab modules are listed): 15   expected 15
+isolation check 4: base 1963166c500d9e83b6b5b076bb3c11263ef3e429 (from lab/LAB_BASE_SHA), ancestor of HEAD confirmed
+isolation check 4: 136 protected files compared byte-for-byte against base 1963166c500d
+isolation check 4: OK (shipped tree byte-identical to the pinned base)
+law: OK
+ISOLATION: all checks passed
+$ python3 lab/tools/isolation.py --selftest      -> selftest OK (12 cases: a committed edit of settings.gradle.kts, an untracked file under core/, a deleted file, an edited ci.yml, a flipped exec bit, a non-ancestor base and a missing base all FAIL; honest trees pass)
+$ (real worktree negative control) append a line to settings.gradle.kts; python3 lab/tools/isolation.py
+isolation check 4: FAILED, 1 difference(s):
+  settings.gradle.kts: content differs from base (9d0a648667fa != 225f94e8bfd6)          exit=1   (then restored; exit=0)
+$ git diff --exit-code -- core server gradle settings.gradle.kts build.gradle.kts gradle.properties .github/workflows/ci.yml   -> exit 0
+$ ./gradlew -p lab :conformance-runner:dependencies --configuration runtimeClasspath | grep -cE 'com\.android|org\.bouncycastle|com\.google\.android'   -> 0
+$ grep -rn 'Egress.PEER' lab/ | wc -l   -> 0
+```
+Check 2 with a real Android SDK present is NOT verified here (no SDK in this container); the `lab-isolation-with-sdk` job in `.github/workflows/lab.yml` is its proof and has not run.
+
+Mutation checks (each run against a deliberately corrupted vector or implementation; every one FAILED as required, then the original was restored byte-for-byte and the suite re-run green):
+```
+W01-004 X-Asom-Egress cloud -> local     : family W01: 14 vectors, 13 pass, 1 fail ... FAIL W01-004: expected {...local...} but observed {...cloud...}; BUILD FAILED; xcheck W01: 213 agree, 1 disagree
+R04-006 first two plan entries swapped   : family R04: 28 vectors, 27 pass, 1 fail ... FAIL R04-006: expected ["openrouter/...","trainy-ai/..."...] but observed ["trainy-ai/...","openrouter/..."...]; BUILD FAILED
+W01b-001 response header egress -> local : family W01b: 9 vectors, 8 pass, 1 fail ... FAIL W01b-001; BUILD FAILED
+W01b-004 attempt row dropped             : family W01b: 9 vectors, 8 pass, 1 fail ... FAIL W01b-004; BUILD FAILED
+W02-006 expected HTTP 501 -> 500         : FAIL W02-006: expected detail {"httpStatus":500,...} but observed {"httpStatus":501,...}
+W03-001 expected events truncated        : FAIL W03-001; W00-004 a fifth egress value `peer` expected : FAIL W00-004
+W00-005 oracle tag removed               : ENVELOPE PROBLEM: W00-005: oracle '' invalid (every vector must carry an oracle tag)
+a vector edited without regenerating INDEX.json : INDEX PROBLEM: wire/W00-constants.json sha256 differs from INDEX.json; xcheck INDEX: 8 agree, 1 disagree
+```
+Broken implementations (automated negative controls in `NegativeControlsTest`, run in every `labTest`): a provider driver that echoes the API key makes the key-leak law fail (W01b and W02); a driver that corrupts one byte of every SSE chunk makes W03 byte-pass-through fail; synthetic exchanges with a wrong Served-By, a wrong Egress, a missing cost header, a cost header on a stream, a new `X-Asom-Failover` header or no ledger row each fail the Invariant 9 laws; an empty family and an unexercised law are reported vacuous.
+
+Root build unchanged:
+```
+$ ./gradlew jvmTest --rerun-tasks --stacktrace
+BUILD SUCCESSFUL in 18s
+21 actionable tasks: 21 executed
+$ find core server -path '*/build/test-results/test/*.xml' -print0 | xargs -0 grep -ho 'tests="[0-9]*"' | tr -dc '0-9\n' | awk '{s+=$1} END {print s}'
+root tests: 139   (baseline: 139)
+```
+Observed while measuring the baseline (not caused by the lab, root tests untouched): on the first cold full `./gradlew jvmTest --rerun-tasks` the root test `AsomServerIntegrationTest.a stream with no usage still bills output tokens heuristically` failed once (`NoSuchElementException: List is empty`); it passed on every later run (3 further `:server:test` runs, 2 further full runs). It reads the ledger immediately after a streamed response, but the server writes a stream's row after the last byte is sent (ERRATA ERR-W01B-3). Finding for the owner.
+
+Oracle status: self-oracled (no independent implementation has agreed yet). `xcheck.py` and the Kotlin runner were written in one session and never clear the tag.
+Not verified here: hosted-runner behaviour of `lab.yml` (never run; action SHAs resolved by `git ls-remote`, not executed); Windows/macOS lanes (later tracks); Android SDK present (CI-only); W01b-reach and W00-100..104 (proposed, need the L0.4 lab types).
+Result: PASSED (L0.1 as amended by ERRATA; local LAB evidence only)

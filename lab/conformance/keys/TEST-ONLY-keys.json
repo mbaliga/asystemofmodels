@@ -1,0 +1,22 @@
+{
+ "TEST_ONLY": true,
+ "note": "Private scalars are published deliberately: these keys must never be trusted anywhere.",
+ "key1": {
+  "d_hex": "aac50e2a2423464df8043623dad7a02d793d2d47fffb54e6ccd0dd65a32b8313",
+  "spki_b64": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE4qjYZv8IPpVldevJ/GAe+oYlG/YpAPoqkmMxjeyqofErSay/5ls13fJbnWLTZ7Oj51JprjQj628DEDqwZM1yTw==",
+  "nodeId": "vaw93hb8yBZTX2LebYgzri1pfOnBlRIILoBLiyK_eN4",
+  "nodeTag": "xwwd3xqw7tebmu27",
+  "fingerprint": "XWWD-3XQW-7TEB-MU27",
+  "exportFingerprint": "XWWD3-XQW7T-EBMU-27ML-PG3C-BTVY"
+ },
+ "key2": {
+  "d_hex": "3ef2b0d09033044dc4dd9bfeba7545299e44cabe0eaad29ac5f08badc57a051e",
+  "spki_b64": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE+N+gnIA8/3sQcbv/rdPdsdZXkKiOSfjkpAn/0T/+MtZgmIgg9C5bSICP3VXPPcv8T9YgM/An0QaE3jBbT8klew==",
+  "nodeId": "idgZ8sjS2Fz_gsDBjfMRF3rH08Z6lwdee3U3OoPlVGE",
+  "nodeTag": "rhmbt4wi2lmfz74c",
+  "fingerprint": "RHMB-T4WI-2LMF-Z74C",
+  "exportFingerprint": "RHMBT-4WI2L-MFZ7-4CYD-AY34-YRC4"
+ },
+ "challenge1_b64u": "nvsK-QRFTzOSUx0XtUEgqKOWIsUY8j2dL4ikBHOh5pw",
+ "rfc6979_selftest": "passed (RFC 6979 A.2.5, P-256/SHA-256, \"sample\")"
+}
