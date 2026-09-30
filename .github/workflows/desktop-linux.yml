@@ -1,0 +1,164 @@
+name: desktop-linux
+
+# The shared desktop node and the Linux host (PLATFORM_PLAN section 2 and 3; DL0 and DL1 only). A NEW workflow:
+# .github/workflows/ci.yml is untouched. Later tracks add their jobs (package-linux, install-matrix, systemd-vm, ...) here
+# or in their own files. Every artifact produced here is labelled UNSIGNED and is not a release.
+# Third-party actions are pinned by commit SHA; the tag each SHA was resolved from is in the comment (resolved with
+# `git ls-remote` on 2026-09-30; gradle/actions v4 is an annotated tag, so the peeled commit is used).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "desktop/**"
+      - "core/**"
+      - "server/**"
+      - "gradle/**"
+      - ".github/workflows/desktop-linux.yml"
+  pull_request:
+    paths:
+      - "desktop/**"
+      - "core/**"
+      - "server/**"
+      - "gradle/**"
+      - ".github/workflows/desktop-linux.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  desktop-jvm:
+    name: Desktop node (pure JVM, JDK ${{ matrix.jdk }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        jdk: ["17", "21"]
+    env:
+      ANDROID_HOME: ""
+      ANDROID_SDK_ROOT: ""
+    steps:
+      # fetch-depth 0: the isolation check compares against the pinned desktop/DESKTOP_BASE_SHA, which a shallow clone lacks.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.jdk }}
+
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Desktop tests (prints the per-law report lines, LAB evidence)
+        run: ./gradlew -p desktop desktopTest --stacktrace
+
+      - name: Isolation checks 1 to 4 against the pinned base, and the static law checks
+        run: |
+          python3 desktop/tools/isolation.py --selftest
+          desktop/tools/isolation.sh
+
+      - name: Real launcher smoke (asom status --json, as a normal user)
+        run: |
+          ./gradlew -p desktop :node:installDist :node:distZip --stacktrace
+          out=$(desktop/node/build/install/asom-node/bin/asom status --json)
+          echo "$out"
+          case "$out" in
+            '{"host":"foreground","fsm":"OFF","listeners":[],"locks":[],'*) echo "status shape OK" ;;
+            *) echo "unexpected status shape"; exit 1 ;;
+          esac
+          desktop/node/build/install/asom-node/bin/asom-node --mode=selftest
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: asom-desktop-jvm-UNSIGNED-not-for-release-jdk${{ matrix.jdk }}
+          path: desktop/node/build/distributions/*.zip
+          retention-days: 3
+
+  desktop-jvm-arm:
+    name: Desktop node (aarch64, JDK ${{ matrix.jdk }})
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        jdk: ["17", "21"]
+    env:
+      ANDROID_HOME: ""
+      ANDROID_SDK_ROOT: ""
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.jdk }}
+
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Desktop tests on aarch64 (LAB evidence for the parsers and the FSM; not a Deck, not a device)
+        run: ./gradlew -p desktop desktopTest --stacktrace
+
+      - name: Isolation checks
+        run: desktop/tools/isolation.sh
+
+  desktop-isolation-with-sdk:
+    name: Desktop isolation check 2 (Android SDK present)
+    # ANDROID_HOME is set on this image; deliberately NOT cleared here.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: No Android tooling in the desktop build
+        run: |
+          test -n "$ANDROID_HOME"
+          out=$(./gradlew -p desktop buildEnvironment)
+          echo "com.android occurrences: $(printf '%s\n' "$out" | grep -c com.android)"
+          echo "positive control (kotlin-gradle-plugin occurrences): $(printf '%s\n' "$out" | grep -c kotlin-gradle-plugin)"
+          test "$(printf '%s\n' "$out" | grep -c com.android)" = "0"
+          test "$(printf '%s\n' "$out" | grep -c kotlin-gradle-plugin)" -gt 0
+
+  root-unchanged:
+    name: Root jvmTest unchanged
+    runs-on: ubuntu-24.04
+    env:
+      ANDROID_HOME: ""
+      ANDROID_SDK_ROOT: ""
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - run: ./gradlew jvmTest --rerun-tasks --stacktrace
+
+      - name: Root test count (must not fall below desktop/ROOT_TEST_BASELINE)
+        run: |
+          n=$(find core server -path '*/build/test-results/test/*.xml' -print0 \
+            | xargs -0 grep -ho 'tests="[0-9]*"' | tr -dc '0-9\n' | awk '{s+=$1} END {print s}')
+          base=$(tr -dc '0-9' < desktop/ROOT_TEST_BASELINE)
+          echo "root tests: $n   (baseline: $base)"
+          test "$n" -ge "$base"

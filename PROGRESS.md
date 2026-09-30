@@ -620,3 +620,85 @@ Non-vacuity: every Cases group asserts a minimum case count (RejectTableTest row
 Oracle status: self-oracled (no independent implementation has agreed yet). The Python second implementation and the Kotlin module were written in one session; their agreement (4,094 checks) does not clear the tag.
 Not verified here: JDK 17 (only JDK 21 in this container; the module targets JVM 17 bytecode and avoids JDK 21-only APIs, but that is unrun); ART, Swift lane; hosted CI.
 Result: PASSED (`:json` and M01, self-oracled; local LAB evidence only). The root suite showed one known ledger-race failure on its first cold run and passed on the second.
+## Desktop DL0 + DL1 gate (track `desktop-core`) — 2026-09-30 — LAB (not device evidence)
+Base: `74fe9a04abcace8ebecfff906821e9efc7afa007` + the uncommitted `desktop-core` working tree (`desktop/**`, `.github/workflows/desktop-linux.yml`)   JDK: openjdk 21.0.10 and Temurin 17.0.20.1+1   Runner: local container (Ubuntu 24.04 x86_64, NO Android SDK, run as root; the launchers were run as uid 65534 through `setpriv`), no hosted CI run
+Scope: PLATFORM_PLAN sections 2 and 3 steps DL0 (skeleton, isolation) and DL1 (probes, governor). `:node-core` (seam, `NodeConfig`, `ControlFrames`, `AsomCli`, `TtyConfirm`, `ProviderFsm`, governor, `JsonlLedgerSink`, `NoopEngine` wiring) and `:node` (`LinuxPlatform`, five probes, `host/*`). NOT built (DL2/DL3, declared `NOT_YET_IMPLEMENTED` and reported by the selftest): control socket, D-Bus sleep watcher, keep-awake locks, key store, packaging. Nothing binds a socket. Spec defects met and the readings taken: `desktop/ERRATA.md` (notably ERR-ISO-1, ERR-DECK-1, ERR-FSM-3/4, ERR-SINK-1).
+
+```
+$ ./gradlew -p desktop desktopTest --rerun-tasks --stacktrace          (JDK 21.0.10)
+    transitions exercised: 36/36
+    guard branches exercised: 41/41
+    property test: 20000 sequences, 800000 steps, seed 20260930
+    law presence-laws/LP-2-hold-down-599999: cases exercised: 1   (also -600000, LP-0 20, LP-1 shape 3, drain-at-once 2164, serve-entry-guarded 9104, ...; every law prints its count and the run fails on a zero)
+    sigkill harness: 20 kills at 10 (model, point) pairs; claim: process death only, not power loss
+    probe fixtures: 4 SYNTHETIC hosts x 6 families
+BUILD SUCCESSFUL in 1m 27s
+24 actionable tasks: 24 executed
+(:node-core 67 tests, :node 53 tests, 0 failures, 0 skipped)
+
+$ JAVA_HOME=<Temurin 17.0.20.1+1> ./gradlew -p desktop desktopTest --rerun-tasks --stacktrace
+    transitions exercised: 36/36
+    guard branches exercised: 41/41
+    foreground node pid 31473: 1 socket descriptor(s) held, 0 inet, 0 listening, 0 bound unix (LAB, this container)
+BUILD SUCCESSFUL in 1m 26s
+```
+(A first JDK 17 run FAILED: the launcher test wanted zero socket descriptors and the JDK 17 runtime holds one unbound, unconnected AF_UNIX descriptor of its own, also held by an idle 5-line Java program. The test now classifies descriptors instead (ERRATA ERR-TEST-2); the JDK 17 result above is the run after that change. One earlier JDK 21 attempt was killed by another builder's `gradlew --stop` and was simply re-run, ERR-ENV-1.)
+
+DL0 gate 6 and the exact JSON shape (real installed launcher, uid 65534, LAB; the node has no control socket yet, so this is a LOCAL SNAPSHOT tagged `"source":"local-snapshot"`, ERRATA ERR-CLI-1):
+```
+$ desktop/node/build/install/asom-node/bin/asom status --json
+{"host":"foreground","fsm":"OFF","listeners":[],"locks":[],"source":"local-snapshot","version":"0.0.0-scaffold","platform":"linux","mode":"foreground","lending":false,"keyStorage":"unknown","engine":{"backend":"none","hasLocalEngine":false},"peers":[],"sessions":0,"inflight":0,"paths":{"state":"/nonexistent/.local/state/asom",...},"governors":{"power":{"source":"ac","charging":false,"batteryBand":null},"thermal":{"band":0,"watchedSensors":0},"gpuContention":"off (no attributable counter)","rules":"desktop"},"keepAwake":"not-implemented","notYetImplemented":["nik-store (planned tier: file) (DL2)","control-socket (DL2)","keep-awake locks (Inhibitor) (DL2)","sleep watcher (logind PrepareForSleep) (DL2)"]}
+$ desktop/node/build/install/asom-node/bin/asom-node --mode=selftest
+    selftest: 11 ok, 4 not-yet-implemented, 0 failed
+```
+(`LauncherProcessTest` also runs a real `asom-node --foreground`: banner on stderr only, stdout empty, 0 inet / 0 listening / 0 bound-unix sockets held on JDK 21 and JDK 17, exit 143 on SIGTERM; and asserts exit 78 with "refusing to run as root" for every mode.)
+
+DL1 gate command as written in the plan (ERRATA ERR-GATE-1: the FSM tests live in `:node-core`, so `*Fsm*` matches nothing in `:node`):
+```
+$ ./gradlew -p desktop :node:test --tests '*Probe*' --tests '*Fsm*'          BUILD SUCCESSFUL
+$ ./gradlew -p desktop :node-core:test --tests '*Fsm*'                        BUILD SUCCESSFUL   (prints transitions exercised: 36/36)
+```
+
+Isolation (check 4 pinned to `desktop/DESKTOP_BASE_SHA`, the lab's mechanism copied):
+```
+$ ASOM_GRADLE_FLAGS='--no-daemon ...' desktop/tools/isolation.sh --with-sdk
+isolation check 1 (root settings never name the desktop build): 0   expected 0
+isolation check 2 (no Android tooling in the desktop classpath; ANDROID_HOME='' ANDROID_SDK_ROOT=''): 0   expected 0
+isolation check 2 positive control (the same output does list the Kotlin plugin, so a 0 above is not an empty read): 19   expected > 0
+isolation check 2 again with ANDROID_HOME=/tmp/tmp.rTGDSmGBfe (a directory standing in for an SDK): 0   expected 0   [CI-APPROX]
+isolation check 3 (no Android module in the desktop build): 0   expected 0
+isolation check 3 positive control (the mapped root projects and the desktop modules are listed): 8   expected 8
+isolation check 4: base 74fe9a04abcace8ebecfff906821e9efc7afa007 (from desktop/DESKTOP_BASE_SHA), ancestor of HEAD confirmed
+isolation check 4: 136 protected files compared byte-for-byte against base 74fe9a04abca
+isolation check 4: OK (shipped tree byte-identical to the pinned base)
+law: OK        ISOLATION: all checks passed
+$ python3 desktop/tools/isolation.py --selftest   -> selftest OK (12 negative controls)
+$ (real negative control) echo '// tamper' >> settings.gradle.kts; python3 desktop/tools/isolation.py
+isolation check 4: FAILED, 1 difference(s):   settings.gradle.kts: content differs from base (9d0a648667fa != 225f94e8bfd6)     exit=1   (restored: exit=0)
+```
+Check 2 with a REAL Android SDK present is NOT verified here (no SDK in this container); the `desktop-isolation-with-sdk` job is its proof and has not run.
+
+Root build unchanged:
+```
+$ ./gradlew jvmTest --rerun-tasks --stacktrace
+BUILD SUCCESSFUL in 1m 5s      21 actionable tasks: 21 executed
+root tests: 139   (baseline: 139)
+$ git status --short  ->  ?? .github/workflows/desktop-linux.yml   ?? desktop/        (nothing else)
+```
+
+Mutation checks (each applied to the real source, the targeted tests run, then the original restored; every one FAILED as required):
+```
+LP-2 hold-down halved                       : 5 tests fail (PresenceLawsTest x4, ProviderFsmExhaustiveTest)
+presence in SERVING no longer drains        : 8 tests fail (PresenceLawsTest x7, ProviderFsmExhaustiveTest)
+a sleep drain records presence              : 4 tests fail
+fsync-before-ack (force() removed)          : 4 tests fail (JsonlLedgerSinkTest x3, LedgerSigkillHarnessTest volatile model)
+append failure swallowed (fail-open)        : 3 tests fail
+TtyConfirm falls back to stdin              : 1 fails   root guard removed from asom-node : 1 fails
+Deck block lock allowed                     : 1 fails   Deck battery no longer a hard NO  : 2 fail
+node prints an env secret to stderr         : 1 fails (NoSecretsOnStdoutTest)
+control frame length unchecked              : 1 fails
+```
+Note: the `real` SIGKILL model cannot see a missing fsync (the page cache survives a kill); the `volatile` channel model is what detects it, which is why both run (ERRATA ERR-SINK-1). The ledger claim is process death only.
+
+Not verified here: hosted-runner behaviour of `desktop-linux.yml` (never run; action SHAs from `git ls-remote`); the `ubuntu-24.04-arm` lane; a real Android SDK for check 2; Windows/macOS; every device fact: the four sysfs fixture hosts are SYNTHETIC hand-written trees, so no probe result is evidence about a Steam Deck or a Dell (DV-D*, DV-L* stay `NEEDS-DEVICE-VALIDATION`); systemd, logind, real suspend; the Deck docked/game/Game-Mode mechanisms do not exist (unknown = not lending, ERR-DECK-1).
+Result: PASSED (DL0 and DL1 as amended by ERRATA; local LAB evidence only)
