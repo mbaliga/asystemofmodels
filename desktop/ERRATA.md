@@ -57,6 +57,7 @@ implements, the CONSERVATIVE reading was taken and is recorded here. Nothing was
 | Date | From | To | Reason |
 |---|---|---|---|
 | 2026-09-30 | 74fe9a04 | 770a44da | Same reviewed change as lab/ERRATA.md: a race fix in two v1 streaming integration tests (server/src/test only). Pinned to the same commit as `lab/LAB_BASE_SHA`. |
+| 2026-09-30 | 770a44da | 70eb11d1 | Orchestrator fixed a second flake in a v1 test (`AsomServerIntegrationTest` chopped-stream test compared bodies that embed a per-second `created` stamp; server/src/test only, no production code). Re-pinned in a later commit than the change. |
 
 ## ERR-DL2-13 (orchestrator, first hosted run 2026-09-30): three defects only a hosted run could show
 
