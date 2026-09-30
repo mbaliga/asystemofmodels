@@ -33,6 +33,11 @@ recommends:
   - libvulkan1
 
 contents:
+  # the package owns /opt/asom itself, so removing it removes the directory too (an rpm otherwise leaves /opt/asom behind)
+  - dst: /opt/asom
+    type: dir
+    file_info:
+      mode: 0755
   # the app image: root-owned and read-only (SYSTEM mode needs this, linux.md 7.3 C13)
   - src: ${ASOM_STAGE}/
     dst: /opt/asom/${ASOM_VERSION}/

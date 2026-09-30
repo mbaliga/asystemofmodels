@@ -82,3 +82,7 @@ Lesson recorded for every track: a workflow that has never run on a hosted runne
 ## ERR-MC-SOCK-1 (orchestrator, first hosted macOS run 2026-09-30): the macOS control-socket path limit is 102 bytes, not 103
 
 `MacPaths.MAX_SOCKET_PATH_BYTES` was 103 (`sun_path` is 104 bytes including the NUL). On the hosted macOS 26 runner (arm64, JDK 21) `ControlSocketIT` measured the longest path the JDK's Unix-domain `bind` accepts as 102 bytes, so the node's limit exceeded what can be bound by one byte. The limit is now 102 and its unit tests follow. CI-hosted-VM evidence, not a device; re-measure on the owner's Mac. The same run showed that macOS `TMPDIR` (`/var/folders/.../T`) made four test homes over the limit; the tests now create their temp homes under `/tmp` (`shortTempBase()`), and the `demo-not-macos` law is required only off macOS (as `unavailable-off-windows` is required only off Windows).
+
+## ERR-DL3-RPM-1 (orchestrator, first hosted install-matrix run 2026-09-30): the rpm left /opt/asom behind
+
+On fedora:latest `dnf remove asom-desktop` removed the files but left the directory `/opt/asom`, because the rpm listed the version tree and the `current` link but did not own `/opt/asom` itself. `nfpm.yaml` now declares `/opt/asom` as a `type: dir` entry (mode 0755), so the package owns it and removal deletes it. The deb listing shows `./opt/asom/` owned by root/root; the packaging lab check still passes (104 checks, 0 failed). CI-ONLY evidence: the fedora install matrix must re-run to confirm the rpm side.
