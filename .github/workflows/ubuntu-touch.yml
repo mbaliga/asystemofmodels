@@ -236,7 +236,9 @@ jobs:
           echo "click: $click"
           test "$(dpkg-deb -f "$click" Architecture)" = "arm64"
           python3 apparmor-ci/check-groups.py build/aarch64-linux-gnu/app/install/asom.apparmor
-          rm -rf unpacked && dpkg-deb -x "$click" unpacked
+          rm -rf unpacked ctl && dpkg-deb -x "$click" unpacked && dpkg-deb -e "$click" ctl
+          # a click keeps its manifest in the control area, not the data tree: bring it in so the tree check sees what the phone sees
+          cp ctl/manifest unpacked/manifest.json
           python3 tools/check_click_tree.py unpacked --arch arm64
           echo "click size: $(du -k "$click" | cut -f1) KiB, sha256: $(sha256sum "$click" | cut -d' ' -f1)   (UNSIGNED, not for release)"
           cp "$click" "../xyz.mdhv.asom.ut_UNSIGNED_not-for-release_arm64.click"
