@@ -1,5 +1,5 @@
 // swift-tools-version:6.0
-// asom Apple lane, half I0a (PLATFORM_PLAN.md section 6). Ships nothing. UNSIGNED, LAB.
+// asom Apple lane, halves I0a and I0b (PLATFORM_PLAN.md section 6). Ships nothing. UNSIGNED, LAB.
 // ES256 only. An independent Swift implementation of the LAB_SPEC.md section 4 profile; never linked into the Mac node.
 import PackageDescription
 
@@ -9,6 +9,8 @@ let package = Package(
     products: [
         .library(name: "AsomJSON", targets: ["AsomJSON"]),
         .library(name: "AsomDSSE", targets: ["AsomDSSE"]),
+        .library(name: "AsomBenchCore", targets: ["AsomBenchCore"]),
+        .library(name: "AsomManifest", targets: ["AsomManifest"]),
         .executable(name: "asom-conformance", targets: ["asom-conformance"]),
     ],
     dependencies: [
@@ -24,10 +26,14 @@ let package = Package(
                 .product(name: "Crypto", package: "swift-crypto", condition: .when(platforms: [.linux])),
             ]
         ),
-        .target(name: "AsomConformanceKit", dependencies: ["AsomJSON", "AsomDSSE"]),
+        .target(name: "AsomBenchCore", dependencies: ["AsomJSON"]),
+        .target(name: "AsomManifest", dependencies: ["AsomJSON", "AsomDSSE", "AsomBenchCore"]),
+        .target(name: "AsomConformanceKit", dependencies: ["AsomJSON", "AsomDSSE", "AsomBenchCore", "AsomManifest"]),
         .executableTarget(name: "asom-conformance", dependencies: ["AsomConformanceKit"]),
         .testTarget(name: "AsomJSONTests", dependencies: ["AsomJSON"]),
         .testTarget(name: "AsomDSSETests", dependencies: ["AsomJSON", "AsomDSSE"]),
-        .testTarget(name: "AsomConformanceTests", dependencies: ["AsomConformanceKit", "AsomJSON"]),
+        .testTarget(name: "AsomBenchCoreTests", dependencies: ["AsomBenchCore", "AsomJSON"]),
+        .testTarget(name: "AsomManifestTests", dependencies: ["AsomManifest", "AsomBenchCore", "AsomDSSE", "AsomJSON"]),
+        .testTarget(name: "AsomConformanceTests", dependencies: ["AsomConformanceKit", "AsomJSON", "AsomDSSE"]),
     ]
 )

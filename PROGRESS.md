@@ -1236,3 +1236,89 @@ NOT RUN / NOT VERIFIED (each label is literal):
 - aarch64 image: not built (no aarch64 runner here). `rpm -qlp`, `rpm -i`: not run. Signing, attestation, reproducibility: none.
 - Real systemd, logind, polkitd, a Steam Deck, a Dell: `NEEDS-DEVICE-VALIDATION` (`desktop/docs/DEVICE_CHECKLIST_LINUX.md`: DV-D1 to DV-D11, DV-L1 to DV-L5, DV-B1 to B4, and DV-P1 to P6 added by this track).
 Result: DL3 gates 1, 2, 3, 6 PASSED (LAB); gate 4 (`distro-matrix.sh`) and gate 5 (`systemctl is-enabled`) written and NOT RUN (CI-ONLY).
+## Apple lane I0b gate (Swift: AsomBenchCore, AsomManifest, r3 `lines` and `check`, lane diff) — 2026-09-30 — LAB (not device evidence)
+
+Base: `dc8a45dc4ced1cb9c4b80eaf54c4ad17b7758b4e` (confirmed with `git rev-parse HEAD` after `git reset --hard` to it; `docs/design/mesh/LAB_SPEC.md` present) plus an uncommitted working tree (`apple/`, `.github/workflows/apple-ios.yml`, this entry).
+Runner: local container, Ubuntu 24.04 x86_64, Swift 6.1 (swift-6.1-RELEASE), swift-crypto 4.5.2, XCTest, JDK 21 for the JVM lane. **No Xcode, no macOS, no Docker daemon, no GitHub Actions run.**
+Scope: half I0b. The vectors are the lab's **r3** set (confVersion 0.2.0, all `oracle: self`). Errata, every reading taken where the spec is silent and the disagreement table: `apple/ERRATA.md` (E-16 to E-28, F-1 to F-6). Boundary and labels: `apple/README.md`.
+
+**Independence: NOT CLAIMED. The vectors stay `oracle: self`; this is cross-lane agreement at most.** What the author read and did not read (LAB_SPEC 4.10 asks for it to be recorded):
+not read: `lab/manifest/src`, `lab/bench-core/src`, `lab/json/src`, `lab/*/tools`, the vector generators (`RegenerateVectors.kt`, `gen_manifest_vectors.py`), the runner's family adapters. Read: the spec sections listed in ERRATA E-16, **all of `lab/ERRATA.md`**
+(so the JVM lane's stated readings were known), the vectors' inputs **and expected outputs before the code was written**, `bench_ref.py` lines 226-240 and 360-538 (the reference's formatters and `render`). Eight clauses were set from the vectors where the prose was silent (ERRATA E-17); agreement on those is not evidence about the spec.
+
+```
+$ export PATH=/opt/swift/usr/bin:$PATH; rm -rf apple/.build; swift build --package-path apple      (clean build, no warnings printed)
+Computed https://github.com/apple/swift-crypto.git at 4.5.2 (2.08s)
+Build complete! (46.61s)
+
+$ swift test --package-path apple
+	 Executed 166 tests, with 0 failures (0 unexpected) in 15.274 (15.274) seconds
+   (I0a: 49 unchanged in count, one assertion changed from 2 to 4 deny-listed keys; I0b adds 117: AsomBenchCoreTests 64, AsomManifestTests 48, R3ConformanceTests 5; 0 skipped)
+```
+
+Non-vacuity: `R3ConformanceTests.testNonVacuity` fails when any family or any implemented input kind ran zero vectors (19 kinds), and pins the only kinds not run (the six M04 plan/governor/executor kinds); the mutation-of-JSON test asserts it rejected more than 50 and accepted more than 5 documents so that both paths ran;
+the consistency test runs 18 single-rule rejects and 12 boundary cases that must pass step 15; the projection-flag and file-rule tests assert each stripped field individually.
+
+```
+$ swift run --skip-build --package-path apple asom-conformance check M02,M03          (ASOM_CONFORMANCE_DIR=docs/design/mesh/manifest-vectors; the r0 set of half I0a)
+checked 37, disagreements 0
+
+$ ASOM_CONFORMANCE_DIR=lab/conformance swift run --skip-build --package-path apple asom-conformance lines M01,M02,M03,M04,M05,M06 > swift.lines ; wc -l
+294 swift.lines            (stderr: not implemented in this lane: M04/ceilings 9, M04/consent 6, M04/fsm 1, M04/pins 1, M04/plan 3, M04/trace 26 = 46)
+
+$ ASOM_CONFORMANCE_DIR=lab/conformance swift run ... asom-conformance check                      -> checked 294, mismatches 42     (spec-literal reading: F-1, 37 verdicts + 5 values)
+$ ASOM_CONFORMANCE_DIR=lab/conformance ASOM_DIAGNOSTIC_DRIFT_FLAG=1 swift run ... asom-conformance check   -> checked 294, mismatches 0
+```
+
+The lane diff. The JVM lines come from the lab runner as the assignment gives it (`./gradlew -p lab :conformance-runner:run --args="lines M01,M02,M03,M04,M05,M06" --quiet`, `--no-daemon --max-workers=2`), 340 lines.
+The diff is per vector (`apple/ci/lane_diff.py`), not a whole-file diff (a whole-file `diff` prints 83 JVM-only lines: 37 disagreements and 46 vectors not implemented here).
+
+```
+family  jvm  agree  disagree  swift-not-implemented        (spec-literal Swift reading, the gate input)
+M01     105  105    0         0
+M02      18    1    17        0
+M03      71   66     5        0
+M04      94   48    0         46
+M05      42   32   10         0
+M06      10    5    5         0
+total   340  257   37         46
+
+$ python3 apple/ci/lane_diff.py jvm.lines swift.lines --known apple/ci/known-disagreements.txt --not-implemented apple/ci/not-implemented.txt
+vectors: jvm=340 swift=294 agree=257 disagree=37 (known 37) jvm-only=46 (not implemented 46)          exit 0
+
+$ python3 apple/ci/lane_diff.py jvm.lines swift-diagnostic.lines --not-implemented apple/ci/not-implemented.txt     (ASOM_DIAGNOSTIC_DRIFT_FLAG=1: F-1 set aside; a diagnostic, never the gate)
+vectors: jvm=340 swift=294 agree=294 disagree=0 (known 0) jvm-only=46 (not implemented 46)            exit 0
+```
+Negative controls of the diff tool (run): a forced `M03-141 ok` is `PROBLEM: M03-141: disagreement not listed in the known list` (exit 1); the known list against the diagnostic lines is `PROBLEM: M06-104: listed as a known disagreement but the lanes agree (stale list)` (exit 1); deleting the `M02-114` line is `PROBLEM: M02-114: printed by the JVM lane only and not listed as not implemented` (exit 1).
+
+**Every disagreement is listed in ERRATA F-1 with both verdicts, verbatim (37 rows).** One cause: the JVM lane's projection adds a row flag `thermal-drift` (design B7); benchmark.md 13.3 lists no such flag and `lab/ERRATA.md` does not record it (F-5). Classified: **spec ambiguity, resolved by the JVM lane without an ERRATA entry; not a Swift bug**. The Swift lane did not copy it.
+Other findings from the diff, both Swift bugs and fixed by reading the spec: **M01-149** (invalid UTF-8 after the value must outrank trailing data, F-2) and **M03-167** (the deny-list lacked the lab's per-export keys 3 and 4, F-3). Undetermined, no vector decides it: the minimum number of kept reps for drift (F-4, with a proposed vector).
+
+```
+$ actionlint .github/workflows/apple-ios.yml     -> no findings, exit 0            (jobs: root-unchanged, apple-swift-lane x2, ios-package-sim, jvm-lines, lane-diff)
+$ python3 -c "yaml.safe_load(...)"               -> parsed
+$ python3 lab/tools/isolation.py                 -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ git diff --stat -- core server app gradle settings.gradle.kts build.gradle.kts gradle.properties .github/workflows/ci.yml lab   -> empty
+```
+The workflow's `lane-diff` job is explicit about what it tolerates: `apple/ci/known-disagreements.txt` (37 ids, all F-1) and `apple/ci/not-implemented.txt` (46 ids); it fails on any other difference and on stale entries. It is not `continue-on-error`.
+
+Mutation checks. 63 mutants, each applied to the real source with the WHOLE suite run and the original restored: **61 killed; 2 equivalent (survived, argued)**. Five survived the first pass and were killed by tests added afterwards (marked *):
+```
+V01 step 12 skipped KILLED        V02 expiry boundary <= KILLED     V03 skew allowance exclusive KILLED   V04 zero TTL accepted KILLED      V05 TTL upper bound exclusive KILLED
+V06 nonce always equal KILLED     V07 consistency skipped KILLED    V08 derivation compare skipped KILLED V09 confFloor exclusive KILLED    V10 known-bad list ignored KILLED
+V11 file-mode own accepted KILLED V12 evidence limit 3 KILLED       V13 rollback <= KILLED                V14 equivocation inverted KILLED  V15 tee not hardware KILLED
+V16 tier check off by one KILLED  V17 key3 off the deny-list KILLED V18 payload size limit off KILLED
+D01 unknown members tolerated at minor 0 KILLED   D02 forbidden-name scan off KILLED   D03 bidi embeddings allowed KILLED   D04 text limit 97 KILLED   D05 platformIds allowed in a file KILLED
+D06 seq allowed in a file KILLED*   D07 file claims hardware storage KILLED   D08 file measuredAtMs not day-truncated KILLED   D09 rate bound not enforced KILLED   D10 rate of zero allowed KILLED
+C01 TTFT boundary <= KILLED*   C02 consistency overflow wraps KILLED   C03 steady-vs-curve check off KILLED   C04 duplicate rows allowed KILLED
+P01 file keeps seq KILLED   P02 keeps platformIds KILLED   P03 keeps securityPatch KILLED   P04 file keeps the node key as subject KILLED   P05 q2 truncates KILLED   P06 catalogue filter off KILLED   P07 curve selection floors KILLED
+B01 file bench keeps battery KILLED   B02 file rows keep battery KILLED   B03 file run start not truncated KILLED   B04 kv cache product wraps KILLED*   B05 flags unsorted KILLED
+S01 MAD 4450 KILLED*   S02 MAD-zero cut 251 KILLED*   S03 exclusions >= n/5 KILLED   S04 upper median KILLED   S05 nearest rank truncates KILLED   S06 drift threshold 101 KILLED*   S07 high needs 3 kept SURVIVED (equivalent)   S08 contention boundary exclusive KILLED
+U01 onset 901 KILLED   U02 peak window 150 s KILLED*   U03 settle 45 s KILLED   U04 hard-ceiling medium cap removed SURVIVED (equivalent)
+K01 checked mul wraps KILLED   K02 checked add wraps KILLED   T01 non-ASCII passes into text KILLED   T02 speeds round KILLED   T03 comfortable threshold KILLED   T04 process limit ignored KILLED   J01 invalid UTF-8 after the value is trailing data KILLED
+```
+Equivalent mutants, stated so nobody reads them as gaps: S07 (with n >= 5 the outlier rule leaves at least 4 kept reps, so `kept >= 3` and `kept >= 4` cannot differ there); U04 (the medium cap for a hard ceiling can only bite on a base of `high`, which needs an end reason of PLATEAU or TIME_CAP, and the hard-ceiling reasons THERMAL_HARD and BATTERY_TEMP are neither). The suite of half I0a was not re-mutated.
+
+NOT VERIFIED (written, syntax-checked, never run): every macOS job (CryptoKit path, `swift test` on `macos-latest`), the `swift:6.1-noble` container by digest, `ios-package-sim` (the iPhone 17 device name is unverified), `jvm-lines` and `lane-diff` on GitHub Actions (the same commands were run here as separate steps; the artefact download layout `lanes/UNSIGNED-*/` is untested), the claim that the two Swift builds' lines files are byte-identical.
+Not done in this half (ERRATA "Not done"): the 46 M04 plan, governor, consent and executor-trace vectors; the signer (`signPresentation`); M07, M08; the `OWN` pin.
+Result: **PARTIAL by design, and the lane diff is NOT empty.** Built and tested: PASSED (LAB). Lane diff against the JVM lane: 257 agree, 37 disagree (one cause, F-1, explicit), 46 not implemented; 294 agree once F-1 is set aside. No independence claimed.

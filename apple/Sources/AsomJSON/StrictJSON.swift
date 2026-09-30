@@ -49,9 +49,24 @@ private struct Parser {
             return .failure(.malformedJSON)
         }
         skipWhitespace()
-        if i < b.count { note(Rank.trailing, .trailingData) }
+        if i < b.count {
+            note(Rank.trailing, .trailingData)
+            if !remainderIsValidUTF8() { note(Rank.invalidUnicode, .invalidUnicode) }
+        }
         if let soft { return .failure(soft.code) }
         return .success(value)
+    }
+
+    /// Row 2 of the table (invalid UTF-8) outranks row 8 (trailing data): the check is on the bytes of the whole input,
+    /// so invalid UTF-8 after the value is INVALID_UNICODE. The data after the value is not otherwise parsed.
+    func remainderIsValidUTF8() -> Bool {
+        var k = i
+        while k < b.count {
+            if b[k] < 0x80 { k += 1; continue }
+            guard let (_, length) = decodeUTF8(at: k) else { return false }
+            k += length
+        }
+        return true
     }
 
     mutating func skipWhitespace() {

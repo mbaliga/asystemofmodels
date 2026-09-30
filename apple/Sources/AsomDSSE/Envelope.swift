@@ -41,6 +41,8 @@ public struct DSSEVerified: Sendable {
     public let payload: [UInt8]
     public let payloadType: String
     public let object: JValue
+    /// The parsed container. Only `evidence` (step 15c) is read from it after the signature step.
+    public let container: JValue
     public let signerSpki: [UInt8]
     public let nodeId: String
     public let pin: PinState
@@ -56,6 +58,8 @@ public enum SignatureLayer: Equatable, Sendable {
 public enum DSSEEnvelope {
     public static let manifestPayloadType = "application/vnd.asom.manifest.v1+json"
     public static let maxDocumentBytes = 524_288
+    /// manifest.md section 4.4: decoded payload at most 256 KiB (checked at step 6, ERRATA E-16).
+    public static let maxPayloadBytes = 262_144
 
     /// Verifier steps 1 to 10. A `.success` means the DSSE layer holds, not that the manifest is valid.
     public static func verify(document: [UInt8], context: DSSEContext) -> Result<DSSEVerified, RejectCode> {
@@ -80,6 +84,7 @@ public enum DSSEEnvelope {
         guard let payload = Base64Strict.decodeEither(fields.payloadB64),
               let signature = Base64Strict.decodeEither(fields.sigB64) else { return .failure(.encoding) }
         guard signature.count == SignatureCodec.rawLength else { return .failure(.signatureEncoding) }
+        guard payload.count <= maxPayloadBytes else { return .failure(.tooLarge) }
 
         let spki: [UInt8]
         switch selectKey(fields: fields, container: container, context: context) {
@@ -114,7 +119,7 @@ public enum DSSEEnvelope {
         guard let canonical = try? JCS.serialize(object), canonical == payload else { return .failure(.nonCanonical) }
 
         return .success(DSSEVerified(
-            payload: payload, payloadType: fields.payloadType, object: object,
+            payload: payload, payloadType: fields.payloadType, object: object, container: container,
             signerSpki: spki, nodeId: nodeId, pin: pin
         ))
     }

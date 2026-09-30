@@ -365,7 +365,7 @@ final class NodeIdentityTests: XCTestCase {
             XCTAssertEqual(NodeIdentity.pin(spki: k.spki).count, 32)
             XCTAssertTrue(NodeIdentity.testOnlyNodeIds.contains(nodeId))
         }
-        XCTAssertEqual(NodeIdentity.testOnlyNodeIds.count, 2)
+        XCTAssertEqual(NodeIdentity.testOnlyNodeIds.count, 4, "key1, key2 and the lab's per-export key3, key4 (half I0b; checked against the lab keys file in AsomManifestTests)")
     }
 
     func testTestOnlyKeysFileIsSelfConsistent() throws {

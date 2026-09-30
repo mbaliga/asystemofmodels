@@ -59,6 +59,12 @@ public enum Base64Strict {
         return out
     }
 
+    /// `b64url` (ids, digests, challenges): URL-safe alphabet only, no padding.
+    public static func decodeURLNoPad(_ text: String) -> [UInt8]? {
+        for c in text.utf8 where c == 0x3D || c == 0x2B || c == 0x2F { return nil }
+        return decodeEither(text)
+    }
+
     private static func encode(_ bytes: [UInt8], alphabet: [UInt8], pad: Bool) -> String {
         var out: [UInt8] = []
         var k = 0

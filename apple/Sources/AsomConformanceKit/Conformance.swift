@@ -124,6 +124,13 @@ public enum Conformance {
         }
     }
 
+    static func parseValue(_ bytes: [UInt8]) throws -> JValue {
+        switch StrictJSON.parse(bytes) {
+        case let .success(value): return value
+        case let .failure(code): throw ConformanceError("not strict JSON (\(code.rawValue))")
+        }
+    }
+
     static func keyOneSpki(in dir: String) throws -> [UInt8] {
         for path in [dir + "/TEST-ONLY-keys.json", dir + "/keys/TEST-ONLY-keys.json"]
         where FileManager.default.fileExists(atPath: path) {

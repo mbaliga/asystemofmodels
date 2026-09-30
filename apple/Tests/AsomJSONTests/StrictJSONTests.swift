@@ -83,6 +83,13 @@ final class StrictJSONTests: XCTestCase {
             ("range outranks duplicate", b("{\"a\":9007199254740992,\"a\":1}"), "NUMBER_RANGE"),
             ("duplicate outranks trailing", b("{\"a\":1,\"a\":1} x"), "DUPLICATE_KEY"),
             ("structural outranks everything", b("[1.5,"), "MALFORMED_JSON"),
+            // Half I0b, found by the lane diff (M01-149): row 2 checks the bytes of the whole input, so it outranks row 8.
+            ("invalid utf-8 after the value outranks trailing data", b("{} ") + [0xFF], "INVALID_UNICODE"),
+            ("truncated sequence after the value", b("[] ") + [0xE2, 0x82], "INVALID_UNICODE"),
+            ("overlong after the value", b("1 ") + [0xC0, 0x80], "INVALID_UNICODE"),
+            ("valid non-ASCII after the value is only trailing data", b("{} \u{E9}"), "TRAILING_DATA"),
+            ("a fraction in the trailing data is never parsed", b("{} 1.5"), "TRAILING_DATA"),
+            ("invalid utf-8 after the value outranks a fraction before it", b("1.5 ") + [0xFF], "INVALID_UNICODE"),
         ]
         var exercised = 0
         var perCode: [String: Int] = [:]

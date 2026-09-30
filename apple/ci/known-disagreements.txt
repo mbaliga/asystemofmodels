@@ -1,0 +1,42 @@
+# Vectors on which the Swift lane (spec-literal reading) and the JVM lane print different verdicts.
+# Explicit on purpose: apple/ci/lane_diff.py fails on any disagreement NOT listed here, and on any entry that now agrees.
+# F-1: the projection of an M04 THERMAL_DRIFT into results[].flags (see apple/ERRATA.md). The JVM lane emits the row flag
+# `thermal-drift`; benchmark.md 13.3 lists no such flag, so the Swift lane's step 15a reports DERIVATION_MISMATCH before it
+# reaches the step that decides the vector.
+M02-101 F-1
+M02-104 F-1
+M02-105 F-1
+M02-106 F-1
+M02-107 F-1
+M02-108 F-1
+M02-109 F-1
+M02-110 F-1
+M02-111 F-1
+M02-112 F-1
+M02-113 F-1
+M02-115 F-1
+M02-116 F-1
+M02-117 F-1
+M02-118 F-1
+M02-119 F-1
+M02-120 F-1
+M03-111 F-1
+M03-112 F-1
+M03-124 F-1
+M03-132 F-1
+M03-133 F-1
+M05-101 F-1
+M05-102 F-1
+M05-103 F-1
+M05-104 F-1
+M05-105 F-1
+M05-106 F-1
+M05-108 F-1
+M05-109 F-1
+M05-110 F-1
+M05-111 F-1
+M06-101 F-1
+M06-103 F-1
+M06-104 F-1
+M06-105 F-1
+M06-106 F-1

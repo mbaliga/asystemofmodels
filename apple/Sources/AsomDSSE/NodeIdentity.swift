@@ -11,6 +11,9 @@ public enum NodeIdentity {
     public static let testOnlyNodeIds: Set<String> = [
         "vaw93hb8yBZTX2LebYgzri1pfOnBlRIILoBLiyK_eN4",
         "idgZ8sjS2Fz_gsDBjfMRF3rH08Z6lwdee3U3OoPlVGE",
+        // key3 and key4 are the lab's per-export TEST-ONLY keys (lab/conformance/keys/TEST-ONLY-keys.json).
+        "Ees1kUrYV_JxZfeLes0ifZTbzDZgbHOzSicMPUhhxlA",
+        "Fs7m5h_0Asnep04eOQ30T6BtAI6rXroeBjGk82GQWj8",
     ]
 
     /// SHA-256 of the SPKI DER.
@@ -75,6 +78,19 @@ public enum NodeIdentity {
             buffer &= (1 << UInt32(bits)) - 1
         }
         if bits > 0 { out.append(base32Alphabet[Int(buffer << UInt32(5 - bits) & 0x1F)]) }
+        return out
+    }
+
+    /// SHA-256 of `bytes`, for the layers above (body digests, text hashes), so that they import no crypto themselves.
+    public static func sha256(_ bytes: [UInt8]) -> [UInt8] { Array(SHA256.hash(data: bytes)) }
+
+    public static func sha256Hex(_ bytes: [UInt8]) -> String {
+        let digits = Array("0123456789abcdef")
+        var out = ""
+        for byte in sha256(bytes) {
+            out.append(digits[Int(byte >> 4)])
+            out.append(digits[Int(byte & 0xF)])
+        }
         return out
     }
 

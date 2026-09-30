@@ -7,7 +7,8 @@ final class ConformanceTests: XCTestCase {
     private func vectorDirectory(file: StaticString = #filePath) throws -> String {
         let here = URL(fileURLWithPath: "\(file)").deletingLastPathComponent().path
         let environment = ProcessInfo.processInfo.environment
-        if let fromEnv = environment["ASOM_CONFORMANCE_DIR"], !fromEnv.isEmpty { return fromEnv }
+        // The r0 tests only read an r0 directory; an r3 directory (lab/conformance, VERSION 0.2.0) belongs to R3ConformanceTests.
+        if let fromEnv = environment["ASOM_CONFORMANCE_DIR"], !fromEnv.isEmpty, !R3.isR3Directory(fromEnv) { return fromEnv }
         return try XCTUnwrap(Conformance.r0Directory(startingAt: here), "docs/design/mesh/manifest-vectors not found")
     }
 
