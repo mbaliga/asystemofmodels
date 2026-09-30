@@ -100,7 +100,7 @@ class DeriveReferenceTest {
 
     @Test
     fun rendererReproducesTheWorkedExampleModuloDocumentedDifferences() {
-        val expected = File(Repo.benchExamples, "example-phone.txt").readText(Charsets.US_ASCII)
+        val expected = File(Repo.benchExamples, "example-phone.txt").readText(Charsets.US_ASCII).replace("\r\n", "\n")
         val mine = TextRender.render(d, RenderOptions(meshAvailable = true))
         val lines = expected.split("\n").toMutableList()
         val dropAt = lines.indexOfFirst { it.startsWith("  - In everyday use") }

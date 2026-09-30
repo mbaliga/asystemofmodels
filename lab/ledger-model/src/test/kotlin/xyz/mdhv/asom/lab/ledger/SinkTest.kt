@@ -80,6 +80,10 @@ class SinkTest {
 
     @Test
     fun aNewLedgerFileIsCreatedWithMode0600() {
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+            java.nio.file.FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),
+            "no POSIX permissions on this file system",
+        )
         val f = tmp()
         Files.delete(f)
         JsonlSink(f).use { it.append(row(1)) }
