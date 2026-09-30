@@ -63,6 +63,9 @@ sudo chmod 0700 "$confined_tmp" "$runtime_dir/$pkg"
 # The profile lets the app write only under the invoking user's real home (.local/share, .cache, .config of the package), so the
 # real HOME is used; the test's own files stay outside it, in $work.
 home="$HOME"
+# The profile lets the app create only its own package directory under these; a phone's home already has them, a fresh runner's
+# may not (the first run showed mkdir of ~/.local and ~/.cache denied), so create the parents as the phone would have them.
+mkdir -p "$home/.local/share" "$home/.cache" "$home/.config"
 mapfile -t opts < <(HOME="$home" TMPDIR="$confined_tmp" python3 "$root/tools/expand_jvm_options.py" "$root/runtime/jvm.options")
 
 mark="$(sudo dmesg 2>/dev/null | wc -l || echo 0)"
