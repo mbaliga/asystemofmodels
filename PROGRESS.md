@@ -1051,3 +1051,92 @@ Findings for the owner (lab/ERRATA.md ERR-R6-*): (1) R3-OVERCLAIM-1 stands: the 
 Not verified here: JDK 17 lane; any device; the simulator's numbers are invented lab values, not measurements, and its thermal model is a threshold; RL19 is a weak law in a simulator without per-app scheduling (ERR-R6-17); the `duplicate-attempt` scenario skips L-L12, L-L16 and RL22 by construction (ERR-R6-20); the scenarios live in lab/mesh-sim/, not lab/conformance/scenarios/ (ERR-R6-13); no independent implementation has agreed with the vectors yet (`ref.py` is same-session).
 Oracle status: self-oracled (hand-typed expectations cross-checked by `lab/mesh-router/tools/ref.py`, an independent reference written in the same session; it never clears the oracle tag)
 Result: PASSED (local LAB and SIMULATED evidence only)
+## macOS MC1 + MC2 gate (track `macos-mc1-mc2`) — 2026-09-30 — LAB and CI-APPROX; every macOS result is CI-ONLY / NOT RUN (not device evidence)
+Base: `dc8a45dc4ced1cb9c4b80eaf54c4ad17b7758b4e` + the uncommitted `macos-mc1-mc2` working tree (`desktop/packaging/macos/**`, `.github/workflows/desktop-macos.yml`, one include line in `desktop/settings.gradle.kts`)   JDK: openjdk 21.0.10   Swift: 6.1 on Linux x86_64   Runner: local container (Ubuntu 24.04, NO Android SDK, NO macOS, no Xcode, no way to run GitHub Actions). The worktree was created at `98ab632` and was reset to the base exactly as instructed (`git fetch origin claude/asom-v1-build-brief-vw83oh && git reset --hard dc8a45dc...`); `git rev-parse HEAD` then printed `dc8a45dc4ced1cb9c4b80eaf54c4ad17b7758b4e` and `docs/design/mesh/LAB_SPEC.md` existed. Nothing was committed or pushed.
+Scope: PLATFORM_PLAN section 5 steps MC1 and MC2 (`macos.md` 3 to 10). MC1: module `:packaging:macos:macplatform` (pure JVM, no new third-party dependency, no JNA, Kotlin `--release 17` with `-Xjdk-release=17`): `MacPlatform`, `MacPaths`, `MigrationGuard`, `NodeLock`, the helper client (`HelperProcess`, `HelperClient`, strict codec), keys (`SecureEnclaveNik` T2, `FileNik` T0, `NikTierSelector`, `MacNikStore`; no T1), power (one shared assertion, 2 s sleep acknowledgement), presence, thermal, GPU, `InterfaceEligibility`, `MacControlSocket` (getpeereid check in both directions; does NOT bind), `ServiceRegistration`, `MacDoctor`. MC2: Swift package `desktop/packaging/macos/helper` (`HelperProtocol` builds and is tested on Linux; the `asom-mac-helper` executable is behind `#if os(macOS)`), `helper-protocol/` (`SCHEMA.md`, 404 vectors in 7 `jsonl` files), the AM14 demo script, the `macplatform` workflow job. NOT built (stubs marked NOT-YET-IMPLEMENTED, scripts exit 3): MC3 and later (`launcher/`, `native/`, `resources/`, `homebrew/`, twelve scripts, `docs/MACOS_NODE.md`), the tray, mode B, the control-socket bind. Every spec defect met is in `desktop/packaging/macos/ERRATA.md` (39 rows, `MAC-*`).
+
+Gate: `./gradlew -p desktop :packaging:macos:macplatform:test` on Linux, macOS ITs SKIPPED, count printed (LAB; two consecutive clean runs, the second after the last edit):
+```
+$ GRADLE_OPTS=-Xmx1g ./gradlew -p desktop :packaging:macos:macplatform:test --rerun-tasks --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process
+macplatform test summary: 141 tests, 130 passed, 0 failed, 11 skipped   (os=Linux; skipped tests are the @EnabledOnOs(MAC) integration tests and the assumption-gated ones)
+BUILD SUCCESSFUL in 2m 39s
+18 actionable tasks: 18 executed
+$ python3 desktop/packaging/macos/scripts/check_it_results.py --expect skipped desktop/packaging/macos/macplatform/build/test-results/test
+integration tests: 11 found, 0 passed, 11 skipped, 0 failed (expecting: skipped)
+integration tests: OK for mode skipped                                                   exit=0
+$ python3 desktop/packaging/macos/scripts/check_it_results.py --expect mac <the same directory>      (negative control)      exit=1
+VIOLATION: SKIPPED on macOS (not allowed): HelperIT: hostile lines are answered with the schema's errors and the helper keeps working() ... VIOLATION: no integration test passed
+```
+The 11 skipped tests are the `@EnabledOnOs(OS.MAC)` integration tests (SecureEnclaveIT 2, HelperIT 5, ControlSocketIT 2, PowerAssertionIT 2). **On a Mac every one of them is CI-ONLY / NOT RUN**; the `macplatform` job of `desktop-macos.yml` is what runs them. Law counters (non-vacuity; each prints its case count and the test fails at zero): 7 families, 82 laws, 0 with zero cases: keys 13 laws / 18 cases, net-control 12 / 100, paths-guard 16 / 43, ports 11 / 26, presence 9 / 78, scripts 9 / 30, service-doctor 12 / 56. One earlier run showed a flaky test (a loss-listener assertion raced the listener notification, which runs after the failed calls are released); the test now waits for the listener, and the source was not changed.
+
+Gate: Swift protocol target on Linux, and the two lanes over the same vectors (LAB; the lanes are SELF-ORACLED, one author wrote both codecs and the expectations, so this is "cross-lane agreement", not independent evidence):
+```
+$ swift test --package-path desktop/packaging/macos/helper
+	 Executed 29 tests, with 0 failures (0 unexpected) in 0.212 (0.212) seconds
+$ desktop/packaging/macos/scripts/check-protocol-lanes.sh
+BUILD SUCCESSFUL in 19s
+cross-lane: 404 vectors in desktop/packaging/macos/helper-protocol/vectors; Swift lane printed 404 lines, Kotlin lane printed 404 lines
+cross-lane: the two lanes are byte-identical over 404 vectors
+```
+
+Isolation and law checks (LAB; check 2 with a REAL Android SDK is NOT verified here, the `desktop-isolation-with-sdk` job in `desktop-linux.yml` is its proof):
+```
+$ ASOM_GRADLE_FLAGS='--no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process' desktop/tools/isolation.sh --with-sdk
+isolation check 1 (root settings never name the desktop build): 0   expected 0
+isolation check 2 (no Android tooling in the desktop classpath; ANDROID_HOME='' ANDROID_SDK_ROOT=''): 0   expected 0
+isolation check 2 positive control (the same output does list the Kotlin plugin, so a 0 above is not an empty read): 19   expected > 0
+isolation check 2 again with ANDROID_HOME=/tmp/tmp.wM9O3Xu8Q1 (a directory standing in for an SDK): 0   expected 0   [CI-APPROX]
+isolation check 3 (no Android module in the desktop build): 0   expected 0
+isolation check 3 positive control (the mapped root projects and the desktop modules are listed): 8   expected 8
+isolation check 4: 136 protected files compared byte-for-byte against base 770a44da21e7
+isolation check 4: OK (shipped tree byte-identical to the pinned base)
+law: 192 Kotlin/Java sources scanned (no android imports, no frozen-enum reuse, no wildcard bind, no listener but the AF_UNIX control server, no bare print)
+law: OK        ISOLATION: all checks passed
+$ python3 desktop/tools/isolation.py --selftest -> selftest OK
+```
+Root build unchanged:
+```
+$ ANDROID_HOME= ./gradlew jvmTest --rerun-tasks --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process
+BUILD SUCCESSFUL in 1m 45s     21 actionable tasks: 21 executed
+root tests: 139   failures+errors: 0   (baseline: 139)
+$ git status --short  ->   M desktop/settings.gradle.kts    ?? .github/workflows/desktop-macos.yml    ?? desktop/packaging/macos/      (nothing else; taken before this entry was appended to PROGRESS.md)
+```
+Workflow and script syntax (the macOS jobs themselves have NEVER run):
+```
+$ actionlint 1.7.12 .github/workflows/desktop-macos.yml desktop/packaging/macos/ci/desktop-macos.yml    -> no findings, exit 0
+$ yaml.safe_load -> jobs: helper-protocol-linux, lane-diff, macplatform, macplatform-linux, root-unchanged; the ci/ copy is byte-identical (a test keeps it so); every action pinned by commit SHA (resolved with git ls-remote)
+$ bash -n and shellcheck on desktop/packaging/macos/scripts/*.sh -> clean, exit 0
+```
+
+Mutation checks (each applied to the real source, the relevant test classes run, then the original restored; 50 mutants, all 50 KILLED, none survived; two first came out as compile errors, were rewritten so that they compile, and were then KILLED). Kotlin M01 to M40, Swift S01 to S10:
+```
+M01 codec accepts unknown fields                         KILLED    M21 lock file opened through a symbolic link             KILLED
+M02 JSON parser allows duplicate names                   KILLED    M22 another console user is not presence                 KILLED
+M03 \u escape accepts non-ASCII digits                   KILLED    M23 unknown HID idle counts as idle                      KILLED
+M04 base64 without the canonical round trip              KILLED    M24 idle threshold minimum 0                             KILLED
+M05 line limit off by one                                KILLED    M25 UPS does not count as battery                        KILLED
+M06 CR tolerated inside a line                           KILLED    M26 unknown thermal state is band 0                      KILLED
+M07 assert.hold reason not enforced                      KILLED    M27 sleep drain not cut off at the ack budget            KILLED
+M08 helper restart limit ignored                         KILLED    M28 every IPv4 address is a LAN address                  KILLED
+M09 helper inherits the whole environment                KILLED    M29 overlay block is a LAN address                       KILLED
+M10 hung helper not killed at the call timeout           KILLED    M30 control socket authorises every peer                 KILLED
+M11 lost helper read as no-Enclave (falls to T0)         KILLED    M31 doctor pmset allowlist accepts any arguments         KILLED
+M12 T2 self-test skipped                                 KILLED    M32 daemon mode allowed                                  KILLED
+M13 existing T2 that fails self-test downgrades to T0    KILLED    M33 own GPU load not subtracted                          KILLED
+M14 existing identity may be replaced                    KILLED    M34 presence blocks dropped from the rules               KILLED
+M15 new private files created with the default mode      KILLED    M35 fixed assertion reason changed                       KILLED
+M16 socket path limit 104 instead of 103                 KILLED    M36 T0 key written into a non-private directory         KILLED
+M17 directory check ignores group bits                   KILLED    M37 closing the client does not close helper stdin       KILLED
+M18 binding mismatch read as bound                       KILLED    M38 battery percent rounds up                            KILLED
+M19 identity without a binding read as fresh             KILLED    M39 daemon registration allowed                         KILLED
+M20 per-process lock registry removed                    KILLED    M40 doctor reports the assertion as always held          KILLED
+S01 Swift parser allows duplicate names                  KILLED    S06 Swift duplicate check by String equality             KILLED
+S02 Swift base64 without the canonical round trip        KILLED    S07 Swift UTF-8 accepts overlong E0 80                   KILLED
+S03 Swift line splitter limit off by one                 KILLED    S08 Swift codec accepts unknown fields                   KILLED
+S04 Swift dispatcher takes a second assertion            KILLED    S09 Swift dispatcher skips the version check             KILLED
+S05 Swift dispatcher does not release at EOF             KILLED    S10 Swift codec does not require an absolute path        KILLED
+```
+Findings fixed or recorded while writing (found by a run here, not on a Mac): a failed second `NodeLock` attempt released the first holder's POSIX lock (POSIX locks are per process; fixed with a per-process registry, MAC-LOCK-3, mutant M20); `:node-core`'s `StrictJson` accepts non-ASCII digits in `\u` escapes (MAC-JSON-1, shown by a real run; this track has its own parser and vector HP-REQX pins it; not edited in node-core); Swift `String` equality is canonical equivalence (names `é` and `é` would be called duplicates; the parser compares bytes, mutant S06).
+
+NOT VERIFIED (every item is `CI-ONLY / NOT RUN` or `NEEDS-DEVICE-VALIDATION`): **the macOS-only Swift sources of the helper (`helper/Sources/asom-mac-helper/*.swift` except `main.swift`) have never been compiled**, only parsed (`swiftc -parse`); every IOKit, CryptoKit Secure Enclave, `SMAppService`, `IOPS` and `IORegisterForSystemPower` call is written from the documentation; the `macplatform` and the other four jobs of `desktop-macos.yml` (never run), including whether the pinned Swift image digest still resolves and whether `macos-latest` has the tools the job assumes; the 11 macOS integration tests; the Secure Enclave tier (S-M1, AM01, AM02: whether a Developer-ID-signed helper with no entitlements can create and use a key), the raw `r||s` signature form, the copied-blob behaviour (FM15); `SMAppService` from a secondary executable (AM03, needs MC4); IOPM assertion release on SIGKILL (AM11); `getpeereid` through the JDK and the real per-user socket path limit (FM27); HID idle, screen lock and console-user reads (AM12), GPU counters (AM13); the `security` command line weakness (AM14, `demo-keychain-cli-weakness.sh` never ran on a Mac); `socketfilterfw` and `pmset` output parsers (written against SYNTHETIC listings); Local Network privacy (AM09); Tailscale variants; sleep, lid and clamshell (D-PWR1, D-PWR2); the presence rule with a person. No Team ID exists (M-D10), so every run is an unsigned dev-state run. `desktop/build.gradle.kts` `desktopTest` and `check_law.py` `ALLOWED_DEPS` still omit this module (MAC-GATE-1; not this track's files). The device list is `desktop/packaging/macos/docs/DEVICE_CHECKLIST_MACOS.md`.
+Result: PARTIAL by design. MC1 and MC2 as far as a Linux container can honestly go: PASSED (LAB and CI-APPROX); the macOS halves of the MC1 and MC2 gates are written and NOT RUN.
