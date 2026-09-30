@@ -30,3 +30,9 @@ add their own rows below, with their own ids.
 | ERR-CI-2 | LAB_SPEC 8.2 | The spec's job list does not run the pinned-base check or its negative control. | `lab-tests` runs `isolation.py --selftest` and `isolation.sh` on both JDKs; `lab-isolation-with-sdk` adds the positive control to check 2. R3-CONFORMANCE-2's suggested "negative-control branch that touches settings.gradle.kts" is replaced by the synthetic-repository self-test (same property, no throwaway branch). |
 | ERR-BUILD-1 | LAB_SPEC 2.3 | A cacheable test task can report a restored result as a pass. | The `conformance-runner` `test` task is never up to date and never cached (`upToDateWhen { false }`, `cacheIf { false }`), because it reads vectors and fixtures outside the source set and starts a real server. The shell modules' tests are still cacheable; a gate uses `--rerun-tasks`. |
 | ERR-DOC-1 | LAB_SPEC header ("self-contained"); R3-CLOSURE-2 | The spec cites sibling files for normative detail. | Nothing L0.1 needed from a sibling was missing: every normative rule for W00 to W03 and R04 is in LAB_SPEC 3 and the frozen v1 source. `docs/design/mesh/conformance-examples/` and `usdcheck.out` were used as cross-references only. |
+
+## Re-pin history (reviewed re-pins of LAB_BASE_SHA)
+
+| Date | From | To | Reason |
+|---|---|---|---|
+| 2026-09-30 | 1963166c | 770a44da | Orchestrator fixed a race in two v1 streaming integration tests (server/src/test only, no production code). Isolation check 4 compares protected paths against this pin, so a deliberate shipped-tree change outside the lab requires a reviewed re-pin in a LATER commit than the change. |

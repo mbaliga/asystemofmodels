@@ -410,3 +410,118 @@ Observed while measuring the baseline (not caused by the lab, root tests untouch
 Oracle status: self-oracled (no independent implementation has agreed yet). `xcheck.py` and the Kotlin runner were written in one session and never clear the tag.
 Not verified here: hosted-runner behaviour of `lab.yml` (never run; action SHAs resolved by `git ls-remote`, not executed); Windows/macOS lanes (later tracks); Android SDK present (CI-only); W01b-reach and W00-100..104 (proposed, need the L0.4 lab types).
 Result: PASSED (L0.1 as amended by ERRATA; local LAB evidence only)
+
+
+---
+
+## Apple lane I0a gate (Swift: AsomJSON, AsomDSSE, asom-conformance) — 2026-09-30 — LAB (not device evidence)
+
+Base: `1963166c500d9e83b6b5b076bb3c11263ef3e429` plus an uncommitted working tree (`apple/`, `.github/workflows/apple-ios.yml`, this entry).
+Runner: local container, Ubuntu 24.04 x86_64, Swift 6.1 (swift-6.1-RELEASE), swift-crypto 4.5.2 (resolved), XCTest. **No Xcode, no macOS, no Docker daemon, no GitHub Actions run.**
+Scope: half I0a only. `AsomManifest` and `AsomBenchCore` are not built; the vectors are the **r0** generation (confVersion 0.1.0), not the r3 set.
+Errata and every conservative reading: `apple/ERRATA.md`. Boundary and evidence labels: `apple/README.md`.
+
+```
+$ export PATH=/opt/swift/usr/bin:$PATH; rm -rf apple/.build; swift build --package-path apple      (clean build, no warnings printed)
+Computed https://github.com/apple/swift-crypto.git at 4.5.2 (1.91s)
+[514/515] Linking asom-conformance
+Build complete! (66.19s)
+
+$ swift test --package-path apple
+Test Suite 'debug.xctest' passed at 2026-09-30 07:48:09.782
+	 Executed 49 tests, with 0 failures (0 unexpected) in 1.522 (1.522) seconds
+Test Suite 'All tests' passed at 2026-09-30 07:48:09.782
+	 Executed 49 tests, with 0 failures (0 unexpected) in 1.522 (1.522) seconds
+   (AsomJSONTests 12, AsomDSSETests 30, AsomConformanceTests 7; 0 skipped)
+
+$ same tests with swift-crypto pinned exact 3.15.1 (a copy of the package under the scratchpad; Package.resolved showed 3.15.1)
+	 Executed 49 tests, with 0 failures (0 unexpected) in 1.387 (1.387) seconds
+```
+
+Non-vacuity: every table test asserts that it ran exactly as many cases as the table holds; the parser reject table asserts each of the six error classes was exercised;
+the envelope reject table asserts that each of the 20 DSSE-layer reject codes was exercised at least once; the vector test pins 37 = 14 decided + 20 passed-DSSE-layer + 3 retired
+and the exact set of 12 decided codes; the JCA comparison pins 35 agreeing lines and exactly two named differences.
+
+```
+$ swift run -q --package-path apple asom-conformance lines M01,M02,M03,M05,M06     (no lab/conformance: falls back to docs/design/mesh/manifest-vectors)
+vectors: .../docs/design/mesh/manifest-vectors                      [stderr]
+M01: not-implemented in half I0a                                     [stderr]
+M02: 9 vectors, 0 printed, 7 need steps 11+ (half I0b, not printed), 2 retired by r3
+M03: 28 vectors, 14 printed, 13 need steps 11+ (half I0b, not printed), 1 retired by r3
+M05: not-implemented in half I0a
+M06: not-implemented in half I0a
+M03-101 reject SIGNATURE_INVALID
+M03-102 reject SIGNATURE_ENCODING
+M03-103 reject KEY_NOT_PINNED
+M03-104 reject NON_CANONICAL
+M03-105 reject DUPLICATE_KEY
+M03-106 reject NON_INTEGER_NUMBER
+M03-113 reject PAYLOAD_TYPE_UNSUPPORTED
+M03-114 reject PAYLOAD_TYPE_UNSUPPORTED
+M03-117 reject SIGNATURE_COUNT
+M03-118 reject SCHEMA_MAJOR_UNKNOWN
+M03-123 reject TRAILING_DATA
+M03-125 reject ENCODING
+M03-127 reject KEY_NOT_PINNED
+M03-128 reject MALFORMED_JSON
+
+$ swift run -q --package-path apple asom-conformance check M02,M03 | tail -1
+checked 37, disagreements 0
+   (each verdict compared with the vector's own expected code; a vector whose expected code is raised at step 11 or later must pass steps 1 to 10)
+
+$ swift run -q --package-path apple asom-conformance sigcheck > swift.sig
+$ grep sigValid docs/design/mesh/manifest-vectors/crosscheck.out > jvm.sig       (the JCA VerifyDsse column: signature layer only)
+$ diff jvm.sig swift.sig                                                         (37 lines each)
+32c32
+< M03-123 sigValidUnderKey1=true
+---
+> M03-123 skipped (TRAILING_DATA)
+34c34
+< M03-125 sigValidUnderKey1=false
+---
+> M03-125 skipped (ENCODING)
+diff exit 1
+```
+
+The JCA `crosscheck.out` column is a **signature-layer** verdict, not `ok|reject` lines; no JVM lines file exists until the lab's runner does, so this is the diff that was possible.
+35 of 37 lines are identical. The two differences are expected and explained (ERRATA E-13): M03-123 (trailing data; the regex-based JCA check never parses the container, the same
+difference the design spike found) and M03-125 (non-canonical base64: a lenient decoder gets a different `s` and says `false`, this lane refuses it as `ENCODING` first).
+
+```
+$ python3 -c "import yaml; yaml.safe_load(open('.github/workflows/apple-ios.yml'))"    -> parsed; jobs: root-unchanged, apple-swift-lane, ios-package-sim
+$ actionlint 1.7.7 .github/workflows/apple-ios.yml                                       -> no findings, exit 0
+```
+
+Mutation checks (a source edit, `swift test`, restore). "Killed" means at least one test failed. 29 of 30 were killed:
+
+```
+M01 verify rejects high-S              killed (39)   M16 Unicode-aware fingerprint uppercasing  killed
+M02 parser ignores trailing data       killed (17)   M17 FILE fingerprint mismatch accepted     killed
+M03 keyid check skipped                killed (7)    M18 canonical-form check off               killed
+M04 MESH trusts container signer.spki  killed (11)   M19 signature result ignored               killed (12)
+M05 SPKI accepts trailing bytes        killed (2)    M20 r/s range check removed                SURVIVED (equivalent mutant, see below)
+M06 SPKI skips curve equation          killed (5)    M21 SPKI prefix not compared               killed
+M07 producer skips low-S               killed (167)  M22 signature count >= 1                   killed
+M08 base64 non-zero unused bits ok     killed (9)    M23 names compared with String ==          killed
+M09 base64 mixed alphabets ok          killed (3)    M24 depth limit 17                         killed
+M10 JCS sorts by code point            killed (4)    M25 lone low surrogate accepted            killed
+M11 duplicate names not detected       killed (10)   M26 safe-integer bound off by one          killed
+M12 fingerprint compare = prefix       killed (6)    M27 low-S boundary strict                  killed
+M13 TEST-ONLY deny-list off            killed (2)    M28 -0 accepted                            killed
+M14 PAE counts characters              killed        M29 exponent accepted                      killed
+M15 DER accepts non-minimal integer    killed (2)    M30 payloadType compared by prefix         killed
+```
+
+M20 survives because the crypto library rejects `r = 0`, `s = 0` and `r, s >= n` with the same code (`SIGNATURE_INVALID`), so our explicit range check (the spec's step 8) is redundant defence
+in depth and not separately observable (ERRATA E-12). The first automated pass mis-read a singular "with 1 failure" as a survivor for seven mutations (M14, M16, M23, M24, M25, M28, M30);
+they were re-run after fixing the harness and all were killed. M23 first failed to build and was corrected.
+
+**Not run, so not passed** (`NEEDS-CI`; the workflow is written and syntax-checked only):
+- `apple-swift-lane` on `macos-latest` (CryptoKit path: never compiled), and on `ubuntu-latest` in `swift:6.1-noble@sha256:3991e5dd...` (digest resolved from Docker Hub today; image not pulled).
+- `ios-package-sim` (`xcodebuild -scheme AsomKit-Package -destination 'platform=iOS Simulator,name=iPhone 17' test`; whether that scheme name and simulator exist on `macos-latest` is unverified).
+- `root-unchanged` (its diff logic ran nowhere; no negative control).
+- `jvm-lines` and `lane-diff`: **not written**, they need the lab's `lines` mode (commented TODO in the workflow). `lane-diff` for M01–M03, M05, M06 is therefore **not achieved**.
+- I0 gate items still open: `macos-latest` test green, `ios-package-sim` -> `** TEST SUCCEEDED **`, lane-diff exit 0.
+
+Oracle status: **self-oracled**. This lane was written with the spikes and `VerifyDsse.java` in view and in a full checkout, so it does not clear the `self` tag (ERRATA E-02).
+Result: PARTIAL — I0a Linux gates PASSED (LAB); macOS, simulator, container and lane-diff gates NOT RUN.

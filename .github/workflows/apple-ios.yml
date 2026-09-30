@@ -1,0 +1,131 @@
+# Apple / Swift lane, half I0a (PLATFORM_PLAN.md section 6, step I0 = MC0 = L0.7). Ships nothing.
+#
+# EVIDENCE LABELS: every artefact and every result of this workflow is UNSIGNED, LAB / CI (hosted VM) evidence.
+# It is NOT device evidence. Nothing here is a speed, thermal or memory figure.
+# This file was written in a container that has neither Xcode nor a Docker daemon and could not run GitHub Actions:
+# it is syntax-checked, and every job below is UNVERIFIED until a hosted run has been seen.
+
+name: apple-ios
+
+on:
+  push:
+    paths:
+      - "apple/**"
+      - "lab/conformance/**"
+      - ".github/workflows/apple-ios.yml"
+  pull_request:
+    paths:
+      - "apple/**"
+      - "lab/conformance/**"
+      - ".github/workflows/apple-ios.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apple-ios-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # PLATFORM_PLAN P2 with the R3-CONFORMANCE-2 correction (apple/ERRATA.md E-01): a check of the working tree after a
+  # fresh checkout can never fail, so this one diffs the change itself against its base.
+  root-unchanged:
+    name: root build and shipped modules unchanged (diff against the base)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+      - name: Diff the protected paths against the base
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -eu
+          paths="core server gradle settings.gradle.kts build.gradle.kts gradle.properties .github/workflows/ci.yml"
+          if [ "$EVENT" = "pull_request" ]; then
+            range="origin/${BASE_REF}...HEAD"
+          elif [ "$EVENT" = "push" ] && [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            range="${BEFORE}..HEAD"
+          else
+            echo "::notice::no base to diff against for event '$EVENT'; the root-unchanged check did not run"
+            exit 0
+          fi
+          echo "diffing $range"
+          # shellcheck disable=SC2086
+          git diff --exit-code "$range" -- $paths
+          echo "protected paths unchanged in $range"
+          echo "Not covered: a root edit merged in a separate change, and local runs before any commit."
+
+  apple-swift-lane:
+    name: apple-swift-lane (${{ matrix.name }})
+    needs: root-unchanged
+    runs-on: ${{ matrix.os }}
+    # macOS runs the system CryptoKit; the Linux container runs swift-crypto (Package.swift: .when(platforms: [.linux])).
+    # The image is pinned by digest (resolved from Docker Hub on 2026-09-30, not pulled or run when this was written).
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macos-latest, CryptoKit
+            os: macos-latest
+            container: ""
+            lines: swift-lines-macos
+          - name: ubuntu-latest, swift:6.1-noble, swift-crypto
+            os: ubuntu-latest
+            container: swift:6.1-noble@sha256:3991e5dd5c40b04580c1e56f1ad6042f3173829b1995ffa53b84957371c25876
+            lines: swift-lines-linux
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Toolchain
+        run: swift --version
+      - name: Build and test
+        run: swift test --package-path apple
+      # The r0 vectors only: the lab's r3 set (confVersion 0.2.0) needs the half I0b verifier. See apple/README.md.
+      - name: Conformance consistency check on the r0 DSSE and JSON vectors
+        env:
+          ASOM_CONFORMANCE_DIR: docs/design/mesh/manifest-vectors
+        run: swift run --package-path apple asom-conformance check M02,M03
+      - name: Lines (DSSE-level verdicts)
+        env:
+          ASOM_CONFORMANCE_DIR: docs/design/mesh/manifest-vectors
+        run: |
+          mkdir -p out
+          swift run --package-path apple asom-conformance lines M02,M03 > out/swift.lines
+          cat out/swift.lines
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: UNSIGNED-${{ matrix.lines }}
+          path: out/swift.lines
+
+  ios-package-sim:
+    name: ios-package-sim (iPhone 17 simulator, package targets only)
+    needs: root-unchanged
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Xcode and simulators available on this runner
+        run: |
+          xcodebuild -version
+          xcrun simctl list devices available | head -40
+      # SwiftPM generates the AsomKit-Package scheme from the package's library products (apple/Package.swift).
+      # Whether macos-latest carries an iPhone 17 runtime is unverified; a missing device fails here, loudly.
+      - name: Test the package in the simulator
+        working-directory: apple
+        run: |
+          set -o pipefail
+          xcodebuild -scheme AsomKit-Package -destination 'platform=iOS Simulator,name=iPhone 17' test 2>&1 | tee ../xcodebuild.log
+          grep -F '** TEST SUCCEEDED **' ../xcodebuild.log
+
+  # TODO (half I0b, needs the lab's conformance-runner 'lines' mode, LAB_SPEC.md section 3.3, which does not exist yet).
+  # Do not enable before lab/ has ':conformance-runner:run --args=lines' and the r3 vectors exist.
+  #
+  #   jvm-lines:      ubuntu-latest, JDK 17, ANDROID_HOME="" ANDROID_SDK_ROOT=""
+  #                   ./gradlew -p lab :conformance-runner:run --args='lines M01,M02,M03,M05,M06' --quiet > jvm.lines
+  #   lane-diff:      needs [jvm-lines, apple-swift-lane]; download the UNSIGNED-swift-lines-* artefacts and run
+  #                   diff jvm.lines swift-lines-macos/swift.lines && diff jvm.lines swift-lines-linux/swift.lines
+  #   Until AsomManifest exists, swift.lines holds only the vectors that the DSSE layer settles (14 of 37 r0 vectors),
+  #   so a whole-file diff would fail by construction; the lane-diff must then compare the ids present in swift.lines.
