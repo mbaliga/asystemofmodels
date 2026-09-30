@@ -20,13 +20,22 @@ for f in "$root"/tests/qml/tst_*.qml; do
   rc=0
   "${runner[@]}" -input "$f" || rc=$?
   if [ "$rc" -eq 0 ]; then continue; fi
-  # A native crash (signal, exit >= 128 or -11 seen as 245) under the offscreen platform is retried once under a virtual X display,
-  # which is what the widgets are written for; the retry runs the same tests and both outcomes are printed.
-  if command -v xvfb-run >/dev/null && { [ "$rc" -ge 128 ] || [ "$rc" -eq 245 ]; }; then
-    echo "run_qml_ci: $(basename "$f") crashed under offscreen (exit $rc); retrying under xvfb"
-    if xvfb-run -a "${runner[@]/offscreen/xcb}" -input "$f"; then echo "run_qml_ci: $(basename "$f") passed under xvfb (offscreen crashed)"; continue; fi
+  # A native crash (exit >= 128) under the offscreen platform is retried under a virtual X display, first with the software scene
+  # graph and then with Mesa's software GL, which the real Lomiri widgets (ShaderEffect) may need. The same tests run each time and
+  # every outcome is printed; if nothing passes, a gdb backtrace of the crash is printed when gdb is present.
+  if [ "$rc" -ge 128 ] && command -v xvfb-run >/dev/null; then
+    echo "run_qml_ci: $(basename "$f") crashed under offscreen (exit $rc)"
+    xrun=("${runner[@]/offscreen/xcb}")
+    echo "run_qml_ci: retry 1: xvfb, software scene graph"
+    if xvfb-run -a "${xrun[@]}" -input "$f"; then echo "run_qml_ci: $(basename "$f") passed (retry 1)"; continue; fi
+    echo "run_qml_ci: retry 2: xvfb, default scene graph on Mesa software GL"
+    if env -u QT_QUICK_BACKEND LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a "${xrun[@]}" -input "$f"; then echo "run_qml_ci: $(basename "$f") passed (retry 2)"; continue; fi
+    if command -v gdb >/dev/null; then
+      echo "run_qml_ci: backtrace of the crash"
+      xvfb-run -a gdb -q -batch -ex run -ex bt --args qmltestrunner -platform xcb -import "$modules" -input "$f" 2>&1 | tail -60 || true
+    fi
   else
-    echo "run_qml_ci: $(basename "$f") failed with exit $rc (no xvfb retry: exit is not a crash or xvfb-run is absent)"
+    echo "run_qml_ci: $(basename "$f") failed with exit $rc (no retry: the exit is not a crash, or xvfb-run is absent)"
   fi
   failed+=("$(basename "$f")")
 done
