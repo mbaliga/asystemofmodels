@@ -26,7 +26,7 @@ OPTIONS = os.path.join(UT_ROOT, "runtime", "jvm.options")
 
 
 def env_for(home):
-    env = {k: v for k, v in os.environ.items() if k not in ("JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "_JAVA_OPTIONS")}
+    env = {k: v for k, v in os.environ.items() if k not in ("JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "_JAVA_OPTIONS") and not k.startswith("XDG_")}
     env.update({"HOME": home, "TMPDIR": home, "XDG_CACHE_HOME": os.path.join(home, ".cache")})
     return env
 
