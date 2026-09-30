@@ -1,0 +1,25 @@
+# Clickable 8.10.0 project config for the UNSIGNED, UT-0 click xyz.mdhv.asom.ut (ships nothing; ubuntu-touch.md 10.1).
+#
+# The framework is named explicitly: Clickable's defaults are still the 20.04 framework and Qt 5.12 (UF08). ubuntu-touch-24.04-1.x maps
+# to AppArmor policy 2404.1, and one click built against it is meant to install on 24.04-1.x and 24.04-2.x (assumption UA02, DV-UT02).
+clickable_minimum_required: 8.10.0
+framework: ubuntu-touch-24.04-1.x
+builder: cmake
+kill: qmlscene
+
+# Static checks that need nothing but python3, run before the build so a bad token, a drifted text or a wrong AppArmor group fails first.
+prebuild:
+  - python3 tools/check_tokens.py
+  - python3 tools/check_texts.py
+  - python3 apparmor-ci/check-groups.py asom.apparmor.in --substitute
+
+# `clickable test` runs the QML tests against the REAL Lomiri.Components in this image (the local runner uses a stand-in).
+test: bash tests/run_qml_ci.sh
+
+scripts:
+  native-tests: bash tests/run_native_ci.sh
+  static-checks: python3 tools/check_tokens.py && python3 tools/check_texts.py && python3 apparmor-ci/check-groups.py --selftest
+
+# The runtime image (runtime/jlink.sh) and the node jar (jvm: utNodeJar, then tools/stage_node.sh) are built OUTSIDE this image, by the
+# ut-runtime and ut-jvm jobs, and staged under runtime/stage: the JDK toolchain is not in the Clickable image (ubuntu-touch.md 11.2,
+# "build the jar outside the Clickable image"). CMakeLists.txt refuses to package an arm64 click without them.

@@ -1,0 +1,10 @@
+{
+    "template": "ubuntu-sdk",
+    "policy_groups": [
+        "networking",
+        "keep-display-on",
+        "camera",
+        "content_exchange_source"
+    ],
+    "policy_version": @APPARMOR_POLICY@
+}

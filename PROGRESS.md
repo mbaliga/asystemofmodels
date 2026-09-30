@@ -1140,3 +1140,38 @@ Findings fixed or recorded while writing (found by a run here, not on a Mac): a 
 
 NOT VERIFIED (every item is `CI-ONLY / NOT RUN` or `NEEDS-DEVICE-VALIDATION`): **the macOS-only Swift sources of the helper (`helper/Sources/asom-mac-helper/*.swift` except `main.swift`) have never been compiled**, only parsed (`swiftc -parse`); every IOKit, CryptoKit Secure Enclave, `SMAppService`, `IOPS` and `IORegisterForSystemPower` call is written from the documentation; the `macplatform` and the other four jobs of `desktop-macos.yml` (never run), including whether the pinned Swift image digest still resolves and whether `macos-latest` has the tools the job assumes; the 11 macOS integration tests; the Secure Enclave tier (S-M1, AM01, AM02: whether a Developer-ID-signed helper with no entitlements can create and use a key), the raw `r||s` signature form, the copied-blob behaviour (FM15); `SMAppService` from a secondary executable (AM03, needs MC4); IOPM assertion release on SIGKILL (AM11); `getpeereid` through the JDK and the real per-user socket path limit (FM27); HID idle, screen lock and console-user reads (AM12), GPU counters (AM13); the `security` command line weakness (AM14, `demo-keychain-cli-weakness.sh` never ran on a Mac); `socketfilterfw` and `pmset` output parsers (written against SYNTHETIC listings); Local Network privacy (AM09); Tailscale variants; sleep, lid and clamshell (D-PWR1, D-PWR2); the presence rule with a person. No Team ID exists (M-D10), so every run is an unsigned dev-state run. `desktop/build.gradle.kts` `desktopTest` and `check_law.py` `ALLOWED_DEPS` still omit this module (MAC-GATE-1; not this track's files). The device list is `desktop/packaging/macos/docs/DEVICE_CHECKLIST_MACOS.md`.
 Result: PARTIAL by design. MC1 and MC2 as far as a Linux container can honestly go: PASSED (LAB and CI-APPROX); the macOS halves of the MC1 and MC2 gates are written and NOT RUN.
+## Ubuntu Touch UT0.1 to UT0.7 gate (track `ubuntu-touch-ut0`) — 2026-09-30 — LAB and CI-APPROX; UT0.6 is NEEDS-DEVICE-VALIDATION (not device evidence)
+
+Base `dc8a45dc4ced1cb9c4b80eaf54c4ad17b7758b4e` (pinned in `ubuntu-touch/UT_BASE_SHA`). Everything below is new under `ubuntu-touch/**` and `.github/workflows/ubuntu-touch.yml`; nothing else is touched. Nothing was committed or pushed. Every artefact is UNSIGNED. Per-file VERIFIED-BY / UNVERIFIED labels are in `ubuntu-touch/README.md`; spec readings in `ubuntu-touch/ERRATA.md` (ERR-UT-*).
+
+```
+$ ./gradlew -p ubuntu-touch/jvm utTest --rerun-tasks --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process     (JDK 21.0.10)
+      law UTC05/stdout-only-frames: 27 cases
+> Task :utTest      BUILD SUCCESSFUL in 2m 53s      36 actionable tasks: 36 executed
+ut-host tests: 49   failures+errors: 0
+$ (same command through the wrapper on Temurin 17)
+> Task :utTest      BUILD SUCCESSFUL in 3m 3s       36 actionable tasks: 36 executed
+ut-host tests: 49   failures+errors: 0
+$ ./gradlew jvmTest --rerun-tasks ...     (root build, JDK 21)
+BUILD SUCCESSFUL in 1m 23s        root tests: 139   failures+errors: 0   (baseline: 139)
+git diff --exit-code -- core server settings.gradle.kts build.gradle.kts gradle.properties gradle .github/workflows/ci.yml   -> clean
+$ ubuntu-touch/tools/isolation.sh --with-sdk
+isolation check 4: 136 protected files compared byte-for-byte against base dc8a45dc4ced ... OK
+law: settings.gradle.kts maps 16 projects by directory, no includeBuild ... law: OK       ISOLATION: all checks passed
+$ ubuntu-touch/runtime/jlink.sh     (cross-jlink from the pinned aarch64 Temurin 21.0.12.1+1 tarball, sha256 23e37e02...c773e223 matches temurin.lock)
+rt: 39 MB   bin/java: ELF 64-bit LSB pie executable, ARM aarch64   modules: java.base,java.logging,jdk.crypto.ec,jdk.unsupported
+ELF files with .debug_* sections: 0   max GLIBC: 2.17 (over 15 ELF files)   rt.sha256: 49 files, manifest sha256 1c5089ac...261f1f0a
+$ ./gradlew -p ubuntu-touch/jvm utNodeJar        asom-ut-node.jar 4243300 bytes
+$ tools/check_jar.py java asom-ut-node.jar --limit-modules java.base,java.logging,jdk.crypto.ec,jdk.unsupported
+selftest: 1 stdout line(s), stderr '', exit 0: ok
+selftest: tls TLSv1.3, alpn asom-mesh/1, vectors {'M01': 105, 'M02': 18, 'M03': 71, 'failed': 0}, rssKiB 137672
+--profile=ut session: frames ['hello_ack','state','error','state','peers','rows'], stderr '', exit 0, ledger mode 0o600: ok
+check_fake_nodes: OK (29 identical frames)      check_jar: OK
+$ tools/run_qml_tests_local.sh      (Qt 5.15.13, offscreen; plugin built locally)      tst_plugin (native, Qt Test): Totals: 16 passed, 0 failed;  qmltestrunner: Totals: 41 passed, 0 failed
+$ actionlint .github/workflows/ubuntu-touch.yml   rc=0            $ tools/regen_utc_index.py --check   INDEX.json is current (5 files)
+```
+
+Mutation checks (each applied to the real source once, the WHOLE `:ut-host:test` task, or the plugin rebuild plus ctest, run, then the file restored): 25 Kotlin and 6 C++, 31 in all. First run: 24 of 25 Kotlin KILLED, 1 SURVIVED (`line-cap-off-by-one`: `FrameCodec.decodeUi` has its own TOO_LONG check, so the vectors could not see the reader boundary; ERR-UT-TEST-1). A test was ADDED (`ControlChannelTest.readerCapIsExactAtEveryBufferAlignment`; none was weakened), the mutant re-run: KILLED. Final: Kotlin 25/25 KILLED, C++ 6/6 KILLED (`cap-off-by-one`, `manifest-hash-ignored`, `manifest-path-escape`, `send-allows-newline`, `heartbeat-while-inactive`, `jar-hash-ignored`), none broken. Kotlin mutants cover the L-UT1 window, watchdog gap, idle close, mayDial, permit, display release, attempt cancellation, the frame closed-set, integer bounds, writer cap, Invariant-9 projection, alias sanitising, error order, secret leak into a frame, stdout takeover, crash exit code, TLS pin, XDG/HOME containment, directory mode, hello ordering.
+
+NOT VERIFIED (each is `CI-ONLY / NOT RUN` or `NEEDS-DEVICE-VALIDATION`): UT0.3 the arm64 run of the jlinked runtime (the image was inspected, never run); UT0.4 and UT0.5 `clickable build`/`clickable test` (no Docker daemon here); UT0.7 `run-approx.sh` (needs `apparmor_parser` against the pinned policy tree in a container; the profile was only parsed locally); `.github/workflows/ubuntu-touch.yml` has never run on GitHub; the display hold, the real Lomiri styling and freeze behaviour on a device; **UT0.6 (S-UT1, the JVM self-test under real confinement) is NEEDS-DEVICE-VALIDATION**: `ubuntu-touch/docs/DEVICE_CHECKLIST_UT.md` DV-UT01 stays open until the owner runs it.
+Result: PARTIAL by design. UT0.1 and UT0.2 and the LAB halves of UT0.3 to UT0.5: PASSED (LAB and CI-APPROX). UT0.6 open. UT0.7 written, not run.

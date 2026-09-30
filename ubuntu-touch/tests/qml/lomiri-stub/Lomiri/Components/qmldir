@@ -1,0 +1,5 @@
+module Lomiri.Components
+MainView 1.3 MainView.qml
+Label 1.3 Label.qml
+Button 1.3 Button.qml
+TextField 1.3 TextField.qml

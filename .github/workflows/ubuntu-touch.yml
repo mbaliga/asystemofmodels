@@ -1,0 +1,360 @@
+name: ubuntu-touch
+
+# The Ubuntu Touch scaffold (UT-0; PLATFORM_PLAN section 7, ubuntu-touch.md 9 and 10.3). A NEW workflow: .github/workflows/ci.yml is
+# untouched. It SHIPS NOTHING: every artefact is UNSIGNED and named so; no store upload, no release, no signing secret is read.
+#
+# Evidence labels (never dropped): ut-jvm and ut-runtime are LAB / CI (hosted VM). ut-arm64-smoke proves the bundled runtime STARTS on
+# an arm64 userland that is a noble-based UBports SDK image (R3-OVERCLAIM-9): NOT the Ubuntu Touch system image, NOT Halium, NOT
+# confinement. ut-apparmor-approx is CI-APPROX: NOT DEVICE EVIDENCE. Device items (DV-UT01 to DV-UT16, UT0.6) stay
+# NEEDS-DEVICE-VALIDATION whatever this workflow prints.
+#
+# Third-party actions are pinned by commit SHA (the same SHAs as lab.yml and the desktop workflows; the tag is in the comment).
+# Container images are pinned by digest. Resolved on 2026-09-30 from the Docker Hub tag list and CONFIRMED by a manifest request to the
+# registry (HTTP 200, Docker-Content-Digest equal to the pin, media type manifest.v2), NOT pulled (no Docker daemon where it was written):
+#   clickable/ci-ut24.04-1.x-arm64    8.10.0  sha256:cd92a2bb1708dd3d339b448c5c82adecf4fbee78e2f035ec4dd57fc2f40e612e
+#   clickable/ci-ut24.04-2.x-arm64    8.10.0  sha256:3718a8113160045405f3ef343f63091fd1a05e1b61825856aca162b7ea8e03dc
+#   clickable/ci-ut24.04-1.x-amd64    8.10.0  sha256:d5f775ab898ee832d6c2dd9870172af3a6359eecf05e4f685d7a4664a0a88ace
+#   clickable/arm64-ut24.04-1.x-arm64 8.10.0  sha256:d89c87c00eb58b510cebf2341b51ed4389513bca6ef37d0039e944bfd87b477b
+#   clickable/ci-ut26.04-1.x-arm64    8.10.0  sha256:b4f69f56c27eb689f737697c63f8b9880d87c3e2055136a3675ce67bf2c563f2
+# Not resolved (unpinned by design): none. Bumping a digest is a reviewed edit of this file.
+#
+# NEVER RUN: this workflow has not run on GitHub. It was checked with actionlint and by running its commands locally where a
+# container is not needed (see PROGRESS.md). The container jobs (ut-click, ut-qml, ut-canary-2604, ut-arm64-smoke) and the arm64
+# jobs have never executed; their first run may need adjustments (image tools, artefact paths).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ubuntu-touch/**"
+      - "desktop/node-core/**"
+      - "lab/**"
+      - "core/**"
+      - "server/**"
+      - "gradle/**"
+      - ".github/workflows/ubuntu-touch.yml"
+  pull_request:
+    paths:
+      - "ubuntu-touch/**"
+      - "desktop/node-core/**"
+      - "lab/**"
+      - "core/**"
+      - "server/**"
+      - "gradle/**"
+      - ".github/workflows/ubuntu-touch.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ubuntu-touch-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UT_MODULES: java.base,java.logging,jdk.crypto.ec,jdk.unsupported
+
+jobs:
+  ut-jvm:
+    name: UT host and UTC01-UTC05 (JDK ${{ matrix.jdk }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        jdk: ["17", "21"]
+    env:
+      ANDROID_HOME: ""
+      ANDROID_SDK_ROOT: ""
+    steps:
+      # fetch-depth 0: the isolation check compares against the pinned ubuntu-touch/UT_BASE_SHA, which a shallow clone lacks.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.jdk }}
+
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Isolation checks 1 to 4 against the pinned base, and the law checks
+        run: |
+          python3 ubuntu-touch/tools/isolation.py --selftest
+          ubuntu-touch/tools/isolation.sh
+
+      - name: UT host tests and the UTC01-UTC05 families (prints one line per family)
+        run: ./gradlew -p ubuntu-touch/jvm utTest --stacktrace
+
+      - name: Static checks (token seam, error texts, AppArmor groups, vector index)
+        run: |
+          python3 ubuntu-touch/tools/check_tokens.py
+          python3 ubuntu-touch/tools/check_texts.py
+          python3 ubuntu-touch/apparmor-ci/check-groups.py --selftest
+          python3 ubuntu-touch/apparmor-ci/check-groups.py ubuntu-touch/asom.apparmor.in --substitute
+          python3 ubuntu-touch/tools/regen_utc_index.py --check
+
+      - name: Build the node jar and run it the way the phone will (this JDK, the four-module set, the real jvm.options)
+        run: |
+          ./gradlew -p ubuntu-touch/jvm utNodeJar --stacktrace
+          python3 ubuntu-touch/tools/check_jar.py "$JAVA_HOME/bin/java" ubuntu-touch/jvm/ut-host/build/libs/asom-ut-node.jar --limit-modules "$UT_MODULES"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: matrix.jdk == '21'
+        with:
+          name: ut-node-jar-UNSIGNED-not-for-release
+          path: ubuntu-touch/jvm/ut-host/build/libs/asom-ut-node.jar
+          if-no-files-found: error
+          retention-days: 7
+
+  ut-isolation-with-sdk:
+    name: UT isolation check 2 (Android SDK present)
+    # ANDROID_HOME is set on this image; deliberately NOT cleared here.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: No Android tooling in the Ubuntu Touch build
+        run: |
+          test -n "$ANDROID_HOME"
+          out=$(./gradlew -p ubuntu-touch/jvm buildEnvironment)
+          echo "com.android occurrences: $(printf '%s\n' "$out" | grep -c com.android)"
+          echo "positive control (kotlin-gradle-plugin occurrences): $(printf '%s\n' "$out" | grep -c kotlin-gradle-plugin)"
+          test "$(printf '%s\n' "$out" | grep -c com.android)" = "0"
+          test "$(printf '%s\n' "$out" | grep -c kotlin-gradle-plugin)" -gt 0
+
+  ut-root-unchanged:
+    name: Root jvmTest unchanged
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: ""
+      ANDROID_SDK_ROOT: ""
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - run: ./gradlew jvmTest --rerun-tasks --stacktrace
+
+      - name: Root test count (must not fall below ubuntu-touch/ROOT_TEST_BASELINE)
+        run: |
+          n=$(find core server -path '*/build/test-results/test/*.xml' -print0 \
+            | xargs -0 grep -ho 'tests="[0-9]*"' | tr -dc '0-9\n' | awk '{s+=$1} END {print s}')
+          base=$(tr -dc '0-9' < ubuntu-touch/ROOT_TEST_BASELINE)
+          echo "root tests: $n   (baseline: $base)"
+          test "$n" -ge "$base"
+
+  ut-runtime:
+    name: Cross-jlinked aarch64 runtime (size, glibc, module set)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Tools (the cross objcopy and objdump, because the host ones cannot read aarch64 objects)
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends binutils-aarch64-linux-gnu file
+
+      - name: jlink.sh (downloads the pinned Temurin, refuses a wrong sha256, asserts size <= 45 MB, ARM aarch64, max GLIBC <= 2.17)
+        run: ubuntu-touch/runtime/jlink.sh
+
+      # An artefact zip loses file modes; a tar keeps them (rt/bin/java must stay executable).
+      - name: Pack the runtime image with its modes
+        run: tar -C ubuntu-touch/runtime/stage -czf ut-runtime.tgz rt rt.sha256
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ut-runtime-aarch64-UNSIGNED-not-for-release
+          path: ut-runtime.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  ut-click:
+    name: Click build and review (Clickable ${{ matrix.series }}, arm64)
+    needs: [ut-jvm, ut-runtime]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - series: "24.04-1.x"
+            image: clickable/ci-ut24.04-1.x-arm64@sha256:cd92a2bb1708dd3d339b448c5c82adecf4fbee78e2f035ec4dd57fc2f40e612e
+            gating: true
+          # The same source on the 2.x image (UA02 is about installing one 1.x click on both series; this only shows the build works).
+          - series: "24.04-2.x"
+            image: clickable/ci-ut24.04-2.x-arm64@sha256:3718a8113160045405f3ef343f63091fd1a05e1b61825856aca162b7ea8e03dc
+            gating: false
+    continue-on-error: ${{ !matrix.gating }}
+    container:
+      image: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ut-node-jar-UNSIGNED-not-for-release
+          path: staged/jar
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ut-runtime-aarch64-UNSIGNED-not-for-release
+          path: staged/rt
+
+      - name: Stage the runtime and the jar under ubuntu-touch/runtime/stage
+        run: |
+          mkdir -p ubuntu-touch/runtime/stage
+          tar -xzf staged/rt/ut-runtime.tgz -C ubuntu-touch/runtime/stage
+          ASOM_UT_STAGE="$PWD/ubuntu-touch/runtime/stage" ubuntu-touch/tools/stage_node.sh staged/jar/asom-ut-node.jar
+
+      - name: clickable build (runs click-review; a review error fails the build)
+        working-directory: ubuntu-touch
+        run: clickable build
+
+      - name: The click exists, is arm64, and passes the plain-tools checks
+        working-directory: ubuntu-touch
+        run: |
+          click=$(ls build/aarch64-linux-gnu/app/xyz.mdhv.asom.ut_*_arm64.click)
+          echo "click: $click"
+          test "$(dpkg-deb -f "$click" Architecture)" = "arm64"
+          python3 apparmor-ci/check-groups.py build/aarch64-linux-gnu/app/install/asom.apparmor
+          rm -rf unpacked && dpkg-deb -x "$click" unpacked
+          python3 tools/check_click_tree.py unpacked --arch arm64
+          echo "click size: $(du -k "$click" | cut -f1) KiB, sha256: $(sha256sum "$click" | cut -d' ' -f1)   (UNSIGNED, not for release)"
+          cp "$click" "../xyz.mdhv.asom.ut_UNSIGNED_not-for-release_arm64.click"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: matrix.gating
+        with:
+          name: ut-click-UNSIGNED-not-for-release
+          path: xyz.mdhv.asom.ut_UNSIGNED_not-for-release_arm64.click
+          if-no-files-found: error
+          retention-days: 7
+
+  ut-qml:
+    name: QML tests against the real Lomiri.Components (fake node)
+    runs-on: ubuntu-latest
+    container:
+      image: clickable/ci-ut24.04-1.x-amd64@sha256:d5f775ab898ee832d6c2dd9870172af3a6359eecf05e4f685d7a4664a0a88ace
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # The amd64 build exists to run the tests: it needs no JVM runtime and never ships (CMakeLists.txt skips it when ARCH=amd64).
+      - name: clickable build (amd64)
+        working-directory: ubuntu-touch
+        run: clickable build
+
+      - name: Native Qt tests of the plugin (a native build in the image)
+        working-directory: ubuntu-touch
+        run: clickable script native-tests
+
+      - name: QML tests (qmltestrunner under a virtual screen)
+        working-directory: ubuntu-touch
+        run: clickable test
+
+      - name: Static checks
+        working-directory: ubuntu-touch
+        run: clickable script static-checks
+
+  ut-arm64-smoke:
+    name: Bundled runtime starts on arm64 (self-test) - LAB / CI, NOT DEVICE EVIDENCE
+    needs: [ut-click]
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ut-click-UNSIGNED-not-for-release
+          path: click
+
+      - name: Self-test inside the arm64 UBports userland image
+        run: |
+          docker run --rm --platform linux/arm64 -v "$PWD":/w \
+            clickable/arm64-ut24.04-1.x-arm64@sha256:d89c87c00eb58b510cebf2341b51ed4389513bca6ef37d0039e944bfd87b477b \
+            /w/ubuntu-touch/tests/smoke/arm64-selftest.sh /w/click/xyz.mdhv.asom.ut_UNSIGNED_not-for-release_arm64.click
+
+  ut-apparmor-approx:
+    name: AppArmor approximation, policy ${{ matrix.policy }} - CI-APPROX, NOT DEVICE EVIDENCE
+    needs: [ut-jvm, ut-runtime]
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        policy: ["2404.1", "2404.2"]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ut-node-jar-UNSIGNED-not-for-release
+          path: staged/jar
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ut-runtime-aarch64-UNSIGNED-not-for-release
+          path: staged/rt
+
+      - name: Tools
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends apparmor apparmor-utils python3
+
+      - name: Stage
+        run: |
+          mkdir -p "$RUNNER_TEMP/stage"
+          tar -xzf staged/rt/ut-runtime.tgz -C "$RUNNER_TEMP/stage"
+          cp staged/jar/asom-ut-node.jar "$RUNNER_TEMP/stage/"
+
+      # Fails, never skips (UA10): no enforcing AppArmor, a profile that does not load or a failing self-test all end the job.
+      - name: Generate the profile from the pinned template, load it, run the self-test under it, list the denials
+        run: ASOM_UT_STAGE="$RUNNER_TEMP/stage" ubuntu-touch/apparmor-ci/run-approx.sh --policy ${{ matrix.policy }}
+
+  ut-canary-2604:
+    name: Canary - the next series (26.04-1.x), NON-GATING
+    needs: [ut-jvm, ut-runtime]
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    container:
+      image: clickable/ci-ut26.04-1.x-arm64@sha256:b4f69f56c27eb689f737697c63f8b9880d87c3e2055136a3675ce67bf2c563f2
+    env:
+      # Early warning only: the click built here targets the next framework and is thrown away.
+      CLICKABLE_FRAMEWORK: ubuntu-touch-26.04-1.x
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ut-node-jar-UNSIGNED-not-for-release
+          path: staged/jar
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ut-runtime-aarch64-UNSIGNED-not-for-release
+          path: staged/rt
+
+      - name: Stage
+        run: |
+          mkdir -p ubuntu-touch/runtime/stage
+          tar -xzf staged/rt/ut-runtime.tgz -C ubuntu-touch/runtime/stage
+          ASOM_UT_STAGE="$PWD/ubuntu-touch/runtime/stage" ubuntu-touch/tools/stage_node.sh staged/jar/asom-ut-node.jar
+
+      - name: clickable build against 26.04-1.x
+        working-directory: ubuntu-touch
+        run: clickable build

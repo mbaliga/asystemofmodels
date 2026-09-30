@@ -1,0 +1,10 @@
+# Pinned Temurin runtime for the Ubuntu Touch click: OpenJDK 21 LTS, Linux aarch64, HotSpot, JDK image (its jmods feed jlink).
+# VERIFIED 2026-09-30: the sha256 below equals the checksum in the Adoptium API
+#   https://api.adoptium.net/v3/assets/latest/21/hotspot?architecture=aarch64&image_type=jdk&os=linux
+# AND the sha256 of the file this project downloaded and hashed itself (size 205641175 bytes).
+# jlink.sh refuses any file whose sha256 differs. A bump is a reviewed edit of this file only.
+release=jdk-21.0.12.1+1
+version=21.0.12.1+1
+url=https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_aarch64_linux_hotspot_21.0.12.1_1.tar.gz
+sha256=23e37e026f12f3e706f18938ff611db3032d075b09d0879a25d06718c773e223
+size=205641175
