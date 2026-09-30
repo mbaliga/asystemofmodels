@@ -108,6 +108,7 @@ class Utc05HygieneTest {
             env.remove("JAVA_TOOL_OPTIONS")
             env.remove("JDK_JAVA_OPTIONS")
             env.remove("_JAVA_OPTIONS")
+            env.keys.removeIf { it.startsWith("XDG_") }
             env["HOME"] = home ?: tmp.absolutePath
             env["TMPDIR"] = tmp.absolutePath
             val p = pb.start()
