@@ -21,6 +21,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ALLOWED_KEYS = {"template", "policy_groups", "policy_version"}
+REQUIRED_KEYS = {"policy_groups", "policy_version"}  # click-review warns on an explicit "ubuntu-sdk" template: absent means that default
 
 
 def load_lists():
@@ -45,7 +46,7 @@ def check_text(text, lists, policy="2404.1", substitute=False):
     extra = set(doc) - ALLOWED_KEYS
     if extra:
         problems.append(f"keys {sorted(extra)} are not allowed (only {sorted(ALLOWED_KEYS)}): they widen the profile beyond a policy group")
-    missing = ALLOWED_KEYS - set(doc)
+    missing = REQUIRED_KEYS - set(doc)
     if missing:
         problems.append(f"missing keys {sorted(missing)}")
     version = str(doc.get("policy_version"))
@@ -55,7 +56,7 @@ def check_text(text, lists, policy="2404.1", substitute=False):
     if known is None:
         problems.append(f"policy version {version} is not in the pinned lists")
         return problems
-    template = doc.get("template")
+    template = doc.get("template", lists["expected"]["template"])
     if template == "unconfined" or template in known["templates"]["reserved"]:
         problems.append(f"template {template!r} is reserved (manual review, red-flagged): never unconfined")
     elif template != lists["expected"]["template"]:
@@ -84,6 +85,7 @@ def selftest():
     cases = [
         ("the expected manifest", GOOD, True),
         ("groups in another order", dict(GOOD, policy_groups=["camera", "networking", "content_exchange_source", "keep-display-on"]), True),
+        ("no template key (the click-review default, ubuntu-sdk)", {k: v for k, v in GOOD.items() if k != "template"}, True),
         ("template unconfined", dict(GOOD, template="unconfined"), False),
         ("template default", dict(GOOD, template="default"), False),
         ("a reserved group (bluetooth)", dict(GOOD, policy_groups=GOOD["policy_groups"] + ["bluetooth"]), False),
@@ -135,7 +137,7 @@ def main(argv):
             print(f"check-groups: {args[0]}: {p}")
         print("check-groups: FAILED")
         return 1
-    print(f"check-groups: {args[0]}: template ubuntu-sdk, policy {policy}, groups {sorted(json.loads(text.replace('@APPARMOR_POLICY@', policy))['policy_groups'])}, all common, none reserved: OK")
+    print(f"check-groups: {args[0]}: template ubuntu-sdk (explicit or default), policy {policy}, groups {sorted(json.loads(text.replace('@APPARMOR_POLICY@', policy))['policy_groups'])}, all common, none reserved: OK")
     return 0
 
 
