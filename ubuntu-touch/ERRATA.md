@@ -48,3 +48,9 @@ CONSERVATIVE reading was taken and is recorded here. Nothing was silently guesse
 | The `.github/workflows/ubuntu-touch.yml` run | Never run on GitHub; actionlint only. Image digests were confirmed against the registry (HTTP 200, equal `Docker-Content-Digest`), not pulled. |
 | Real node identity (T0 key file), pairing, requester pipeline, ledger export, QR scan | UT-1 (after M1). UT-0 has none of them by design. |
 | Display hold on a phone, lifecycle forwarding on Lomiri, `keepDisplayOn` effect on suspend | NEEDS-DEVICE-VALIDATION (DV-UT03 to DV-UT06). Compiled and unit-tested only. |
+
+## Re-pin history (reviewed re-pins of UT_BASE_SHA)
+
+| Date | From | To | Reason |
+|---|---|---|---|
+| 2026-09-30 | dc8a45dc | 70eb11d1 | The UT pin was taken before the orchestrator's reviewed race and flake fixes to two v1 tests (`server/src/test` only, no production code; see lab/ERRATA.md re-pin history). Same commit as `lab/LAB_BASE_SHA`; the protected tree is byte-identical to it. Re-pinned in a later commit than the change. |
