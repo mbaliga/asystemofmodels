@@ -152,7 +152,7 @@ class Utc05HygieneTest {
                     if (!child) inProc else {
                         val c = runChild("xyz.mdhv.asom.ut.MainKt", listOf("--profile=ut"), input, "tester", null)
                         val stable = { r: RunResult -> Hygiene.stdoutLines(r).map { if (it.startsWith("{\"t\":\"selftest\"")) "{\"t\":\"selftest\"...}" else it } }
-                        assertEquals(stable(inProc), stable(c), "${v.id}: child stdout differs from the in-process run (a self-test result differs by design: heap, RSS and timings)")
+                        assertEquals(stable(inProc), stable(c), "${v.id}: child stdout differs from the in-process run (a self-test result differs by design: heap, RSS and timings); child exit ${c.exit}, child stderr: ${String(c.stderr, Charsets.UTF_8).take(600)}")
                         assertEquals(Hygiene.stderrLines(inProc), Hygiene.stderrLines(c), "${v.id}: child stderr differs from the in-process run")
                         assertEquals(inProc.exit, c.exit, "${v.id}: child exit differs")
                         laws.bump("child-equals-inprocess")
