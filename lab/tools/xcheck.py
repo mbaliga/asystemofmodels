@@ -30,7 +30,7 @@ import os
 import sys
 from decimal import ROUND_HALF_UP, Decimal
 
-VECTOR_DIRS = ["wire", "manifest", "router", "ledger", "json", "bench"]
+VECTOR_DIRS = ["wire", "manifest", "router", "ledger", "json", "bench", "policy"]
 DEFAULT_FAMILIES = ["W01", "keys", "INDEX", "M01", "M01der", "M02", "M03", "M04", "M05", "M06", "W05"]
 
 P256_P = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF
@@ -192,6 +192,14 @@ def check_bench_family(root, fam):
         if c is not None:
             a, d = c.agree, c.dis
     return (a, d)
+def check_policy(root, family):
+    """L01, W07 and W07p are checked by the lab-ledger-policy track's own Python implementation (lab/mesh-policy/tools/xcheck_policy.py)."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("xcheck_policy", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "mesh-policy", "tools", "xcheck_policy.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.check(root, family)
 
 
 def family_present(root, family):
@@ -223,6 +231,8 @@ def main(argv):
             m = check_manifest_family(root, "M05") or (0, 0)
             b = check_bench_family(root, "M05") or (0, 0)
             res = (m[0] + b[0], m[1] + b[1])
+        elif fam in ("L01", "W07", "W07p"):
+            res = check_policy(root, fam)
         elif family_present(root, fam):
             print(f"xcheck {fam}: present but not covered by this xcheck build", file=sys.stderr)
             bad += 1

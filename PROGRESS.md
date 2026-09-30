@@ -765,3 +765,55 @@ Mutation checks (`python3 lab/manifest/tools/mutants.py`; one source edit each, 
 Oracle status: self-oracled (no independent implementation has agreed yet). The Python cross-checks were written in the same session as the Kotlin; the openssl agreement on 75 signature layers clears no tag (LAB_SPEC 4.9 makes openssl external for the signature layer of the r0 vectors only, and this run is the same session).
 Not verified here: JDK 17 (only JDK 21 in this container; the modules target JVM 17 bytecode); no hosted CI run; no ART, Swift, iOS, Windows or device run; no real engine, so every benchmark number is a fake-host simulation (SIMULATED, NOT DEVICE EVIDENCE); Q1 pins are PROPOSED (owner has not hashed the files, A17); L1 pins, numerics references, bytes-per-token (provisional 4000/8000) and the editorial constants stay BLOCKED or PROVISIONAL (D18); steps 11-19 of the verifier have no independent second implementation.
 Result: PASSED (`:bench-core`, `:manifest`, M01der and M02-M06, self-oracled; local LAB evidence only). Runner registry edits are listed in ERRATA ERR-RUN-1.
+## Lab L0.4 gate (track `lab-ledger-policy`: `:ledger-model`, `:mesh-policy`, vector families L01, L02, W07, W07p) — 2026-09-30 — LAB (not device evidence)
+Commit: 95b4c97d3d820419f1bf8b937c36c65dc6eb9d48 (working tree, uncommitted)   JDK: openjdk 21.0.10 (JDK 17 lane NOT run here: only JDK 21 in the container)   Runner: local
+```
+$ ./gradlew -p lab :ledger-model:test :mesh-policy:test :conformance-runner:test --rerun-tasks      (tests: ledger-model 67, mesh-policy 32, conformance-runner 644; 0 failures)
+BUILD SUCCESSFUL in 2m 27s
+family W07: 67 vectors, 67 pass, 0 fail, 0 proposed-skipped, oracle: self=67
+family W07p: 97 vectors, 97 pass, 0 fail, 0 proposed-skipped, oracle: self=97
+family L01: 56 vectors, 56 pass, 0 fail, 0 proposed-skipped, oracle: self=56
+family L02: 21 vectors, 21 pass, 0 fail, 0 proposed-skipped, oracle: self=21
+(W00 W01 W01b W02 W03 R04 M01 unchanged: 0 fail)
+L-L1 iterations: 740   L-L2: 282   L-L3: 282   L-L4: 3756   L-L5: 613   L-L5b: 613   L-L6: 657   L-L7: 3701   L-L8: 11942   L-L9: 2966   L-L10: 10245
+L-L11 iterations: 548 death points (every step of 6 runs); 1408 outcome rows checked; 308 intents left without an outcome
+L-L12 iterations: 564   L-L13: 3041 injected append failures over 2168 runs   L-L14: 793
+L-L15 MEASURED sessions: 1341 (n > 0), mismatches: 0   (the ESTIMATED lane is excluded and counted; an all-ESTIMATED run fails the law: tested)
+L-L16 per-frame-type counts: HELLO=926 HELLO_ACK=926 STATE_REQ=438 STATE=438 MANIFEST_REQ=290 MANIFEST=290 GOAWAY=322 ERROR=226 REVOKE_NOTICE=224 PAIR_HELLO=328 PAIR_CHALLENGE=328 PAIR_DECISION=656 PAIR_COMMIT=328 PAIR_COMMIT_ACK=328 EXT_IGNORED=135 (none zero)
+LP-0: 46 (every input, both node kinds)   LP-1: 2000 + 2000 + 3000 outputs + 12000 states   LP-2: 180000 steps in 3000 random sequences (5905 presence-while-SERVING; 1846 ticks at t+599,999; 608 at t+600,000; 29597 PF waits for Start lending)
+decision table: 20000 random situations, every row (1 2 3 4 5 6 6a 6b 7 8) deciding at least 880 times
+rows intact after kill at <point> [before|after]: 32 lines (16 durability points x 2), every row reported durable verified byte for byte, torn tail 0;
+   plus 3 kills at arbitrary moments of a write-heavy child (40, 77 and 114 durable rows verified)
+$ ./gradlew -p lab :conformance-runner:run --args='lines L01,L02,W07,W07p' --quiet     -> 241 lines (196 `ok`, 45 `reject <CODE>`), e.g. `L01-201 reject F1_ELIGIBILITY`, `W07p-305 ok`
+$ python3 lab/tools/xcheck.py lab/conformance --families L01,W07,W07p     xcheck L01: 56 agree, 0 disagree   xcheck W07: 67 agree, 0 disagree   xcheck W07p: 97 agree, 0 disagree
+$ python3 lab/tools/xcheck.py lab/conformance     (defaults)  W01 214 agree, keys 2, INDEX 14 agree, M01 94 agree, 0 disagree everywhere
+$ ANDROID_HOME= ANDROID_SDK_ROOT= lab/tools/isolation.sh
+isolation check 1 (root settings never name the lab): 0   expected 0
+isolation check 2 (no Android tooling in the lab classpath): 0   expected 0       positive control: 19   expected > 0
+isolation check 3 (no Android module in the lab build): 0   expected 0            positive control: 15   expected 15
+isolation check 4: 136 protected files compared byte-for-byte against base 770a44da21e7 ... OK (shipped tree byte-identical to the pinned base)
+law: 84 Kotlin/Java sources scanned ... law: OK        ISOLATION: all checks passed
+$ ./gradlew jvmTest --rerun-tasks      BUILD SUCCESSFUL in 1m 35s
+root tests: 139   (baseline: 139)   failures: 0
+```
+Mutation checks (each applied to the real source, the targeted tests run, the original restored; every one FAILED as required):
+```
+L-L1   requester intent row never written before the offer      : 4 tests fail     L-L14  DIAL connects before its intent is durable : 5 fail
+L-L15  rows drop the 9-byte header                                : 3 fail           L-L15  header dropped AND overhead derived from the writer's own counts (true by construction): 4 fail (the plaintext tap still catches it)
+L-L16  no row for a sent GOAWAY                                   : 3 fail           L-L13  control-row failure swallowed, frame sent anyway : 4 fail
+L-L3   INFER_END before the lender outcome row                    : 4 fail           L-L2   engine reads without a durable lender intent : 5 fail
+L-L6   file sink truncates on reopen                              : 1 fails          durability  append returns without force            : 1 fails
+L-L5   a declined offer raises reach                              : 2 fail           P7/L-L5b  terminal header = egress, not reach       : 1 fails
+L-L9   intent row carries bytes : 24 fail   L-L10 peerPath guessed LAN : 1 fails   session column wrong on DIAL rows : 3 fail
+LP-2   hold-down off by one (600,000 - 1)                         : 6 fail           LP-2   presence does not restart the hold-down       : 3 fail
+LP-2   presence does not drain at once                            : 22 fail          LP-2   PF returns without a new Start lending        : 3 fail
+LP-2   condition drain gets the presence hold-down                : 4 fail           LP-0   PF exception dropped                            : 5 fail
+LP-1   screen state leaks as a `user` member                      : 19 fail          LP-1   st.gov computed from presence                   : 5 fail
+LP-1   presence decline code PEER_BUSY                            : 8 fail           W07 skew  staleness uses the peer wall clock       : 4 fail
+L01    destination sets ignore the cloud ban : 8 fail   quiescence  lender may initiate on a pending request : 3 fail
+```
+Permanent (in-tree) mutants: L-L15 is also shown to fail against three miscounting mutants run through the whole simulator (`LawNegativeControlsTest`), and every law has a hand-built violating trace that it must flag.
+Findings for the owner (ERRATA ERR-LL-*, ERR-LP-*): (1) the spec's enum with a peer member cannot be spelled `Egress.PEER` under R4's own grep (ERR-LL-1); (2) rows cannot be grouped per session without one more column: `sessionId` added (ERR-LL-2); (3) the STALE thermal substitution `max(last, 1) if last >= 1` is a no-op (ERR-LP-5); (4) FC-5's "CANCEL the stream" points the wrong way (ERR-LL-6); (5) contract.md L-L9 is false with per-frame rows (ERR-LL-4).
+Not verified here: JDK 17 lane; the real `SSLEngine` accounting (the meter and tap are a MODEL of RFC 8446 records, L0.5 owns the JSSE lane); death of ONE node while the other continues (L-L11 kills both); power loss (only process death is claimed); the runner still reports `W01b-reach` as proposed-skipped (covered by `RequestReachAndBytesTest` and L02-018, ERR-LL-10); no independent oracle: all 241 vectors are `oracle: self`, and the Python cross-check was written in the same session.
+Oracle status: self-oracled (no independent implementation has agreed yet)
+Result: PASSED (local LAB evidence only)

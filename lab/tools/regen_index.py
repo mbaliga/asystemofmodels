@@ -11,7 +11,7 @@ import os
 import sys
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "conformance")
-VECTOR_DIRS = ["wire", "manifest", "router", "ledger", "json", "bench"]
+VECTOR_DIRS = ["wire", "manifest", "router", "ledger", "json", "bench", "policy"]
 
 
 def entry(rel):

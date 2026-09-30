@@ -21,5 +21,13 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    // The presence laws print `LP-<n> iterations: <count>`; show them in the gate output and never report a cached result as a pass.
+    testLogging {
+        showStandardStreams = true
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
     systemProperty("asom.repoRoot", rootProject.projectDir.parentFile.absolutePath)
 }
