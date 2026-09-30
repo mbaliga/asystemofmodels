@@ -517,7 +517,7 @@ class AsomServerIntegrationTest {
         request("POST", "/v1/chat/completions", chatBody("local-only"))
         request("POST", "/v1/chat/completions", chatBody("gpt-99"))
         request("POST", "/v1/embeddings", """{"model":"llama-3.3-70b","input":"x"}""")
-        assertEquals(4, ledger.all().size - before)
+        assertEquals(4, rowsSince(before, 4).size)
     }
 
     // -------------------------------------------------- egress ledger fidelity
