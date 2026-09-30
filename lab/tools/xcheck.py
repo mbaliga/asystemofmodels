@@ -13,7 +13,12 @@ What it checks at L0.1:
   keys  the TEST-ONLY keys file: SPKI shape (91 bytes, fixed prefix), point on P-256, nodeId, nodeTag and both
         fingerprint forms recomputed from the SPKI (LAB_SPEC 4.5).
   INDEX every sha256 in INDEX.json, sort order, and that no vector file is unlisted.
-Families M01, M02, M03, W05 are owned by later work items; they print `absent` until their vectors exist.
+  M01der, M02, M03, M05 (manifest renderings), M06   lab/manifest/tools/xcheck_manifest.py: a pure-Python P-256/ES256 verifier and an
+        independent implementation of verifier steps 1-10, plus openssl on every 64-octet signature; DER codec; header, public derivative
+        and FILE projection re-derivation
+  M04, M05 (bench body)   lab/bench-core/tools/xcheck_m04.py: bench_ref.py (the design sketch) plus the B7/9.4 rules ported, the
+        benchmark.md 4.2 pin table, the 5.2 plan JSON, the 11.3 ceilings and the 11.4 edge list parsed or transcribed from the spec
+Family W05 is owned by a later work item; it prints `absent` until its vectors exist.
 
 It was written in the same session as the generators, so its agreement NEVER clears the `oracle: self` tag
 (LAB_SPEC 4.10, R9): it shows consistency, not independent reading.
@@ -25,8 +30,8 @@ import os
 import sys
 from decimal import ROUND_HALF_UP, Decimal
 
-VECTOR_DIRS = ["wire", "manifest", "router", "ledger", "json"]
-DEFAULT_FAMILIES = ["W01", "keys", "INDEX", "M01", "M02", "M03", "W05"]
+VECTOR_DIRS = ["wire", "manifest", "router", "ledger", "json", "bench"]
+DEFAULT_FAMILIES = ["W01", "keys", "INDEX", "M01", "M01der", "M02", "M03", "M04", "M05", "M06", "W05"]
 
 P256_P = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF
 P256_B = 0x5AC635D8AA3A93E7B3EBBD55769886BC651D06B0CC53B0F63BCE3C3E27D2604B
@@ -91,7 +96,7 @@ def check_keys(root):
     if doc.get("TEST_ONLY") is not True:
         print("  DISAGREE keys: TEST_ONLY is not true", file=sys.stderr)
         disagree += 1
-    for name in ("key1", "key2"):
+    for name in [k for k in ("key1", "key2", "key3", "key4") if k in doc]:
         k = doc[name]
         spki = base64.b64decode(k["spki_b64"])
         problems = []
@@ -159,6 +164,36 @@ def check_m01(root):
     return mod.check_m01(root)
 
 
+def _load_tool(rel, name):
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(name, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", *rel))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def check_manifest_family(root, fam):
+    mod = _load_tool(("manifest", "tools", "xcheck_manifest.py"), "xcheck_manifest")
+    out, _ = mod.run_all(root, [fam])
+    c = out.get(fam)
+    return None if c is None else (c.agree, c.dis)
+
+
+def check_bench_family(root, fam):
+    mod = _load_tool(("bench-core", "tools", "xcheck_m04.py"), "xcheck_m04")
+    a = d = 0
+    if fam == "M04":
+        r = mod.check_m04(root)
+        if r is not None:
+            a, d = r[0].agree, r[0].dis
+    else:
+        c = mod.check_m05_body(root)
+        if c is not None:
+            a, d = c.agree, c.dis
+    return (a, d)
+
+
 def family_present(root, family):
     return any(doc.get("family") == family for _, doc in load_vector_files(root))
 
@@ -180,6 +215,14 @@ def main(argv):
             res = check_index(root)
         elif fam == "M01":
             res = check_m01(root)
+        elif fam in ("M01der", "M02", "M03", "M06"):
+            res = check_manifest_family(root, fam)
+        elif fam == "M04":
+            res = check_bench_family(root, fam)
+        elif fam == "M05":
+            m = check_manifest_family(root, "M05") or (0, 0)
+            b = check_bench_family(root, "M05") or (0, 0)
+            res = (m[0] + b[0], m[1] + b[1])
         elif family_present(root, fam):
             print(f"xcheck {fam}: present but not covered by this xcheck build", file=sys.stderr)
             bad += 1

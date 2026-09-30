@@ -14,6 +14,11 @@ fun checkerFor(family: String): FamilyChecker? = when (family) {
     "W03" -> W03Checker()
     "R04" -> R04Checker()
     "M01" -> M01Checker()
+    "M02" -> ManifestChecker("M02")
+    "M03" -> ManifestChecker("M03")
+    "M04" -> M04Checker()
+    "M05" -> M05Checker()
+    "M06" -> M06Checker()
     else -> null
 }
 
@@ -41,6 +46,8 @@ class FamilyResult(
         val out = mutableListOf<String>()
         if (normativeCount == 0) out += "family $family has zero normative vectors"
         c.requiredLaws.filter { (c.laws[it] ?: 0) == 0 }.forEach { out += "family $family: law '$it' exercised zero cases" }
+        val present = results.map { it.first.id }.toSet()
+        c.requiredIds.filter { it !in present }.forEach { out += "family $family: required vector id $it is missing" }
         return out
     }
 

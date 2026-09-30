@@ -21,12 +21,15 @@ import xyz.mdhv.asom.lab.json.StrictJson
  */
 class M01Checker : FamilyChecker("M01") {
     override val requiredLaws: Set<String> =
-        setOf("jcs-ok", "jcs-idempotent", "utf16-key-order-trap", "b64-ok", "b64-reject") + JsonRejectCode.entries.map { "reject-${it.name}" }
+        setOf("jcs-ok", "jcs-idempotent", "utf16-key-order-trap", "b64-ok", "b64-reject") + JsonRejectCode.entries.map { "reject-${it.name}" } + SigCodecCases.REQUIRED_LAWS
+
+    override val requiredIds: Set<String> get() = SigCodecCases.REQUIRED_IDS
 
     override fun observe(v: Vector): Observed = when (val kind = v.input.str("kind")) {
         "canonicalize" -> canonicalize(v)
         "base64Either" -> base64(v, either = true)
         "base64UrlNoPad" -> base64(v, either = false)
+        "derToRaw", "rawToDer", "normaliseLowS" -> SigCodecCases.observe(v) { bump(it) }
         else -> throw LawViolation("unknown M01 kind '$kind'")
     }
 

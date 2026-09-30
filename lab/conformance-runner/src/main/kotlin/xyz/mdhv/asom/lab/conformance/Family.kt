@@ -27,6 +27,9 @@ abstract class FamilyChecker(val family: String) {
     /** Laws that must have exercised at least one case once the whole family has run. */
     abstract val requiredLaws: Set<String>
 
+    /** Vector ids that must be present in the loaded files; a missing id fails the family (LAB_SPEC 8.1 L0.2: "the runner fails on a missing id"). */
+    open val requiredIds: Set<String> get() = emptySet()
+
     abstract fun observe(v: Vector): Observed
 
     protected fun bump(law: String, by: Int = 1) {

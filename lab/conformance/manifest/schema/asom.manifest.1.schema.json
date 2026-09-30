@@ -1,0 +1,2138 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "asom:schema/asom.manifest/1",
+ "title": "asom capability manifest payload, major version 1 (r3 conformance schema: DOCUMENTATION AND TEST ORACLE ONLY; the verifier's decoder is normative)",
+ "description": "The signed payload inside a DSSE envelope with payloadType application/vnd.asom.manifest.v1+json. All numbers are integers in the unit named by the field suffix (C1). This is the STRICT (producer/conformance) form: additionalProperties false everywhere. Consumers apply the tolerant rule in manifest.md 4.3 (unknown properties are ignored, never rendered as facts).",
+ "type": "object",
+ "required": [
+  "schema",
+  "schemaMinor",
+  "body",
+  "presentation"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "schema": {
+   "const": "asom.manifest/1"
+  },
+  "schemaMinor": {
+   "type": "integer",
+   "minimum": 0,
+   "maximum": 1000,
+   "$comment": "P10: schemaMinor stays 0 in r3; a verifier tolerates unknown members only above the minor it knows"
+  },
+  "body": {
+   "$ref": "#/$defs/body"
+  },
+  "presentation": {
+   "$ref": "#/$defs/presentation"
+  }
+ },
+ "$defs": {
+  "u53": {
+   "type": "integer",
+   "minimum": 0,
+   "maximum": 9007199254740991
+  },
+  "i53": {
+   "type": "integer",
+   "minimum": -9007199254740991,
+   "maximum": 9007199254740991
+  },
+  "epochMs": {
+   "type": "integer",
+   "minimum": 1577836800000,
+   "maximum": 4102444800000
+  },
+  "text": {
+   "type": "string",
+   "minLength": 1,
+   "maxLength": 96,
+   "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u061C\\u200E\\u200F\\u2028\\u2029\\u202A-\\u202E\\u2066-\\u2069\\uFEFF]+$"
+  },
+  "id": {
+   "type": "string",
+   "pattern": "^[a-z0-9][a-z0-9._+-]{0,63}$"
+  },
+  "methodId": {
+   "type": "string",
+   "pattern": "^[a-z0-9][a-z0-9.-]{0,47}/[0-9]{1,4}$"
+  },
+  "semver": {
+   "type": "string",
+   "pattern": "^(0|[1-9][0-9]{0,4})\\.(0|[1-9][0-9]{0,4})\\.(0|[1-9][0-9]{0,4})$"
+  },
+  "b64u32": {
+   "type": "string",
+   "pattern": "^[A-Za-z0-9_-]{43}$"
+  },
+  "sha256hex": {
+   "type": "string",
+   "pattern": "^[0-9a-f]{64}$"
+  },
+  "date": {
+   "type": "string",
+   "pattern": "^20[2-9][0-9]-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+  },
+  "pct": {
+   "type": "object",
+   "required": [
+    "p50"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "p10": {
+     "$ref": "#/$defs/u53"
+    },
+    "p50": {
+     "$ref": "#/$defs/u53"
+    },
+    "p90": {
+     "$ref": "#/$defs/u53"
+    }
+   },
+   "propertyNames": {
+    "not": {
+     "enum": [
+      "derived",
+      "render",
+      "textSha256",
+      "field",
+      "custom"
+     ]
+    }
+   }
+  },
+  "nullableU53": {
+   "oneOf": [
+    {
+     "$ref": "#/$defs/u53"
+    },
+    {
+     "type": "null"
+    }
+   ]
+  },
+  "nullableI53": {
+   "oneOf": [
+    {
+     "$ref": "#/$defs/i53"
+    },
+    {
+     "type": "null"
+    }
+   ]
+  },
+  "presentation": {
+   "type": "object",
+   "required": [
+    "issuedAtMs"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "issuedAtMs": {
+     "$ref": "#/$defs/epochMs"
+    },
+    "expiresAtMs": {
+     "$ref": "#/$defs/epochMs"
+    },
+    "challenge": {
+     "oneOf": [
+      {
+       "$ref": "#/$defs/b64u32"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "propertyNames": {
+    "not": {
+     "enum": [
+      "derived",
+      "render",
+      "textSha256",
+      "field",
+      "custom"
+     ]
+    }
+   }
+  },
+  "body": {
+   "type": "object",
+   "required": [
+    "audience",
+    "subject",
+    "producer",
+    "device",
+    "results",
+    "bench"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "audience": {
+     "enum": [
+      "own",
+      "file"
+     ]
+    },
+    "seq": {
+     "type": "integer",
+     "minimum": 1,
+     "maximum": 9007199254740991
+    },
+    "subject": {
+     "type": "object",
+     "required": [
+      "nodeId",
+      "keyAlg",
+      "keyStorage"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "nodeId": {
+       "$ref": "#/$defs/b64u32"
+      },
+      "keyAlg": {
+       "const": "ES256"
+      },
+      "keyStorage": {
+       "enum": [
+        "strongbox",
+        "tee",
+        "secure-enclave",
+        "tpm",
+        "os-keystore",
+        "file",
+        "unknown",
+        "ephemeral"
+       ]
+      }
+     },
+     "propertyNames": {
+      "not": {
+       "enum": [
+        "derived",
+        "render",
+        "textSha256",
+        "field",
+        "custom"
+       ]
+      }
+     }
+    },
+    "producer": {
+     "type": "object",
+     "required": [
+      "app",
+      "appVersion",
+      "harness",
+      "engine"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "app": {
+       "$ref": "#/$defs/id"
+      },
+      "appVersion": {
+       "$ref": "#/$defs/semver"
+      },
+      "harness": {
+       "type": "object",
+       "required": [
+        "id",
+        "version",
+        "methodologyId",
+        "confVersion"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "$ref": "#/$defs/id"
+        },
+        "version": {
+         "$ref": "#/$defs/semver"
+        },
+        "methodologyId": {
+         "$ref": "#/$defs/methodId"
+        },
+        "confVersion": {
+         "$ref": "#/$defs/semver"
+        }
+       },
+       "propertyNames": {
+        "not": {
+         "enum": [
+          "derived",
+          "render",
+          "textSha256",
+          "field",
+          "custom"
+         ]
+        }
+       }
+      },
+      "engine": {
+       "type": "object",
+       "required": [
+        "name",
+        "commit",
+        "buildFlags"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "name": {
+         "$ref": "#/$defs/id"
+        },
+        "commit": {
+         "type": "string",
+         "pattern": "^[0-9a-f]{7,40}$"
+        },
+        "buildFlags": {
+         "type": "array",
+         "maxItems": 16,
+         "uniqueItems": true,
+         "items": {
+          "$ref": "#/$defs/text"
+         }
+        }
+       },
+       "propertyNames": {
+        "not": {
+         "enum": [
+          "derived",
+          "render",
+          "textSha256",
+          "field",
+          "custom"
+         ]
+        }
+       }
+      }
+     },
+     "propertyNames": {
+      "not": {
+       "enum": [
+        "derived",
+        "render",
+        "textSha256",
+        "field",
+        "custom"
+       ]
+      }
+     }
+    },
+    "device": {
+     "type": "object",
+     "required": [
+      "class",
+      "vendor",
+      "model",
+      "os",
+      "soc",
+      "memory",
+      "accelerators",
+      "power",
+      "thermal"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "class": {
+       "$ref": "#/$defs/id",
+       "description": "OPEN enum. Known: phone, tablet, handheld, laptop, desktop, server, sbc. Unknown values render as 'other (<value>)'."
+      },
+      "vendor": {
+       "$ref": "#/$defs/text"
+      },
+      "model": {
+       "$ref": "#/$defs/text"
+      },
+      "platformIds": {
+       "description": "Raw platform identifiers, self-reported, used ONLY to compare with attested values (Android Build.BRAND/DEVICE/MANUFACTURER/MODEL/PRODUCT). Omitted for audience other and file.",
+       "type": "object",
+       "additionalProperties": false,
+       "properties": {
+        "brand": {
+         "$ref": "#/$defs/text"
+        },
+        "device": {
+         "$ref": "#/$defs/text"
+        },
+        "manufacturer": {
+         "$ref": "#/$defs/text"
+        },
+        "model": {
+         "$ref": "#/$defs/text"
+        },
+        "product": {
+         "$ref": "#/$defs/text"
+        }
+       },
+       "propertyNames": {
+        "not": {
+         "enum": [
+          "derived",
+          "render",
+          "textSha256",
+          "field",
+          "custom"
+         ]
+        }
+       }
+      },
+      "os": {
+       "type": "object",
+       "required": [
+        "family",
+        "version"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "family": {
+         "enum": [
+          "android",
+          "ios",
+          "ipados",
+          "macos",
+          "linux",
+          "windows",
+          "ubuntu-touch"
+         ]
+        },
+        "version": {
+         "$ref": "#/$defs/text"
+        },
+        "securityPatch": {
+         "$ref": "#/$defs/date",
+         "description": "Omitted for audience other and file."
+        }
+       },
+       "propertyNames": {
+        "not": {
+         "enum": [
+          "derived",
+          "render",
+          "textSha256",
+          "field",
+          "custom"
+         ]
+        }
+       }
+      },
+      "soc": {
+       "type": "object",
+       "required": [
+        "vendor",
+        "name",
+        "cpu"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "vendor": {
+         "$ref": "#/$defs/text"
+        },
+        "name": {
+         "$ref": "#/$defs/text"
+        },
+        "cpu": {
+         "type": "object",
+         "required": [
+          "logicalCores",
+          "clusters"
+         ],
+         "additionalProperties": false,
+         "properties": {
+          "logicalCores": {
+           "type": "integer",
+           "minimum": 1,
+           "maximum": 1024
+          },
+          "clusters": {
+           "type": "array",
+           "maxItems": 8,
+           "items": {
+            "type": "object",
+            "required": [
+             "cores",
+             "maxKHz"
+            ],
+            "additionalProperties": false,
+            "properties": {
+             "cores": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1024
+             },
+             "maxKHz": {
+              "$ref": "#/$defs/u53"
+             }
+            },
+            "propertyNames": {
+             "not": {
+              "enum": [
+               "derived",
+               "render",
+               "textSha256",
+               "field",
+               "custom"
+              ]
+             }
+            }
+           }
+          }
+         },
+         "propertyNames": {
+          "not": {
+           "enum": [
+            "derived",
+            "render",
+            "textSha256",
+            "field",
+            "custom"
+           ]
+          }
+         }
+        }
+       },
+       "propertyNames": {
+        "not": {
+         "enum": [
+          "derived",
+          "render",
+          "textSha256",
+          "field",
+          "custom"
+         ]
+        }
+       }
+      },
+      "memory": {
+       "type": "object",
+       "required": [
+        "totalBytes"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "totalBytes": {
+         "$ref": "#/$defs/bytes"
+        }
+       },
+       "propertyNames": {
+        "not": {
+         "enum": [
+          "derived",
+          "render",
+          "textSha256",
+          "field",
+          "custom"
+         ]
+        }
+       }
+      },
+      "accelerators": {
+       "type": "array",
+       "maxItems": 8,
+       "items": {
+        "type": "object",
+        "required": [
+         "kind",
+         "vendor",
+         "name",
+         "apis",
+         "dedicatedBytes"
+        ],
+        "additionalProperties": false,
+        "properties": {
+         "kind": {
+          "$ref": "#/$defs/id",
+          "description": "OPEN enum. Known: gpu, npu, dsp."
+         },
+         "vendor": {
+          "$ref": "#/$defs/text"
+         },
+         "name": {
+          "$ref": "#/$defs/text"
+         },
+         "apis": {
+          "type": "array",
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+           "$ref": "#/$defs/id"
+          }
+         },
+         "dedicatedBytes": {
+          "oneOf": [
+           {
+            "$ref": "#/$defs/bytes"
+           },
+           {
+            "type": "null"
+           }
+          ]
+         }
+        },
+        "propertyNames": {
+         "not": {
+          "enum": [
+           "derived",
+           "render",
+           "textSha256",
+           "field",
+           "custom"
+          ]
+         }
+        }
+       }
+      },
+      "power": {
+       "type": "object",
+       "required": [
+        "battery"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "battery": {
+         "type": "boolean"
+        },
+        "batteryDesignMilliWh": {
+         "$ref": "#/$defs/nullableU53"
+        }
+       },
+       "propertyNames": {
+        "not": {
+         "enum": [
+          "derived",
+          "render",
+          "textSha256",
+          "field",
+          "custom"
+         ]
+        }
+       }
+      },
+      "thermal": {
+       "type": "object",
+       "required": [
+        "cooling",
+        "stateSource"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "cooling": {
+         "$ref": "#/$defs/id",
+         "description": "OPEN enum. Known: passive, fan, liquid, unknown."
+        },
+        "stateSource": {
+         "$ref": "#/$defs/id",
+         "description": "OPEN enum. Known: android-thermal-headroom, apple-thermal-state, linux-thermal-zone, none."
+        }
+       },
+       "propertyNames": {
+        "not": {
+         "enum": [
+          "derived",
+          "render",
+          "textSha256",
+          "field",
+          "custom"
+         ]
+        }
+       }
+      }
+     },
+     "propertyNames": {
+      "not": {
+       "enum": [
+        "derived",
+        "render",
+        "textSha256",
+        "field",
+        "custom"
+       ]
+      }
+     }
+    },
+    "results": {
+     "type": "array",
+     "maxItems": 64,
+     "items": {
+      "$ref": "#/$defs/result"
+     }
+    },
+    "bench": {
+     "$ref": "#/$defs/bench"
+    }
+   },
+   "propertyNames": {
+    "not": {
+     "enum": [
+      "derived",
+      "render",
+      "textSha256",
+      "field",
+      "custom"
+     ]
+    }
+   }
+  },
+  "result": {
+   "type": "object",
+   "required": [
+    "modelId",
+    "fileSha256",
+    "fileBytes",
+    "quant",
+    "backend",
+    "settings",
+    "measuredAtMs",
+    "runs",
+    "conditions",
+    "prefill",
+    "decode",
+    "sustained",
+    "memory",
+    "power",
+    "flags"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "modelId": {
+     "$ref": "#/$defs/id"
+    },
+    "fileSha256": {
+     "$ref": "#/$defs/sha256hex"
+    },
+    "fileBytes": {
+     "$ref": "#/$defs/bytes"
+    },
+    "quant": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_.-]{1,24}$"
+    },
+    "backend": {
+     "$ref": "#/$defs/id",
+     "description": "OPEN enum. Known: cpu, vulkan, opencl, metal, cuda, hip, hexagon. Rows with different backend or engine commit are never merged (platforms.md C11)."
+    },
+    "settings": {
+     "type": "object",
+     "required": [
+      "threads",
+      "gpuLayers",
+      "ctxTokens",
+      "batchTokens"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "threads": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 1024
+      },
+      "gpuLayers": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 100000
+      },
+      "ctxTokens": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 10000000
+      },
+      "batchTokens": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 1000000
+      }
+     },
+     "propertyNames": {
+      "not": {
+       "enum": [
+        "derived",
+        "render",
+        "textSha256",
+        "field",
+        "custom"
+       ]
+      }
+     }
+    },
+    "measuredAtMs": {
+     "$ref": "#/$defs/epochMs"
+    },
+    "runs": {
+     "type": "object",
+     "required": [
+      "planned",
+      "completed",
+      "discarded"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "planned": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 1000
+      },
+      "completed": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 1000
+      },
+      "discarded": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 1000
+      }
+     },
+     "propertyNames": {
+      "not": {
+       "enum": [
+        "derived",
+        "render",
+        "textSha256",
+        "field",
+        "custom"
+       ]
+      }
+     }
+    },
+    "conditions": {
+     "type": "object",
+     "required": [
+      "charging",
+      "thermalStart"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "charging": {
+       "type": "boolean"
+      },
+      "batteryStartPermille": {
+       "oneOf": [
+        {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 1000
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "thermalStart": {
+       "$ref": "#/$defs/id",
+       "description": "OPEN enum. Known: nominal, light, moderate, severe, critical, unknown."
+      },
+      "socStartMilliC": {
+       "$ref": "#/$defs/nullableI53"
+      },
+      "screenOn": {
+       "oneOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      }
+     },
+     "propertyNames": {
+      "not": {
+       "enum": [
+        "derived",
+        "render",
+        "textSha256",
+        "field",
+        "custom"
+       ]
+      }
+     }
+    },
+    "prefill": {
+     "type": "array",
+     "minItems": 1,
+     "maxItems": 4,
+     "items": {
+      "type": "object",
+      "required": [
+       "promptTokens",
+       "milliTokPerSec",
+       "ttftMicros"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "promptTokens": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 10000000
+       },
+       "milliTokPerSec": {
+        "$ref": "#/$defs/pctRate"
+       },
+       "ttftMicros": {
+        "$ref": "#/$defs/pctTtft"
+       }
+      },
+      "propertyNames": {
+       "not": {
+        "enum": [
+         "derived",
+         "render",
+         "textSha256",
+         "field",
+         "custom"
+        ]
+       }
+      }
+     }
+    },
+    "decode": {
+     "type": "array",
+     "minItems": 1,
+     "maxItems": 4,
+     "items": {
+      "type": "object",
+      "required": [
+       "contextTokens",
+       "genTokens",
+       "milliTokPerSec"
+      ],
+      "additionalProperties": false,
+      "properties": {
+       "contextTokens": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 10000000
+       },
+       "genTokens": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 1000000
+       },
+       "milliTokPerSec": {
+        "$ref": "#/$defs/pctRate"
+       }
+      },
+      "propertyNames": {
+       "not": {
+        "enum": [
+         "derived",
+         "render",
+         "textSha256",
+         "field",
+         "custom"
+        ]
+       }
+      }
+     }
+    },
+    "sustained": {
+     "oneOf": [
+      {
+       "type": "object",
+       "required": [
+        "durationMs",
+        "intervalMs",
+        "steadyMilliTokPerSec",
+        "throttleOnsetMs",
+        "curve"
+       ],
+       "additionalProperties": false,
+       "properties": {
+        "durationMs": {
+         "type": "integer",
+         "minimum": 1000,
+         "maximum": 86400000
+        },
+        "intervalMs": {
+         "type": "integer",
+         "minimum": 100,
+         "maximum": 3600000
+        },
+        "steadyMilliTokPerSec": {
+         "type": "integer",
+         "minimum": 1,
+         "maximum": 1000000000
+        },
+        "throttleOnsetMs": {
+         "$ref": "#/$defs/nullableU53"
+        },
+        "curve": {
+         "description": "Tuples [tMs, decodeMilliTokPerSec, socMilliC|null, powerMilliW|null], tMs strictly increasing from 0.",
+         "type": "array",
+         "minItems": 2,
+         "maxItems": 240,
+         "items": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "prefixItems": [
+           {
+            "$ref": "#/$defs/u53"
+           },
+           {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000000
+           },
+           {
+            "$ref": "#/$defs/nullableI53"
+           },
+           {
+            "$ref": "#/$defs/nullableU53"
+           }
+          ]
+         }
+        }
+       },
+       "propertyNames": {
+        "not": {
+         "enum": [
+          "derived",
+          "render",
+          "textSha256",
+          "field",
+          "custom"
+         ]
+        }
+       }
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "memory": {
+     "type": "object",
+     "required": [
+      "availableBeforeLoadBytes",
+      "peakProcessBytes"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "availableBeforeLoadBytes": {
+       "$ref": "#/$defs/bytes"
+      },
+      "peakProcessBytes": {
+       "$ref": "#/$defs/bytes"
+      },
+      "kvCacheBytes": {
+       "oneOf": [
+        {
+         "$ref": "#/$defs/bytes"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      }
+     },
+     "propertyNames": {
+      "not": {
+       "enum": [
+        "derived",
+        "render",
+        "textSha256",
+        "field",
+        "custom"
+       ]
+      }
+     }
+    },
+    "power": {
+     "type": "object",
+     "required": [
+      "method",
+      "avgMilliW"
+     ],
+     "additionalProperties": false,
+     "properties": {
+      "method": {
+       "enum": [
+        "battery-current",
+        "battery-level",
+        "rapl",
+        "pmic",
+        "unavailable"
+       ]
+      },
+      "avgMilliW": {
+       "$ref": "#/$defs/nullableU53"
+      }
+     },
+     "propertyNames": {
+      "not": {
+       "enum": [
+        "derived",
+        "render",
+        "textSha256",
+        "field",
+        "custom"
+       ]
+      }
+     }
+    },
+    "flags": {
+     "type": "array",
+     "maxItems": 16,
+     "uniqueItems": true,
+     "items": {
+      "$ref": "#/$defs/id",
+      "description": "OPEN enum. Known: low-runs, thermal-throttled, charging, background-load, gpu-shared, low-memory."
+     }
+    }
+   },
+   "propertyNames": {
+    "not": {
+     "enum": [
+      "derived",
+      "render",
+      "textSha256",
+      "field",
+      "custom"
+     ]
+    }
+   }
+  },
+  "bench": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "schema",
+    "benchProtocol",
+    "benchSet",
+    "harness",
+    "device",
+    "memory",
+    "run",
+    "tiers",
+    "sustain",
+    "energy"
+   ],
+   "properties": {
+    "schema": {
+     "const": "asom.bench/1"
+    },
+    "benchProtocol": {
+     "const": 1
+    },
+    "benchSet": {
+     "type": "string",
+     "pattern": "^[a-z0-9-]{1,40}$"
+    },
+    "harness": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "shell",
+      "coreImpl",
+      "coreVersion",
+      "confVersion",
+      "timingSource",
+      "planSha256",
+      "engine"
+     ],
+     "properties": {
+      "shell": {
+       "enum": [
+        "android-daemon",
+        "android-standalone",
+        "ios-standalone",
+        "desktop-daemon",
+        "desktop-cli",
+        "ios-app",
+        "ubuntu-touch-app"
+       ]
+      },
+      "coreImpl": {
+       "enum": [
+        "jvm",
+        "swift"
+       ]
+      },
+      "coreVersion": {
+       "$ref": "#/$defs/semver"
+      },
+      "confVersion": {
+       "$ref": "#/$defs/semver"
+      },
+      "timingSource": {
+       "enum": [
+        "host-monotonic",
+        "stream"
+       ]
+      },
+      "planSha256": {
+       "$ref": "#/$defs/b64u32"
+      },
+      "engine": {
+       "type": "object",
+       "additionalProperties": false,
+       "required": [
+        "name",
+        "commit",
+        "backend",
+        "buildFlags",
+        "threads",
+        "gpuLayers",
+        "kvType",
+        "flashAttn"
+       ],
+       "properties": {
+        "name": {
+         "$ref": "#/$defs/id"
+        },
+        "commit": {
+         "type": "string",
+         "pattern": "^[0-9a-f]{40}$"
+        },
+        "backend": {
+         "$ref": "#/$defs/id"
+        },
+        "buildFlags": {
+         "type": "array",
+         "maxItems": 16,
+         "uniqueItems": true,
+         "items": {
+          "$ref": "#/$defs/text"
+         }
+        },
+        "threads": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 1024
+        },
+        "gpuLayers": {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 100000
+        },
+        "kvType": {
+         "$ref": "#/$defs/id"
+        },
+        "flashAttn": {
+         "enum": [
+          "on",
+          "off",
+          "auto"
+         ]
+        }
+       },
+       "propertyNames": {
+        "not": {
+         "enum": [
+          "derived",
+          "render",
+          "textSha256",
+          "field",
+          "custom"
+         ]
+        }
+       }
+      }
+     },
+     "propertyNames": {
+      "not": {
+       "enum": [
+        "derived",
+        "render",
+        "textSha256",
+        "field",
+        "custom"
+       ]
+      }
+     }
+    },
+    "device": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "platform",
+      "form",
+      "maker",
+      "model",
+      "soc",
+      "osVersion",
+      "osBuild",
+      "gpu",
+      "gpuDriver",
+      "memTotalBytes",
+      "unifiedMemory",
+      "virtualized"
+     ],
+     "properties": {
+      "platform": {
+       "enum": [
+        "android",
+        "ios",
+        "ipados",
+        "macos",
+        "linux",
+        "windows",
+        "ubuntu-touch"
+       ]
+      },
+      "form": {
+       "enum": [
+        "phone",
+        "tablet",
+        "handheld",
+        "laptop",
+        "desktop",
+        "server"
+       ]
+      },
+      "maker": {
+       "$ref": "#/$defs/text"
+      },
+      "model": {
+       "$ref": "#/$defs/text"
+      },
+      "soc": {
+       "$ref": "#/$defs/text"
+      },
+      "osVersion": {
+       "$ref": "#/$defs/text"
+      },
+      "osBuild": {
+       "oneOf": [
+        {
+         "$ref": "#/$defs/text"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "gpu": {
+       "oneOf": [
+        {
+         "$ref": "#/$defs/text"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "gpuDriver": {
+       "oneOf": [
+        {
+         "$ref": "#/$defs/text"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "memTotalBytes": {
+       "$ref": "#/$defs/bytes"
+      },
+      "unifiedMemory": {
+       "type": "boolean"
+      },
+      "virtualized": {
+       "type": "boolean"
+      }
+     },
+     "propertyNames": {
+      "not": {
+       "enum": [
+        "derived",
+        "render",
+        "textSha256",
+        "field",
+        "custom"
+       ]
+      }
+     }
+    },
+    "memory": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "availAtStartBytes",
+      "processLimitBytes",
+      "gpuWorkingSetBytes",
+      "limitSource"
+     ],
+     "properties": {
+      "availAtStartBytes": {
+       "$ref": "#/$defs/bytes"
+      },
+      "processLimitBytes": {
+       "oneOf": [
+        {
+         "$ref": "#/$defs/bytes"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "gpuWorkingSetBytes": {
+       "oneOf": [
+        {
+         "$ref": "#/$defs/bytes"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "limitSource": {
+       "$ref": "#/$defs/id"
+      }
+     },
+     "propertyNames": {
+      "not": {
+       "enum": [
+        "derived",
+        "render",
+        "textSha256",
+        "field",
+        "custom"
+       ]
+      }
+     }
+    },
+    "run": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "plan",
+      "optInTiers",
+      "startedAtMs",
+      "endedAtMs",
+      "dayUtc",
+      "powerSource",
+      "batteryStartPermille",
+      "startThermal",
+      "screenOn",
+      "contentionBeforePermille",
+      "contentionAfterPermille",
+      "abort"
+     ],
+     "properties": {
+      "plan": {
+       "enum": [
+        "quick",
+        "standard",
+        "sustained",
+        "battery",
+        "extended",
+        "ci"
+       ]
+      },
+      "optInTiers": {
+       "type": "array",
+       "maxItems": 6,
+       "uniqueItems": true,
+       "items": {
+        "enum": [
+         "T0",
+         "T1",
+         "T2",
+         "T3",
+         "T4",
+         "T5"
+        ]
+       }
+      },
+      "startedAtMs": {
+       "$ref": "#/$defs/epochMs"
+      },
+      "endedAtMs": {
+       "$ref": "#/$defs/epochMs"
+      },
+      "dayUtc": {
+       "$ref": "#/$defs/date"
+      },
+      "powerSource": {
+       "enum": [
+        "ac",
+        "battery"
+       ]
+      },
+      "batteryStartPermille": {
+       "oneOf": [
+        {
+         "type": "integer",
+         "minimum": 0,
+         "maximum": 1000
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "startThermal": {
+       "enum": [
+        "cool",
+        "warm",
+        "hot"
+       ]
+      },
+      "screenOn": {
+       "type": [
+        "boolean",
+        "null"
+       ]
+      },
+      "contentionBeforePermille": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 1000000
+      },
+      "contentionAfterPermille": {
+       "type": "integer",
+       "minimum": 0,
+       "maximum": 1000000
+      },
+      "abort": {
+       "oneOf": [
+        {
+         "type": "null"
+        },
+        {
+         "type": "object",
+         "additionalProperties": false,
+         "required": [
+          "reason",
+          "atMs"
+         ],
+         "properties": {
+          "reason": {
+           "enum": [
+            "THERMAL_HARD",
+            "BATTERY_TEMP",
+            "USER_STOP",
+            "BACKGROUNDED",
+            "CHARGER_REMOVED",
+            "MEMORY_PRESSURE",
+            "WALL_CAP",
+            "PROBE_LOST",
+            "DEVICE_BUSY"
+           ]
+          },
+          "atMs": {
+           "type": "integer",
+           "minimum": 0
+          }
+         },
+         "propertyNames": {
+          "not": {
+           "enum": [
+            "derived",
+            "render",
+            "textSha256",
+            "field",
+            "custom"
+           ]
+          }
+         }
+        }
+       ]
+      }
+     },
+     "propertyNames": {
+      "not": {
+       "enum": [
+        "derived",
+        "render",
+        "textSha256",
+        "field",
+        "custom"
+       ]
+      }
+     }
+    },
+    "tiers": {
+     "type": "array",
+     "maxItems": 6,
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "tier",
+       "sha256",
+       "bytes",
+       "quant",
+       "startThermal",
+       "startThermalCode",
+       "startedAtMs",
+       "nCtx",
+       "availBeforeLoadBytes",
+       "peakFootprintBytes",
+       "kvBytesPerToken",
+       "loadColdMicros",
+       "loadColdness",
+       "loadWarmMicros",
+       "tests",
+       "numerics",
+       "restarts",
+       "swapDeltaBytes"
+      ],
+      "properties": {
+       "tier": {
+        "enum": [
+         "T0",
+         "T1",
+         "T2",
+         "T3",
+         "T4",
+         "T5"
+        ]
+       },
+       "sha256": {
+        "$ref": "#/$defs/sha256hex"
+       },
+       "bytes": {
+        "$ref": "#/$defs/bytes"
+       },
+       "quant": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9_.-]{1,24}$"
+       },
+       "startThermal": {
+        "enum": [
+         "cool",
+         "warm",
+         "hot"
+        ]
+       },
+       "startThermalCode": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 4
+       },
+       "startedAtMs": {
+        "$ref": "#/$defs/epochMs"
+       },
+       "nCtx": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 10000000
+       },
+       "availBeforeLoadBytes": {
+        "$ref": "#/$defs/bytes"
+       },
+       "peakFootprintBytes": {
+        "$ref": "#/$defs/bytes"
+       },
+       "kvBytesPerToken": {
+        "$ref": "#/$defs/bytes"
+       },
+       "loadColdMicros": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 86400000000
+       },
+       "loadColdness": {
+        "enum": [
+         "evicted",
+         "best-effort",
+         "unknown"
+        ]
+       },
+       "loadWarmMicros": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 8,
+        "items": {
+         "type": "integer",
+         "minimum": 1,
+         "maximum": 86400000000
+        }
+       },
+       "tests": {
+        "type": "array",
+        "maxItems": 16,
+        "items": {
+         "type": "object",
+         "additionalProperties": false,
+         "required": [
+          "test",
+          "samples"
+         ],
+         "properties": {
+          "test": {
+           "type": "string",
+           "pattern": "^(pp|tg)[0-9]{1,7}@d[0-9]{1,8}$"
+          },
+          "samples": {
+           "type": "array",
+           "minItems": 1,
+           "maxItems": 16,
+           "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 86400000000
+           }
+          },
+          "wholeSamples": {
+           "type": "array",
+           "minItems": 1,
+           "maxItems": 16,
+           "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 86400000000
+           }
+          }
+         },
+         "propertyNames": {
+          "not": {
+           "enum": [
+            "derived",
+            "render",
+            "textSha256",
+            "field",
+            "custom"
+           ]
+          }
+         }
+        }
+       },
+       "numerics": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+         "milliNatsPerToken",
+         "refMilliNatsPerToken"
+        ],
+        "properties": {
+         "milliNatsPerToken": {
+          "$ref": "#/$defs/u53"
+         },
+         "refMilliNatsPerToken": {
+          "oneOf": [
+           {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+           },
+           {
+            "type": "null"
+           }
+          ]
+         }
+        },
+        "propertyNames": {
+         "not": {
+          "enum": [
+           "derived",
+           "render",
+           "textSha256",
+           "field",
+           "custom"
+          ]
+         }
+        }
+       },
+       "restarts": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 2
+       },
+       "swapDeltaBytes": {
+        "oneOf": [
+         {
+          "$ref": "#/$defs/bytes"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       }
+      },
+      "propertyNames": {
+       "not": {
+        "enum": [
+         "derived",
+         "render",
+         "textSha256",
+         "field",
+         "custom"
+        ]
+       }
+      }
+     }
+    },
+    "sustain": {
+     "oneOf": [
+      {
+       "type": "null"
+      },
+      {
+       "type": "object",
+       "additionalProperties": false,
+       "required": [
+        "tier",
+        "windowMs",
+        "capMs",
+        "endReason",
+        "headroomAtOnsetPermille",
+        "windows"
+       ],
+       "properties": {
+        "tier": {
+         "enum": [
+          "T0",
+          "T1",
+          "T2",
+          "T3",
+          "T4",
+          "T5"
+         ]
+        },
+        "windowMs": {
+         "type": "integer",
+         "minimum": 100,
+         "maximum": 3600000
+        },
+        "capMs": {
+         "type": "integer",
+         "minimum": 1,
+         "maximum": 86400000
+        },
+        "endReason": {
+         "enum": [
+          "PLATEAU",
+          "TIME_CAP",
+          "THERMAL_SOFT",
+          "THERMAL_HARD",
+          "BATTERY_TEMP",
+          "USER_STOP",
+          "BACKGROUNDED",
+          "CHARGER_REMOVED",
+          "MEMORY_PRESSURE",
+          "WALL_CAP",
+          "YIELDED",
+          "DEVICE_BUSY",
+          "PROBE_LOST"
+         ]
+        },
+        "headroomAtOnsetPermille": {
+         "oneOf": [
+          {
+           "type": "integer",
+           "minimum": 0,
+           "maximum": 10000
+          },
+          {
+           "type": "null"
+          }
+         ]
+        },
+        "windows": {
+         "type": "array",
+         "minItems": 1,
+         "maxItems": 240,
+         "items": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "prefixItems": [
+           {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400000
+           },
+           {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10000000
+           },
+           {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3600000000
+           },
+           {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4
+           }
+          ]
+         }
+        }
+       },
+       "propertyNames": {
+        "not": {
+         "enum": [
+          "derived",
+          "render",
+          "textSha256",
+          "field",
+          "custom"
+         ]
+        }
+       }
+      }
+     ]
+    },
+    "energy": {
+     "type": "null"
+    }
+   },
+   "propertyNames": {
+    "not": {
+     "enum": [
+      "derived",
+      "render",
+      "textSha256",
+      "field",
+      "custom"
+     ]
+    }
+   }
+  },
+  "bytes": {
+   "type": "integer",
+   "minimum": 0,
+   "maximum": 1125899906842624
+  },
+  "pctRate": {
+   "type": "object",
+   "required": [
+    "p50"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "p10": {
+     "type": "integer",
+     "minimum": 1,
+     "maximum": 1000000000
+    },
+    "p50": {
+     "type": "integer",
+     "minimum": 1,
+     "maximum": 1000000000
+    },
+    "p90": {
+     "type": "integer",
+     "minimum": 1,
+     "maximum": 1000000000
+    }
+   },
+   "propertyNames": {
+    "not": {
+     "enum": [
+      "derived",
+      "render",
+      "textSha256",
+      "field",
+      "custom"
+     ]
+    }
+   }
+  },
+  "pctTtft": {
+   "type": "object",
+   "required": [
+    "p50"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "p10": {
+     "type": "integer",
+     "minimum": 1,
+     "maximum": 3600000000
+    },
+    "p50": {
+     "type": "integer",
+     "minimum": 1,
+     "maximum": 3600000000
+    },
+    "p90": {
+     "type": "integer",
+     "minimum": 1,
+     "maximum": 3600000000
+    }
+   },
+   "propertyNames": {
+    "not": {
+     "enum": [
+      "derived",
+      "render",
+      "textSha256",
+      "field",
+      "custom"
+     ]
+    }
+   }
+  }
+ },
+ "allOf": [
+  {
+   "if": {
+    "properties": {
+     "body": {
+      "properties": {
+       "audience": {
+        "const": "own"
+       }
+      }
+     }
+    }
+   },
+   "then": {
+    "properties": {
+     "body": {
+      "required": [
+       "seq"
+      ],
+      "properties": {
+       "results": {
+        "items": {
+         "properties": {
+          "conditions": {
+           "required": [
+            "charging",
+            "batteryStartPermille",
+            "thermalStart",
+            "socStartMilliC",
+            "screenOn"
+           ]
+          }
+         }
+        }
+       }
+      }
+     },
+     "presentation": {
+      "required": [
+       "issuedAtMs",
+       "expiresAtMs",
+       "challenge"
+      ]
+     }
+    }
+   }
+  },
+  {
+   "if": {
+    "properties": {
+     "body": {
+      "properties": {
+       "audience": {
+        "const": "file"
+       }
+      }
+     }
+    }
+   },
+   "then": {
+    "properties": {
+     "body": {
+      "properties": {
+       "seq": false,
+       "subject": {
+        "properties": {
+         "keyStorage": {
+          "const": "ephemeral"
+         }
+        }
+       },
+       "device": {
+        "properties": {
+         "platformIds": false,
+         "os": {
+          "properties": {
+           "securityPatch": false
+          }
+         }
+        }
+       },
+       "results": {
+        "items": {
+         "properties": {
+          "measuredAtMs": {
+           "type": "integer",
+           "multipleOf": 86400000
+          },
+          "conditions": {
+           "properties": {
+            "batteryStartPermille": false,
+            "screenOn": false,
+            "socStartMilliC": false
+           }
+          }
+         }
+        }
+       },
+       "bench": {
+        "properties": {
+         "device": {
+          "properties": {
+           "osBuild": {
+            "type": "null"
+           },
+           "gpuDriver": {
+            "type": "null"
+           }
+          }
+         },
+         "run": {
+          "properties": {
+           "batteryStartPermille": {
+            "type": "null"
+           },
+           "screenOn": {
+            "type": "null"
+           },
+           "startedAtMs": {
+            "type": "integer",
+            "multipleOf": 86400000
+           },
+           "endedAtMs": {
+            "type": "integer",
+            "multipleOf": 86400000
+           }
+          }
+         },
+         "tiers": {
+          "items": {
+           "properties": {
+            "startedAtMs": {
+             "type": "integer",
+             "multipleOf": 86400000
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "presentation": {
+      "additionalProperties": false,
+      "required": [
+       "issuedAtMs"
+      ],
+      "properties": {
+       "issuedAtMs": {
+        "type": "integer",
+        "multipleOf": 86400000
+       }
+      }
+     }
+    }
+   }
+  }
+ ],
+ "propertyNames": {
+  "not": {
+   "enum": [
+    "derived",
+    "render",
+    "textSha256",
+    "field",
+    "custom"
+   ]
+  }
+ }
+}

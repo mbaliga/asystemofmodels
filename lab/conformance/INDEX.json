@@ -1,5 +1,17 @@
 [
   {
+    "path": "bench/M04-derive.json",
+    "sha256": "9ad1f2fb948474683cbcd12b758ddfe08dff7abc57d3d9351ed3df563e54aad1",
+    "family": "M04",
+    "status": "normative"
+  },
+  {
+    "path": "bench/M05-body.json",
+    "sha256": "c51908e0bfd25040539a728d86e41fccc1390ca57f54205735290a6a8b11b738",
+    "family": "M05",
+    "status": "normative"
+  },
+  {
     "path": "json/M01-jcs.json",
     "sha256": "e3d14d2a084aa8f1492579b3d8b202d79a1075273134a7e7576b8b812a3c8bf5",
     "family": "M01",
@@ -7,9 +19,39 @@
   },
   {
     "path": "keys/TEST-ONLY-keys.json",
-    "sha256": "c8d70907827b473154235c0d9c92d5f5631bc721106eecde4c9bf1b9a07ea9fb",
+    "sha256": "c577cb5ecb7b516e67d9f01aa64ef4b3abee047e6f31831693ab571f98df292a",
     "family": "keys",
     "status": "test-only"
+  },
+  {
+    "path": "manifest/M01-der-raw.json",
+    "sha256": "e0cdaf79e5982306b67bbf224dd66d19f6c34d2bc217f71e18b4708422d7c32b",
+    "family": "M01",
+    "status": "normative"
+  },
+  {
+    "path": "manifest/M02-verify-accept.json",
+    "sha256": "ef6958d76e62203db0ce4c3884db6e2958278e431087c267f37211c096d2150e",
+    "family": "M02",
+    "status": "normative"
+  },
+  {
+    "path": "manifest/M03-verify-reject.json",
+    "sha256": "37270ae1e0009de3f6298a4e19baf42195dfed4174da921408d2609a5c53d375",
+    "family": "M03",
+    "status": "normative"
+  },
+  {
+    "path": "manifest/M05-render.json",
+    "sha256": "9ea4e311e0a0d32bf450d132fa6e3c4f522a8ac59bb5f16a10fa53bfb7459cf4",
+    "family": "M05",
+    "status": "normative"
+  },
+  {
+    "path": "manifest/M06-derivatives.json",
+    "sha256": "9fffec4829bdd264017c0b400c6bc671791e441288ea9288b32c3295a3094d60",
+    "family": "M06",
+    "status": "normative"
   },
   {
     "path": "router/R04-v1-pins.json",

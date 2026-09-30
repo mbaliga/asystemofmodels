@@ -17,6 +17,24 @@
   "fingerprint": "RHMB-T4WI-2LMF-Z74C",
   "exportFingerprint": "RHMBT-4WI2L-MFZ7-4CYD-AY34-YRC4"
  },
+ "key3": {
+  "d_hex": "61e596d036ac80a5f6735c24e5b60022941c030fb6db61e388942ade776129dd",
+  "spki_b64": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEvW9J02rbkaDFtCXpNMq77Jh1yZmpFLDSKvKj/oTzfQnmzMNjnoC8J/NgJ5KhPqBECLBvzMP1mUPXyvbkuw0yxw==",
+  "nodeId": "Ees1kUrYV_JxZfeLes0ifZTbzDZgbHOzSicMPUhhxlA",
+  "nodeTag": "chvtlekk3bl7e4lf",
+  "fingerprint": "CHVT-LEKK-3BL7-E4LF",
+  "exportFingerprint": "CHVTL-EKK3B-L7E4-LF66-FXVT-JCPU",
+  "role": "per-export key for FILE-audience vectors (LAB_SPEC 4.5, 4.7); TEST-ONLY like key1 and key2"
+ },
+ "key4": {
+  "d_hex": "b7efb656fbb409c511576f4b1c1c1889a73f6ecd6e8c2433472259f47cac82b8",
+  "spki_b64": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAElc6GhXJwwZ5mQB1Pbb50SCPaPjvK6vzHgd/8x4jVDLbGoNYMhp+LjMEwm7RsJtHCUL3AIoLMF4/8hLp2JRol8w==",
+  "nodeId": "Fs7m5h_0Asnep04eOQ30T6BtAI6rXroeBjGk82GQWj8",
+  "nodeTag": "c3honzq76qbmtxvh",
+  "fingerprint": "C3HO-NZQ7-6QBM-TXVH",
+  "exportFingerprint": "C3HON-ZQ76Q-BMTX-VHJY-PDSD-PUJ4",
+  "role": "per-export key for FILE-audience vectors (LAB_SPEC 4.5, 4.7); TEST-ONLY like key1 and key2"
+ },
  "challenge1_b64u": "nvsK-QRFTzOSUx0XtUEgqKOWIsUY8j2dL4ikBHOh5pw",
  "rfc6979_selftest": "passed (RFC 6979 A.2.5, P-256/SHA-256, \"sample\")"
 }

@@ -702,3 +702,66 @@ Note: the `real` SIGKILL model cannot see a missing fsync (the page cache surviv
 
 Not verified here: hosted-runner behaviour of `desktop-linux.yml` (never run; action SHAs from `git ls-remote`); the `ubuntu-24.04-arm` lane; a real Android SDK for check 2; Windows/macOS; every device fact: the four sysfs fixture hosts are SYNTHETIC hand-written trees, so no probe result is evidence about a Steam Deck or a Dell (DV-D*, DV-L* stay `NEEDS-DEVICE-VALIDATION`); systemd, logind, real suspend; the Deck docked/game/Game-Mode mechanisms do not exist (unknown = not lending, ERR-DECK-1).
 Result: PASSED (DL0 and DL1 as amended by ERRATA; local LAB evidence only)
+
+## Lab L0.2 + L0.3 gate (track `lab-manifest`: `:bench-core`, `:manifest`, families M01der, M02-M06) — 2026-09-30 — LAB (not device evidence)
+Commit: 95b4c97d3d820419f1bf8b937c36c65dc6eb9d48 + uncommitted working tree (not committed, not pushed)   JDK: openjdk version "21.0.10" 2026-01-20 (JDK 17 NOT available in this container)   Runner: local (`--no-daemon --max-workers=2`, GRADLE_OPTS=-Xmx1g)
+Scope: `:bench-core` (asom.bench/1 model, M04 derive with checked integer arithmetic, projection, asom.text/1, run plans, governor FSM + fake host, bench-set pins) and `:manifest` (typed decoder, DSSE, ES256, key ids and fingerprints, the r3 verifier steps 1-19, signer, FILE projection, public derivative, asom.manifest-text/1). Vectors M01-2xx (DER codec), M02, M03, M04, M05, M06 regenerated or new for r3, every one `oracle: self`, TEST-ONLY keys only. NOT done: M07 (not built, LAB_SPEC 4.9), M08 (belongs to `:mesh-policy`), r0 files not moved to `history/r0` (outside this track's write set, ERRATA ERR-MAN-3).
+
+```
+$ ./gradlew -p lab labTest :conformance-runner:run --args='lines M01,M02,M03,M04,M05,M06,M08' --stacktrace --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process --rerun-tasks
+BUILD SUCCESSFUL in 2m 30s
+tests (JUnit XML, 0 failures in every module): :json 42, :bench-core 41, :manifest 36, :conformance-runner 651
+family M01: 105 vectors, 105 pass, 0 fail, 0 proposed-skipped, oracle: self=105
+family M02: 18 vectors, 18 pass, 0 fail, 0 proposed-skipped, oracle: self=18
+family M03: 71 vectors, 71 pass, 0 fail, 0 proposed-skipped, oracle: self=71
+family M04: 94 vectors, 94 pass, 0 fail, 0 proposed-skipped, oracle: self=94
+family M05: 42 vectors, 42 pass, 0 fail, 0 proposed-skipped, oracle: self=42
+family M06: 10 vectors, 10 pass, 0 fail, 0 proposed-skipped, oracle: self=10
+family M08: not-implemented
+lines mode: 340 lines (`M01-001 ok` ... `M03-101 reject SIGNATURE_INVALID` ...); compared with the expectation of every vector file: 340 expected, 340 printed, 0 differences.
+`lines M07` exits 1 with `unknown family M07` (M07 is not a family). `lines ...,M08` exits 0 and prints `family M08: not-implemented`.
+```
+Non-vacuity (each prints its case count and fails below a minimum): bit flips over a container 20,454 (own) and the file container; defect-pair matrix 153 pairs plus 18 single defects; stat invariants 3,000; median laws 2,000; nearest-rank 1,500; confidence caps 1,500; q2 5,001; render laws 20 renderings; FSM 100 state pairs; exit-path injections 56; DER round trips 300. The runner fails a family with a required law or id at zero cases (`requiredLaws`, `requiredIds`).
+
+```
+$ python3 lab/tools/xcheck.py lab/conformance
+xcheck W01: 214 agree, 0 disagree
+xcheck keys: 4 agree, 0 disagree
+xcheck INDEX: 17 agree, 0 disagree
+xcheck M01: 94 agree, 0 disagree
+xcheck M01der: 15 agree, 0 disagree
+xcheck M02: 90 agree, 0 disagree
+xcheck M03: 185 agree, 0 disagree
+xcheck M04: 759 agree, 0 disagree     (8 vectors outside the reference sketch, reported as skipped)
+xcheck M05: 210 agree, 0 disagree     (manifest header re-derivation 108, bench body against bench_ref.render 102; 12 skipped)
+xcheck M06: 82 agree, 0 disagree
+xcheck W05: absent
+xcheck oracle status: self-oracled (same-session cross-check; never clears the oracle tag)
+$ python3 lab/manifest/tools/xcheck_manifest.py    -> pure-Python P-256 verify; openssl cross-checked 75 signatures (all agree)
+$ python3 lab/manifest/tools/schema_oracle.py      -> 22 accepted payloads agree, 14 SCHEMA_INVALID payloads rejected by the schema too, 0 disagree (jsonschema 4.26.0)
+```
+The cross-checks and the mutation run exposed two real defects, both fixed and re-generated: the executor trace did not log `UNLOAD` on abort, yield and sustain-end paths (M04-320..331 changed; ERRATA ERR-BENCH-7), and `:conformance-runner:test` failed on a stale `INDEX.json` (regenerated).
+
+```
+$ lab/tools/isolation.sh
+isolation check 1 (root settings never name the lab): 0   expected 0
+isolation check 2 (no Android tooling in the lab classpath; ANDROID_HOME='' ANDROID_SDK_ROOT=''): 0   expected 0
+isolation check 2 positive control (the same output does list the Kotlin plugin, so a 0 above is not an empty read): 19   expected > 0
+isolation check 3 (no Android module in the lab build): 0   expected 0
+isolation check 3 positive control (the mapped root projects and the nine lab modules are listed): 15   expected 15
+isolation check 4: base 770a44da21e7a917071ea1e12f1eed98a91aff03 (from lab/LAB_BASE_SHA), ancestor of HEAD confirmed
+isolation check 4: 136 protected files compared byte-for-byte against base 770a44da21e7
+isolation check 4: OK (shipped tree byte-identical to the pinned base)
+law: 9 module build files checked against the LAB_SPEC 1.2 dependency table
+law: 87 Kotlin/Java sources scanned (no android imports, no frozen-enum reuse, no wildcard bind, listeners only in the harness or tests)
+law: OK
+ISOLATION: all checks passed
+$ ./gradlew jvmTest --rerun-tasks --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process     (root build)
+BUILD SUCCESSFUL in 1m 9s
+root tests: 139, failures: 0   (baseline: 139)
+```
+Mutation checks (`python3 lab/manifest/tools/mutants.py`; one source edit each, rebuild, three layers: L1 `lines` vs the unmutated build, L2 `:conformance-runner:test`, L3 `:manifest:test :bench-core:test`; the file is restored byte for byte and re-checked): 53 mutants, 50 KILLED (L1 35, L2 8, L3 7), 3 SURVIVED, 0 invalid. Killed include: signature verify skipped, MESH trusting `signer.spki` or the `keyid`, high-S rejected, canonical check skipped, derivation and confVersion-floor checks skipped, EXPIRED and TTL and skew off-by-one, TEST_ONLY deny-list skipped, null challenge accepted, nonce check skipped, audience check moved ahead of the nonce check, rollback `<=`, fingerprint compare skipped, manifest.v2 payload type accepted, subject match skipped, FILE key storage unchecked, wrapping multiply in `consistency()` and in `Checked.mul`, on-curve check skipped, non-minimal or negative DER accepted, low-S normalisation dropped, FILE projection keeping `platformIds` / `securityPatch` / battery level / exact time, seq without clock or always new, public-derivative rounding, catalogue, commit and model rules, rate median swap, exclusion budget, drift threshold, MAD constant, consent expiry and reuse, an extra FSM edge, yield limit, battery-temperature ceiling, abort path not closing the engine or restoring brightness, role threshold. The first mutation run SURVIVED for V11 (skew boundary), V21 (tee storage), V24 (wrapping product), B02 (exclusion budget), B14 (role threshold); each was answered with a new vector or unit test (M02-119, M02-120, M03-178, M04-025, M04-026, BoundaryTest, exclusion-budget and role-threshold tests) and re-run: KILLED. The three remaining survivors are EQUIVALENT: V02 (explicit range check: the JDK verifier also refuses r or s outside 1..n-1, so the verdict cannot change), V25 and V26 (strict SPKI prefix and length: the JDK key factory refuses the same encodings, so the extra check is defence in depth). The first three results of an earlier partial run (V01, V03, V04, all KILLED at L1) were kept; an earlier V02 "killed" result was discarded because it came from a stale `INDEX.json`.
+
+Oracle status: self-oracled (no independent implementation has agreed yet). The Python cross-checks were written in the same session as the Kotlin; the openssl agreement on 75 signature layers clears no tag (LAB_SPEC 4.9 makes openssl external for the signature layer of the r0 vectors only, and this run is the same session).
+Not verified here: JDK 17 (only JDK 21 in this container; the modules target JVM 17 bytecode); no hosted CI run; no ART, Swift, iOS, Windows or device run; no real engine, so every benchmark number is a fake-host simulation (SIMULATED, NOT DEVICE EVIDENCE); Q1 pins are PROPOSED (owner has not hashed the files, A17); L1 pins, numerics references, bytes-per-token (provisional 4000/8000) and the editorial constants stay BLOCKED or PROVISIONAL (D18); steps 11-19 of the verifier have no independent second implementation.
+Result: PASSED (`:bench-core`, `:manifest`, M01der and M02-M06, self-oracled; local LAB evidence only). Runner registry edits are listed in ERRATA ERR-RUN-1.
