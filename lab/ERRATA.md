@@ -47,6 +47,7 @@ add their own rows below, with their own ids.
 | ERR-JSON-9 | LAB_SPEC 4.2 (no input limit) | The spec sets a depth limit of 16 but no size limit, and ERR-JSON-1 makes the parser scan a too-deep document to the end. | Scanning is iterative (a 200,000-level document is rejected without a stack overflow; memory is O(depth) frames). No size cap is added to `:json`: a cap belongs to the caller (frame length limits, container size limits) and is not in the spec. Recorded so that the manifest and frame decoders set one. |
 | ERR-JSON-10 | LAB_SPEC 1.2 (`:json` shell) | The shell's `LabModule` marker and `LabModuleShellTest` are placeholders. | Both deleted, as ERR-PKG-1 allows the agent that fills a module. |
 | 2026-09-30 | 770a44da | 70eb11d1 | Orchestrator fixed a second flake in a v1 test (`AsomServerIntegrationTest` chopped-stream test compared bodies that embed a per-second `created` stamp; server/src/test only, no production code). Re-pinned in a later commit than the change. |
+| 2026-09-30 | 70eb11d1 | 79ff5b81 | Orchestrator fixed a ledger-read race in `AsomServerIntegrationTest.every routed request writes exactly one ledger row` (it read the ledger straight after the response; server/src/test only, no production code). Re-pinned in a later commit than the change. |
 
 ## lab-manifest track: `:bench-core` (L0.3 content), `:manifest` (L0.2 content), families M01der, M02-M06
 
