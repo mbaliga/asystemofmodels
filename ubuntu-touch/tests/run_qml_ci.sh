@@ -10,4 +10,17 @@ command -v python3 >/dev/null || { echo "run_qml_ci: python3 is needed for the f
 export QT_QUICK_BACKEND=software
 export QML_DISABLE_DISK_CACHE=1
 echo "run_qml_ci: plugin modules at $modules"
-exec qmltestrunner -platform offscreen -import "$modules" -input "$root/tests/qml"
+export LC_ALL=C.UTF-8
+runner=(qmltestrunner -platform offscreen -import "$modules")
+if command -v dbus-run-session >/dev/null; then runner=(dbus-run-session -- "${runner[@]}"); fi
+# One process per test file: a native crash then names the file that caused it instead of ending the whole run at "exit -11".
+failed=()
+for f in "$root"/tests/qml/tst_*.qml; do
+  echo "run_qml_ci: == $(basename "$f")"
+  if ! "${runner[@]}" -input "$f"; then failed+=("$(basename "$f")"); fi
+done
+if [ "${#failed[@]}" -gt 0 ]; then
+  echo "run_qml_ci: FAILED test files: ${failed[*]}" >&2
+  exit 1
+fi
+echo "run_qml_ci: every test file passed"
