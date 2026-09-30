@@ -1,0 +1,59 @@
+# asom SYSTEM unit (linux.md 3.2). Shipped DISABLED: no package or script ever enables or starts it. The owner runs
+# `sudo systemctl enable asom` on purpose. Lending stays OFF even while the node runs.
+[Unit]
+Description=asom node (lends compute only when enabled; see `asom status`)
+Documentation=file:/opt/asom/current/share/doc/LINUX.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Type=exec, not notify: sd_notify needs an AF_UNIX datagram socket and the JDK offers only stream Unix sockets.
+Type=exec
+User=asom
+Group=asom
+ExecStart=/opt/asom/current/bin/asom-node --mode=system
+StateDirectory=asom
+StateDirectoryMode=0700
+RuntimeDirectory=asom
+RuntimeDirectoryMode=0750
+UMask=0077
+# T17(c): no token, ledger row or prompt ever reaches the journal.
+StandardOutput=null
+StandardError=null
+# No core dumps: they could contain prompts. JVM options (-XX:-CreateCoredumpOnCrash, -XX:ErrorFile under the state
+# dir, -Xmx384m) are baked into the launcher, so systemd never expands a % specifier inside them.
+LimitCORE=0
+# Prompts in anonymous memory never reach swap (OOM instead; the RAM guard avoids it).
+MemorySwapMax=0
+# A lender must not starve its own user.
+Nice=10
+CPUWeight=20
+IOSchedulingClass=idle
+# Sandbox: limits what a COMPROMISED node can touch. It does not protect the node from root or from group asom.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+DevicePolicy=closed
+DeviceAllow=char-drm rw
+SupplementaryGroups=render video
+# 30 s desktop drain grace plus shutdown.
+TimeoutStopSec=35
+# A JVM stopped by SIGTERM runs its shutdown hooks and exits 143 (128+15): a clean stop, not a failure.
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

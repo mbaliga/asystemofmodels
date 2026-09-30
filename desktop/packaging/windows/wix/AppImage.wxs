@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  NOT-YET-IMPLEMENTED: PLATFORM_PLAN step W4. In the plan this file is a generated file harvest of the signed app image
+  (script output, never hand-edited). Nothing generates it yet. Placeholder only.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" />

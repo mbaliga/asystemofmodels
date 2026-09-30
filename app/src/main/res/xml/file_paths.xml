@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The ledger export file only (§9). Nothing else in asom's storage is
+     reachable through this provider. -->
+<paths>
+    <cache-path name="ledger-export" path="export/" />
+</paths>

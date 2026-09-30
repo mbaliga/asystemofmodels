@@ -1,0 +1,302 @@
+{
+  "family": "W02",
+  "confVersion": "0.2.0",
+  "specRefs": [
+    "ASOM_BUILD_BRIEF.md 5.6",
+    "LAB_SPEC.md 3.7"
+  ],
+  "vectors": [
+    {
+      "id": "W02-001",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "no bearer token",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": false,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          },
+          "bearer": null
+        },
+        "keys": [
+          "openrouter",
+          "groq"
+        ]
+      },
+      "expect": {
+        "reject": "NOT_PAIRED"
+      },
+      "expectDetail": {
+        "httpStatus": 401,
+        "errorType": "authentication_error"
+      }
+    },
+    {
+      "id": "W02-002",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "revoked token",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": false,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          },
+          "bearer": "w-revoked"
+        },
+        "keys": [
+          "openrouter",
+          "groq"
+        ]
+      },
+      "expect": {
+        "reject": "TOKEN_REVOKED"
+      },
+      "expectDetail": {
+        "httpStatus": 401,
+        "errorType": "authentication_error"
+      }
+    },
+    {
+      "id": "W02-003",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "no provider key stored",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": false,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": []
+      },
+      "expect": {
+        "reject": "NO_PROVIDER_KEY"
+      },
+      "expectDetail": {
+        "httpStatus": 503,
+        "errorType": "server_error"
+      }
+    },
+    {
+      "id": "W02-004",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "unknown concrete model",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "no-such-model",
+            "stream": false,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter",
+          "groq"
+        ]
+      },
+      "expect": {
+        "reject": "MODEL_UNKNOWN"
+      },
+      "expectDetail": {
+        "httpStatus": 404,
+        "errorType": "invalid_request_error"
+      }
+    },
+    {
+      "id": "W02-005",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "every serving provider cooling (recordFailure at fixedNow)",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": false,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter",
+          "groq",
+          "trainy-ai"
+        ],
+        "cooling": [
+          "openrouter",
+          "groq",
+          "trainy-ai"
+        ]
+      },
+      "expect": {
+        "reject": "ALL_PROVIDERS_COOLING"
+      },
+      "expectDetail": {
+        "httpStatus": 503,
+        "errorType": "server_error"
+      }
+    },
+    {
+      "id": "W02-006",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "local-only",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "local-only",
+            "stream": false,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter",
+          "groq"
+        ]
+      },
+      "expect": {
+        "reject": "LOCAL_ENGINE_ABSENT"
+      },
+      "expectDetail": {
+        "httpStatus": 501,
+        "errorType": "server_error"
+      }
+    },
+    {
+      "id": "W02-007",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "the driver refuses the request before transmitting",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": false,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter"
+        ],
+        "driver": {
+          "default": {
+            "kind": "throw",
+            "code": "UNSUPPORTED_BY_DRIVER",
+            "message": "scripted"
+          }
+        }
+      },
+      "expect": {
+        "reject": "UNSUPPORTED_BY_DRIVER"
+      },
+      "expectDetail": {
+        "httpStatus": 501,
+        "errorType": "invalid_request_error"
+      }
+    },
+    {
+      "id": "W02-008",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a body that is not a JSON object is a 400 invalid_request_error without a typed code (pins v1)",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": "not an object"
+        },
+        "keys": [
+          "openrouter",
+          "groq"
+        ]
+      },
+      "expect": {
+        "reject": "<none>"
+      },
+      "expectDetail": {
+        "httpStatus": 400,
+        "errorType": "invalid_request_error"
+      }
+    },
+    {
+      "id": "W02-009",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "no `model` field is MODEL_UNKNOWN (pins v1)",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "messages": []
+          }
+        },
+        "keys": [
+          "openrouter",
+          "groq"
+        ]
+      },
+      "expect": {
+        "reject": "MODEL_UNKNOWN"
+      },
+      "expectDetail": {
+        "httpStatus": 404,
+        "errorType": "invalid_request_error"
+      }
+    }
+  ]
+}

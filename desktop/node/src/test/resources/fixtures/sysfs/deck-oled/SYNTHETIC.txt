@@ -1,0 +1,4 @@
+SYNTHETIC FIXTURE - hand-written to exercise the parsers, NOT captured from a device.
+Every value here is plausible, none is measured. Real captures are owner work (`asom doctor capture`, linux.md 10.2,
+DV-D5, DV-L1) and replace this tree; until then no test may be read as evidence about a real Steam Deck OLED.
+Scenario: docked, on AC, charging, idle desktop, no game.

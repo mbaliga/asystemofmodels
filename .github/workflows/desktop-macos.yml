@@ -1,0 +1,183 @@
+name: desktop-macos
+
+# The macOS track (PLATFORM_PLAN section 5, steps MC1 and MC2 ONLY). A NEW workflow: .github/workflows/ci.yml is untouched.
+# MC3 to MC7 (the JNI build, the runtime and launcher, the app image, signing, notarisation, the two-node smoke, the Homebrew tap) are
+# NOT here: they are D-v2 work and their jobs do not exist yet (desktop/packaging/macos/scripts/*.sh other than the two real ones are
+# NOT-YET-IMPLEMENTED stubs that fail on purpose). There is no `package-and-smoke`, `sign-notarize` or `macos27-probes` job.
+#
+# EVIDENCE LABELS: everything this workflow produces is "CI (hosted VM) evidence" and is NOT device evidence. No number from a
+# hosted runner (3-vCPU M1 VM) is a speed, thermal or memory figure. Every artefact is UNSIGNED and not a release. The Secure Enclave
+# (S-M1), real presence, thermal, sleep, lid and FileVault behaviour, the Local Network prompt and Login Items approval stay
+# NEEDS-DEVICE-VALIDATION.
+#
+# STATUS OF THIS FILE: written in a container that has no macOS and could not run GitHub Actions. It is syntax-checked with
+# actionlint, and the Linux halves of its scripts were run there; every job marked MACOS below is UNVERIFIED until a hosted run has
+# been seen. In particular the macOS-only Swift sources of the helper (desktop/packaging/macos/helper/Sources/asom-mac-helper) have
+# NEVER been compiled by their author: the first `swift test` on macos-latest is their first compile.
+#
+# Third-party actions are pinned by commit SHA; the tag each SHA was resolved from is in the comment (each resolved with
+# `git ls-remote` on 2026-09-30; gradle/actions v4 is an annotated tag, so the peeled commit is used). The Swift container is pinned by the
+# digest apple-ios.yml already uses (resolved there from Docker Hub on 2026-09-30; not pulled or run when this was written).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "desktop/**"
+      - "core/**"
+      - "server/**"
+      - "gradle/**"
+      - ".github/workflows/desktop-macos.yml"
+  pull_request:
+    paths:
+      - "desktop/**"
+      - "core/**"
+      - "server/**"
+      - "gradle/**"
+      - ".github/workflows/desktop-macos.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-macos-${{ github.ref }}
+  cancel-in-progress: true
+
+# Pure-JVM jobs never see an Android SDK (PLATFORM_PLAN P4).
+env:
+  ANDROID_HOME: ""
+  ANDROID_SDK_ROOT: ""
+
+jobs:
+  # PLATFORM_PLAN P2 with the R3-CONFORMANCE-2 correction: byte-for-byte against the pinned base, not `git diff` on a fresh checkout.
+  root-unchanged:
+    name: root build and shipped modules unchanged (pinned base)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Negative controls of the isolation check, then the check itself
+        run: |
+          python3 desktop/tools/isolation.py --selftest
+          python3 desktop/tools/isolation.py
+
+  # MC2 on Linux (LAB): the helper's protocol target builds and is tested where there is no macOS. The executable target builds too
+  # (its macOS-only sources are inside #if os(macOS), main.swift then says "macOS only"); that half is NOT exercised here.
+  helper-protocol-linux:
+    name: helper protocol (Swift on Linux)
+    runs-on: ubuntu-latest
+    container: swift:6.1-noble@sha256:3991e5dd5c40b04580c1e56f1ad6042f3173829b1995ffa53b84957371c25876
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Toolchain
+        run: swift --version
+      - name: Build (the protocol target and the stubbed executable)
+        run: swift build --package-path desktop/packaging/macos/helper
+      - name: Test, and write this lane's per-vector lines
+        env:
+          ASOM_VECTOR_LINES_OUT: ${{ github.workspace }}/out/swift.lines
+        run: |
+          mkdir -p out
+          swift test --package-path desktop/packaging/macos/helper
+          wc -l out/swift.lines
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: UNSIGNED-helper-lines-swift-linux
+          path: out/swift.lines
+          retention-days: 3
+
+  # MC1 on Linux (LAB): the pure tests run, the macOS-only integration tests are SKIPPED and must be seen skipped.
+  macplatform-linux:
+    name: macplatform pure tests on Linux (JDK ${{ matrix.jdk }}; ITs must be SKIPPED)
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        jdk: ["17", "21"]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.jdk }}
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: macplatform tests (prints the summary with the skipped count)
+        run: ./gradlew -p desktop :packaging:macos:macplatform:test --stacktrace
+      - name: The integration tests were SKIPPED, none passed
+        run: python3 desktop/packaging/macos/scripts/check_it_results.py --expect skipped desktop/packaging/macos/macplatform/build/test-results/test
+      - name: Desktop static law checks (no listener, no print, no wildcard, no Android)
+        run: python3 desktop/tools/check_law.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: matrix.jdk == '17'
+        with:
+          name: UNSIGNED-helper-lines-kotlin-linux
+          path: desktop/packaging/macos/macplatform/build/reports/desktop/helper-protocol.lines
+          retention-days: 3
+
+  # The Kotlin and Swift codecs run the same vectors and must print the same line for every one of them (cross-lane, not independent).
+  lane-diff:
+    name: helper protocol, Kotlin lane equals Swift lane
+    needs: [helper-protocol-linux, macplatform-linux]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: UNSIGNED-helper-lines-swift-linux
+          path: swift
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: UNSIGNED-helper-lines-kotlin-linux
+          path: kotlin
+      - name: The diff can fail (its own negative controls), then the real comparison
+        run: |
+          desktop/packaging/macos/scripts/check-protocol-lanes.sh --selftest
+          desktop/packaging/macos/scripts/check-protocol-lanes.sh --no-run swift/swift.lines kotlin/helper-protocol.lines
+
+  # MC1 and MC2 on macOS. MACOS: UNVERIFIED until a hosted run has been seen. The integration tests use the real helper: real IOKit
+  # power assertions (pmset -g assertions, then kill -9), real getpeereid, the real Secure Enclave call (skipped when se is false, AM02).
+  macplatform:
+    name: MC1 MC2 macplatform on macOS (CI (hosted VM) evidence)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: Toolchains, recorded (a hosted VM is not a Mac to quote numbers from)
+        run: |
+          sw_vers
+          uname -m
+          swift --version
+          java -version
+      - run: swift test --package-path desktop/packaging/macos/helper
+      - run: swift build -c release --package-path desktop/packaging/macos/helper
+      # The MC2 gate line: one line with "ok":true, and "se":false on a hosted runner (AM02 recorded, not asserted).
+      - name: MC2 gate, hello through the real helper
+        run: printf '{"op":"hello","v":1}\n' | desktop/packaging/macos/helper/.build/release/asom-mac-helper serve
+      - run: ./gradlew -p desktop :packaging:macos:macplatform:test --stacktrace
+      - name: "The integration tests RAN and passed (SecureEnclaveIT may skip: no Enclave on a hosted VM, AM02)"
+        if: always()
+        run: python3 desktop/packaging/macos/scripts/check_it_results.py --expect mac desktop/packaging/macos/macplatform/build/test-results/test
+      # AM14: exit 0 only for "read without prompt: yes".
+      - run: desktop/packaging/macos/scripts/demo-keychain-cli-weakness.sh
+      - name: Evidence lines the tests printed
+        if: always()
+        run: cat desktop/packaging/macos/macplatform/build/reports/desktop/report.txt || echo "no report file"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: macplatform-test-results-macos-UNSIGNED-not-for-release
+          path: |
+            desktop/packaging/macos/macplatform/build/test-results/test/*.xml
+            desktop/packaging/macos/macplatform/build/reports/desktop/report.txt
+          retention-days: 3

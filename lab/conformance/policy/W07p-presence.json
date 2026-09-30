@@ -1,0 +1,3044 @@
+{
+  "family": "W07p",
+  "confVersion": "0.2.0",
+  "specRefs": [
+    "LAB_SPEC.md 6.5 (LP-0..LP-2)",
+    "LAB_SPEC.md 7.2 (lender decision table)",
+    "ASOM_MESH_DESIGN.md 3.2, 7.4"
+  ],
+  "vectors": [
+    {
+      "id": "W07p-001",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-2: a presence event while SERVING is DRAINING in the same step",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": false,
+        "graceMs": 30000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 1000,
+            "e": "input",
+            "input": "SCREEN_INTERACTIVE"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "SERVING",
+            "DRAINING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-002",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-2: a second presence event at t + 599,999 restarts the hold-down: not SERVING at t' + 599,999, SERVING at the first evaluation >= t' + 600,000",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": false,
+        "graceMs": 30000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 1000,
+            "e": "input",
+            "input": "INPUT_ACTIVITY"
+          },
+          {
+            "t": 1001,
+            "e": "tick"
+          },
+          {
+            "t": 600999,
+            "e": "input",
+            "input": "INPUT_ACTIVITY"
+          },
+          {
+            "t": 1200998,
+            "e": "tick"
+          },
+          {
+            "t": 1200999,
+            "e": "tick"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "SERVING",
+            "DRAINING",
+            "ARMED",
+            "ARMED",
+            "ARMED",
+            "SERVING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-003",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-2: not SERVING at t + 599,999, SERVING at t + 600,000",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": false,
+        "graceMs": 30000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 5000,
+            "e": "input",
+            "input": "KEYGUARD_DISMISSED"
+          },
+          {
+            "t": 5001,
+            "e": "tick"
+          },
+          {
+            "t": 604999,
+            "e": "tick"
+          },
+          {
+            "t": 605000,
+            "e": "tick"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "SERVING",
+            "DRAINING",
+            "ARMED",
+            "ARMED",
+            "SERVING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-004",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-2: a thermal drain returns as soon as the band drops (no hold-down for a condition)",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": false,
+        "graceMs": 30000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 10000,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": false
+          },
+          {
+            "t": 10001,
+            "e": "tick"
+          },
+          {
+            "t": 20000,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "SERVING",
+            "DRAINING",
+            "ARMED",
+            "SERVING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-005",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "design 3.2 rule 2: a sleep-imminent drain is not a presence drain: no hold-down",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": false,
+        "graceMs": 30000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 5000,
+            "e": "input",
+            "input": "SLEEP_IMMINENT",
+            "ok": false
+          },
+          {
+            "t": 5001,
+            "e": "tick"
+          },
+          {
+            "t": 6000,
+            "e": "input",
+            "input": "SLEEP_IMMINENT",
+            "ok": true
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "SERVING",
+            "DRAINING",
+            "ARMED",
+            "SERVING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-006",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "grace: in-flight work keeps the drain going until the grace expires",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": false,
+        "graceMs": 2000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 100,
+            "e": "inflight",
+            "n": 1
+          },
+          {
+            "t": 1000,
+            "e": "input",
+            "input": "INPUT_ACTIVITY"
+          },
+          {
+            "t": 2999,
+            "e": "tick"
+          },
+          {
+            "t": 3000,
+            "e": "tick"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "SERVING",
+            "SERVING",
+            "DRAINING",
+            "DRAINING",
+            "ARMED"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-007",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "the drain completes as soon as the in-flight work finishes",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": false,
+        "graceMs": 30000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 100,
+            "e": "inflight",
+            "n": 1
+          },
+          {
+            "t": 1000,
+            "e": "input",
+            "input": "INPUT_ACTIVITY"
+          },
+          {
+            "t": 1500,
+            "e": "inflight",
+            "n": 0
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "SERVING",
+            "SERVING",
+            "DRAINING",
+            "ARMED"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-008",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "user_disable from SERVING: OFF at once",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": false,
+        "graceMs": 30000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 500,
+            "e": "disable"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "SERVING",
+            "OFF"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-009",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "conditions fail while ARMED: stays ARMED; a game (heavy foreground process) while SERVING drains",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": false,
+        "graceMs": 2000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": false
+          },
+          {
+            "t": 1000,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 2000,
+            "e": "input",
+            "input": "HEAVY_FOREGROUND_PROCESS"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "ARMED",
+            "SERVING",
+            "DRAINING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-010",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "PF: frontmost lend screen + screen on + a touch inside it: consent, stays SERVING",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": true,
+        "graceMs": 2000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "start"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 1000,
+            "e": "input",
+            "input": "LEND_SCREEN_FRONTMOST"
+          },
+          {
+            "t": 2000,
+            "e": "input",
+            "input": "SCREEN_INTERACTIVE"
+          },
+          {
+            "t": 3000,
+            "e": "input",
+            "input": "INPUT_INSIDE_LEND_SCREEN"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "ARMED",
+            "SERVING",
+            "SERVING",
+            "SERVING",
+            "SERVING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-011",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "PF: a touch outside the lend screen: DRAINING, then no SERVING without a new explicit Start lending (even past the hold-down)",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": true,
+        "graceMs": 2000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "start"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 4000,
+            "e": "input",
+            "input": "INPUT_OUTSIDE_LEND_SCREEN"
+          },
+          {
+            "t": 4001,
+            "e": "tick"
+          },
+          {
+            "t": 700000,
+            "e": "tick"
+          },
+          {
+            "t": 700001,
+            "e": "start"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "ARMED",
+            "SERVING",
+            "DRAINING",
+            "ARMED",
+            "ARMED",
+            "SERVING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-012",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "PF: the lend screen leaving the foreground is presence",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": true,
+        "graceMs": 2000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "start"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 1000,
+            "e": "input",
+            "input": "LEND_SCREEN_LEFT_FOREGROUND"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "ARMED",
+            "SERVING",
+            "DRAINING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-013",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "PF: the scene resigning active is presence",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": true,
+        "graceMs": 2000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "start"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 1000,
+            "e": "input",
+            "input": "SCENE_RESIGN_ACTIVE"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "ARMED",
+            "SERVING",
+            "DRAINING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-014",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "PF: the terminal losing focus is presence (the mechanism that reports it is unspecified, ERR-LP-2)",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": true,
+        "graceMs": 2000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "start"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 1000,
+            "e": "input",
+            "input": "TERMINAL_FOCUS_LOST"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "ARMED",
+            "SERVING",
+            "DRAINING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-015",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "PF: the screen turning off is presence",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": true,
+        "graceMs": 2000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "start"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 1000,
+            "e": "input",
+            "input": "SCREEN_OFF"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "ARMED",
+            "SERVING",
+            "DRAINING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-016",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "PF: Start lending inside the hold-down does not bring it back early; it returns at the first evaluation >= t + 600,000",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": true,
+        "graceMs": 2000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "start"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 1000,
+            "e": "input",
+            "input": "LEND_SCREEN_LEFT_FOREGROUND"
+          },
+          {
+            "t": 1001,
+            "e": "tick"
+          },
+          {
+            "t": 2000,
+            "e": "start"
+          },
+          {
+            "t": 601000,
+            "e": "tick"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "ARMED",
+            "SERVING",
+            "DRAINING",
+            "ARMED",
+            "ARMED",
+            "SERVING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-017",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "PF: contention from other processes stays presence (conservative)",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": true,
+        "graceMs": 2000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "start"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 1000,
+            "e": "input",
+            "input": "OTHER_PROCESS_CONTENTION"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "ARMED",
+            "SERVING",
+            "DRAINING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-018",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "not PF: the screen turning interactive IS presence (contrast with W07p-010)",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": false,
+        "graceMs": 2000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 1000,
+            "e": "input",
+            "input": "SCREEN_INTERACTIVE"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "SERVING",
+            "DRAINING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-019",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a presence event while ARMED extends the hold-down even though nothing was serving",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": false,
+        "graceMs": 30000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": false
+          },
+          {
+            "t": 1000,
+            "e": "input",
+            "input": "CONSOLE_USER"
+          },
+          {
+            "t": 2000,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 600999,
+            "e": "tick"
+          },
+          {
+            "t": 601000,
+            "e": "tick"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "ARMED",
+            "ARMED",
+            "ARMED",
+            "ARMED",
+            "SERVING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-100",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: SCREEN_INTERACTIVE on a node that is not PF is presence",
+      "input": {
+        "kind": "classify",
+        "input": "SCREEN_INTERACTIVE",
+        "pf": false
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-101",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: SCREEN_INTERACTIVE on a PF node is consent",
+      "input": {
+        "kind": "classify",
+        "input": "SCREEN_INTERACTIVE",
+        "pf": true
+      },
+      "expect": {
+        "ok": "consent"
+      }
+    },
+    {
+      "id": "W07p-102",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: INPUT_ACTIVITY on a node that is not PF is presence",
+      "input": {
+        "kind": "classify",
+        "input": "INPUT_ACTIVITY",
+        "pf": false
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-103",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: INPUT_ACTIVITY on a PF node is presence",
+      "input": {
+        "kind": "classify",
+        "input": "INPUT_ACTIVITY",
+        "pf": true
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-104",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: KEYGUARD_DISMISSED on a node that is not PF is presence",
+      "input": {
+        "kind": "classify",
+        "input": "KEYGUARD_DISMISSED",
+        "pf": false
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-105",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: KEYGUARD_DISMISSED on a PF node is presence",
+      "input": {
+        "kind": "classify",
+        "input": "KEYGUARD_DISMISSED",
+        "pf": true
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-106",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: FOREGROUND_APP on a node that is not PF is presence",
+      "input": {
+        "kind": "classify",
+        "input": "FOREGROUND_APP",
+        "pf": false
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-107",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: FOREGROUND_APP on a PF node is presence",
+      "input": {
+        "kind": "classify",
+        "input": "FOREGROUND_APP",
+        "pf": true
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-108",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: HEAVY_FOREGROUND_PROCESS on a node that is not PF is presence",
+      "input": {
+        "kind": "classify",
+        "input": "HEAVY_FOREGROUND_PROCESS",
+        "pf": false
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-109",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: HEAVY_FOREGROUND_PROCESS on a PF node is presence",
+      "input": {
+        "kind": "classify",
+        "input": "HEAVY_FOREGROUND_PROCESS",
+        "pf": true
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-110",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: CONSOLE_USER on a node that is not PF is presence",
+      "input": {
+        "kind": "classify",
+        "input": "CONSOLE_USER",
+        "pf": false
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-111",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: CONSOLE_USER on a PF node is presence",
+      "input": {
+        "kind": "classify",
+        "input": "CONSOLE_USER",
+        "pf": true
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-112",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: LOGIN_STATE on a node that is not PF is presence",
+      "input": {
+        "kind": "classify",
+        "input": "LOGIN_STATE",
+        "pf": false
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-113",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: LOGIN_STATE on a PF node is presence",
+      "input": {
+        "kind": "classify",
+        "input": "LOGIN_STATE",
+        "pf": true
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-114",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: OTHER_PROCESS_CONTENTION on a node that is not PF is presence",
+      "input": {
+        "kind": "classify",
+        "input": "OTHER_PROCESS_CONTENTION",
+        "pf": false
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-115",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: OTHER_PROCESS_CONTENTION on a PF node is presence",
+      "input": {
+        "kind": "classify",
+        "input": "OTHER_PROCESS_CONTENTION",
+        "pf": true
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-116",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: POWER_SOURCE is a condition (pf=false)",
+      "input": {
+        "kind": "classify",
+        "input": "POWER_SOURCE",
+        "pf": false
+      },
+      "expect": {
+        "ok": "condition"
+      }
+    },
+    {
+      "id": "W07p-117",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: POWER_SOURCE is a condition (pf=true)",
+      "input": {
+        "kind": "classify",
+        "input": "POWER_SOURCE",
+        "pf": true
+      },
+      "expect": {
+        "ok": "condition"
+      }
+    },
+    {
+      "id": "W07p-118",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: CHARGING is a condition (pf=false)",
+      "input": {
+        "kind": "classify",
+        "input": "CHARGING",
+        "pf": false
+      },
+      "expect": {
+        "ok": "condition"
+      }
+    },
+    {
+      "id": "W07p-119",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: CHARGING is a condition (pf=true)",
+      "input": {
+        "kind": "classify",
+        "input": "CHARGING",
+        "pf": true
+      },
+      "expect": {
+        "ok": "condition"
+      }
+    },
+    {
+      "id": "W07p-120",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: BATTERY_LEVEL is a condition (pf=false)",
+      "input": {
+        "kind": "classify",
+        "input": "BATTERY_LEVEL",
+        "pf": false
+      },
+      "expect": {
+        "ok": "condition"
+      }
+    },
+    {
+      "id": "W07p-121",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: BATTERY_LEVEL is a condition (pf=true)",
+      "input": {
+        "kind": "classify",
+        "input": "BATTERY_LEVEL",
+        "pf": true
+      },
+      "expect": {
+        "ok": "condition"
+      }
+    },
+    {
+      "id": "W07p-122",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: BATTERY_TEMPERATURE is a condition (pf=false)",
+      "input": {
+        "kind": "classify",
+        "input": "BATTERY_TEMPERATURE",
+        "pf": false
+      },
+      "expect": {
+        "ok": "condition"
+      }
+    },
+    {
+      "id": "W07p-123",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: BATTERY_TEMPERATURE is a condition (pf=true)",
+      "input": {
+        "kind": "classify",
+        "input": "BATTERY_TEMPERATURE",
+        "pf": true
+      },
+      "expect": {
+        "ok": "condition"
+      }
+    },
+    {
+      "id": "W07p-124",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: THERMAL_BAND is a condition (pf=false)",
+      "input": {
+        "kind": "classify",
+        "input": "THERMAL_BAND",
+        "pf": false
+      },
+      "expect": {
+        "ok": "condition"
+      }
+    },
+    {
+      "id": "W07p-125",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: THERMAL_BAND is a condition (pf=true)",
+      "input": {
+        "kind": "classify",
+        "input": "THERMAL_BAND",
+        "pf": true
+      },
+      "expect": {
+        "ok": "condition"
+      }
+    },
+    {
+      "id": "W07p-126",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: MEMORY is a condition (pf=false)",
+      "input": {
+        "kind": "classify",
+        "input": "MEMORY",
+        "pf": false
+      },
+      "expect": {
+        "ok": "condition"
+      }
+    },
+    {
+      "id": "W07p-127",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: MEMORY is a condition (pf=true)",
+      "input": {
+        "kind": "classify",
+        "input": "MEMORY",
+        "pf": true
+      },
+      "expect": {
+        "ok": "condition"
+      }
+    },
+    {
+      "id": "W07p-128",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: PATH is a condition (pf=false)",
+      "input": {
+        "kind": "classify",
+        "input": "PATH",
+        "pf": false
+      },
+      "expect": {
+        "ok": "condition"
+      }
+    },
+    {
+      "id": "W07p-129",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: PATH is a condition (pf=true)",
+      "input": {
+        "kind": "classify",
+        "input": "PATH",
+        "pf": true
+      },
+      "expect": {
+        "ok": "condition"
+      }
+    },
+    {
+      "id": "W07p-130",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: SLEEP_IMMINENT is a condition (pf=false)",
+      "input": {
+        "kind": "classify",
+        "input": "SLEEP_IMMINENT",
+        "pf": false
+      },
+      "expect": {
+        "ok": "condition"
+      }
+    },
+    {
+      "id": "W07p-131",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0: SLEEP_IMMINENT is a condition (pf=true)",
+      "input": {
+        "kind": "classify",
+        "input": "SLEEP_IMMINENT",
+        "pf": true
+      },
+      "expect": {
+        "ok": "condition"
+      }
+    },
+    {
+      "id": "W07p-132",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0 PF exception: LEND_SCREEN_FRONTMOST is consent",
+      "input": {
+        "kind": "classify",
+        "input": "LEND_SCREEN_FRONTMOST",
+        "pf": true
+      },
+      "expect": {
+        "ok": "consent"
+      }
+    },
+    {
+      "id": "W07p-133",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LEND_SCREEN_FRONTMOST does not exist on a node that is not PF",
+      "input": {
+        "kind": "classify",
+        "input": "LEND_SCREEN_FRONTMOST",
+        "pf": false
+      },
+      "expect": {
+        "reject": "PF_ONLY_INPUT"
+      }
+    },
+    {
+      "id": "W07p-134",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0 PF exception: INPUT_INSIDE_LEND_SCREEN is consent",
+      "input": {
+        "kind": "classify",
+        "input": "INPUT_INSIDE_LEND_SCREEN",
+        "pf": true
+      },
+      "expect": {
+        "ok": "consent"
+      }
+    },
+    {
+      "id": "W07p-135",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "INPUT_INSIDE_LEND_SCREEN does not exist on a node that is not PF",
+      "input": {
+        "kind": "classify",
+        "input": "INPUT_INSIDE_LEND_SCREEN",
+        "pf": false
+      },
+      "expect": {
+        "reject": "PF_ONLY_INPUT"
+      }
+    },
+    {
+      "id": "W07p-136",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0 PF exception: LEND_SCREEN_LEFT_FOREGROUND is presence",
+      "input": {
+        "kind": "classify",
+        "input": "LEND_SCREEN_LEFT_FOREGROUND",
+        "pf": true
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-137",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LEND_SCREEN_LEFT_FOREGROUND does not exist on a node that is not PF",
+      "input": {
+        "kind": "classify",
+        "input": "LEND_SCREEN_LEFT_FOREGROUND",
+        "pf": false
+      },
+      "expect": {
+        "reject": "PF_ONLY_INPUT"
+      }
+    },
+    {
+      "id": "W07p-138",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0 PF exception: SCENE_RESIGN_ACTIVE is presence",
+      "input": {
+        "kind": "classify",
+        "input": "SCENE_RESIGN_ACTIVE",
+        "pf": true
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-139",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "SCENE_RESIGN_ACTIVE does not exist on a node that is not PF",
+      "input": {
+        "kind": "classify",
+        "input": "SCENE_RESIGN_ACTIVE",
+        "pf": false
+      },
+      "expect": {
+        "reject": "PF_ONLY_INPUT"
+      }
+    },
+    {
+      "id": "W07p-140",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0 PF exception: TERMINAL_FOCUS_LOST is presence",
+      "input": {
+        "kind": "classify",
+        "input": "TERMINAL_FOCUS_LOST",
+        "pf": true
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-141",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "TERMINAL_FOCUS_LOST does not exist on a node that is not PF",
+      "input": {
+        "kind": "classify",
+        "input": "TERMINAL_FOCUS_LOST",
+        "pf": false
+      },
+      "expect": {
+        "reject": "PF_ONLY_INPUT"
+      }
+    },
+    {
+      "id": "W07p-142",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0 PF exception: SCREEN_OFF is presence",
+      "input": {
+        "kind": "classify",
+        "input": "SCREEN_OFF",
+        "pf": true
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-143",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "SCREEN_OFF does not exist on a node that is not PF",
+      "input": {
+        "kind": "classify",
+        "input": "SCREEN_OFF",
+        "pf": false
+      },
+      "expect": {
+        "reject": "PF_ONLY_INPUT"
+      }
+    },
+    {
+      "id": "W07p-144",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-0 PF exception: INPUT_OUTSIDE_LEND_SCREEN is presence",
+      "input": {
+        "kind": "classify",
+        "input": "INPUT_OUTSIDE_LEND_SCREEN",
+        "pf": true
+      },
+      "expect": {
+        "ok": "presence"
+      }
+    },
+    {
+      "id": "W07p-145",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "INPUT_OUTSIDE_LEND_SCREEN does not exist on a node that is not PF",
+      "input": {
+        "kind": "classify",
+        "input": "INPUT_OUTSIDE_LEND_SCREEN",
+        "pf": false
+      },
+      "expect": {
+        "reject": "PF_ONLY_INPUT"
+      }
+    },
+    {
+      "id": "W07p-200",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 8: every row passes: INFER_ACCEPT, retain none, no queuePos and no estStartMs",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "8",
+          "reply": "accept",
+          "retain": "none",
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"fileSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"servedModel\":\"qwen3-8b\"}"
+        }
+      }
+    },
+    {
+      "id": "W07p-201",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 1: not PAIRED: ERROR PEER_NOT_PAIRED and close",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "REVOKED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "1",
+          "reply": "error",
+          "code": "PEER_NOT_PAIRED",
+          "close": true,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_NOT_PAIRED\"}"
+        }
+      }
+    },
+    {
+      "id": "W07p-202",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 1: SUSPENDED is not PAIRED either",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "SUSPENDED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "1",
+          "reply": "error",
+          "code": "PEER_NOT_PAIRED",
+          "close": true,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_NOT_PAIRED\"}"
+        }
+      }
+    },
+    {
+      "id": "W07p-203",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 2: no infer scope: SCOPE_DENIED",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": false,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "2",
+          "reply": "decline",
+          "code": "SCOPE_DENIED",
+          "retryAfterMs": 30000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"SCOPE_DENIED\",\"retryAfterMs\":30000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-204",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 3: an attemptId seen in the last 24 h: DUPLICATE_ATTEMPT",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": true,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "3",
+          "reply": "decline",
+          "code": "DUPLICATE_ATTEMPT",
+          "retryAfterMs": 5000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"DUPLICATE_ATTEMPT\",\"retryAfterMs\":5000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-205",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 4: the model is not allowed or loadable: MODEL_NOT_OFFERED",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": false,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "4",
+          "reply": "decline",
+          "code": "MODEL_NOT_OFFERED",
+          "retryAfterMs": 30000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"MODEL_NOT_OFFERED\",\"retryAfterMs\":30000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-206",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 5: promptBytes above maxBodyBytes: ERROR FRAME_TOO_LARGE (ERR-LP-6), no close",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 8388609,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "5",
+          "reply": "error",
+          "code": "FRAME_TOO_LARGE",
+          "close": false,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"FRAME_TOO_LARGE\"}"
+        }
+      }
+    },
+    {
+      "id": "W07p-207",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 5: maxTokens above the limit",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 4097,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "5",
+          "reply": "error",
+          "code": "FRAME_TOO_LARGE",
+          "close": false,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"FRAME_TOO_LARGE\"}"
+        }
+      }
+    },
+    {
+      "id": "W07p-208",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 5: promptBytes exactly at the limit passes",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 8388608,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "8",
+          "reply": "accept",
+          "retain": "none",
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"fileSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"servedModel\":\"qwen3-8b\"}"
+        }
+      }
+    },
+    {
+      "id": "W07p-209",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 6: serving conditions fail (charging, battery, thermal): PEER_UNAVAILABLE",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": false,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "6",
+          "reply": "decline",
+          "code": "PEER_UNAVAILABLE",
+          "retryAfterMs": 30000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":30000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-210",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 6, LP-1: a presence cause is PEER_UNAVAILABLE with the remaining hold-down as retryAfterMs",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": true,
+          "presenceHoldRemainingMs": 123456,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "6",
+          "reply": "decline",
+          "code": "PEER_UNAVAILABLE",
+          "retryAfterMs": 123456,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":123456}"
+        }
+      }
+    },
+    {
+      "id": "W07p-211",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 6: a presence hold-down below 5,000 ms is raised to 5,000",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": true,
+          "presenceHoldRemainingMs": 10,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "6",
+          "reply": "decline",
+          "code": "PEER_UNAVAILABLE",
+          "retryAfterMs": 5000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":5000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-212",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 6: a hold-down above 600,000 ms is lowered to 600,000",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": true,
+          "presenceHoldRemainingMs": 10000000,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "6",
+          "reply": "decline",
+          "code": "PEER_UNAVAILABLE",
+          "retryAfterMs": 600000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":600000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-213",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 6a: a predicted thermal hold: PEER_UNAVAILABLE",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": true,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "6a",
+          "reply": "decline",
+          "code": "PEER_UNAVAILABLE",
+          "retryAfterMs": 30000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":30000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-214",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 6b: estStartMs 60,001 > deadlineMs 60,000: PEER_BUSY (the estimate is never sent)",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 60001,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "6b",
+          "reply": "decline",
+          "code": "PEER_BUSY",
+          "retryAfterMs": 5000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_BUSY\",\"retryAfterMs\":5000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-215",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 6b: estStartMs equal to the deadline is accepted",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 60000,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "8",
+          "reply": "accept",
+          "retain": "none",
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"fileSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"servedModel\":\"qwen3-8b\"}"
+        }
+      }
+    },
+    {
+      "id": "W07p-216",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 7: one request already in flight (maxConcurrent 1): PEER_BUSY",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 1,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "7",
+          "reply": "decline",
+          "code": "PEER_BUSY",
+          "retryAfterMs": 5000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_BUSY\",\"retryAfterMs\":5000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-217",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 7: 30 requests this minute (rpm 30): PEER_BUSY",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 30
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "7",
+          "reply": "decline",
+          "code": "PEER_BUSY",
+          "retryAfterMs": 5000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_BUSY\",\"retryAfterMs\":5000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-218",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 7: 29 requests this minute passes",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 29
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "8",
+          "reply": "accept",
+          "retain": "none",
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"fileSha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"servedModel\":\"qwen3-8b\"}"
+        }
+      }
+    },
+    {
+      "id": "W07p-219",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "order: not PAIRED outranks a missing scope",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "REVOKED",
+          "inferScopeGranted": false,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "1",
+          "reply": "error",
+          "code": "PEER_NOT_PAIRED",
+          "close": true,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_NOT_PAIRED\"}"
+        }
+      }
+    },
+    {
+      "id": "W07p-220",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "order: a missing scope outranks a duplicate",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": false,
+          "attemptSeenWithin24h": true,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "2",
+          "reply": "decline",
+          "code": "SCOPE_DENIED",
+          "retryAfterMs": 30000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"SCOPE_DENIED\",\"retryAfterMs\":30000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-221",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "order: a too-large offer outranks a presence cause",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 9000000,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": true,
+          "presenceHoldRemainingMs": 100000,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "5",
+          "reply": "error",
+          "code": "FRAME_TOO_LARGE",
+          "close": false,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"FRAME_TOO_LARGE\"}"
+        }
+      }
+    },
+    {
+      "id": "W07p-222",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "order: presence and a failing condition are one row (6); the presence retryAfterMs wins",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": false,
+          "presenceActive": true,
+          "presenceHoldRemainingMs": 200000,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "6",
+          "reply": "decline",
+          "code": "PEER_UNAVAILABLE",
+          "retryAfterMs": 200000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":200000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-223",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "order: row 6 outranks 6a, 6b and 7",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": false,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": true,
+          "estStartMs": 90000,
+          "inflight": 1,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "6",
+          "reply": "decline",
+          "code": "PEER_UNAVAILABLE",
+          "retryAfterMs": 30000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":30000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-224",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "order: 6a outranks 6b",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": true,
+          "estStartMs": 90000,
+          "inflight": 0,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "6a",
+          "reply": "decline",
+          "code": "PEER_UNAVAILABLE",
+          "retryAfterMs": 30000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":30000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-225",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "order: 6b outranks 7",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 90000,
+          "inflight": 1,
+          "requestsThisMinute": 0
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "6b",
+          "reply": "decline",
+          "code": "PEER_BUSY",
+          "retryAfterMs": 5000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_BUSY\",\"retryAfterMs\":5000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-300",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-1: only presence inputs change: no wire field changes",
+      "input": {
+        "kind": "wireDiff",
+        "view": {
+          "fsm": "SERVING",
+          "powerSource": "ac",
+          "charging": false,
+          "batteryBand": null,
+          "batteryPercentExact": 37,
+          "thermalBand": 0,
+          "governor": "RUN",
+          "backend": "vulkan",
+          "commit": "4f1c2ab",
+          "confVersion": "1.0.0",
+          "held": [
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "localQueued": 0,
+          "peerQueued": 0,
+          "loadedModels": [
+            "qwen3-8b-q4"
+          ],
+          "freeMemoryBytes": 21474836480,
+          "manifestSeq": 17,
+          "manifestDigest": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "presence": {
+            "screenInteractive": false,
+            "inputIdleMs": 0,
+            "keyguardDismissed": false,
+            "foregroundApp": null,
+            "heavyForegroundProcess": false,
+            "consoleUser": null,
+            "loginState": null,
+            "otherProcessContentionPermille": 0
+          }
+        },
+        "vary": {
+          "presence": {
+            "screenInteractive": true,
+            "inputIdleMs": 4242424242,
+            "keyguardDismissed": true,
+            "foregroundApp": "com.sentinel.game",
+            "heavyForegroundProcess": true,
+            "consoleUser": "sentinel-user-4711",
+            "loginState": "locked",
+            "otherProcessContentionPermille": 987
+          }
+        }
+      },
+      "expect": {
+        "ok": {
+          "changed": []
+        }
+      }
+    },
+    {
+      "id": "W07p-301",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-1: another presence change: still nothing on the wire",
+      "input": {
+        "kind": "wireDiff",
+        "view": {
+          "fsm": "SERVING",
+          "powerSource": "ac",
+          "charging": false,
+          "batteryBand": null,
+          "batteryPercentExact": 37,
+          "thermalBand": 0,
+          "governor": "RUN",
+          "backend": "vulkan",
+          "commit": "4f1c2ab",
+          "confVersion": "1.0.0",
+          "held": [
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "localQueued": 0,
+          "peerQueued": 0,
+          "loadedModels": [
+            "qwen3-8b-q4"
+          ],
+          "freeMemoryBytes": 21474836480,
+          "manifestSeq": 17,
+          "manifestDigest": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "presence": {
+            "screenInteractive": false,
+            "inputIdleMs": 0,
+            "keyguardDismissed": false,
+            "foregroundApp": null,
+            "heavyForegroundProcess": false,
+            "consoleUser": null,
+            "loginState": null,
+            "otherProcessContentionPermille": 0
+          }
+        },
+        "vary": {
+          "presence": {
+            "screenInteractive": false,
+            "inputIdleMs": 4242424242,
+            "keyguardDismissed": true,
+            "foregroundApp": "org.example.terminal",
+            "heavyForegroundProcess": true,
+            "consoleUser": "sentinel-user-4711",
+            "loginState": "locked",
+            "otherProcessContentionPermille": 987
+          }
+        }
+      },
+      "expect": {
+        "ok": {
+          "changed": []
+        }
+      }
+    },
+    {
+      "id": "W07p-302",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-1 (ii): a presence-driven change of availability.fsm is allowed",
+      "input": {
+        "kind": "wireDiff",
+        "view": {
+          "fsm": "SERVING",
+          "powerSource": "ac",
+          "charging": false,
+          "batteryBand": null,
+          "batteryPercentExact": 37,
+          "thermalBand": 0,
+          "governor": "RUN",
+          "backend": "vulkan",
+          "commit": "4f1c2ab",
+          "confVersion": "1.0.0",
+          "held": [
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "localQueued": 0,
+          "peerQueued": 0,
+          "loadedModels": [
+            "qwen3-8b-q4"
+          ],
+          "freeMemoryBytes": 21474836480,
+          "manifestSeq": 17,
+          "manifestDigest": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "presence": {
+            "screenInteractive": false,
+            "inputIdleMs": 0,
+            "keyguardDismissed": false,
+            "foregroundApp": null,
+            "heavyForegroundProcess": false,
+            "consoleUser": null,
+            "loginState": null,
+            "otherProcessContentionPermille": 0
+          }
+        },
+        "vary": {
+          "presence": {
+            "screenInteractive": true,
+            "inputIdleMs": 4242424242,
+            "keyguardDismissed": true,
+            "foregroundApp": "com.sentinel.game",
+            "heavyForegroundProcess": true,
+            "consoleUser": "sentinel-user-4711",
+            "loginState": "locked",
+            "otherProcessContentionPermille": 987
+          },
+          "fsm": "DRAINING"
+        }
+      },
+      "expect": {
+        "ok": {
+          "changed": [
+            "availability.fsm"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-303",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-1 (iii): the queue bucket moves with the lender's own local use",
+      "input": {
+        "kind": "wireDiff",
+        "view": {
+          "fsm": "SERVING",
+          "powerSource": "ac",
+          "charging": false,
+          "batteryBand": null,
+          "batteryPercentExact": 37,
+          "thermalBand": 0,
+          "governor": "RUN",
+          "backend": "vulkan",
+          "commit": "4f1c2ab",
+          "confVersion": "1.0.0",
+          "held": [
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "localQueued": 0,
+          "peerQueued": 0,
+          "loadedModels": [
+            "qwen3-8b-q4"
+          ],
+          "freeMemoryBytes": 21474836480,
+          "manifestSeq": 17,
+          "manifestDigest": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "presence": {
+            "screenInteractive": false,
+            "inputIdleMs": 0,
+            "keyguardDismissed": false,
+            "foregroundApp": null,
+            "heavyForegroundProcess": false,
+            "consoleUser": null,
+            "loginState": null,
+            "otherProcessContentionPermille": 0
+          }
+        },
+        "vary": {
+          "presence": {
+            "screenInteractive": true,
+            "inputIdleMs": 4242424242,
+            "keyguardDismissed": true,
+            "foregroundApp": "com.sentinel.game",
+            "heavyForegroundProcess": true,
+            "consoleUser": "sentinel-user-4711",
+            "loginState": "locked",
+            "otherProcessContentionPermille": 987
+          },
+          "localQueued": 2
+        }
+      },
+      "expect": {
+        "ok": {
+          "changed": [
+            "queue.bucket"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-304",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LP-1: fsm and the queue bucket together, and nothing else",
+      "input": {
+        "kind": "wireDiff",
+        "view": {
+          "fsm": "SERVING",
+          "powerSource": "ac",
+          "charging": false,
+          "batteryBand": null,
+          "batteryPercentExact": 37,
+          "thermalBand": 0,
+          "governor": "RUN",
+          "backend": "vulkan",
+          "commit": "4f1c2ab",
+          "confVersion": "1.0.0",
+          "held": [
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "localQueued": 0,
+          "peerQueued": 0,
+          "loadedModels": [
+            "qwen3-8b-q4"
+          ],
+          "freeMemoryBytes": 21474836480,
+          "manifestSeq": 17,
+          "manifestDigest": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "presence": {
+            "screenInteractive": false,
+            "inputIdleMs": 0,
+            "keyguardDismissed": false,
+            "foregroundApp": null,
+            "heavyForegroundProcess": false,
+            "consoleUser": null,
+            "loginState": null,
+            "otherProcessContentionPermille": 0
+          }
+        },
+        "vary": {
+          "presence": {
+            "screenInteractive": true,
+            "inputIdleMs": 4242424242,
+            "keyguardDismissed": true,
+            "foregroundApp": "com.sentinel.game",
+            "heavyForegroundProcess": true,
+            "consoleUser": "sentinel-user-4711",
+            "loginState": "locked",
+            "otherProcessContentionPermille": 987
+          },
+          "fsm": "ARMED",
+          "localQueued": 1
+        }
+      },
+      "expect": {
+        "ok": {
+          "changed": [
+            "availability.fsm",
+            "queue.bucket"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-305",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "control: a CONDITION change (the thermal governor) does show on the wire",
+      "input": {
+        "kind": "wireDiff",
+        "view": {
+          "fsm": "SERVING",
+          "powerSource": "ac",
+          "charging": false,
+          "batteryBand": null,
+          "batteryPercentExact": 37,
+          "thermalBand": 0,
+          "governor": "RUN",
+          "backend": "vulkan",
+          "commit": "4f1c2ab",
+          "confVersion": "1.0.0",
+          "held": [
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "localQueued": 0,
+          "peerQueued": 0,
+          "loadedModels": [
+            "qwen3-8b-q4"
+          ],
+          "freeMemoryBytes": 21474836480,
+          "manifestSeq": 17,
+          "manifestDigest": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "presence": {
+            "screenInteractive": false,
+            "inputIdleMs": 0,
+            "keyguardDismissed": false,
+            "foregroundApp": null,
+            "heavyForegroundProcess": false,
+            "consoleUser": null,
+            "loginState": null,
+            "otherProcessContentionPermille": 0
+          }
+        },
+        "vary": {
+          "governor": "HOLD"
+        }
+      },
+      "expect": {
+        "ok": {
+          "changed": [
+            "thermal.governor"
+          ]
+        }
+      }
+    }
+  ]
+}

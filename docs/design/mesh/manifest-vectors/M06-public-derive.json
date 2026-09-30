@@ -1,0 +1,65 @@
+{
+ "family": "M06",
+ "confVersion": "0.1.0",
+ "specRefs": [
+  "manifest.md#11"
+ ],
+ "vectors": [
+  {
+   "id": "M06-101",
+   "origin": "generated",
+   "status": "illustrative",
+   "description": "Public derivative of the verified M02-101 payload: allow-listed fields only, 2-significant-digit quantisation, month-granular date, RAM class.",
+   "input": {
+    "vector": "M02-101",
+    "selectedResults": null
+   },
+   "expect": {
+    "ok": {
+     "jcsUtf8": "{\"device\":{\"class\":\"phone\",\"cooling\":\"fan\",\"model\":\"Example Phone 1\",\"osFamily\":\"android\",\"osMajor\":16,\"ramClassGiB\":16,\"socName\":\"ExampleSoC 8\",\"vendor\":\"ExampleVendor\"},\"engine\":{\"commit\":\"0123abcd\",\"name\":\"llama.cpp\"},\"harness\":{\"confVersion\":\"1.0.0\",\"methodologyId\":\"asom-bench-method/1\",\"version\":\"1.0.0\"},\"results\":[{\"backend\":\"opencl\",\"charging\":false,\"curve\":[[0,18000],[60,18000],[120,18000],[150,18000],[210,15000],[270,13000],[330,11000],[390,11000],[450,11000],[480,11000],[540,11000],[600,11000]],\"decodeContextTokens\":512,\"decodeMilliTokPerSec\":18000,\"fileSha256\":\"6bc3e8ccea8ef082f0fcc23f91d3f8d7b5414e6d3e3af010641a8fb71729c810\",\"measuredMonth\":\"2026-09\",\"modelId\":\"example-3b-instruct\",\"peakProcessMB\":2600,\"powerMethod\":\"battery-current\",\"powerMilliW\":6100,\"prefillMilliTokPerSec\":210000,\"prefillPromptTokens\":512,\"quant\":\"Q4_K_M\",\"runsCompleted\":5,\"steadyMilliTokPerSec\":11000,\"throttleOnsetSec\":190,\"ttftMillis\":2500},{\"backend\":\"cpu\",\"charging\":true,\"curve\":[[0,9800],[60,9500],[120,9300],[180,9200],[240,9100],[300,9100]],\"decodeContextTokens\":512,\"decodeMilliTokPerSec\":9800,\"fileSha256\":\"3c7d5df352a994683cff6ed77a911a87741ecaf096b4fed0a23366f6f4cf5bf3\",\"measuredMonth\":\"2026-09\",\"modelId\":\"example-3b-instruct\",\"peakProcessMB\":3900,\"powerMethod\":\"unavailable\",\"powerMilliW\":null,\"prefillMilliTokPerSec\":61000,\"prefillPromptTokens\":512,\"quant\":\"Q8_0\",\"runsCompleted\":3,\"steadyMilliTokPerSec\":9100,\"throttleOnsetSec\":null,\"ttftMillis\":8600}],\"schema\":\"asom.bench-public/1\"}",
+     "sha256": "2786f32a1c4d4aefb440db3aeb7c2a2618c278ba5406c4b6d33849009632b284"
+    }
+   }
+  },
+  {
+   "id": "M06-102",
+   "origin": "hand",
+   "status": "illustrative",
+   "description": "q2 quantisation table (law: q2(q2(x)) == q2(x); values below 100 unchanged).",
+   "input": {
+    "values": [
+     0,
+     7,
+     99,
+     100,
+     149,
+     150,
+     994,
+     995,
+     11234,
+     18400,
+     212000,
+     2480000
+    ]
+   },
+   "expect": {
+    "ok": {
+     "q2": [
+      0,
+      7,
+      99,
+      100,
+      150,
+      150,
+      990,
+      1000,
+      11000,
+      18000,
+      210000,
+      2500000
+     ]
+    }
+   }
+  }
+ ]
+}

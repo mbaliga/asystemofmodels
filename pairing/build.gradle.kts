@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -30,6 +31,10 @@ kotlin {
 dependencies {
     implementation(project(":core:contract"))
     implementation(libs.androidx.core.ktx)
+    // api: PairingDatabase (extends RoomDatabase) is consumed by :app.
+    api(libs.room.runtime)
+    api(libs.room.ktx)
+    ksp(libs.room.compiler)
     testImplementation(libs.kotlin.test)
 }
 

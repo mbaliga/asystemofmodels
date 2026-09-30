@@ -1,0 +1,12 @@
+{"id":"HP-EV-001","kind":"event","line":"{\"ev\":\"power\",\"source\":\"ac\",\"charging\":true,\"batteryPermille\":870,\"lowPower\":false}","verdict":"accept","code":"-","canonical":"{\"ev\":\"power\",\"source\":\"ac\",\"charging\":true,\"batteryPermille\":870,\"lowPower\":false}"}
+{"id":"HP-EV-002","kind":"event","line":"{\"ev\":\"power\",\"source\":\"battery\",\"charging\":false,\"batteryPermille\":null,\"lowPower\":true}","verdict":"accept","code":"-","canonical":"{\"ev\":\"power\",\"source\":\"battery\",\"charging\":false,\"batteryPermille\":null,\"lowPower\":true}"}
+{"id":"HP-EV-003","kind":"event","line":"{\"lowPower\":false,\"batteryPermille\":5,\"charging\":false,\"source\":\"battery\",\"ev\":\"power\"}","verdict":"accept","code":"-","canonical":"{\"ev\":\"power\",\"source\":\"battery\",\"charging\":false,\"batteryPermille\":5,\"lowPower\":false}","note":"member order is not significant on input"}
+{"id":"HP-EV-004","kind":"event","line":"{\"ev\":\"thermal\",\"state\":\"nominal\"}","verdict":"accept","code":"-","canonical":"{\"ev\":\"thermal\",\"state\":\"nominal\"}"}
+{"id":"HP-EV-005","kind":"event","line":"{\"ev\":\"thermal\",\"state\":\"fair\"}","verdict":"accept","code":"-","canonical":"{\"ev\":\"thermal\",\"state\":\"fair\"}"}
+{"id":"HP-EV-006","kind":"event","line":"{\"ev\":\"thermal\",\"state\":\"serious\"}","verdict":"accept","code":"-","canonical":"{\"ev\":\"thermal\",\"state\":\"serious\"}"}
+{"id":"HP-EV-007","kind":"event","line":"{\"ev\":\"thermal\",\"state\":\"critical\"}","verdict":"accept","code":"-","canonical":"{\"ev\":\"thermal\",\"state\":\"critical\"}"}
+{"id":"HP-EV-008","kind":"event","line":"{\"ev\":\"sleep.will\",\"token\":7}","verdict":"accept","code":"-","canonical":"{\"ev\":\"sleep.will\",\"token\":7}"}
+{"id":"HP-EV-009","kind":"event","line":"{\"ev\":\"sleep.will\",\"token\":0}","verdict":"accept","code":"-","canonical":"{\"ev\":\"sleep.will\",\"token\":0}"}
+{"id":"HP-EV-010","kind":"event","line":"{\"ev\":\"sleep.will\",\"token\":9007199254740991}","verdict":"accept","code":"-","canonical":"{\"ev\":\"sleep.will\",\"token\":9007199254740991}"}
+{"id":"HP-EV-011","kind":"event","line":"{\"ev\":\"wake\"}","verdict":"accept","code":"-","canonical":"{\"ev\":\"wake\"}"}
+{"id":"HP-EV-012","kind":"event","line":"{ \"ev\" : \"wake\" }","verdict":"accept","code":"-","canonical":"{\"ev\":\"wake\"}"}

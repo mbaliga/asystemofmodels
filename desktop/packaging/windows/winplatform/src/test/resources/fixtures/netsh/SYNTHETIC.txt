@@ -1,0 +1,4 @@
+SYNTHETIC FIXTURE: these netsh listings were written by hand from the documented output format of
+`netsh advfirewall firewall show rule name=all dir=in verbose` (English). They are NOT captures from a real machine and are
+no evidence about any Windows device. The real parser is exercised against real netsh output only by FirewallProbeIT, on a
+hosted Windows runner (CI; not run in the container that built this).

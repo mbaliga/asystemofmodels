@@ -1,0 +1,259 @@
+{
+  "family": "W00",
+  "confVersion": "0.2.0",
+  "specRefs": [
+    "ASOM_BUILD_BRIEF.md 5.3, 5.4, 5.6, 5.5",
+    "LAB_SPEC.md 3.4",
+    "ASOM_MESH_DESIGN.md 8.3"
+  ],
+  "vectors": [
+    {
+      "id": "W00-001",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "request headers",
+      "input": {
+        "kind": "headers",
+        "fields": [
+          "POLICY",
+          "FALLBACK",
+          "NO_TRAIN"
+        ],
+        "exhaustiveWith": true,
+        "otherGroupFields": [
+          "SERVED_BY",
+          "EGRESS",
+          "COST_EST",
+          "COST_BASIS"
+        ]
+      },
+      "expect": {
+        "ok": [
+          "X-Asom-Policy",
+          "X-Asom-Fallback",
+          "X-Asom-No-Train"
+        ]
+      }
+    },
+    {
+      "id": "W00-002",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "echo headers; request + echo together are every string constant of AsomHeaders (no header may be added)",
+      "input": {
+        "kind": "headers",
+        "fields": [
+          "SERVED_BY",
+          "EGRESS",
+          "COST_EST",
+          "COST_BASIS"
+        ],
+        "exhaustiveWith": true,
+        "otherGroupFields": [
+          "POLICY",
+          "FALLBACK",
+          "NO_TRAIN"
+        ]
+      },
+      "expect": {
+        "ok": [
+          "X-Asom-Served-By",
+          "X-Asom-Egress",
+          "X-Asom-Cost-Est",
+          "X-Asom-Cost-Basis"
+        ]
+      }
+    },
+    {
+      "id": "W00-003",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "error codes in declaration order with HTTP status and OpenAI type",
+      "input": {
+        "kind": "errorCodes"
+      },
+      "expect": {
+        "ok": [
+          {
+            "name": "NOT_PAIRED",
+            "http": 401,
+            "type": "authentication_error"
+          },
+          {
+            "name": "TOKEN_REVOKED",
+            "http": 401,
+            "type": "authentication_error"
+          },
+          {
+            "name": "NO_PROVIDER_KEY",
+            "http": 503,
+            "type": "server_error"
+          },
+          {
+            "name": "MODEL_UNKNOWN",
+            "http": 404,
+            "type": "invalid_request_error"
+          },
+          {
+            "name": "ALL_PROVIDERS_COOLING",
+            "http": 503,
+            "type": "server_error"
+          },
+          {
+            "name": "LOCAL_ENGINE_ABSENT",
+            "http": 501,
+            "type": "server_error"
+          },
+          {
+            "name": "UNSUPPORTED_BY_DRIVER",
+            "http": 501,
+            "type": "invalid_request_error"
+          }
+        ]
+      }
+    },
+    {
+      "id": "W00-004",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "egress wire values (exhaustive: no `peer` in v1)",
+      "input": {
+        "kind": "egress"
+      },
+      "expect": {
+        "ok": [
+          "local",
+          "cloud",
+          "catalogue",
+          "download"
+        ]
+      }
+    },
+    {
+      "id": "W00-005",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cost basis wire values",
+      "input": {
+        "kind": "costBasis"
+      },
+      "expect": {
+        "ok": [
+          "usage",
+          "heuristic",
+          "none"
+        ]
+      }
+    },
+    {
+      "id": "W00-006",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "virtual models",
+      "input": {
+        "kind": "virtualModels"
+      },
+      "expect": {
+        "ok": [
+          "auto",
+          "cheapest",
+          "fastest",
+          "best-reasoning",
+          "local-only"
+        ]
+      }
+    },
+    {
+      "id": "W00-007",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "bind host and default port",
+      "input": {
+        "kind": "bind"
+      },
+      "expect": {
+        "ok": {
+          "host": "127.0.0.1",
+          "port": 11435
+        }
+      }
+    },
+    {
+      "id": "W00-100",
+      "origin": "hand",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "mesh addition, PROPOSED until ruled: the `peer:<alias>/<model>` X-Asom-Served-By value form (CD-2)",
+      "input": {
+        "kind": "meshAddition",
+        "decision": "D12.1"
+      },
+      "expect": {
+        "ok": "peer:<alias>/<model>"
+      }
+    },
+    {
+      "id": "W00-101",
+      "origin": "hand",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "mesh addition, PROPOSED until ruled: `owned_by: asom-peer` on /v1/models entries (CD-4)",
+      "input": {
+        "kind": "meshAddition",
+        "decision": "D12.2"
+      },
+      "expect": {
+        "ok": "asom-peer"
+      }
+    },
+    {
+      "id": "W00-102",
+      "origin": "hand",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "mesh addition, PROPOSED until ruled: SSE in-band error value MESH_STREAM_INTERRUPTED (CD-6b)",
+      "input": {
+        "kind": "meshAddition",
+        "decision": "D12.3"
+      },
+      "expect": {
+        "ok": "MESH_STREAM_INTERRUPTED"
+      }
+    },
+    {
+      "id": "W00-103",
+      "origin": "hand",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "mesh addition, PROPOSED until ruled: X-Asom-Failover value peer-unavailable (CD-FO)",
+      "input": {
+        "kind": "meshAddition",
+        "decision": "D12.4"
+      },
+      "expect": {
+        "ok": "peer-unavailable"
+      }
+    },
+    {
+      "id": "W00-104",
+      "origin": "hand",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "mesh addition, PROPOSED until ruled: X-Asom-Failover value peer-lost (CD-FO)",
+      "input": {
+        "kind": "meshAddition",
+        "decision": "D12.4"
+      },
+      "expect": {
+        "ok": "peer-lost"
+      }
+    }
+  ]
+}

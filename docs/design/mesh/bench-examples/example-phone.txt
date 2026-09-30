@@ -1,0 +1,59 @@
+ASOM DEVICE REPORT (asom.text/1)
+Generated from this device's benchmark data. (measured) = timed on
+this device. (estimated) = calculated from measured numbers.
+
+DEVICE (as reported by the device itself)
+  Example Phone X1 (synthetic) - android 16
+  Chip: Example SoC 8 | Memory: 16.0 GB total, 9.6 GB free at start
+  Engine: llama.cpp 01234567, opencl backend
+  Tested: 2026-09-29, standard test, on charger, started cool
+  Overall confidence: HIGH
+
+ANSWERS
+1. Can it run a 7-8B model comfortably?
+   USABLE, NOT COMFORTABLE (measured with Qwen3-8B 4-bit).
+   It writes about 7.3 tokens/s and starts answering a 512-token
+   prompt after 8.5 s. We call a model comfortable at 10
+   tokens/s or more and under 2 s to start.
+2. What is the largest model it can hold?
+   About 6.1 GB of model file (estimated), roughly a
+   10-billion-parameter model at 4-bit. Largest actually loaded:
+   Qwen3-8B 4-bit, 5.0 GB file (measured).
+3. How long will a 2000-token answer take?
+   About 5 min 50 s with Qwen3-8B 4-bit for a 512-token
+   prompt, starting cool (estimated from the measured speeds and
+   heat test).
+4. Will it slow down when it gets warm?
+   Yes. After 3 min 15 s of continuous writing, speed fell to
+   66% of its starting speed and stayed there (measured for
+   7 min 15 s, on charger, with Qwen3-8B 4-bit).
+5. What role suits it in a group of your devices?
+   OCCASIONAL HELPER: can run small models for your
+   other devices while charging; send 7-8B work to a stronger
+   device when one is available.
+
+DETAILS (tokens per second, higher is better; start = seconds)
+  model              size     read   write  write@2k  start@512
+  Qwen3-1.7B 8-bit   1.8GB    259.6    20.9         -        1.9
+  Qwen3-4B 4-bit     2.5GB    129.9    14.4         -        3.9
+  Qwen3-8B 4-bit     5.0GB     59.7     7.3       6.5        8.5
+
+NOTES
+  - Qwen3-1.7B 8-bit output check: pass (0.3% from reference).
+  - Qwen3-4B 4-bit output check: pass (0.2% from reference).
+  - Qwen3-8B 4-bit, reading a 512-token prompt: 1 of 5 timings discarded
+    as outliers.
+  - Qwen3-8B 4-bit output check: pass (0.6% from reference).
+  - In everyday use (10-99 requests, on battery), Qwen3-4B 4-bit wrote
+    12.9 tokens/s, 10% below this test.
+  - Battery use: not measured (needs an unplugged battery test).
+
+WHAT THIS REPORT DOES NOT TELL YOU
+- This device tested itself. A signature proves the report was not
+  changed after it was made, and which device key made it. It does
+  not prove the test ran honestly or that the device is what it says.
+- Speeds are for the listed test models. Other models of the same size
+  usually behave alike, but not always (mixture-of-experts models
+  differ most).
+- Heat, battery level, other apps and long conversations change speed.
+- Nothing here measures how good the answers are.

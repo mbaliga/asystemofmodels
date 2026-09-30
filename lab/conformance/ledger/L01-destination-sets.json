@@ -1,0 +1,1252 @@
+{
+  "family": "L01",
+  "confVersion": "0.2.0",
+  "specRefs": [
+    "LAB_SPEC.md 6.2",
+    "LAB_SPEC.md 6.3 (F1-F3)",
+    "docs/design/mesh/contract.md 5.2",
+    "ASOM_MESH_DESIGN.md 8.5, 8.6"
+  ],
+  "vectors": [
+    {
+      "id": "L01-001",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "contract 5.2 row 1: mesh global off (the default), auto: T and C",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": false,
+        "appMesh": true,
+        "cloudBan": false,
+        "deviceOnly": false,
+        "localOnly": false,
+        "fallback": null,
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [
+            "T",
+            "C"
+          ],
+          "class": "cloud-no-peers",
+          "cloudRestrictedTo": null
+        }
+      }
+    },
+    {
+      "id": "L01-002",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "contract 5.2 row 2: on, app mesh own, no cloud ban, auto: T, O and C",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": true,
+        "appMesh": true,
+        "cloudBan": false,
+        "deviceOnly": false,
+        "localOnly": false,
+        "fallback": null,
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [
+            "T",
+            "O",
+            "C"
+          ],
+          "class": "own-and-cloud",
+          "cloudRestrictedTo": null
+        }
+      }
+    },
+    {
+      "id": "L01-003",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "contract 5.2 row 3: on, own, cloud ban: T and O",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": true,
+        "appMesh": true,
+        "cloudBan": true,
+        "deviceOnly": false,
+        "localOnly": false,
+        "fallback": null,
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [
+            "T",
+            "O"
+          ],
+          "class": "own-devices",
+          "cloudRestrictedTo": null
+        }
+      }
+    },
+    {
+      "id": "L01-004",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "contract 5.2 row 4: on, app mesh off: T and C",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": true,
+        "appMesh": false,
+        "cloudBan": false,
+        "deviceOnly": false,
+        "localOnly": false,
+        "fallback": null,
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [
+            "T",
+            "C"
+          ],
+          "class": "cloud-no-peers",
+          "cloudRestrictedTo": null
+        }
+      }
+    },
+    {
+      "id": "L01-005",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "contract 5.2 row 5: on, own, local-only: T",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": true,
+        "appMesh": true,
+        "cloudBan": false,
+        "deviceOnly": false,
+        "localOnly": true,
+        "fallback": null,
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [
+            "T"
+          ],
+          "class": "device-only",
+          "cloudRestrictedTo": null
+        }
+      }
+    },
+    {
+      "id": "L01-006",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "contract 5.2 row 7: on, own, auto plus X-Asom-Fallback: C restricted to the list",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": true,
+        "appMesh": true,
+        "cloudBan": false,
+        "deviceOnly": false,
+        "localOnly": false,
+        "fallback": [
+          "openrouter",
+          "groq"
+        ],
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [
+            "C"
+          ],
+          "class": null,
+          "cloudRestrictedTo": [
+            "openrouter",
+            "groq"
+          ]
+        }
+      }
+    },
+    {
+      "id": "L01-007",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an app marked device-only: T",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": true,
+        "appMesh": true,
+        "cloudBan": false,
+        "deviceOnly": true,
+        "localOnly": false,
+        "fallback": null,
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [
+            "T"
+          ],
+          "class": "device-only",
+          "cloudRestrictedTo": null
+        }
+      }
+    },
+    {
+      "id": "L01-008",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "X-Asom-No-Train has no effect on P (it filters inside C exactly as v1)",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": true,
+        "appMesh": true,
+        "cloudBan": false,
+        "deviceOnly": false,
+        "localOnly": false,
+        "fallback": null,
+        "noTrain": true
+      },
+      "expect": {
+        "ok": {
+          "P": [
+            "T",
+            "O",
+            "C"
+          ],
+          "class": "own-and-cloud",
+          "cloudRestrictedTo": null
+        }
+      }
+    },
+    {
+      "id": "L01-009",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cloud ban plus fallback: the fallback needs C and the app bans it: empty",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": true,
+        "appMesh": true,
+        "cloudBan": true,
+        "deviceOnly": false,
+        "localOnly": false,
+        "fallback": [
+          "groq"
+        ],
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [],
+          "class": null,
+          "cloudRestrictedTo": null
+        }
+      }
+    },
+    {
+      "id": "L01-010",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "local-only plus fallback: nothing in common: empty",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": true,
+        "appMesh": true,
+        "cloudBan": false,
+        "deviceOnly": false,
+        "localOnly": true,
+        "fallback": [
+          "groq"
+        ],
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [],
+          "class": null,
+          "cloudRestrictedTo": null
+        }
+      }
+    },
+    {
+      "id": "L01-011",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-LP-1: a fallback header naming no provider leaves no destination",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": true,
+        "appMesh": true,
+        "cloudBan": false,
+        "deviceOnly": false,
+        "localOnly": false,
+        "fallback": [],
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [],
+          "class": null,
+          "cloudRestrictedTo": null
+        }
+      }
+    },
+    {
+      "id": "L01-012",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "mesh off everywhere plus fallback: C restricted to the list",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": false,
+        "appMesh": false,
+        "cloudBan": false,
+        "deviceOnly": false,
+        "localOnly": false,
+        "fallback": [
+          "groq"
+        ],
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [
+            "C"
+          ],
+          "class": null,
+          "cloudRestrictedTo": [
+            "groq"
+          ]
+        }
+      }
+    },
+    {
+      "id": "L01-013",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "mesh global off plus local-only: T",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": false,
+        "appMesh": true,
+        "cloudBan": false,
+        "deviceOnly": false,
+        "localOnly": true,
+        "fallback": null,
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [
+            "T"
+          ],
+          "class": "device-only",
+          "cloudRestrictedTo": null
+        }
+      }
+    },
+    {
+      "id": "L01-014",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cloud ban plus device-only: T",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": true,
+        "appMesh": true,
+        "cloudBan": true,
+        "deviceOnly": true,
+        "localOnly": false,
+        "fallback": null,
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [
+            "T"
+          ],
+          "class": "device-only",
+          "cloudRestrictedTo": null
+        }
+      }
+    },
+    {
+      "id": "L01-015",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "app mesh off plus cloud ban: T only",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": true,
+        "appMesh": false,
+        "cloudBan": true,
+        "deviceOnly": false,
+        "localOnly": false,
+        "fallback": null,
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [
+            "T"
+          ],
+          "class": "device-only",
+          "cloudRestrictedTo": null
+        }
+      }
+    },
+    {
+      "id": "L01-016",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "global off, app off, cloud ban: T only",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": false,
+        "appMesh": false,
+        "cloudBan": true,
+        "deviceOnly": false,
+        "localOnly": false,
+        "fallback": null,
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [
+            "T"
+          ],
+          "class": "device-only",
+          "cloudRestrictedTo": null
+        }
+      }
+    },
+    {
+      "id": "L01-017",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "every restriction at once: T",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": false,
+        "appMesh": false,
+        "cloudBan": true,
+        "deviceOnly": true,
+        "localOnly": true,
+        "fallback": null,
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [
+            "T"
+          ],
+          "class": "device-only",
+          "cloudRestrictedTo": null
+        }
+      }
+    },
+    {
+      "id": "L01-018",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "device-only plus fallback: empty",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": true,
+        "appMesh": true,
+        "cloudBan": false,
+        "deviceOnly": true,
+        "localOnly": false,
+        "fallback": [
+          "groq"
+        ],
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [],
+          "class": null,
+          "cloudRestrictedTo": null
+        }
+      }
+    },
+    {
+      "id": "L01-019",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "own-devices request that is also local-only and cloud-banned: T (the most restrictive rule wins)",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": true,
+        "appMesh": true,
+        "cloudBan": true,
+        "deviceOnly": false,
+        "localOnly": true,
+        "fallback": null,
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [
+            "T"
+          ],
+          "class": "device-only",
+          "cloudRestrictedTo": null
+        }
+      }
+    },
+    {
+      "id": "L01-020",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "fallback with no-train: still C restricted to the list",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": true,
+        "appMesh": true,
+        "cloudBan": false,
+        "deviceOnly": false,
+        "localOnly": false,
+        "fallback": [
+          "groq"
+        ],
+        "noTrain": true
+      },
+      "expect": {
+        "ok": {
+          "P": [
+            "C"
+          ],
+          "class": null,
+          "cloudRestrictedTo": [
+            "groq"
+          ]
+        }
+      }
+    },
+    {
+      "id": "L01-021",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "global off plus cloud ban: T only",
+      "input": {
+        "kind": "destinationSet",
+        "meshGlobal": false,
+        "appMesh": true,
+        "cloudBan": true,
+        "deviceOnly": false,
+        "localOnly": false,
+        "fallback": null,
+        "noTrain": false
+      },
+      "expect": {
+        "ok": {
+          "P": [
+            "T"
+          ],
+          "class": "device-only",
+          "cloudRestrictedTo": null
+        }
+      }
+    },
+    {
+      "id": "L01-100",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "r3 default (design 8.5): an existing app appears with an unticked box: mesh off",
+      "input": {
+        "kind": "appDefault",
+        "pairedBeforeSwitch": true,
+        "cloudBanned": false,
+        "userTicked": null
+      },
+      "expect": {
+        "ok": {
+          "meshAllowed": false
+        }
+      }
+    },
+    {
+      "id": "L01-101",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "r3 default: an app paired after the switch defaults to off",
+      "input": {
+        "kind": "appDefault",
+        "pairedBeforeSwitch": false,
+        "cloudBanned": false,
+        "userTicked": null
+      },
+      "expect": {
+        "ok": {
+          "meshAllowed": false
+        }
+      }
+    },
+    {
+      "id": "L01-102",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "r3 default: a cloud-banned app stays off",
+      "input": {
+        "kind": "appDefault",
+        "pairedBeforeSwitch": true,
+        "cloudBanned": true,
+        "userTicked": null
+      },
+      "expect": {
+        "ok": {
+          "meshAllowed": false
+        }
+      }
+    },
+    {
+      "id": "L01-103",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a cloud-banned app the user ticked individually: on",
+      "input": {
+        "kind": "appDefault",
+        "pairedBeforeSwitch": true,
+        "cloudBanned": true,
+        "userTicked": true
+      },
+      "expect": {
+        "ok": {
+          "meshAllowed": true
+        }
+      }
+    },
+    {
+      "id": "L01-104",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an app the user explicitly left unticked: off",
+      "input": {
+        "kind": "appDefault",
+        "pairedBeforeSwitch": true,
+        "cloudBanned": false,
+        "userTicked": false
+      },
+      "expect": {
+        "ok": {
+          "meshAllowed": false
+        }
+      }
+    },
+    {
+      "id": "L01-200",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "F1..F3 all pass: eligible",
+      "input": {
+        "kind": "eligibility",
+        "P": [
+          "T",
+          "O",
+          "C"
+        ],
+        "status": "PAIRED",
+        "routeEnabled": true,
+        "inferGranted": true
+      },
+      "expect": {
+        "ok": {
+          "eligible": true
+        }
+      }
+    },
+    {
+      "id": "L01-201",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "O not in P: F1_ELIGIBILITY",
+      "input": {
+        "kind": "eligibility",
+        "P": [
+          "T",
+          "C"
+        ],
+        "status": "PAIRED",
+        "routeEnabled": true,
+        "inferGranted": true
+      },
+      "expect": {
+        "reject": "F1_ELIGIBILITY"
+      }
+    },
+    {
+      "id": "L01-202",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "the peer row denies routing: F1_ELIGIBILITY",
+      "input": {
+        "kind": "eligibility",
+        "P": [
+          "T",
+          "O",
+          "C"
+        ],
+        "status": "PAIRED",
+        "routeEnabled": false,
+        "inferGranted": true
+      },
+      "expect": {
+        "reject": "F1_ELIGIBILITY"
+      }
+    },
+    {
+      "id": "L01-203",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "SUSPENDED is not PAIRED: F2_NOT_PAIRED",
+      "input": {
+        "kind": "eligibility",
+        "P": [
+          "T",
+          "O",
+          "C"
+        ],
+        "status": "SUSPENDED",
+        "routeEnabled": true,
+        "inferGranted": true
+      },
+      "expect": {
+        "reject": "F2_NOT_PAIRED"
+      }
+    },
+    {
+      "id": "L01-204",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "REVOKED is not PAIRED: F2_NOT_PAIRED",
+      "input": {
+        "kind": "eligibility",
+        "P": [
+          "T",
+          "O",
+          "C"
+        ],
+        "status": "REVOKED",
+        "routeEnabled": true,
+        "inferGranted": true
+      },
+      "expect": {
+        "reject": "F2_NOT_PAIRED"
+      }
+    },
+    {
+      "id": "L01-205",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "the peer did not grant infer: F3_NO_SCOPE",
+      "input": {
+        "kind": "eligibility",
+        "P": [
+          "T",
+          "O",
+          "C"
+        ],
+        "status": "PAIRED",
+        "routeEnabled": true,
+        "inferGranted": false
+      },
+      "expect": {
+        "reject": "F3_NO_SCOPE"
+      }
+    },
+    {
+      "id": "L01-206",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "F1 outranks F2 and F3 (the first failing row is recorded)",
+      "input": {
+        "kind": "eligibility",
+        "P": [
+          "T"
+        ],
+        "status": "REVOKED",
+        "routeEnabled": false,
+        "inferGranted": false
+      },
+      "expect": {
+        "reject": "F1_ELIGIBILITY"
+      }
+    },
+    {
+      "id": "L01-207",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "F2 outranks F3",
+      "input": {
+        "kind": "eligibility",
+        "P": [
+          "T",
+          "O",
+          "C"
+        ],
+        "status": "REVOKED",
+        "routeEnabled": true,
+        "inferGranted": false
+      },
+      "expect": {
+        "reject": "F2_NOT_PAIRED"
+      }
+    },
+    {
+      "id": "L01-300",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "requester, none of the four conditions: initiates nothing (a phone with mesh on and no apps sends nothing)",
+      "input": {
+        "kind": "quiescence",
+        "role": "REQUESTER",
+        "pending": false,
+        "screen": false,
+        "userOp": false,
+        "finishing": false
+      },
+      "expect": {
+        "ok": {
+          "mayInitiate": false
+        }
+      }
+    },
+    {
+      "id": "L01-301",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "requester, a local request whose P contains O is pending: may initiate",
+      "input": {
+        "kind": "quiescence",
+        "role": "REQUESTER",
+        "pending": true,
+        "screen": false,
+        "userOp": false,
+        "finishing": false
+      },
+      "expect": {
+        "ok": {
+          "mayInitiate": true
+        }
+      }
+    },
+    {
+      "id": "L01-302",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "requester, a peer-status screen is open: may initiate",
+      "input": {
+        "kind": "quiescence",
+        "role": "REQUESTER",
+        "pending": false,
+        "screen": true,
+        "userOp": false,
+        "finishing": false
+      },
+      "expect": {
+        "ok": {
+          "mayInitiate": true
+        }
+      }
+    },
+    {
+      "id": "L01-303",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "requester, the user started a peer operation: may initiate",
+      "input": {
+        "kind": "quiescence",
+        "role": "REQUESTER",
+        "pending": false,
+        "screen": false,
+        "userOp": true,
+        "finishing": false
+      },
+      "expect": {
+        "ok": {
+          "mayInitiate": true
+        }
+      }
+    },
+    {
+      "id": "L01-304",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "requester, an in-flight attempt is finishing: may initiate",
+      "input": {
+        "kind": "quiescence",
+        "role": "REQUESTER",
+        "pending": false,
+        "screen": false,
+        "userOp": false,
+        "finishing": true
+      },
+      "expect": {
+        "ok": {
+          "mayInitiate": true
+        }
+      }
+    },
+    {
+      "id": "L01-305",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "lender, a pending local request alone: initiates none",
+      "input": {
+        "kind": "quiescence",
+        "role": "LENDER",
+        "pending": true,
+        "screen": false,
+        "userOp": false,
+        "finishing": false
+      },
+      "expect": {
+        "ok": {
+          "mayInitiate": false
+        }
+      }
+    },
+    {
+      "id": "L01-306",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "lender, a peer-status screen alone: initiates none",
+      "input": {
+        "kind": "quiescence",
+        "role": "LENDER",
+        "pending": false,
+        "screen": true,
+        "userOp": false,
+        "finishing": false
+      },
+      "expect": {
+        "ok": {
+          "mayInitiate": false
+        }
+      }
+    },
+    {
+      "id": "L01-307",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "lender, an attempt finishing alone: initiates none",
+      "input": {
+        "kind": "quiescence",
+        "role": "LENDER",
+        "pending": false,
+        "screen": false,
+        "userOp": false,
+        "finishing": true
+      },
+      "expect": {
+        "ok": {
+          "mayInitiate": false
+        }
+      }
+    },
+    {
+      "id": "L01-308",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "lender under rule 3 (user revoking a peer, sharing a report): may initiate",
+      "input": {
+        "kind": "quiescence",
+        "role": "LENDER",
+        "pending": false,
+        "screen": false,
+        "userOp": true,
+        "finishing": false
+      },
+      "expect": {
+        "ok": {
+          "mayInitiate": true
+        }
+      }
+    },
+    {
+      "id": "L01-309",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "lender with rules 1, 2 and 4 but not 3: still none",
+      "input": {
+        "kind": "quiescence",
+        "role": "LENDER",
+        "pending": true,
+        "screen": true,
+        "userOp": false,
+        "finishing": true
+      },
+      "expect": {
+        "ok": {
+          "mayInitiate": false
+        }
+      }
+    },
+    {
+      "id": "L01-310",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "requester with all four: may initiate",
+      "input": {
+        "kind": "quiescence",
+        "role": "REQUESTER",
+        "pending": true,
+        "screen": true,
+        "userOp": true,
+        "finishing": true
+      },
+      "expect": {
+        "ok": {
+          "mayInitiate": true
+        }
+      }
+    },
+    {
+      "id": "L01-320",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a lender accepts inbound while SERVING",
+      "input": {
+        "kind": "inbound",
+        "fsm": "SERVING",
+        "pairingWindow": false,
+        "peersTab": false
+      },
+      "expect": {
+        "ok": {
+          "mayAccept": true
+        }
+      }
+    },
+    {
+      "id": "L01-321",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ARMED with nothing open: no inbound",
+      "input": {
+        "kind": "inbound",
+        "fsm": "ARMED",
+        "pairingWindow": false,
+        "peersTab": false
+      },
+      "expect": {
+        "ok": {
+          "mayAccept": false
+        }
+      }
+    },
+    {
+      "id": "L01-322",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ARMED with a pairing window open: accepts",
+      "input": {
+        "kind": "inbound",
+        "fsm": "ARMED",
+        "pairingWindow": true,
+        "peersTab": false
+      },
+      "expect": {
+        "ok": {
+          "mayAccept": true
+        }
+      }
+    },
+    {
+      "id": "L01-323",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "DRAINING with the Peers tab open: accepts",
+      "input": {
+        "kind": "inbound",
+        "fsm": "DRAINING",
+        "pairingWindow": false,
+        "peersTab": true
+      },
+      "expect": {
+        "ok": {
+          "mayAccept": true
+        }
+      }
+    },
+    {
+      "id": "L01-324",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "OFF: no listener",
+      "input": {
+        "kind": "inbound",
+        "fsm": "OFF",
+        "pairingWindow": false,
+        "peersTab": false
+      },
+      "expect": {
+        "ok": {
+          "mayAccept": false
+        }
+      }
+    },
+    {
+      "id": "L01-325",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "DRAINING with nothing open: the listener is closed",
+      "input": {
+        "kind": "inbound",
+        "fsm": "DRAINING",
+        "pairingWindow": false,
+        "peersTab": false
+      },
+      "expect": {
+        "ok": {
+          "mayAccept": false
+        }
+      }
+    },
+    {
+      "id": "L01-340",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "idle 299,999 ms with no open stream: stays open",
+      "input": {
+        "kind": "sessionClose",
+        "idleMs": 299999,
+        "ageMs": 10,
+        "openStreams": 0
+      },
+      "expect": {
+        "ok": {
+          "close": false
+        }
+      }
+    },
+    {
+      "id": "L01-341",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "idle 300,000 ms with no open stream: closes (5 minutes)",
+      "input": {
+        "kind": "sessionClose",
+        "idleMs": 300000,
+        "ageMs": 10,
+        "openStreams": 0
+      },
+      "expect": {
+        "ok": {
+          "close": true
+        }
+      }
+    },
+    {
+      "id": "L01-342",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an open stream keeps the session past 5 idle minutes",
+      "input": {
+        "kind": "sessionClose",
+        "idleMs": 400000,
+        "ageMs": 10,
+        "openStreams": 1
+      },
+      "expect": {
+        "ok": {
+          "close": false
+        }
+      }
+    },
+    {
+      "id": "L01-343",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "age 1,800,000 ms closes even with a stream (30 minutes)",
+      "input": {
+        "kind": "sessionClose",
+        "idleMs": 0,
+        "ageMs": 1800000,
+        "openStreams": 1
+      },
+      "expect": {
+        "ok": {
+          "close": true
+        }
+      }
+    },
+    {
+      "id": "L01-344",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "age 1,799,999 ms with a stream stays open",
+      "input": {
+        "kind": "sessionClose",
+        "idleMs": 0,
+        "ageMs": 1799999,
+        "openStreams": 1
+      },
+      "expect": {
+        "ok": {
+          "close": false
+        }
+      }
+    }
+  ]
+}

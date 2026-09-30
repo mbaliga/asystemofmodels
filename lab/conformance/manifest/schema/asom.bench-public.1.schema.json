@@ -1,0 +1,298 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "asom:schema/asom.bench-public/1",
+ "title": "asom public (anonymised) benchmark derivative, major version 1 (r3 conformance schema; DOCUMENTATION AND TEST ORACLE ONLY)",
+ "description": "UNSIGNED by construction. Built only by PublicDerivative.from(verified private payload) through an allow-list. Contains no key, no node id, no seq, no challenge, no evidence, no exact timestamps, no OS patch level, no platform ids. Numbers are quantised to 2 significant digits (manifest.md 11.2).",
+ "type": "object",
+ "required": [
+  "schema",
+  "device",
+  "harness",
+  "engine",
+  "results"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "schema": {
+   "const": "asom.bench-public/1"
+  },
+  "device": {
+   "type": "object",
+   "required": [
+    "class",
+    "vendor",
+    "model",
+    "socName",
+    "ramClassGiB",
+    "osFamily",
+    "osMajor",
+    "cooling"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "class": {
+     "$ref": "#/$defs/id"
+    },
+    "vendor": {
+     "$ref": "#/$defs/text"
+    },
+    "model": {
+     "$ref": "#/$defs/text"
+    },
+    "socName": {
+     "$ref": "#/$defs/text"
+    },
+    "ramClassGiB": {
+     "enum": [
+      1,
+      2,
+      3,
+      4,
+      6,
+      8,
+      12,
+      16,
+      24,
+      32,
+      48,
+      64,
+      96,
+      128,
+      192,
+      256,
+      384,
+      512,
+      768,
+      1024,
+      2048
+     ]
+    },
+    "osFamily": {
+     "enum": [
+      "android",
+      "ios",
+      "ipados",
+      "macos",
+      "linux"
+     ]
+    },
+    "osMajor": {
+     "type": "integer",
+     "minimum": 0,
+     "maximum": 1000
+    },
+    "cooling": {
+     "$ref": "#/$defs/id"
+    }
+   }
+  },
+  "harness": {
+   "type": "object",
+   "required": [
+    "version",
+    "methodologyId",
+    "confVersion"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "version": {
+     "oneOf": [
+      {
+       "$ref": "#/$defs/semver"
+      },
+      {
+       "const": "custom"
+      }
+     ]
+    },
+    "methodologyId": {
+     "type": "string",
+     "pattern": "^[a-z0-9][a-z0-9.-]{0,47}/[0-9]{1,4}$"
+    },
+    "confVersion": {
+     "oneOf": [
+      {
+       "$ref": "#/$defs/semver"
+      },
+      {
+       "const": "custom"
+      }
+     ]
+    }
+   }
+  },
+  "engine": {
+   "type": "object",
+   "required": [
+    "name",
+    "commit"
+   ],
+   "additionalProperties": false,
+   "properties": {
+    "name": {
+     "$ref": "#/$defs/id"
+    },
+    "commit": {
+     "oneOf": [
+      {
+       "type": "string",
+       "pattern": "^[0-9a-f]{7,40}$"
+      },
+      {
+       "const": "custom"
+      }
+     ]
+    }
+   }
+  },
+  "results": {
+   "type": "array",
+   "minItems": 1,
+   "maxItems": 16,
+   "items": {
+    "type": "object",
+    "required": [
+     "modelId",
+     "quant",
+     "fileSha256",
+     "backend",
+     "measuredMonth",
+     "runsCompleted",
+     "charging",
+     "prefillPromptTokens",
+     "prefillMilliTokPerSec",
+     "ttftMillis",
+     "decodeContextTokens",
+     "decodeMilliTokPerSec",
+     "steadyMilliTokPerSec",
+     "throttleOnsetSec",
+     "curve",
+     "peakProcessMB",
+     "powerMethod",
+     "powerMilliW"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "modelId": {
+      "$ref": "#/$defs/id"
+     },
+     "quant": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]{1,24}$"
+     },
+     "fileSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+     },
+     "backend": {
+      "$ref": "#/$defs/id"
+     },
+     "measuredMonth": {
+      "type": "string",
+      "pattern": "^20[2-9][0-9]-(0[1-9]|1[0-2])$"
+     },
+     "runsCompleted": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000
+     },
+     "charging": {
+      "type": "boolean"
+     },
+     "prefillPromptTokens": {
+      "type": "integer",
+      "minimum": 1
+     },
+     "prefillMilliTokPerSec": {
+      "$ref": "#/$defs/q2"
+     },
+     "ttftMillis": {
+      "$ref": "#/$defs/q2"
+     },
+     "decodeContextTokens": {
+      "type": "integer",
+      "minimum": 0
+     },
+     "decodeMilliTokPerSec": {
+      "$ref": "#/$defs/q2"
+     },
+     "steadyMilliTokPerSec": {
+      "$ref": "#/$defs/q2"
+     },
+     "throttleOnsetSec": {
+      "oneOf": [
+       {
+        "$ref": "#/$defs/q2"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "curve": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 12,
+      "items": {
+       "type": "array",
+       "minItems": 2,
+       "maxItems": 2,
+       "prefixItems": [
+        {
+         "$ref": "#/$defs/q2"
+        },
+        {
+         "$ref": "#/$defs/q2"
+        }
+       ]
+      }
+     },
+     "peakProcessMB": {
+      "$ref": "#/$defs/q2"
+     },
+     "powerMethod": {
+      "enum": [
+       "battery-current",
+       "battery-level",
+       "rapl",
+       "pmic",
+       "unavailable"
+      ]
+     },
+     "powerMilliW": {
+      "oneOf": [
+       {
+        "$ref": "#/$defs/q2"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    }
+   }
+  }
+ },
+ "$defs": {
+  "q2": {
+   "type": "integer",
+   "minimum": 0,
+   "maximum": 9007199254740991,
+   "description": "Non-negative integer quantised to at most 2 significant decimal digits (values < 100 unchanged). Law: q2(q2(x)) == q2(x)."
+  },
+  "id": {
+   "type": "string",
+   "pattern": "^[a-z0-9][a-z0-9._+-]{0,63}$"
+  },
+  "semver": {
+   "type": "string",
+   "pattern": "^(0|[1-9][0-9]{0,4})\\.(0|[1-9][0-9]{0,4})\\.(0|[1-9][0-9]{0,4})$"
+  },
+  "text": {
+   "type": "string",
+   "minLength": 1,
+   "maxLength": 96,
+   "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u061C\\u200E\\u200F\\u2028\\u2029\\u202A-\\u202E\\u2066-\\u2069\\uFEFF]+$"
+  }
+ }
+}

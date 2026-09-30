@@ -1,0 +1,10 @@
+pos:	0
+flags:	02000002
+mnt_id:	29
+ino:	400
+drm-driver:	amdgpu
+drm-pdev:	0000:04:00.0
+drm-client-id:	12
+drm-engine-gfx:	1500000000 ns
+drm-engine-compute:	0 ns
+drm-engine-dma:	0 ns

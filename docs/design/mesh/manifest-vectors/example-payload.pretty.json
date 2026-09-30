@@ -1,0 +1,425 @@
+{
+  "schema": "asom.manifest/1",
+  "schemaMinor": 0,
+  "body": {
+    "audience": "own",
+    "seq": 17,
+    "subject": {
+      "nodeId": "vaw93hb8yBZTX2LebYgzri1pfOnBlRIILoBLiyK_eN4",
+      "keyAlg": "ES256",
+      "keyStorage": "strongbox"
+    },
+    "producer": {
+      "app": "asom-android",
+      "appVersion": "4.0.0",
+      "harness": {
+        "id": "asom-bench",
+        "version": "1.0.0",
+        "methodologyId": "asom-bench-method/1",
+        "confVersion": "1.0.0"
+      },
+      "engine": {
+        "name": "llama.cpp",
+        "commit": "0123abcd",
+        "buildFlags": [
+          "GGML_OPENCL=ON",
+          "GGML_VULKAN=ON"
+        ]
+      }
+    },
+    "device": {
+      "class": "phone",
+      "vendor": "ExampleVendor",
+      "model": "Example Phone 1",
+      "platformIds": {
+        "brand": "examplevendor",
+        "device": "ex1",
+        "manufacturer": "ExampleVendor",
+        "model": "EX-1",
+        "product": "ex1_global"
+      },
+      "os": {
+        "family": "android",
+        "version": "16",
+        "securityPatch": "2026-09-01"
+      },
+      "soc": {
+        "vendor": "ExampleSilicon",
+        "name": "ExampleSoC 8",
+        "cpu": {
+          "logicalCores": 8,
+          "clusters": [
+            {
+              "cores": 2,
+              "maxKHz": 4320000
+            },
+            {
+              "cores": 6,
+              "maxKHz": 3530000
+            }
+          ]
+        }
+      },
+      "memory": {
+        "totalBytes": 17179869184
+      },
+      "accelerators": [
+        {
+          "kind": "gpu",
+          "vendor": "ExampleSilicon",
+          "name": "ExampleGPU 800",
+          "apis": [
+            "opencl",
+            "vulkan"
+          ],
+          "dedicatedBytes": null
+        },
+        {
+          "kind": "npu",
+          "vendor": "ExampleSilicon",
+          "name": "ExampleNPU",
+          "apis": [],
+          "dedicatedBytes": null
+        }
+      ],
+      "power": {
+        "battery": true,
+        "batteryDesignMilliWh": 25000
+      },
+      "thermal": {
+        "cooling": "fan",
+        "stateSource": "android-thermal-headroom"
+      }
+    },
+    "results": [
+      {
+        "modelId": "example-3b-instruct",
+        "fileSha256": "6bc3e8ccea8ef082f0fcc23f91d3f8d7b5414e6d3e3af010641a8fb71729c810",
+        "fileBytes": 2019377152,
+        "quant": "Q4_K_M",
+        "backend": "opencl",
+        "settings": {
+          "threads": 6,
+          "gpuLayers": 99,
+          "ctxTokens": 4096,
+          "batchTokens": 512
+        },
+        "measuredAtMs": 1790604120000,
+        "runs": {
+          "planned": 5,
+          "completed": 5,
+          "discarded": 0
+        },
+        "conditions": {
+          "charging": false,
+          "batteryStartPermille": 870,
+          "thermalStart": "nominal",
+          "socStartMilliC": 33000,
+          "screenOn": true
+        },
+        "prefill": [
+          {
+            "promptTokens": 512,
+            "milliTokPerSec": {
+              "p10": 204000,
+              "p50": 212000,
+              "p90": 216500
+            },
+            "ttftMicros": {
+              "p10": 2410000,
+              "p50": 2480000,
+              "p90": 2590000
+            }
+          },
+          {
+            "promptTokens": 2048,
+            "milliTokPerSec": {
+              "p10": 181000,
+              "p50": 188000,
+              "p90": 192000
+            },
+            "ttftMicros": {
+              "p10": 10700000,
+              "p50": 10950000,
+              "p90": 11400000
+            }
+          }
+        ],
+        "decode": [
+          {
+            "contextTokens": 512,
+            "genTokens": 128,
+            "milliTokPerSec": {
+              "p10": 17600,
+              "p50": 18400,
+              "p90": 18900
+            }
+          },
+          {
+            "contextTokens": 3584,
+            "genTokens": 128,
+            "milliTokPerSec": {
+              "p10": 14500,
+              "p50": 15100,
+              "p90": 15600
+            }
+          }
+        ],
+        "sustained": {
+          "durationMs": 600000,
+          "intervalMs": 30000,
+          "steadyMilliTokPerSec": 11200,
+          "throttleOnsetMs": 190000,
+          "curve": [
+            [
+              0,
+              18400,
+              33000,
+              6200
+            ],
+            [
+              30000,
+              18340,
+              34500,
+              6200
+            ],
+            [
+              60000,
+              18280,
+              36000,
+              6200
+            ],
+            [
+              90000,
+              18220,
+              37500,
+              6200
+            ],
+            [
+              120000,
+              18160,
+              39000,
+              6200
+            ],
+            [
+              150000,
+              18100,
+              40500,
+              6200
+            ],
+            [
+              180000,
+              18040,
+              42000,
+              6100
+            ],
+            [
+              210000,
+              14500,
+              43500,
+              6100
+            ],
+            [
+              240000,
+              13600,
+              45000,
+              6100
+            ],
+            [
+              270000,
+              12700,
+              46500,
+              6100
+            ],
+            [
+              300000,
+              11800,
+              48000,
+              6100
+            ],
+            [
+              330000,
+              11200,
+              48000,
+              6100
+            ],
+            [
+              360000,
+              11200,
+              48000,
+              6100
+            ],
+            [
+              390000,
+              11200,
+              48000,
+              6100
+            ],
+            [
+              420000,
+              11200,
+              48000,
+              6100
+            ],
+            [
+              450000,
+              11200,
+              48000,
+              6100
+            ],
+            [
+              480000,
+              11200,
+              48000,
+              6100
+            ],
+            [
+              510000,
+              11200,
+              48000,
+              6100
+            ],
+            [
+              540000,
+              11200,
+              48000,
+              6100
+            ],
+            [
+              570000,
+              11200,
+              48000,
+              6100
+            ],
+            [
+              600000,
+              11200,
+              48000,
+              6100
+            ]
+          ]
+        },
+        "memory": {
+          "availableBeforeLoadBytes": 8300000000,
+          "peakProcessBytes": 2600000000,
+          "kvCacheBytes": 469762048
+        },
+        "power": {
+          "method": "battery-current",
+          "avgMilliW": 6100
+        },
+        "flags": [
+          "thermal-throttled"
+        ]
+      },
+      {
+        "modelId": "example-3b-instruct",
+        "fileSha256": "3c7d5df352a994683cff6ed77a911a87741ecaf096b4fed0a23366f6f4cf5bf3",
+        "fileBytes": 3421225472,
+        "quant": "Q8_0",
+        "backend": "cpu",
+        "settings": {
+          "threads": 6,
+          "gpuLayers": 0,
+          "ctxTokens": 4096,
+          "batchTokens": 512
+        },
+        "measuredAtMs": 1790606400000,
+        "runs": {
+          "planned": 5,
+          "completed": 3,
+          "discarded": 1
+        },
+        "conditions": {
+          "charging": true,
+          "batteryStartPermille": 640,
+          "thermalStart": "light",
+          "socStartMilliC": 38000,
+          "screenOn": true
+        },
+        "prefill": [
+          {
+            "promptTokens": 512,
+            "milliTokPerSec": {
+              "p50": 61000
+            },
+            "ttftMicros": {
+              "p50": 8600000
+            }
+          }
+        ],
+        "decode": [
+          {
+            "contextTokens": 512,
+            "genTokens": 128,
+            "milliTokPerSec": {
+              "p50": 9800
+            }
+          }
+        ],
+        "sustained": {
+          "durationMs": 300000,
+          "intervalMs": 60000,
+          "steadyMilliTokPerSec": 9100,
+          "throttleOnsetMs": null,
+          "curve": [
+            [
+              0,
+              9800,
+              38000,
+              null
+            ],
+            [
+              60000,
+              9500,
+              41000,
+              null
+            ],
+            [
+              120000,
+              9300,
+              43000,
+              null
+            ],
+            [
+              180000,
+              9200,
+              44000,
+              null
+            ],
+            [
+              240000,
+              9100,
+              44000,
+              null
+            ],
+            [
+              300000,
+              9100,
+              45000,
+              null
+            ]
+          ]
+        },
+        "memory": {
+          "availableBeforeLoadBytes": 8100000000,
+          "peakProcessBytes": 3900000000,
+          "kvCacheBytes": null
+        },
+        "power": {
+          "method": "unavailable",
+          "avgMilliW": null
+        },
+        "flags": [
+          "charging",
+          "low-runs"
+        ]
+      }
+    ]
+  },
+  "presentation": {
+    "issuedAtMs": 1790676000000,
+    "expiresAtMs": 1790676600000,
+    "challenge": "nvsK-QRFTzOSUx0XtUEgqKOWIsUY8j2dL4ikBHOh5pw"
+  }
+}

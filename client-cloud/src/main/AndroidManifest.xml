@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- CloudOnly talks HTTPS to providers with the host app's own keys. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Backup: the vault's Keystore master key is never backed up, so a
+         restored copy of its SharedPreferences can never decrypt. This library
+         cannot set android:allowBackup / dataExtractionRules itself without
+         conflicting with the host app's own <application> attributes, so the
+         host must exclude "asom-client-cloud-vault" (docs/CLIENT_API.md);
+         ClientVault degrades to "no key stored" if they don't. -->
+
+</manifest>

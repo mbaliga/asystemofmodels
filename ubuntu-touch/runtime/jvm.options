@@ -1,0 +1,21 @@
+# JVM flags of the Ubuntu Touch node (ubuntu-touch.md 7.4). Read by the Asom.Bridge plugin: one flag per line, '#' starts a
+# comment, ${NAME} is replaced from the environment ($HOME/.cache stands in for an unset XDG_CACHE_HOME).
+# No JSSE system property is set here or anywhere (C12): the same process also fetches the catalogue over HTTPS.
+
+# no /tmp/hsperfdata_*, which the click profile does not allow
+-XX:-UsePerfData
+# skip the cgroup and mountinfo reads the click profile does not grant
+-XX:-UseContainerSupport
+# RAM on 4 to 6 GB phones
+-XX:+UseSerialGC
+-Xmx128m
+-Xss512k
+# the confined TMPDIR (/run/user/<uid>/confined/xyz.mdhv.asom.ut)
+-Djava.io.tmpdir=${TMPDIR}
+# The JVM's own logging (a `[warning][cds]` line, for one) goes to STDOUT by default, and stdout is the frame channel: nothing but
+# frames may reach it (UTC05). Logging is off, and anything else the VM prints goes to stderr, where the plugin reads only the
+# node's own fixed lines. (Measured: without this a jlinked runtime prints a CDS warning on stdout at every start.)
+-Xlog:disable
+-XX:+DisplayVMOutputToStderr
+# No CDS flags: a jlinked runtime has no base archive (jlink cannot generate one for another architecture), so the dynamic
+# archive of -XX:+AutoCreateSharedArchive cannot be made. See ubuntu-touch/ERRATA.md ERR-UT-CDS-1.

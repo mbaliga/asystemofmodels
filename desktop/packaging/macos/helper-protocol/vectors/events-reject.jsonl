@@ -1,0 +1,28 @@
+{"id":"HP-EVX-001","kind":"event","line":"","verdict":"reject","code":"MALFORMED_JSON"}
+{"id":"HP-EVX-002","kind":"event","line":"{\"ev\":\"wake\"","verdict":"reject","code":"MALFORMED_JSON"}
+{"id":"HP-EVX-003","kind":"event","line":"{\"ev\":\"wake\",\"ev\":\"wake\"}","verdict":"reject","code":"MALFORMED_JSON"}
+{"id":"HP-EVX-004","kind":"event","line":"{\"ev\":\"sleep.will\",\"token\":7.0}","verdict":"reject","code":"MALFORMED_JSON"}
+{"id":"HP-EVX-005","kind":"event","line":"{\"ev\":\"wake\"}\r","verdict":"reject","code":"MALFORMED_JSON"}
+{"id":"HP-EVX-006","kind":"event","line":"[]","verdict":"reject","code":"NOT_OBJECT"}
+{"id":"HP-EVX-007","kind":"event","line":"{}","verdict":"reject","code":"MISSING_FIELD"}
+{"id":"HP-EVX-008","kind":"event","line":"{\"token\":7}","verdict":"reject","code":"MISSING_FIELD","note":"no ev"}
+{"id":"HP-EVX-009","kind":"event","line":"{\"ev\":1}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-EVX-010","kind":"event","line":"{\"ev\":null}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-EVX-011","kind":"event","line":"{\"ev\":\"sleep.did\"}","verdict":"reject","code":"UNKNOWN_OP","note":"unknown event name"}
+{"id":"HP-EVX-012","kind":"event","line":"{\"ev\":\"Wake\"}","verdict":"reject","code":"UNKNOWN_OP"}
+{"id":"HP-EVX-013","kind":"event","line":"{\"ev\":\"\"}","verdict":"reject","code":"UNKNOWN_OP"}
+{"id":"HP-EVX-014","kind":"event","line":"{\"ev\":\"wake\",\"token\":1}","verdict":"reject","code":"UNKNOWN_FIELD"}
+{"id":"HP-EVX-015","kind":"event","line":"{\"ev\":\"sleep.will\",\"token\":7,\"id\":1}","verdict":"reject","code":"UNKNOWN_FIELD","note":"events carry no id"}
+{"id":"HP-EVX-016","kind":"event","line":"{\"ev\":\"thermal\",\"state\":\"fair\",\"ok\":true}","verdict":"reject","code":"UNKNOWN_FIELD","note":"an event is not a response"}
+{"id":"HP-EVX-017","kind":"event","line":"{\"ev\":\"power\",\"source\":\"ac\",\"charging\":true,\"batteryPermille\":870,\"lowPower\":false,\"x\":1}","verdict":"reject","code":"UNKNOWN_FIELD"}
+{"id":"HP-EVX-018","kind":"event","line":"{\"ev\":\"sleep.will\"}","verdict":"reject","code":"MISSING_FIELD"}
+{"id":"HP-EVX-019","kind":"event","line":"{\"ev\":\"thermal\"}","verdict":"reject","code":"MISSING_FIELD"}
+{"id":"HP-EVX-020","kind":"event","line":"{\"ev\":\"power\",\"source\":\"ac\",\"charging\":true,\"lowPower\":false}","verdict":"reject","code":"MISSING_FIELD"}
+{"id":"HP-EVX-021","kind":"event","line":"{\"ev\":\"sleep.will\",\"token\":-1}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-EVX-022","kind":"event","line":"{\"ev\":\"sleep.will\",\"token\":\"7\"}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-EVX-023","kind":"event","line":"{\"ev\":\"sleep.will\",\"token\":null}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-EVX-024","kind":"event","line":"{\"ev\":\"thermal\",\"state\":\"hot\"}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-EVX-025","kind":"event","line":"{\"ev\":\"power\",\"source\":\"grid\",\"charging\":true,\"batteryPermille\":870,\"lowPower\":false}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-EVX-026","kind":"event","line":"{\"ev\":\"power\",\"source\":\"ac\",\"charging\":true,\"batteryPermille\":1001,\"lowPower\":false}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-EVX-027","kind":"event","line":"{\"ev\":\"power\",\"source\":\"ac\",\"charging\":1,\"batteryPermille\":870,\"lowPower\":false}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-EVX-028","kind":"event","lineHex":"7b226576223a227761ff6b65227d","verdict":"reject","code":"MALFORMED_JSON","note":"invalid UTF-8"}
