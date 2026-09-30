@@ -28,36 +28,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # PLATFORM_PLAN P2 with the R3-CONFORMANCE-2 correction (apple/ERRATA.md E-01): a check of the working tree after a
-  # fresh checkout can never fail, so this one diffs the change itself against its base.
+  # PLATFORM_PLAN P2 with the R3-CONFORMANCE-2 correction. The first version diffed against the PR base branch, which
+  # for the v1 review PR includes every v1 change and therefore failed by construction (hosted run 2026-09-30). This
+  # reuses the lab's pinned-base check (lab/tools/isolation.py: byte-for-byte against lab/LAB_BASE_SHA).
   root-unchanged:
-    name: root build and shipped modules unchanged (diff against the base)
+    name: root build and shipped modules unchanged (pinned base)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
-      - name: Diff the protected paths against the base
-        env:
-          EVENT: ${{ github.event_name }}
-          BASE_REF: ${{ github.base_ref }}
-          BEFORE: ${{ github.event.before }}
-        run: |
-          set -eu
-          paths="core server gradle settings.gradle.kts build.gradle.kts gradle.properties .github/workflows/ci.yml"
-          if [ "$EVENT" = "pull_request" ]; then
-            range="origin/${BASE_REF}...HEAD"
-          elif [ "$EVENT" = "push" ] && [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
-            range="${BEFORE}..HEAD"
-          else
-            echo "::notice::no base to diff against for event '$EVENT'; the root-unchanged check did not run"
-            exit 0
-          fi
-          echo "diffing $range"
-          # shellcheck disable=SC2086
-          git diff --exit-code "$range" -- $paths
-          echo "protected paths unchanged in $range"
-          echo "Not covered: a root edit merged in a separate change, and local runs before any commit."
+      - name: Compare the protected paths with the pinned base
+        run: python3 lab/tools/isolation.py
 
   apple-swift-lane:
     name: apple-swift-lane (${{ matrix.name }})

@@ -86,3 +86,9 @@ The CLI refuses `confVersion` other than `0.1.0` and any context `mode` it has n
 - No `AsomManifest`, no `AsomBenchCore`, no M05/M06, no lane-diff or jvm-lines job (their dependency, the lab's `lines` mode, does not exist).
 - No constant-time claim: `U256` and the fingerprint comparison handle public data only, and the optimiser is not constrained.
 - No iOS code, no Secure Enclave, no Network.framework.
+
+## E-15 (orchestrator, 2026-09-30): root-unchanged job replaced
+
+The E-01 job diffed the protected paths against the PR base branch. On the v1 review PR that base is `main`, so every v1
+change counted and the job failed on its first hosted run. It now runs `lab/tools/isolation.py` (pinned to
+`lab/LAB_BASE_SHA`). Lesson: a check written without a hosted run has not been shown to pass.
