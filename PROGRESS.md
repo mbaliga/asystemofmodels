@@ -1175,3 +1175,64 @@ Mutation checks (each applied to the real source once, the WHOLE `:ut-host:test`
 
 NOT VERIFIED (each is `CI-ONLY / NOT RUN` or `NEEDS-DEVICE-VALIDATION`): UT0.3 the arm64 run of the jlinked runtime (the image was inspected, never run); UT0.4 and UT0.5 `clickable build`/`clickable test` (no Docker daemon here); UT0.7 `run-approx.sh` (needs `apparmor_parser` against the pinned policy tree in a container; the profile was only parsed locally); `.github/workflows/ubuntu-touch.yml` has never run on GitHub; the display hold, the real Lomiri styling and freeze behaviour on a device; **UT0.6 (S-UT1, the JVM self-test under real confinement) is NEEDS-DEVICE-VALIDATION**: `ubuntu-touch/docs/DEVICE_CHECKLIST_UT.md` DV-UT01 stays open until the owner runs it.
 Result: PARTIAL by design. UT0.1 and UT0.2 and the LAB halves of UT0.3 to UT0.5: PASSED (LAB and CI-APPROX). UT0.6 open. UT0.7 written, not run.
+
+## DL3 Linux packaging (`linux-packaging-dl3`), 2026-09-30
+
+Scope: PLATFORM_PLAN section 3 step DL3 (`desktop/packaging/linux/**` except DL2's units, sysusers.d, polkit, `journal-hygiene.sh`, `systemd-vm.sh`; `desktop/docs/DEVICE_CHECKLIST_LINUX.md`; the `package-linux` and `install-matrix` jobs of `.github/workflows/desktop-linux.yml`; `:packaging:windows:winplatform:test` added to the `desktop-jvm` job). Base `dc8a45dc4ced1cb9c4b80eaf54c4ad17b7758b4e` (worktree reset to it first). **Evidence label: LAB (one container, x86_64, Ubuntu OpenJDK 21.0.10, NOT Temurin; JDK 17 not used for packaging). NOT DEVICE EVIDENCE. CI-ONLY items were NOT run.** Every artifact is UNSIGNED, not for release. Spec defects and the reading taken: `desktop/packaging/linux/ERRATA.md` (ERR-DL3-1 to 14).
+
+Gate 1, app image (`bash desktop/packaging/linux/build-app-image.sh --arch x86_64`, Gradle run inside it):
+```
+build-app-image: WARNING runtime vendor is 'Ubuntu', not Eclipse Temurin (LD-3). This image is LAB evidence only.
+jdeps reported:  java.base,java.desktop,java.instrument,java.logging,java.management,jdk.net,jdk.unsupported
+shipped modules: java.base,java.logging,java.management,jdk.crypto.ec,jdk.net,jdk.unsupported   (derived 5, added 1, excluded 2)
+jlink-modules: OK (jdeps output equals derived + excluded; jdk.net and jdk.crypto.ec present)
+build-app-image: jlink --add-modules java.base,java.logging,java.management,jdk.crypto.ec,jdk.net,jdk.unsupported
+check-native-deps: scanned 18 ELF files; system libraries needed: ld-linux-x86-64.so.2 libc.so.6 libgcc_s.so.1 libm.so.6 libstdc++.so.6 libz.so.1
+check-native-deps: OK (all within the declared Depends set)
+build-app-image: runtime Ubuntu 21.0.10, 6 modules in the image, 52M on disk
+build-app-image: launcher says: asom-node 0.0.0-scaffold (desktop scaffold; UNSIGNED, not for release)
+app image: build/asom-desktop-0.0.0-scaffold-linux-x86_64
+```
+Gate 2, nfpm (2.41.3 downloaded by `fetch-nfpm.sh`, SHA-256 checked against the pinned value before extraction; the pin is the release's own `checksums.txt`, a same-origin check, ERR-DL3-9):
+```
+created package: desktop/packaging/linux/build/dist/asom-desktop_0.0.0~scaffold_amd64.deb
+created package: desktop/packaging/linux/build/dist/asom-desktop-0.0.0~scaffold-1.x86_64.rpm
+```
+Gate 3, `dpkg-deb -c *.deb | grep -c usr/lib/systemd/system/asom.service` -> `1`. Listing (159 entries; runtime and jars elided): `/opt/asom/0.0.0-scaffold/{bin/asom,bin/asom-node,lib/,share/{doc,polkit,systemd,sysusers.d}}`, `/opt/asom/current -> 0.0.0-scaffold`, `/usr/bin/asom -> /opt/asom/current/bin/asom`, `/usr/lib/systemd/system/asom.service`, `/usr/lib/systemd/user/asom.service`, `/usr/lib/sysusers.d/asom.conf`, `/usr/share/polkit-1/rules.d/50-asom-inhibit.rules`; all root/root; no `.wants`, no preset, no `/etc`, no installers. `Depends: libc6, libstdc++6, libgcc-s1, zlib1g`, `Recommends: libvulkan1`, `Version: 0.0.0~scaffold`. The rpm was built by nfpm but NOT inspected with `rpm -qlp` (no rpm tool here; the CI job does).
+
+Packaged runtime, `asom-node --mode=selftest` from the tarball install AND from the extracted deb (via `/opt/asom/current`), as user `nobody` (the node refuses root: as root it exits 78, also checked):
+```
+asom-node selftest (host linux, mode foreground) asom-node 0.0.0-scaffold (desktop scaffold; UNSIGNED, not for release)
+  [ok] host-identity ... [ok] ledger-roundtrip: one row appended, forced and read back intact
+  [not-yet-implemented] nik-store (planned tier: file): DL2
+  [not-yet-implemented] control-socket (serving from asom-node: built and tested, not started until D23/D25 are ruled): D23/D25
+selftest: 11 ok, 2 not-yet-implemented, 0 failed
+runtime-probe: jdk.net SO_PEERCRED OK (accepted side: nobody, client side: nobody)
+runtime-probe: ES256 OK (secp256r1, DER and P1363 forms sign, verify and reject a tampered message)
+runtime-probe: TLS1.3 handshake OK (in-memory SSLEngine, TLSv1.3, TLS_AES_256_GCM_SHA384, EC certificate, host name checked; NOT the mesh pinned-identity handshake)
+```
+The plan's expected `self-test: native OK (none), ES256 OK, TLS1.3 pinned handshake OK` was NOT produced: the node's selftest has no such lines (ERR-DL3-2). The probe replaces it and says what it is not.
+
+`test/lab-packaging-check.sh` (root, `ASOM_REQUIRE_UNSHARE=1`): `checks passed: 104   failed: 0` in five families, none zero: install-tarball 27, install-refusals 27 (incl. 9 hostile archives: `..`, absolute path, symlink escape, absolute symlink, hard link, wrong architecture, two top dirs, not an asom image, bad name; and a corrupted archive, no SHA256SUMS, unlisted name), uninstall 12 (incl. `--purge` refused without a terminal, refused on a wrong phrase on a real pty, deletes only on the exact phrase), deb-layout 19, package-scripts 19 (postinstall/preremove/postremove against stub `systemctl` and `systemd-sysusers` in a private mount namespace: never enable, start, restart, preset or --now; 15 systemctl calls observed in the no-enable check).
+
+Mutation checks (defect applied to the tested file, test run, file restored; checksums verified identical after): M1 install.sh checksum not enforced KILLED (`a corrupted archive fails the SHA-256 check`); M2 symlink-escape check removed KILLED (hostile archive installed); M3 uninstall `--purge` phrase check removed KILLED (`wrong phrase`); M4 postinstall adds `systemctl enable` KILLED (lab: `some script called enable...`; and `UnitFilesTest > shipped disabled, the packaging tree enables and starts nothing()` FAILED under Gradle); M5 postinstall restarts on a fresh install KILLED; M6 `jdk.net` dropped from `jlink-modules.txt` KILLED (`DRIFT: jdk.net is not in the shipped module set`); M7 `libz.so.1` removed from the allowed native set KILLED (`UNDECLARED system library: libz.so.1`); M8 preremove acts on upgrade KILLED. Runtime-module mutations (real jlink images): without `jdk.net` the probe FAILs (`NoClassDefFoundError: jdk/net/ExtendedSocketOptions`, the ERR-DL2-9 hazard, real); without `jdk.crypto.ec` it FAILs (`EC KeyPairGenerator not available`, `Get Key failed: EC KeyFactory not available`). A defect in the probe itself was found and fixed while building it (it asked a listening channel for SO_PEERCRED; only a connected channel supports it).
+
+`./gradlew -p desktop desktopTest :packaging:windows:winplatform:test --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process` -> `BUILD SUCCESSFUL in 27s`; node-core tests=68 failures=0 errors=0 skipped=0; node tests=117 failures=0 errors=0 skipped=0 (includes `UnitFilesTest`, which scans every non-test `.sh` under `packaging/linux`, mine included); winplatform tests=141 failures=0 errors=0 skipped=27 (the Windows-only ITs). Verified before editing the workflow: `./gradlew -p desktop desktopTest --dry-run` lists only `:node:test` and `:node-core:test` (0 winplatform tasks), so the claim that `desktopTest` does not aggregate `:packaging:windows:winplatform` is TRUE; `:packaging:windows:winplatform:test` exists and runs.
+```
+$ python3 desktop/tools/isolation.py --selftest     -> selftest OK: the pinned-base check fails on every tampering case and passes on the honest ones
+$ desktop/tools/isolation.sh
+isolation check 1: 0 (expected 0)   check 2: 0 (expected 0), positive control 19 (> 0)   check 3: 0, positive control 8 (expected 8)
+isolation check 4: 136 protected files compared byte-for-byte against base 770a44da21e7 ... OK (shipped tree byte-identical to the pinned base)
+law: 145 Kotlin/Java sources scanned ... law: OK        ISOLATION: all checks passed
+$ ANDROID_HOME= ./gradlew jvmTest --rerun-tasks --no-daemon ...   BUILD SUCCESSFUL in 1m 12s
+root tests: 139   failures+errors: 0   (baseline: 139)
+```
+Static checks: `shellcheck 0.10.0 -x -S warning` over every script this track wrote: no findings (three benign findings in the lab script carry a `disable=` line). `actionlint 1.7.7 .github/workflows/desktop-linux.yml` -> no findings, exit 0 (shellcheck was not on PATH there, so the `run:` blocks were not shell-linted by actionlint; the scripts were linted directly). Job list parsed with PyYAML: `desktop-jvm, desktop-jvm-arm, desktop-isolation-with-sdk, root-unchanged, systemd-vm, package-linux, install-matrix`.
+
+NOT RUN / NOT VERIFIED (each label is literal):
+- `install-matrix` and `distro-matrix.sh`: `CI-ONLY / NOT RUN` (no Docker daemon here). Syntax and shellcheck only. Never executed against any distro image: the `apt-get`, `dnf` and `pacman` prerequisite steps, the `.rpm` install and every claim about ubuntu:22.04/24.04/26.04, fedora and archlinux are unverified. `ubuntu:26.04` was only found to exist on Docker Hub.
+- `package-linux` job: `CI-ONLY / NOT RUN` on a hosted runner. In particular `systemctl is-enabled asom` -> `disabled` after `apt install` (gate 5) is NOT verified: no systemd here.
+- Temurin 21: NOT used (Ubuntu OpenJDK 21.0.10 here); `Depends` was measured on that runtime and is re-checked by `check-native-deps.sh` in CI.
+- aarch64 image: not built (no aarch64 runner here). `rpm -qlp`, `rpm -i`: not run. Signing, attestation, reproducibility: none.
+- Real systemd, logind, polkitd, a Steam Deck, a Dell: `NEEDS-DEVICE-VALIDATION` (`desktop/docs/DEVICE_CHECKLIST_LINUX.md`: DV-D1 to DV-D11, DV-L1 to DV-L5, DV-B1 to B4, and DV-P1 to P6 added by this track).
+Result: DL3 gates 1, 2, 3, 6 PASSED (LAB); gate 4 (`distro-matrix.sh`) and gate 5 (`systemctl is-enabled`) written and NOT RUN (CI-ONLY).

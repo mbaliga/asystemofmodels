@@ -55,8 +55,11 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
+      # desktopTest aggregates only :node-core and :node (desktop/build.gradle.kts `desktopModules`; desktop/packaging/windows/
+      # ERRATA.md WIN-GATE-1; verified with `--dry-run` on 2026-09-30: zero winplatform tasks), so the Windows platform
+      # module's platform-independent tests are named explicitly.
       - name: Desktop tests (prints the per-law report lines, LAB evidence)
-        run: ./gradlew -p desktop desktopTest --stacktrace
+        run: ./gradlew -p desktop desktopTest :packaging:windows:winplatform:test --stacktrace
 
       # First hosted Windows run (2026-09-30): the repository could not be checked out on Windows because a tracked path
       # contained ':'. Every Windows job died before running anything. Fail here, on Linux, in seconds instead.
@@ -206,3 +209,124 @@ jobs:
 
       - name: systemd-vm.sh (real systemd, real logind, real polkit; changes this disposable VM)
         run: sudo env "PATH=$PATH" bash desktop/packaging/linux/test/systemd-vm.sh --app "$PWD/desktop/node/build/install/asom-node"
+
+  package-linux:
+    name: Linux packages (app image, deb, rpm, tarball; DL3; UNSIGNED)
+    # PLATFORM_PLAN 3 CI row `package-linux`. WRITTEN and its scripts run in a container (LAB); this JOB has NEVER RUN on a
+    # hosted runner. What it will show is "an app image, a deb, an rpm and a tarball build, the layout is right, the deb
+    # installs on a real systemd VM and stays disabled and inactive, the packaged runtime passes its selftest and probe".
+    # It proves nothing about signatures (none exist: every artifact is UNSIGNED, not for release; the owner signs
+    # SHA256SUMS offline) and nothing about a device. JDK 21 is required by jlink and jpackage (LD-3).
+    runs-on: ubuntu-24.04
+    env:
+      ANDROID_HOME: ""
+      ANDROID_SDK_ROOT: ""
+      ASOM_REQUIRE_UNSHARE: "1"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Tools (rpm for `rpm -qlp`, shellcheck for the packaging scripts)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm shellcheck
+
+      - name: shellcheck the packaging scripts
+        working-directory: desktop/packaging/linux
+        run: shellcheck -x -S warning build-app-image.sh build-packages.sh check-jlink-modules.sh check-native-deps.sh fetch-nfpm.sh install.sh uninstall.sh modules.sh scripts/*.sh test/distro-matrix.sh test/lab-packaging-check.sh test/build-probe.sh
+
+      - name: App image (jlink Temurin 21 runtime plus jpackage; prints the app image path)
+        run: bash desktop/packaging/linux/build-app-image.sh --arch x86_64
+
+      - name: jdeps drift check on the shipped module list, and the runtime's native dependencies
+        run: |
+          desktop/packaging/linux/check-jlink-modules.sh
+          desktop/packaging/linux/check-native-deps.sh desktop/packaging/linux/build/asom-desktop-*-linux-x86_64
+          cat desktop/packaging/linux/build/asom-desktop-*-linux-x86_64/share/doc/BUILD-INFO.txt
+
+      - name: Runtime probe (jdk.net SO_PEERCRED, ES256, TLS 1.3) built here, run on the SHIPPED runtime
+        run: |
+          bash desktop/packaging/linux/test/build-probe.sh desktop/packaging/linux/build/probe
+          desktop/packaging/linux/build/asom-desktop-*-linux-x86_64/lib/runtime/bin/java -cp desktop/packaging/linux/build/probe/probe.jar RuntimeProbe desktop/packaging/linux/build/probe/probe-ec.p12
+
+      - name: nfpm (pinned, checksum-verified), deb, rpm, tarball, SHA256SUMS
+        run: |
+          bash desktop/packaging/linux/build-packages.sh --image desktop/packaging/linux/build/asom-desktop-*-linux-x86_64 --out desktop/packaging/linux/build/dist
+          cd desktop/packaging/linux/build/dist
+          echo "created package listing:"; ls -l
+          dpkg-deb -I ./*.deb
+          echo "usr/lib/systemd/system/asom.service entries in the deb: $(dpkg-deb -c ./*.deb | grep -c usr/lib/systemd/system/asom.service)"
+          test "$(dpkg-deb -c ./*.deb | grep -c usr/lib/systemd/system/asom.service)" = "1"
+          rpm -qlp ./*.rpm | grep -E '^/(usr/lib/systemd|usr/lib/sysusers.d|usr/share/polkit-1|usr/bin)'
+          test "$(rpm -qlp ./*.rpm | grep -c '^/usr/lib/systemd/system/asom.service$')" = "1"
+          rpm -qp --requires ./*.rpm
+
+      - name: Packaging lab checks (installers, hostile archives, purge on a pty, deb layout, maintainer scripts; LAB, as root for setpriv and unshare)
+        run: |
+          sudo env "PATH=$PATH" ASOM_REQUIRE_UNSHARE=1 TMPDIR=/tmp bash desktop/packaging/linux/test/lab-packaging-check.sh \
+            --dist desktop/packaging/linux/build/dist --probe desktop/packaging/linux/build/probe
+
+      - name: The deb on a real systemd VM (installs, stays disabled and inactive, selftest as a normal user, removal keeps state; CI-ONLY)
+        run: |
+          sudo apt-get install -y ./desktop/packaging/linux/build/dist/*.deb
+          echo "is-enabled: $(systemctl is-enabled asom || true)"
+          echo "is-active:  $(systemctl is-active asom || true)"
+          test "$(systemctl is-enabled asom || true)" = "disabled"
+          test "$(systemctl is-active asom || true)" = "inactive"
+          getent passwd asom
+          /opt/asom/current/bin/asom-node --mode=selftest
+          # a reinstall runs postinstall as an upgrade (try-restart): it must not start a stopped node
+          sudo apt-get install -y --reinstall ./desktop/packaging/linux/build/dist/*.deb
+          test "$(systemctl is-active asom || true)" = "inactive"
+          test "$(systemctl is-enabled asom || true)" = "disabled"
+          sudo mkdir -p /var/lib/asom && echo marker | sudo tee /var/lib/asom/ledger-marker >/dev/null
+          sudo apt-get remove -y asom-desktop
+          test ! -e /opt/asom
+          test -f /var/lib/asom/ledger-marker
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: asom-desktop-linux-UNSIGNED-not-for-release
+          path: desktop/packaging/linux/build/dist/*
+          retention-days: 3
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: asom-runtime-probe-UNSIGNED-not-for-release
+          path: desktop/packaging/linux/build/probe/*
+          retention-days: 3
+
+  install-matrix:
+    name: Install matrix (${{ matrix.image }}; containers, no systemd; CI-ONLY)
+    # PLATFORM_PLAN 3 CI row `install-matrix`. WRITTEN in a container whose Docker daemon is absent and NEVER RUN. It proves
+    # install, the packaged runtime's selftest and probe, and uninstall in each userland. It does NOT prove anything about
+    # systemd (containers have none; the package-linux job checks `systemctl is-enabled` on the runner VM), and archlinux is a
+    # userland proxy for SteamOS only (tarball route only; it is not SteamOS). ubuntu:26.04 was found on Docker Hub on
+    # 2026-09-30; if a pull fails that leg fails loudly.
+    needs: package-linux
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["ubuntu:22.04", "ubuntu:24.04", "ubuntu:26.04", "fedora:latest", "archlinux:latest"]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: asom-desktop-linux-UNSIGNED-not-for-release
+          path: dist
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: asom-runtime-probe-UNSIGNED-not-for-release
+          path: probe
+
+      - name: distro-matrix.sh
+        run: bash desktop/packaging/linux/test/distro-matrix.sh --dist dist --probe probe --images "${{ matrix.image }}"

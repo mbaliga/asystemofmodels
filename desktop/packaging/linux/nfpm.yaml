@@ -1,0 +1,78 @@
+# nfpm.yaml: the deb and the rpm from the app image (linux.md 8.1, LD-4). Do not run nfpm on this by hand: build-packages.sh
+# stages the tree and substitutes every dollar-brace variable below (nfpm 2.41 expands variables in some fields but NOT in contents src and
+# dst), then runs nfpm on the resolved copy. UNSIGNED, not for release.
+#
+#   ASOM_VERSION    the version as build-app-image.sh names it, e.g. 0.0.0-scaffold (semver: nfpm turns the pre-release
+#                   into 0.0.0~scaffold for a deb and 0.0.0 / release 0.scaffold for an rpm, so it sorts BEFORE 0.0.0)
+#   ASOM_ARCH       amd64 or arm64 (nfpm's spelling; it writes x86_64 or aarch64 into an rpm)
+#   ASOM_STAGE      the staged app image (build-packages.sh copies the image without install.sh and uninstall.sh: those
+#                   are the per-user installers and have no place under /opt)
+#   ASOM_LINUX_DIR  desktop/packaging/linux (absolute)
+#
+# Nothing here enables or starts a unit: the files are shipped, the scripts never enable or start (scripts/postinstall.sh).
+name: asom-desktop
+arch: ${ASOM_ARCH}
+platform: linux
+version: ${ASOM_VERSION}
+version_schema: semver
+section: utils
+priority: optional
+maintainer: "asom project <noreply@asom.invalid>"
+description: |
+  asom node: sovereign model routing for your own devices (UNSIGNED scaffold, not for release).
+  The service units ship disabled and lending is OFF; nothing runs until the owner turns it on.
+license: Apache-2.0
+
+# Only the system libraries the jlink runtime really asks for (check-native-deps.sh enforces this list).
+depends:
+  - libc6
+  - libstdc++6
+  - libgcc-s1
+  - zlib1g
+recommends:
+  - libvulkan1
+
+contents:
+  # the app image: root-owned and read-only (SYSTEM mode needs this, linux.md 7.3 C13)
+  - src: ${ASOM_STAGE}/
+    dst: /opt/asom/${ASOM_VERSION}/
+    type: tree
+  - src: ${ASOM_VERSION}
+    dst: /opt/asom/current
+    type: symlink
+  - src: /opt/asom/current/bin/asom
+    dst: /usr/bin/asom
+    type: symlink
+  # the units, shipped disabled: no .wants symlink, no preset
+  - src: ${ASOM_LINUX_DIR}/systemd/asom.service
+    dst: /usr/lib/systemd/system/asom.service
+    file_info:
+      mode: 0644
+  - src: ${ASOM_LINUX_DIR}/systemd/asom-user.service
+    dst: /usr/lib/systemd/user/asom.service
+    file_info:
+      mode: 0644
+  - src: ${ASOM_LINUX_DIR}/sysusers.d/asom.conf
+    dst: /usr/lib/sysusers.d/asom.conf
+    file_info:
+      mode: 0644
+  # LD-6 / D28: lets ONLY user asom hold a logind sleep block lock. Remove the file to withdraw it.
+  - src: ${ASOM_LINUX_DIR}/polkit/50-asom-inhibit.rules
+    dst: /usr/share/polkit-1/rules.d/50-asom-inhibit.rules
+    file_info:
+      mode: 0644
+
+scripts:
+  postinstall: ${ASOM_LINUX_DIR}/scripts/postinstall.sh
+  preremove: ${ASOM_LINUX_DIR}/scripts/preremove.sh
+  postremove: ${ASOM_LINUX_DIR}/scripts/postremove.sh
+
+overrides:
+  rpm:
+    depends:
+      - glibc
+      - libstdc++
+      - libgcc
+      - zlib
+    recommends:
+      - vulkan-loader
