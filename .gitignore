@@ -21,3 +21,7 @@ app/src/main/assets/catalogue.v1.json
 
 # OS
 .DS_Store
+
+# Python bytecode from the lab/tool scripts
+__pycache__/
+*.pyc
