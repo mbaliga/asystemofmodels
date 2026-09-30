@@ -40,8 +40,8 @@ object MacPaths {
     const val GROUP_NAME = "xyz.mdhv.asom"
     const val DEV_DIR = "xyz.mdhv.asom-dev"
 
-    /** `sockaddr_un.sun_path` is 104 bytes on macOS including the NUL, so a path of at most 103 bytes fits. */
-    const val MAX_SOCKET_PATH_BYTES = 103
+    /** `sun_path` is 104 bytes including the NUL, but the JDK's Unix-domain bind was measured on a hosted macOS 26 runner to accept at most 102 bytes (ControlSocketIT), so the node allows 102. */
+    const val MAX_SOCKET_PATH_BYTES = 102
 
     private fun plainAbsolute(what: String, p: String?): String {
         val raw = p?.trim()?.trimEnd('/')

@@ -17,7 +17,8 @@ import org.junit.jupiter.api.TestInstance
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ScriptsTest {
-    private val laws = LawCounter(listOf("demo-yes", "demo-no", "demo-cannot-run", "demo-not-macos", "demo-timeout", "demo-touches-only-its-keychain", "stubs-fail", "it-checker", "lanes-selftest"))
+    private val laws = LawCounter(listOf("demo-yes", "demo-no", "demo-cannot-run", "demo-timeout", "demo-touches-only-its-keychain", "stubs-fail", "it-checker", "lanes-selftest") +
+        if (System.getProperty("os.name").contains("Mac", ignoreCase = true)) emptyList() else listOf("demo-not-macos"))
 
     @AfterAll
     fun report() = laws.assertAllExercised("scripts")

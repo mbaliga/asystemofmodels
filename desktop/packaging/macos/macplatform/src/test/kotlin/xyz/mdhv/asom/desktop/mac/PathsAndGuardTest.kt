@@ -96,12 +96,12 @@ class PathsAndGuardTest {
     }
 
     @Test
-    fun `the control socket path must fit sun_path (103 bytes on macOS)`() {
-        // a temp dir long enough that "<tmp>/xyz.mdhv.asom/ctl.sock" is exactly 103 bytes, then 104
+    fun `the control socket path must fit sun_path (102 bytes on macOS)`() {
+        // a temp dir long enough that "<tmp>/xyz.mdhv.asom/ctl.sock" is exactly 102 bytes, then 103
         val tail = "/xyz.mdhv.asom/ctl.sock"
-        val exact = "/" + "t".repeat(103 - tail.length - 1)
+        val exact = "/" + "t".repeat(102 - tail.length - 1)
         val ok = MacPaths.layout(MacMode.DEV, env(temp = exact), null)
-        assertEquals(103, ok.controlSocket.toByteArray().size)
+        assertEquals(102, ok.controlSocket.toByteArray().size)
         assertFailsWith<HostRefusedException> { MacPaths.layout(MacMode.DEV, env(temp = exact + "t"), null) }
         // the limit is in BYTES, not characters
         assertFailsWith<HostRefusedException> { MacPaths.layout(MacMode.DEV, env(temp = "/" + "é".repeat(45)), null) }
@@ -122,7 +122,7 @@ class PathsAndGuardTest {
 
     @Test
     fun `the platform refuses root by name and by uid, and computes paths without creating anything`() {
-        val dir = Files.createTempDirectory("asom-home-")
+        val dir = Files.createTempDirectory(shortTempBase(), "ah-")
         val e = MacEnv("alice", dir.toString(), emptyMap(), { dir.resolve("T").toString() }, { 501 })
         val p = MacPlatform(helperTransport = null, env = e, options = MacOptions(null))
         val paths = p.paths(HostMode.USER)

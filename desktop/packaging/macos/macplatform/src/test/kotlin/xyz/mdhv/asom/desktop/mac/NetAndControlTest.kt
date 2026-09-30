@@ -196,9 +196,9 @@ class NetAndControlTest {
     }
 
     @Test
-    fun `the socket path limit is 103 bytes, and the socket directory must be a private real directory`() {
-        assertNull(MacControlSocket.pathProblem("/" + "a".repeat(102)))
-        assertNotNull(MacControlSocket.pathProblem("/" + "a".repeat(103)))
+    fun `the socket path limit is 102 bytes, and the socket directory must be a private real directory`() {
+        assertNull(MacControlSocket.pathProblem("/" + "a".repeat(101)))
+        assertNotNull(MacControlSocket.pathProblem("/" + "a".repeat(102)))
         assertNotNull(MacControlSocket.pathProblem("/" + "é".repeat(52)))
         val me: Int? = runCatching { Files.getAttribute(Path.of(System.getProperty("user.home")), "unix:uid") as Int }.getOrNull()
         val dir = Files.createTempDirectory("asom-ctl-")

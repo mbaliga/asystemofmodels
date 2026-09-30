@@ -70,7 +70,7 @@ class MacControlSocket(override val path: Path) : ControlSocketServer, Partially
         /** The ledger caller identity for an owner CLI connection: the same form as Linux, from the peer's user name. */
         fun callerIdentity(peer: PeerPrincipal): CallerIdentity = CallerIdentity("local-uid:${peer.user}")
 
-        /** Null when [path] fits `sun_path` (at most 103 bytes on macOS); otherwise the reason. Counted over UTF-8. */
+        /** Null when [path] fits `sun_path` (at most 102 bytes, measured on macOS); otherwise the reason. Counted over UTF-8. */
         fun pathProblem(path: String): String? {
             val bytes = path.toByteArray(Charsets.UTF_8).size
             return if (bytes > MacPaths.MAX_SOCKET_PATH_BYTES) "socket path is $bytes bytes, over the limit of ${MacPaths.MAX_SOCKET_PATH_BYTES}" else null

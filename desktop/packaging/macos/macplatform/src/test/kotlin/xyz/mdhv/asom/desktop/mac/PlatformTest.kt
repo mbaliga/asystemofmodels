@@ -43,7 +43,7 @@ class PlatformTest {
     }
 
     private fun tempEnv(): MacEnv {
-        val home = Files.createTempDirectory("asom-home-")
+        val home = Files.createTempDirectory(shortTempBase(), "ah-")
         val tmp = Files.createDirectory(home.resolve("T"))
         return MacEnv("me", home.toString(), emptyMap(), { tmp.toString() }, { 501 })
     }

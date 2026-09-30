@@ -59,7 +59,7 @@ class ControlSocketIT {
     }
 
     @Test
-    fun `the longest socket path this JDK can bind on this Mac is at least the 103 bytes the node allows`() {
+    fun `the longest socket path this JDK can bind on this Mac is at least the bytes the node allows`() {
         val tmp = (System.getenv("TMPDIR") ?: "/tmp").trimEnd('/')
         val dir = Files.createTempDirectory(Path.of(tmp), "asom-len-")
         var longest = 0

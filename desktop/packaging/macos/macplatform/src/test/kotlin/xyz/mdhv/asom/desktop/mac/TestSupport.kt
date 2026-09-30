@@ -47,6 +47,9 @@ class FakeClock(var now: Long = 1_000_000L) : MonotonicClock {
     override fun nowMs(): Long = now
 }
 
+/** A short parent for temp homes: macOS TMPDIR (/var/folders/.../T) is long enough to push the control socket path over its limit. */
+fun shortTempBase(): java.nio.file.Path = java.nio.file.Path.of("/tmp").takeIf { java.nio.file.Files.isDirectory(it) } ?: java.nio.file.Path.of(System.getProperty("java.io.tmpdir"))
+
 fun repoRoot(): File = File(System.getProperty("asom.repoRoot") ?: error("asom.repoRoot not set"))
 
 fun moduleDir(): File = File(System.getProperty("asom.moduleDir") ?: error("asom.moduleDir not set"))
