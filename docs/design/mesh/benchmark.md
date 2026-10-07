@@ -1,5 +1,7 @@
 # Benchmarking utility: methodology, plain-text reporting and packaging
 
+**Revision 4 (2026-10-07):** §23 amends this section; where they differ, §23 wins (`REVISION_4.md`).
+
 **Section of:** asom mesh design session (2026-09-29) · **Grade:** DIRECTION (input to roadmap v2 P6/P7 and to the v4 design session; nothing here authorises execution) · **Siblings:** `platforms.md` (per-OS roles, code strategy, conformance suite, constraints C1–C11), `trust.md` (node identity, pairing, peer data handling), `manifest.md` (signed envelope, attestation, subscribers, public derivative), `router.md` (placement and live state), `contract.md` (delta registry, invariants, phasing).
 
 **This section owns:**
@@ -577,7 +579,7 @@ A hard-ceiling abort keeps the windows, names the ceiling in `endReason`, adds t
 | `PLATEAU` | An onset exists, and the 12 most recent smoothed windows that start ≥ onset + 60 s all lie within ±50‰ of their lower median |
 | `TIME_CAP` | `capMs` reached |
 | `THERMAL_SOFT` | A soft ceiling (§11.3) has held for 120 s since it was first crossed. The windows from those 120 s are kept, so the throttled plateau is observed rather than cut off |
-| `THERMAL_HARD`, `BATTERY_TEMP`, `USER_STOP`, `BACKGROUNDED`, `CHARGER_REMOVED`, `MEMORY_PRESSURE`, `WALL_CAP` | Abort (§11.3) |
+| `THERMAL_HARD`, `BATTERY_TEMP`, `BATTERY_LOW` (r4), `POWER_SAVER` (r4), `DEVICE_BUSY` (r4), `USER_STOP`, `BACKGROUNDED`, `CHARGER_REMOVED`, `MEMORY_PRESSURE`, `WALL_CAP` | Abort (§11.3; r4: R4-B-01) |
 | `YIELDED` | Daemon only: a real request arrived. The sustained phase never resumes within the same run |
 
 ### 6.5 Cool-down
@@ -640,7 +642,7 @@ The report says, for example: "Writing 1,000 tokens with Qwen3-4B used about X J
 | Memory pressure and swap | Swap growth > 256 MiB during a tier sets the flag `SWAPPED` and caps confidence at low | `swapDeltaBytes` |
 | Threads and affinity | The engine's default policy is pinned per shell release | `engine.threads` |
 | Timer resolution | Monotonic µs. Every timed operation lasts ≥ 100 ms | — |
-| Virtualisation (CI) | Detected [BA13]; confidence capped at medium; a report banner says "VIRTUAL MACHINE" | `device.virtualized` |
+| Virtualisation (CI) | Detected [BA13]; confidence capped at medium; a report banner says "VIRTUAL MACHINE" (r4: exact wording is owner item D36) | `device.virtualized` |
 | Harness overhead | Host timing definition (§2.3); parity check (§2.6) | `coreImpl`, `timingSource` |
 | Tokenizer | Tests use token ids; one tokenizer across the whole set; TTFT includes tokenizing a fixed text | — |
 | Order effects | Smallest tier first, plus cool-down gates | per-tier `startThermal` |
@@ -877,7 +879,7 @@ Each failure is shown in plain words, with a reason code.
 
 ### 11.3 Runtime ceilings
 
-- **Soft ceiling:** the sustained phase ends 120 s after the ceiling is first crossed, so the throttled plateau is still observed. A soft ceiling during burst tests only records a flag.
+- **Soft ceiling:** the sustained phase ends 120 s after the ceiling is first crossed, so the throttled plateau is still observed. A soft ceiling during burst tests only records a flag. (r4, R4-B-02: in `benchProtocol` 1 it records nothing; the flag is deferred to a schema B-patch.)
 - **Hard ceiling:** immediate abort. The engine is cancelled and returns within 1 s, using the mechanism behind v2 P3's "disconnect frees the engine within 1 s" gate.
 
 | Platform | Soft | Hard |
@@ -1351,7 +1353,7 @@ interface ManifestSigner { suspend fun sign(input: SignerInput, audience: Audien
 | `sustained {durationMs, intervalMs, steadyMilliTokPerSec, throttleOnsetMs, curve}` | the `sustain` block of the sustain tier; curve rows `[tStartMs, windowRate, socMilliC\|null, powerMilliW\|null]` |
 | `memory {availableBeforeLoadBytes, peakProcessBytes, kvCacheBytes}` | tier `availBeforeLoadBytes`, `peakFootprintBytes`, `kvBytesPerToken × nCtx` |
 | `power {method, avgMilliW}` | `energy` for that tier; otherwise `{unavailable, null}` |
-| `flags` (open enum) | `charging`, `thermal-throttled`, `background-load` (contention > 50‰), `low-runs` (kept < 4), `unstable`, `warm-start`, `numerics-warn`/`numerics-fail`/`numerics-not-run`, `confidence-<class>` |
+| `flags` (r4, R4-B-05: closed and exact for producers, open for readers; `thermal-drift`, `restarted`, `swapped` pending D30/D31) | `charging`, `thermal-throttled`, `background-load` (contention > 50‰), `low-runs` (kept < 4), `unstable`, `warm-start`, `numerics-warn`/`numerics-fail`/`numerics-not-run`, `confidence-<class>` |
 
 **Projected T3 entry from the example.** This validates against the draft `asom.manifest.1.schema.json` `$defs/result`; the curve is truncated here.
 
@@ -1671,3 +1673,46 @@ These are design coordination, not owner decisions. They were found by validatin
 | BA20 | Downloading Apache-2.0 GGUFs from Hugging Face triggers no F-Droid anti-feature | Ask F-Droid at submission |
 | BA21 | Android and iOS apps have no public API for SoC temperature | Recheck at implementation |
 | BA22 | The first iOS release qualifies for "Data Not Collected" | App Store Connect privacy questionnaire |
+
+---
+
+## 23. Revision 4 amendments (normative; 2026-10-07)
+
+**Status.** Design revision 4 (`REVISION_4.md`) folds into this section the readings that the lab's `:bench-core` track and the Swift lane recorded (`lab/ERRATA.md`, `apple/ERRATA.md`). **Where this section and §0–§22 differ, this section wins**; `ASOM_MESH_DESIGN.md` §6 still wins over both. Three questions remain owner rulings and are **not** decided here: the projected row flags `thermal-drift` (**D30**), `restarted` and `swapped` (**D31**), and the order and minimum reps of the drift rule (**D32**) (`OWNER_DECISIONS.md`). "Builder action" marks a change the code or the vectors do not yet carry.
+
+**R4-B-01 (§6.4 end reasons; ERR-FX2-BE-1, apple E-32, ERR-FX2-ASC05).** Old: the abort list `THERMAL_HARD, BATTERY_TEMP, USER_STOP, BACKGROUNDED, CHARGER_REMOVED, MEMORY_PRESSURE, WALL_CAP`, with no reason for a low battery level or a power-saver switch, so the implementations named those `BATTERY_TEMP` (Android level < 200‰) and `THERMAL_HARD` (iOS Low Power Mode; iOS level < 20% in one lane, `BATTERY_TEMP` in the other). New: the closed abort list gains **`BATTERY_LOW`** (a battery level under the platform threshold of §11.3), **`POWER_SAVER`** (Low Power Mode or a battery-saver switch) and **`DEVICE_BUSY`** (already used by §11.4 for the third yield and by M04-447 for the Deck's other-process GPU rule, but missing from this list). `BATTERY_LOW` and `POWER_SAVER` are hard ceilings: they set `HARD_CEILING` and cap confidence at medium exactly as `THERMAL_HARD` and `BATTERY_TEMP` do today for the same conditions. `DEVICE_BUSY` keeps its current treatment (it does not set `HARD_CEILING`). A reader never infers heat from `THERMAL_HARD` or `BATTERY_TEMP` produced before r4. **Builder action (both lanes in one change):** `BenchEnums.abortReasons`/`endReasons`, the `asom.bench/1` enum, `Derive` (`HARD_CEILING`), `TextRender`, the Swift `Ceilings`, `Sustain`, `BenchDocument`; regenerate M04-443 and M04-444 (they pin the old names); add an `ipados` vector and an iOS low-battery vector.
+
+**R4-B-02 (§11.3 ceilings; apple E-32, ERR-FX2-ASC05, ERR-FX2-BE-2).**
+- iPadOS uses the iOS row.
+- A platform with **no row** (today `windows` and `ubuntu-touch`) is refused before the run starts, and an executor treats a refusal as a hard abort. Old: silent. The JVM lane reportedly maps both to the Linux row (not observed in a vector); **builder action:** align the JVM lane, or write the two rows.
+- When several ceilings hold at once: hard before soft; among hard ones thermal, then battery, then the rest.
+- "Thermal status SEVERE" is code 3 of §6.1.
+- Old: "A soft ceiling during burst tests only records a flag." New: "In `benchProtocol` 1 a soft ceiling during burst tests records nothing; a per-tier `softCeilingHit` member and its cap are DEFERRED to a schema B-patch."
+
+**R4-B-03 (§11.4 governor diagram; apple LF-5, E-37, ERR-BENCH-7).** The edge list is the 21 edges M04-430 pins. Added to the diagram: `PREFLIGHT → ABORTING`, `PREPARING → ABORTING` (instances of "any → ABORTING"), `COOLING → FINALIZING` (every remaining tier skipped) and `YIELDED → FINALIZING` (third yield, `DEVICE_BUSY`). `ABORTED(reason)` is not a state: `ABORTING → FINALIZING → DONE` with outcome `aborted <reason>` and `run.abort` recorded (design B9). The executor logs `UNLOAD` on every path that releases a model.
+
+**R4-B-04 (§9 statistics; ERR-BENCH-3, ERR-BENCH-4, ERR-BENCH-6, ERR-BENCH-9, ERR-FX2-BD-1, ERR-FX2-BD-2, ERR-FX2-BD-5, apple E-23).**
+- Medians (B9): lower median `x[(n−1)/2]` for rates, upper median `x[n/2]` for durations; nearest-rank percentiles over kept reps; MAD with the lower median; outlier threshold 4449/1000 MADs, or 250‰ of the median when MAD is 0; at most `floor(n/5)` reps excluded, else `UNSTABLE` keeps all.
+- Onset (§6.3) is the integer test `s < floor(900 × peak / 1000)` (M04-037..039).
+- Contention for the caps of §9.4 is `max(contentionBefore, contentionAfter)`.
+- A tier whose numerics FAIL is skipped by every derived answer, and a sustain block on such a tier is ignored by the throttle (Q4), every plateau estimate, the role (Q5) and the overall confidence; the derived sustain and the tier's own row still carry it (M04-043, M04-055, M04-056, M05-211). The stricter alternative, refusing a document whose sustain block is not on the §4.4 sustain tier, is owner item **D33**.
+- The sustained phase "starts warm" when the run started not cool **or** the sustain tier started not cool (M04-057, M04-058). A schema member for the pre-sustain cool-down class is DEFERRED.
+- Caps modelled from the document: start not cool or a restart after a yield (medium), virtualised (medium), stream timing (medium), swap growth over 256 MiB (low), thermal drift (low), a hard-ceiling abort of the sustained phase (medium plus `HARD_CEILING`). iPadOS background continuation is not modelled (no field).
+- Numerics references: the table is empty until the owner computes the CPU reference NLLs (D18); a document's own reference is self-attested.
+- Drift (B7): **the rule's order and minimum reps are D32.** Until ruled, both lanes run the outlier rule first and judge drift on the kept reps; the lanes **disagree** on the minimum (lab: 4 kept reps for "slowing at every step", 3 for "first minus last"; Swift: 3 and 2). No vector decides it.
+
+**R4-B-05 (§13.3 projection; R3-CLOSURE-1, ERR-FX2-BD-3, ERR-FX2-BD-4, ERR-FX2-BE-5, apple E-24, E-25, LF-1).**
+- The `flags` list is **closed and exact for producers** (step 15a re-derives it byte for byte) and open for readers. Old: "`flags` (open enum)". The current list is the §13.3 list; whether `thermal-drift`, `restarted` and `swapped` join it is D30/D31. Today the JVM lane emits all three and the Swift lane none: 42 verdict and 5 value disagreements (`apple/ci/known-disagreements.txt`) all have this one cause.
+- A tier is projectable only when it has 1–4 prefill tests and 1–4 decode tests and **every** test of the tier has a value (at least 2 kept reps); otherwise it has no row (M04-059). A prefill test at a depth other than 0 is `SCHEMA_INVALID` (M04-060).
+- `conditions.socStartMilliC` is `null` until a Linux zone probe exists (null is always valid).
+- FILE audience: `LAB_SPEC.md` R4-L-13.
+
+**R4-B-06 (§5.1, §5.2 plans; ERR-BENCH-5, apple E-30, LF-4).** `standard` is the §5.2 JSON. `quick` and `ci` are the §5.1 table rows with the `standard` value wherever the table is silent (PROVISIONAL); their JCS bytes are the ones M04-401 and M04-403 pin (plan hashes `39Jq5InzqMUCbHKyI4XqqvL2ddj0UCIXeFhRHaw5f-E` and `ervAvYozEUXI8dn9t0fu9sJXOC16z4LpTyt6E7ZnZXo`; standard `U5x4LJS7iliO0QOew1tjsNkJ14-JeCLGuJt6fIUAD9s`). **Builder action:** transcribe the two JSON documents into §5.2. `sustained`, `battery` and `extended` are not built.
+
+**R4-B-07 (§11.1 consent; ERR-FX2-ASC02, ERR-FX2-ASC03, ERR-FX2-ASC07, apple E-31).** The consent token is one-shot whoever holds a copy; the shown-sheet hash compare checks lengths first. **The token carries the ticks** (`optIns`, only offered names; `rerunHeatToday`), because the hash is of the unticked sheet; the executor reads them only from the token; a sheet that needs the rerun tick and does not get it mints a token whose heat test is not permitted. Sheet wording exists in the spec for the standard sheet only; every other sheet's wording is lab-defined, so M04-425 is a lab-implementation vector (`LAB_SPEC.md` R4-L-15). **Builder action:** the JVM token (planId only today) and the conformance adapter pass the ticks.
+
+**R4-B-08 (§12 text; ERR-BENCH-8, ERR-BENCH-10, apple E-17, ERR-FX2-SW2).** Wording that the vectors pin and no section stated becomes normative: B17 "Not applicable: this version does not share work between devices."; B18 "Basis: estimated from the measured speeds and heat test." (and "(estimated from the measured speeds)." when the heat test showed no onset, M05-208); drift "First-minute speed" and "speed drifted during the test."; heat-test notes "Heat test: the slowed-down speed had not settled when the test ended.", "Heat test: stopped early at a safety limit.", "Heat test: <confidence> confidence." (for low and insufficient); abort note "The run stopped early (<reason>); only the finished tests are shown."; a test outside the wording table reads "running <name>"; lines wrap at 72 columns and a word longer than a line is split. Prompt and numerics texts in the lab are opaque stand-ins; the real texts ship with the core. The virtual-machine banner wording is owner item **D36**.
+
+**R4-B-09 (§6.2 windows; ERR-FX2-BE-6).** A sustain window with zero tokens is dropped, never recorded; until one window is kept the grid restarts at the current time; the cap counts from the real start; if no window is kept the sustain result is absent and the run completes.
+
+**R4-B-10 (design B7 items not built; ERR-FX2-BE-3, ERR-FX2-BE-4).** "Each rep records its thermal code and headroom" and "on mobile, tiers slower than 10 tok/s use `tg64`, or a cool-down gate runs between headline reps" are **DEFERRED** (schema B-patch and executor change; the threshold and the gate bound are unspecified). Until then the protections are: every tier cools to COOL before it starts, thermal code ≥ 3 is a hard ceiling, and drift caps confidence at low.

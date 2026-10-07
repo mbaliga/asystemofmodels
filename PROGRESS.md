@@ -2168,3 +2168,7 @@ $ ./gradlew -p lab :conformance-runner:test --offline  -> BUILD SUCCESSFUL
 $ python3 lab/tools/isolation.py  -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
 ```
 Not run: macOS lane, hosted CI, JDK 17, the crosslane step.
+
+## Design revision 4 (docs only), 2026-10-07
+
+Pointer: `docs/design/mesh/REVISION_4.md` (change log: the 39 round-3 findings and every ERRATA reading, each ADOPTED, OWNER DECISION, REJECTED or DEFERRED) and `docs/design/mesh/OWNER_DECISIONS.md` (every open ratification). Docs-only: no code, vector or workflow changed; nothing here is device evidence.

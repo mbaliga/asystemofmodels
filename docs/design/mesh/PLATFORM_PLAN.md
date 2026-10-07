@@ -1,6 +1,6 @@
 # PLATFORM_PLAN: directories, runtimes, CI, gates and build order per platform
 
-**Date:** 2026-09-30 · **Companion to:** `ASOM_MESH_DESIGN.md` r3 (§3 platform matrix, §9 phases) and `LAB_SPEC.md` (the lab). **Detailed sources:** the six platform sections under `platforms/` (`linux.md`, `windows.md`, `macos.md`, `ios.md`, `ubuntu-touch.md`, `android-mesh.md`), **as amended by the design** (§12.3 lists which of their corrections were taken). Where this plan and a platform section disagree, this plan wins; each disagreement is marked **r3**.
+**Date:** 2026-09-30; **revision 4 amendments 2026-10-07 (§13 wins over §0–§12)** · **Companion to:** `ASOM_MESH_DESIGN.md` r4 (§3 platform matrix, §9 phases) and `LAB_SPEC.md` (the lab). **Detailed sources:** the six platform sections under `platforms/` (`linux.md`, `windows.md`, `macos.md`, `ios.md`, `ubuntu-touch.md`, `android-mesh.md`), **as amended by the design** (§12.3 lists which of their corrections were taken). Where this plan and a platform section disagree, this plan wins; each disagreement is marked **r3**.
 **Authorised by:** AD-3 (placement), AD-5 (verification honesty), roadmap §14 item 7 (scaffolds gated by hosted CI, shipping nothing), and directive D-F (different agents per platform).
 **Evidence labels (never dropped):** `LAB`, `CI (hosted VM) evidence`, `EMULATOR EVIDENCE`, `SIMULATOR`, `CI-APPROX — NOT DEVICE EVIDENCE`, `SIMULATED — NOT DEVICE EVIDENCE`. Device items stay `NEEDS-DEVICE-VALIDATION` (NDV); items only the owner can judge stay `NEEDS-OWNER-VALIDATION` (NOV).
 
@@ -11,7 +11,7 @@
 | # | Rule |
 |---|---|
 | P1 | **Disjoint directories, one owner each.** `lab/` (the lab track), `desktop/node-core` + `desktop/node` + `desktop/packaging/linux` (the desktop-and-Linux track), `desktop/packaging/windows` (the Windows track), `desktop/packaging/macos` (the macOS track), `apple/` (the Apple track), `ubuntu-touch/` (the Ubuntu Touch track). Android work lives in the existing root modules and starts only after V1-close. Two tracks never edit the same file, except append-only `PROGRESS.md` sections and one `include` line each in `desktop/settings.gradle.kts` |
-| P2 | **The root build is unchanged.** Root `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`, `gradle/libs.versions.toml`, `core/`, `server/` and `.github/workflows/ci.yml` are never edited by a scaffold. Every new workflow runs `git diff --exit-code -- core server gradle settings.gradle.kts build.gradle.kts gradle.properties .github/workflows/ci.yml` |
+| P2 | **The root build is unchanged.** Root `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`, `gradle/libs.versions.toml`, `core/`, `server/` and `.github/workflows/ci.yml` are never edited by a scaffold. Every new workflow runs `git diff --exit-code -- core server gradle settings.gradle.kts build.gradle.kts gradle.properties .github/workflows/ci.yml` (r4, R4-P-01: replaced by the pinned-base comparison; that command cannot fail on a fresh checkout) |
 | P3 | **Separate builds map, never include.** `desktop/` and `ubuntu-touch/jvm/` are separate Gradle builds that map the pure-JVM root projects by directory, exactly as `LAB_SPEC.md` §2.2–§2.3 does, with build directories redirected. Never `includeBuild("..")` |
 | P4 | **New workflow files only:** `lab.yml`, `desktop-linux.yml`, `desktop-windows.yml`, `desktop-macos.yml`, `apple-ios.yml`, `ubuntu-touch.yml`, and after V1-close `android-mesh.yml`. Pure-JVM jobs set `ANDROID_HOME=""` and `ANDROID_SDK_ROOT=""` |
 | P5 | **Scaffolds bind nothing and serve nothing.** `NoopEngine`; no listener; systemd units, services and agents ship **disabled**; no model download. Only tests bind, and only to `127.0.0.1` |
@@ -31,7 +31,7 @@
 | **S2** | desktop core + Linux | `desktop/node-core`, `desktop/node`, `desktop/packaging/linux` | after `LAB_SPEC.md` L0.1 is green (for the shared isolation mechanism and W00) | **The shared JVM node comes first**: Windows, macOS and Ubuntu Touch all plug into its `DesktopPlatform` seam, and Linux is the M1 lender platform. DL0–DL3 only |
 | **S3** | Windows packaging | `desktop/packaging/windows` | after S2's DL0 (the seam and `:node-core` exist) | per-OS adapter in its own directory; W0–W2 now |
 | **S4** | macOS packaging | `desktop/packaging/macos` | after S2's DL0 | per-OS adapter in its own directory; MC1–MC2 now |
-| **S5** | Apple | `apple/` | after `LAB_SPEC.md` L0.2's vectors exist | the independent Swift implementation (L0.7 = macOS MC0 = iOS I0); the natural independent oracle (`LAB_SPEC.md` §4.10) |
+| **S5** | Apple | `apple/` | after `LAB_SPEC.md` L0.2a (r4, R4-P-02) | the second Swift implementation (L0.7 = macOS MC0 = iOS I0); its agreement is **cross-lane**, never independent, unless written under `LAB_SPEC.md` R4-L-05 |
 | **S6** | Ubuntu Touch | `ubuntu-touch/` | after S2 (it maps `desktop/node-core`) and L0.1/L0.2 | UT-0: a self-test in the real arm64 userland and a reviewed click, nothing more |
 | — | Android | existing root modules | **after V1-close only** | directive D-D: Android app code is untouched until v1 device validation closes. No new directory is created now |
 
@@ -44,9 +44,9 @@ S3, S4 and S5 may run in parallel with each other once their start conditions ho
 | **V1-close** | the open v1 device checklists | — | — | — | — | — |
 | **v1.1** | V11-1…V11-3 (H4, H5, H7) + H1 (D5) | — | — | — | — | — |
 | **v2** | engine + benchmark shell (roadmap v2) | — | — | — | — | — |
-| **D-v2** (needs D23, D25, D27, D28) | — | DL4, DL5 | W3–W7 | MC3–MC7 | — | — |
-| **M1** (needs D3, D5, D8, D9, D11, D12, D19, D29) | M1-1…M1-8 (requester) | DL6 (lender), DL7 | lender only if D28 places Windows in M1 (gate 13) | lender only if D28 places a Mac in M1 (gate 14) | — | — |
-| **M1b** (needs D14 part A, D15, D24, D28) | — | — | lender if not in M1 | lender if not in M1 | I1–I3 (the asom app + `RemoteMesh`) | UT-1 (UT1.1–UT1.3) |
+| **D-v2** (needs D21, D23, D25, D27, D28; r4) | — | DL4, DL5 | W3–W7 | MC3–MC7 | — | — |
+| **M1** (needs D3, D5, D8, D9, D11, D12.0–D12.6, D19, D29, D34; r4) | M1-1…M1-8 (requester) | DL6 (lender), DL7 | lender only if D28 places Windows in M1 (gate 13) | lender only if D28 places a Mac in M1 (gate 14) | — | — |
+| **M1b** (needs D14 part A, D15, D22 Apple Team ID, D24, D25, D28; r4) | — | — | lender if not in M1 | lender if not in M1 | I1–I3 (the asom app + `RemoteMesh`) | UT-1 (UT1.1–UT1.3) |
 | **v2.5, v3** | roadmap | — | — | — | — | — |
 | **M2+** (needs D14 part B, D16) | L-1…L-4 (lender) | desktop local-app API (D25(b)) | same | same; MC9 daemon (optional) | I4 (iPad lender) | UT-2 only if scheduled |
 
@@ -495,7 +495,7 @@ ubuntu-touch/
 | `ut-runtime` | `ubuntu-latest`, JDK 21 | `ubuntu-touch/runtime/jlink.sh` | a cross-jlinked aarch64 runtime ≤ 45 MB with max `GLIBC_2.17` | Halium |
 | `ut-click` | `clickable/ci-ut24.04-1.x-arm64:8.10.0` | `cd ubuntu-touch && clickable build`; `check-groups.py` | the arm64 click builds; click-review reports no errors; common policy groups only | install, runtime confinement |
 | `ut-qml` | `clickable/ci-ut24.04-1.x-amd64:8.10.0` | `clickable build --arch amd64 && clickable test` | QML against a fake node | the Lomiri shell |
-| `ut-arm64-smoke` | `ubuntu-24.04-arm` + `clickable/arm64-ut24.04-1.x-arm64` | `tests/smoke/arm64-selftest.sh` | **the bundled runtime starts in the real UT 24.04 userland**; the self-test (TLS 1.3 in memory, ES256, JCS, JSONL `force`) passes | Halium, libhybris, confinement |
+| `ut-arm64-smoke` | `ubuntu-24.04-arm` + `clickable/arm64-ut24.04-1.x-arm64` | `tests/smoke/arm64-selftest.sh` | **the bundled runtime starts in the Clickable UT 24.04-1.x arm64 SDK image** (r4, R4-P-08; not the device userland); the self-test (TLS 1.3 in memory, ES256, JCS, JSONL `force`) passes | Halium, libhybris, confinement |
 | `ut-apparmor-approx` | `ubuntu-24.04-arm` | `apparmor-ci/run-approx.sh` | **CI-APPROX — NOT DEVICE EVIDENCE**: the pinned template loads and the self-test runs under `aa-exec` | the device kernel's AppArmor |
 | `ut-canary-2604` (non-gating) | `clickable/ci-ut26.04-1.x-arm64` | `clickable build` | early warning for the next series | anything shipped |
 
@@ -540,7 +540,7 @@ ubuntu-touch/
 **Nothing in this section may touch `app/`, `vault/`, `pairing/`, `ledger/`, `storage/`, `client*/` or `sample-client/` until v1 device validation closes** (directive D-D). No new directory is created now. The only Android-relevant work now is optional lab code: an LNP classifier model with vectors in `lab/mesh-policy` (step L-A1, self-oracled).
 
 **Roles and runtime.**
-- The Android phone is the one full holon: it serves its own apps (v1/v2), borrows in M1 (outbound only), and lends after v3 in two opt-in shapes: the lend screen (PF), and charging with "serve while locked" (PA-charging, D16).
+- (r4: no node is a full holon before M2+; the Android phone becomes one when it lends.) The Android phone is the node that becomes a full holon first: it serves its own apps (v1/v2), borrows in M1 (outbound only), and lends after v3 in two opt-in shapes: the lend screen (PF), and charging with "serve while locked" (PA-charging, D16).
 - Kotlin on ART; the shared pure-JVM core, promoted as `:core:mesh`.
 - New Android modules after validation: `:mesh-android` (Keystore NIK and leaf, the Conscrypt transport with a fresh `SSLContext` per dial, the dialer with `DIAL` rows before the SYN, the listener (lender phase), network classifier, local-network gate, probes, governor, Room `mesh.db`) and `:qr` (CameraX + zxing-core, paste fallback).
 
@@ -636,7 +636,7 @@ docs/CLIENT_API.md*  docs/DEVICE_CHECKLIST_MESH_ANDROID.md
 |---|---|---|---|
 | Lab (L0.1–L0.6) | 16–25 | — | design §9.4 |
 | Apple Swift lane (L0.7 = MC0 = I0) | 3–5 | — | `macos.md`, `ios.md` |
-| Desktop core + Linux/Deck | DL0–DL3: 6–9.5 | DL4–DL5 (D-v2) 3–5; DL6 (M1) 2–3; DL7 0.5–1 | `linux.md` §10.3 (total 12–19) |
+| Desktop core + Linux/Deck | DL0–DL3: 6–9.5 | DL4–DL5 (D-v2) 3–5; DL6 (M1) 2–3; DL7 0.5–1 | `linux.md` §10.3 (r4, R4-P-10: total 11.5–18.5, the sum of the rows) |
 | Windows | W0–W2: part of 10–16 | W3–W8 (D-v2/M1 or M1b) | `windows.md` §10.4 (10–16) |
 | macOS | MC1–MC2: part of 11–17 | MC3–MC8 (D-v2/M1 or M1b); MC9 +2–3 (M2) | `macos.md` §10.4 (11–17; minimal cut 7–10) |
 | iOS/iPadOS | — | I1–I3 (M1b) 13–20; I4 (M2+) 4–7; I5 1–2 | `ios.md` §10.4 (21–34 incl. I0) |
@@ -664,3 +664,37 @@ The design's §9.4 sums the mesh and platform work, by phase, to **≈ 92–150 
 - each agent appends only its own `PROGRESS.md` section;
 - a change another track needs goes through the owning agent (for example, a new `DesktopPlatform` port goes through the desktop agent);
 - a conflict with the design stops the agent with `BLOCKED(spec conflict: <where>)`.
+
+---
+
+## 13. Revision 4 amendments (normative; 2026-10-07)
+
+**Status.** Design revision 4 (`REVISION_4.md`). **Where this section and §0–§12 differ, this section wins**; the design still wins over both. "Builder action" marks a change that the code, the workflows or the vectors do not yet carry. Nothing here is device evidence.
+
+**R4-P-01 (P2, §10 "Every non-Android workflow runs the `git diff --exit-code` check"; R3-CONFORMANCE-2, ERR-ISO-1, desktop ERR-ISO-1, ubuntu-touch ERR-UT-ISO-1, apple E-01 and its orchestrator follow-up).** The `git diff --exit-code` check cannot fail on a fresh checkout and is replaced everywhere by the pinned-base comparison of `LAB_SPEC.md` R4-L-03 (`lab/tools/isolation.py` and its copies, `fetch-depth: 0`, a negative-control self-test first). Each track keeps its own pin file and a re-pin table in its ERRATA file.
+
+**R4-P-02 (§1.1 S5; R3-CLOSURE-4).** Old: "S5 … after `LAB_SPEC.md` L0.2's vectors exist; the independent Swift implementation …; the natural independent oracle". New: "S5 … after L0.2a (`LAB_SPEC.md` R4-L-06); a second implementation whose agreement is **cross-lane**, never independent, unless written under `LAB_SPEC.md` R4-L-05".
+
+**R4-P-03 ("scaffold"; R3-CONFORMANCE-13, desktop ERR-SCOPE-1, desktop ERR-DL2-3, desktop ERR-DL2-4).** A **scaffold** is a skeleton, a seam, fakes, packaging layout and tests; it ships nothing. "No listener" means **no network socket** in any main source. Items built ahead of an open ruling are labelled so in their ERRATA file: the desktop `ControlServer` (the one AF_UNIX listener, built and tested, **not started** by `asom-node`) ahead of D23 and D25; `ControlFrames` ahead of D23/D25; the Linux `Inhibitor` and D-Bus reader ahead of D28 (the polkit rule itself is not built). Nothing built ahead binds a socket in the running node.
+
+**R4-P-04 (§1.2; R3-CONFORMANCE-10, R3-CLOSURE-8).** Old: "D-v2 (needs D23, D25, D27, D28)", "M1 (needs D3, D5, D8, D9, D11, D12, D19, D29)", "M1b (needs D14 part A, D15, D24, D28)". New: "D-v2 (needs **D21**, D23, D25, D27, D28)", "M1 (needs D3, D5, D8, D9, D11, **D12.0–D12.6**, D19, D29, **D34**)", "M1b (needs D14 part A, D15, **D22 (Apple Team ID)**, D24, **D25**, D28)". D22's Android and Windows sub-decisions gate release signing only, not phase entry.
+
+**R4-P-05 (§7 tree and §8 root-file note; R3-CONFORMANCE-14, ubuntu-touch ERR-UT-MAP-1).** From UT-1 on, `ubuntu-touch/jvm/settings.gradle.kts` maps the **promoted** `:core:mesh` (and `:bench-core`), never `lab/*`. Old §8 note: "`include(":mesh-android", ":qr")` … the only root edit, at M1". New: "root edits at promotion, each under MOD-1 and D23: the pure-JVM includes for every promoted module (`:core:mesh`, and `:bench-core` at v2), the explicit `jvmTest` extension in the root `build.gradle.kts`, and the Android includes `:mesh-android` and `:qr` inside the existing `hasAndroidSdk` block".
+
+**R4-P-06 (§6 gate I3 and design §8.4; R3-OVERCLAIM-3, R3-OVERCLAIM-10(b)).** Old I3: "`Σ frame rows + overheadBytes == DataTransferReport.sentTransportByteCount`" (true by construction). New: "`Σ frame rows` (application bytes) == `DataTransferReport.sentApplicationByteCount`, checked by a plaintext tap independent of the row writer; `overheadBytes` is labelled **ESTIMATED** on Network.framework until the IA07 packet-capture spike passes."
+
+**R4-P-07 (§3 DL6; R3-OVERCLAIM-11).** Old: "desktop quiescence: 0 packets captured on port 11436 over 3 min". New: "capture every TCP SYN to every paired-peer address on any port, in the node's network namespace; first the M1 gate-5 positive control (open a peer-status view or run `asom watch`, then require a `DIAL` row and an observed SYN within 5 s); the gate fails if the positive control is not seen."
+
+**R4-P-08 (§7 `ut-arm64-smoke`; R3-OVERCLAIM-9, ubuntu-touch ERR-UT-CI-1).** Old: "the bundled runtime starts in the real UT 24.04 userland". New: "the bundled runtime starts in the Clickable UT 24.04-1.x arm64 SDK image (noble-based; an ASSUMPTION about its closeness to a device rootfs); `PROGRESS.md` records the image digest and its FROM chain. 'Runs in the UT userland' is claimed only by DV-UT01/S-UT1."
+
+**R4-P-09 (§3 DL5 banner; ERR-FX2-BE-7).** `VIRTUALIZED — NOT DEVICE EVIDENCE` (here) and "VIRTUAL MACHINE" (`benchmark.md` §8) disagree; both renderers print "VIRTUAL MACHINE: results are capped at MEDIUM confidence." The banner is owner item **D36**; until it is ruled any run with `device.virtualized` true is LAB or CI-APPROX evidence and is never presented as device evidence.
+
+**R4-P-10 (§11 Linux estimate; R3-OVERCLAIM-13).** Old: "`linux.md` §10.3 (total 12–19)". New: "11.5–18.5 (the sum of the rows: 6–9.5 + 3–5 + 2–3 + 0.5–1)". §3's "Estimate: 12–19" reads the same.
+
+**R4-P-11 (§4 Windows roles; R3-OVERCLAIM-8).** PA on a Modern Standby desktop is claimed **only in service mode** with a held `PowerRequestSystemRequired` on AC; a user-mode node drains on display-off (`os_sleep_imminent`), so its lending window may be empty when the display timeout is at or below the 10-minute idle threshold (asom never changes the display timeout). Add device item **W8-window**: measure the actual lending window on the owner's hardware. D28's Windows sub-decision is read with this limit.
+
+**R4-P-12 (§2 shared node; desktop ERR-FX-5).** A freshly enabled governor is neither drained nor eligible: the first `CONDITIONS_MET` needs 60 s of non-blind samples under 200‰ contention (about 62 s in practice). This is normative for **every** desktop host. Today only the Linux host implements it (`SettlesBeforeServing`). **Builder action:** the Windows and macOS hosts adopt the marker and add a warm-up to their tests.
+
+**R4-P-13 (§10 CI; desktop ERR-DL2-12, desktop ERR-FX-4, desktop ERR-FX-14, desktop ERR-FX-3).** Builder actions on workflows (outside this docs change): run the `desktop-jvm` and `desktop-jvm-arm` jobs with `ASOM_REQUIRE_DBUS=1` so a missing `dbus-daemon` fails instead of skipping; change `desktop-windows.yml` and its pinned copy together (`persist-credentials: false`); add `docs/design/mesh/manifest-vectors/**` (and `conformance-examples/**` if read) to the path filters of `apple-ios.yml`. A workflow that has never run on a hosted runner has not been shown to pass.
+
+**R4-P-14 (§6 iOS M1b scope; R3-CONFORMANCE-7).** Whether the iPhone build of M1b hosts the benchmark shell is a sub-question of D7/D24 (`OWNER_DECISIONS.md`); the recommendation is to drop it from the iPhone and add it to the iPad at M5. §6 is unchanged until ruled.

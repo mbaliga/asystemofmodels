@@ -1,8 +1,8 @@
 # LAB_SPEC: the pure-JVM mesh lab (implementable specification)
 
-**Date:** 2026-09-30 · **Companion to:** `ASOM_MESH_DESIGN.md` r3 (§9.1 work items L0.1–L0.6). The Swift lane L0.7 and the platform scaffolds are in `PLATFORM_PLAN.md`.
+**Date:** 2026-09-30; **revision 4 amendments 2026-10-07 (§10 wins over §0–§9)** · **Companion to:** `ASOM_MESH_DESIGN.md` r4 (§9.1 work items L0.1–L0.6). The Swift lane L0.7 and the platform scaffolds are in `PLATFORM_PLAN.md`.
 **Authorised by:** acting decisions AD-3 (placement) and AD-4 (the lab is the sanctioned exception), plus roadmap §14 item 7. **The lab ships nothing.** It changes no shipped module and produces no release artefact.
-**Audience:** builders who implement it (AD-6) without reading the 45,000-word design. Everything a builder needs is here, or in a sibling spec that this file cites by section. Where this file and a sibling disagree, this file wins; where this file and the design disagree, the design wins, and the builder stops with `BLOCKED(spec conflict: <where>)`.
+**Audience:** builders who implement it (AD-6) without reading the 45,000-word design. Everything a builder needs is here, or in a sibling spec that this file cites by section (r4, R4-L-01: this file is **not** self-contained; each sibling is normative only as amended). Where this file and a sibling disagree, this file wins; where this file and the design disagree, the design wins, and the builder stops with `BLOCKED(spec conflict: <where>)`.
 **Tags:** `[Fnn]`/`[Ann]` refer to the design's Appendix A (verified facts) and Appendix B (assumptions). `PROVISIONAL` marks a constant that is a starting value, not a measurement.
 
 ---
@@ -156,7 +156,7 @@ Each lab module's `build.gradle.kts` follows the root modules' pattern: `alias(l
 | 1 | The root settings never name the lab | `grep -cwE 'lab' settings.gradle.kts` | `0` (use `-w`: a plain substring search matches the word "available" in the root file) |
 | 2 | **No Android tooling in the lab's classpath, with the SDK present** | on a runner where `ANDROID_HOME` is set: `./gradlew -p lab buildEnvironment \| grep -c com.android` | `0` |
 | 3 | The lab build contains only the mapped pure-JVM projects and lab modules | `./gradlew -p lab projects \| grep -cE "':(app\|vault\|pairing\|storage\|ledger\|client\|client-cloud\|sample-client)'"` | `0` |
-| 4 | The shipped tree is unchanged | `git diff --exit-code -- core server gradle settings.gradle.kts build.gradle.kts gradle.properties .github/workflows/ci.yml` | exit status `0`, no output |
+| 4 | The shipped tree is unchanged | **r4: replaced by R4-L-03** (the pinned-base comparison); the old command `git diff --exit-code -- core server …` cannot fail on a fresh checkout | as R4-L-03 |
 
 **Root test-count check.** Before the first lab commit, and at every lab gate, run the root suite and count the executed tests from the JUnit XML reports:
 
@@ -169,6 +169,8 @@ find core server -path '*/build/test-results/test/*.xml' -print0 \
 The number must equal the baseline recorded in `PROGRESS.md` at the lab's first gate. It must also equal the last v1 figure, if `PROGRESS.md` records one.
 
 ### 2.5 The composite-build fallback (only if check 2 ever fails)
+
+**r4 (R4-L-04): superseded.** A failing check 2 is `BLOCKED(lab isolation: check 2 failed)`; no builder edits a root file. The text below is kept only as the option the owner would be asked to approve.
 
 Project-directory mapping is the mechanism. If a builder cannot make it pass check 2, the **only** permitted alternative is a composite build (`includeBuild("..")` in `lab/settings.gradle.kts`, with dependencies declared by coordinates such as `"asystemofmodels.core:contract"` and `"asystemofmodels:server"`, which are Gradle's default group names for those paths; confirm them with `./gradlew -p lab :conformance-runner:dependencies`). It needs this **one-line change to the root `settings.gradle.kts`**, and no other root change:
 
@@ -296,7 +298,7 @@ The values in W01-004…W01-007 were confirmed on OpenJDK 21.0.10 (`platforms.md
 3. `scriptedDriver` is a lab `ProviderDriver`. It delegates to `FakeDriver` or replays the vector's scripted outcome: a JSON body with usage, a stream of byte chunks, or an error status.
 4. Send the vector's HTTP request with `java.net.http.HttpClient` to `http://127.0.0.1:<port>`.
 
-**Law checked by every W01b vector (Invariant 9):** let `row` be the `InMemoryLedger` row that the request appended. Then `row.toEchoHeaders()` equals the response's `X-Asom-*` headers exactly, and `row` equals the vector's expected fields (ignoring `ts` and `latencyMs`).
+**Law checked by every W01b vector (Invariant 9):** let `row` be the `InMemoryLedger` row that the request appended. Then `row.toEchoHeaders()` equals the response's `X-Asom-*` headers exactly, and `row` equals the vector's expected fields (ignoring `ts` and `latencyMs`). **r4: restated by R4-L-09** (false on streams for frozen v1; the terminal row decides; W01b-004 appends two rows).
 
 | Vector | Scenario | Expected (beyond the law) |
 |---|---|---|
@@ -546,8 +548,9 @@ verifyManifest(doc, ctx) -> Verified | Reject(code)
 16  MESH only: D = b64url(SHA-256(JCS(O.body))); prev = rollback[(nodeId(K), "own")]
         prev and O.body.seq < prev.seq                               -> ROLLBACK
         prev and O.body.seq == prev.seq and D != prev.bodyDigest     -> EQUIVOCATION
-17  tier = A1 if subject.keyStorage in {strongbox, tee, secure-enclave, tpm} else A0   (self-reported; evidence unused)
-18  tier >= ctx.requiredTier                                         else TIER_INSUFFICIENT
+17  displayTier = A1 if subject.keyStorage in {strongbox, tee, secure-enclave, tpm} else A0   (a self-reported label)
+    attestedTier = A0                                                (evidence unused; A2 deferred)   [r4, R4-L-12]
+18  attestedTier >= ctx.requiredTier                                 else TIER_INSUFFICIENT          [r4, R4-L-12]
 19  MESH: rollback[(nodeId(K), "own")] = (max(seq), D)   (after the caller commits; the library default is display-only)
     return Verified{ payloadBytes: P, obj: O, bodyDigest: D, pin, tier, unknownFields: count of members
                      the typed decoder did not recognise under schemaMinor rules }
@@ -937,7 +940,7 @@ The Deck wins. Term differences (runner-up minus winner): time 33,496; battery 1
 - also EXPIRED if the session is closed and the state is older than 30,000, if `seq` went backwards, or if a `GOAWAY` arrived since.
 
 **Pessimistic substitution** for STALE:
-- `thermalBand = max(last, 1)` if last ≥ 1;
+- `thermalBand = min(2, last + 1)` if last ≥ 1 (r4, R4-L-17; r3 read `max(last, 1)`, a no-op);
 - `queueBucket = min(2, last + 1)` if last ≥ 1;
 - `batteryBand` one band lower if on battery.
 
@@ -1279,7 +1282,7 @@ types   = 0x80..0xFF: ignorable extensions (skipped; a CONTROL row EXT_IGNORED; 
 
 - **TLS profile:** `trust.md` §3.2:
   - TLS 1.3 only, client authentication required, `ecdsa_secp256r1_sha256` only;
-  - no 0-RTT, **no resumption** (a fresh `SSLContext` per dial, and the server issues no tickets), no SNI (unless spike S-A11 succeeds and SNI-token gating is adopted, design T13);
+  - no 0-RTT, **no resumption** (r4, R4-L-23: a fresh `SSLContext` per dial **and per accepted connection**; tickets a JSSE listener still sends cannot be redeemed), no SNI (unless spike S-A11 succeeds and SNI-token gating is adopted, design T13);
   - ALPN `asom-mesh/1` required;
   - a custom `X509ExtendedTrustManager` that calls only `verifyPeerChain`; no hostname check; 5 s handshake timeout.
 - **JSSE settings stay scoped.** Every JSSE setting is applied to the `SSLEngine`/`SSLParameters` of the mesh context, never as a JVM system property (C12).
@@ -1327,7 +1330,7 @@ data class LabRouteRecord(
 
 **Other row rules:**
 - `requestId` never appears in a frame (L-L7).
-- **Session rows.** `SESSION`, `CONTROL`, `PAIRING`, `MANIFEST_*` and `REVOCATION` rows carry the session id (the dialer's `HELLO.sessionNonce`; for pairing connections, base64url of the first 16 bytes of `PAIR_HELLO.nonceS`, which both sides know) in `attemptId`, as `contract.md` §4 specifies, so no extra column exists.
+- **Session rows.** `SESSION`, `CONTROL`, `PAIRING`, `MANIFEST_*` and `REVOCATION` rows carry the session id (the dialer's `HELLO.sessionNonce`; for pairing connections, base64url of the first 16 bytes of `PAIR_HELLO.nonceS`, which both sides know) in `attemptId`, as `contract.md` §4 specifies, so no extra column exists. (r4: the grouping rules are R4-L-24; whether the session id gets its own column is owner item D34.)
 - IP addresses appear only in `DIAL` rows (P5).
 - `tokensOut` on a requester's peer-attempt row is the requester's own `outTokEst` (§6.6).
 - Intent rows carry no bytes, tokens or cost.
@@ -1357,8 +1360,8 @@ data class LabRouteRecord(
 | session close | `SESSION` close with `overheadBytes` and `overheadBasis` | same | no |
 
 **Transport overhead (`overheadBytes`):**
-- **JSSE lab lane: `MEASURED`.** The mesh transport drives an `SSLEngine` itself; each `wrap`/`unwrap` result's `bytesProduced`/`bytesConsumed` gives exact network bytes. The overhead is network bytes minus the application bytes of the frames.
-- **`ESTIMATED` form** (used after a crash, or for an unknown stack): `22 × ceilDiv(appBytesOfFlush, 16384)` per flush, plus 4,096 bytes per direction for the handshake. The 22 bytes are the 5-byte record header, the 1-byte inner content type and the 16-byte tag [F51]; the handshake figure is [A36].
+- **JSSE lab lane: `MEASURED`.** The mesh transport drives an `SSLEngine` itself; each `wrap`/`unwrap` result's `bytesProduced`/`bytesConsumed` gives exact network bytes. The overhead is network bytes minus the application bytes of the frames. (r4, R4-L-25: the overhead comes from the transport meter, never from the rows, and a plaintext tap checks the rows.)
+- **`ESTIMATED` form** (used after a crash, or for an unknown stack): `22 × ceilDiv(appBytesOfFlush, 16384)` per flush, plus 4,096 bytes per direction for the handshake. (r4, R4-L-25: recalibrated; JSSE measured 38 bytes per record and 16,367-byte records; 22 is the RFC 8446 minimum.) The 22 bytes are the 5-byte record header, the 1-byte inner content type and the 16-byte tag [F51]; the handshake figure is [A36].
 - **A record tap.** A test-only `SocketChannel` wrapper counts raw bytes. **L-L15:** per session, Σ row application bytes + `overheadBytes` = the tap's count, for `MEASURED` sessions. The law fails if every session in the run was `ESTIMATED` (non-vacuity).
 
 ### 7.7 Fail-closed rules and ledger laws
@@ -1368,7 +1371,7 @@ data class LabRouteRecord(
 | FC-1 requester intent append fails | send no bytes; try no further peer or cloud candidate; return `LEDGER_UNAVAILABLE` (a lab error type; CD-LU, D5) |
 | FC-2 control-row append fails | send **nothing further** on that session (no `GOAWAY`); close the TLS connection and socket; mark the ledger unavailable, so every further intent fails (FC-1) until a write succeeds; attempt the `SESSION` close row |
 | FC-4 lender intent append fails | decline `PEER_UNAVAILABLE` (that decline's own row is the next write; if it fails too, FC-2); the engine never starts |
-| FC-5 lender outcome append fails | `CANCEL` the stream, send no `INFER_END`, then FC-2 |
+| FC-5 lender outcome append fails | (r4, R4-L-26) send no frame (no `INFER_END`; no `CANCEL`, which is a requester frame), cancel the engine locally, then FC-2 |
 
 **Laws:**
 - L-L1…L-L12 as in `contract.md` §4.12.
@@ -1490,3 +1493,152 @@ Result: PASSED | BLOCKED(<reason>)
 - **That estimates or weights are good choices.** The simulator shows the laws hold and the first-slice scenarios pass under invented truth profiles.
 - **Security against a compromised peer beyond the W08 cases**, and nothing about content fabrication (§6.6).
 - **ART, Conscrypt, Network.framework or packaged runtimes.** Those lanes belong to `PLATFORM_PLAN.md`; a family passing on JDK 17/21 is not evidence for them.
+
+---
+
+## 10. Revision 4 amendments (normative; 2026-10-07)
+
+**Status.** Design revision 4 (`REVISION_4.md`) folds the round-3 review findings and the readings the implementation tracks recorded in their ERRATA files into this file. **Where this section and §0–§9 differ, this section wins.** Each amendment names: the section it amends, the old text (quoted or summarised), the new normative text, its source, and the vectors that pin it. "Builder action" marks a change that the code or the vectors do not yet carry; until a builder does it, the lab and this file disagree on that point and the gate that covers it must say so. Nothing here is device evidence. Owner rulings that are still open are named by their id in `OWNER_DECISIONS.md` and are **not** decided here.
+
+ERRATA ids are qualified by file where two files use the same id: `lab/` ids are bare; `desktop/`, `apple/` and `ubuntu-touch/` ids carry the directory (for example `desktop ERR-FX-5`, `apple E-24`).
+
+### 10.1 Process, isolation and the file set
+
+**R4-L-01 (header; R3-CLOSURE-2, ERR-DOC-1).** Old: "Everything a builder needs is here, or in a sibling spec that this file cites by section." New: "This file is not self-contained. It cites sibling specs (`trust.md`, `manifest.md`, `benchmark.md`, `router.md`, `contract.md`, `platforms/*.md`); each sibling is normative only **as amended** by `ASOM_MESH_DESIGN.md` and by this §10. The complete input is the committed file set of R4-L-02 plus the frozen v1 sources."
+
+**R4-L-02 (§0, §4.9; R3-CLOSURE-2, ERR-MAN-3).** Commit manifest. Every file under `docs/design/mesh/` is committed and is part of the spec input: the design, this file, `PLATFORM_PLAN.md`, `OWNER_BRIEF.md`, `OWNER_DIRECTIVES_2026-09-30.md`, `OWNER_DECISIONS.md`, `REVISION_4.md`, the review and disposition files, `TOOLCHAIN_NOTES.md`, the six r0 siblings, `platforms/*.md`, and the directories `manifest-vectors/`, `router-examples/`, `bench-examples/`, `conformance-examples/` and `spikes/`. Builders never write under `docs/`; a docs change is a design revision. §4.9's move of the r0 vectors to `lab/conformance/history/r0/` is **withdrawn**: they stay in `docs/design/mesh/manifest-vectors/` and no lab code reads them (their semantics are regenerated as M02-101..120 and M03-101..178, ERR-MAN-3).
+
+**R4-L-03 (§2.4 check 4 and the root test count; R3-CONFORMANCE-2, ERR-ISO-1, ERR-ISO-3, ERR-CI-1, ERR-CI-2, desktop ERR-ISO-1, ubuntu-touch ERR-UT-ISO-1, apple E-01 and its orchestrator follow-up).** Old check 4: `git diff --exit-code -- core server gradle …` (it compares the working tree with the index and cannot fail on a fresh checkout). New check 4: every protected path (`core server app vault pairing storage ledger client client-cloud sample-client gradle settings.gradle.kts build.gradle.kts gradle.properties .github/workflows/ci.yml`) is compared byte for byte (blob id, executable bit, file set including untracked and deleted files) with the same path at a pinned base commit (`lab/LAB_BASE_SHA`, or the track's own pin file); the check fails loudly when the base is not a full commit id, is absent (shallow clone) or is not an ancestor of HEAD; CI checks out with `fetch-depth: 0` and runs the checker's negative-control self-test first. A deliberate change to a protected path is followed, in a later reviewed commit, by a re-pin recorded in the track's ERRATA re-pin table. Checks 2 and 3 carry positive controls (the same output must list `kotlin-gradle-plugin`, and every mapped project). Root test count: old "must equal the baseline"; new "must be at least the figure in `lab/ROOT_TEST_BASELINE` (140 at r4); a rise passes and is recorded by a reviewed bump of that file". **Not covered (stated):** a root edit already inside the pinned base, and a reviewed move of the pin.
+
+**R4-L-04 (§2.5; R3-CONFORMANCE-3, ERR-ISO-2, desktop ERR-ISO-2, ubuntu-touch ERR-UT-ISO-2).** Old: a builder may make the one-line `ASOM_PURE_JVM` change to the root `settings.gradle.kts` and record it. New: **if check 2 fails, the builder writes `BLOCKED(lab isolation: check 2 failed)` with the real output and stops.** The guard text stays only as the option the owner would be asked to approve. No track has needed it (project-directory mapping passes check 2 in every track).
+
+**R4-L-05 (§4.10, R9; R3-OVERCLAIM-7, R3-CLOSURE-12, ERR-ORA-1, ERR-JSON-8, ERR-XCK-1, ERR-PT-11, ERR-VEC-1, ERR-R6-11, apple E-02, E-16, E-33).** Old: independence = "an author with no access to the generator source", recorded in `PROGRESS.md`. New: an **independent** lane is written in a session whose checkout is sparse and contains only the spec prose (this file's §4 and the sibling sections it cites, as amended) and the vector files under `lab/conformance/` without `lab/tools/`, `lab/*/tools/` and `lab/*/src/`; `PROGRESS.md` records the session id, the checkout command, the sparse path list and the session's file-access log, and the owner confirms it. Agreement from any other lane is tagged **`cross-lane`**, which never clears `oracle: self`. The existing Swift lane (I0a, I0b, I0c and the fix waves) and every same-session Python cross-check are cross-lane or self, never independent; code derived from `IS1`/`FM42` can never clear the tag.
+
+**R4-L-06 (§4.9, §8.1 L0.2; R3-CLOSURE-4, ERR-CLOSURE-4, apple E-03, E-19).** L0.2 is split. **L0.2a:** `:json`, JCS, DSSE/ES256, key formats, verifier steps 1–10 and their M01/M02/M03 signature-layer vectors. **L0.2b:** steps 11–19 incl. 15a, M05, M06 and the file vectors, gated after L0.3's `derive`/`project` and M04. The lab built L0.2b and L0.3 in one work item (no stub); the Swift lane may start from L0.2a.
+
+**R4-L-07 (§3.3, §3.5, §3.10, §8.1, §8.2; R3-CLOSURE-11, ERR-FMT-1…5, ERR-ENV-1, ERR-ENV-2, ERR-W00-1, ERR-R5-1, ERR-GEN-1, ERR-BUILD-1).** Gate formats as the lab implements them: family lines come from `labTest` and read `family <F>: <n normative> vectors, <p> pass, <f> fail, <s> proposed-skipped[, proposed-lane …], oracle: <tag counts>`; `lines` mode prints only `<id> ok|reject <CODE>`, sorted, nothing for a vector that cannot run; `xcheck` prints `xcheck <F>: absent` and exits 0 for a family with no vectors; W01-100..299 come from `java.util.SplittableRandom(1)`, cost `StrictMath.pow(10.0, -9.0 + 11.0 * nextDouble())`, status `proposed`; `:conformance-runner` uses the `application` plugin with `mainClass = xyz.mdhv.asom.lab.conformance.MainKt`; action SHAs are resolved by `git ls-remote` and recorded; additive envelope fields `expectDetail`, `input.lane`, `input.decision` are allowed; W00-001/002 assert the exact set of seven `AsomHeaders` constants; `lines` starts real `AsomServer` instances (127.0.0.1, ephemeral port) only when a server-driven family is named; generators refuse to write when an observation contradicts a hand expectation; the runner's test task is never cached. Pinned by W00-001, W00-002, W01-100..299.
+
+**R4-L-08 (§3.2 `VERSION`; ERR-FX-VER, ERR-FX-FILES).** Unchanged rule (a generated file changes only with a `VERSION` bump). Recorded: M02-113, M02-118, M02-120, M03-131 and M05-109 changed, and M02-121, M02-122, M03-179..215 and later vectors were added, while `VERSION` stayed `0.2.0`. **Builder action (one commit):** bump to `0.3.0`, make the generators read `VERSION` for the file-level `confVersion` only (never `harness.confVersion` inside signed documents), update the Swift `supportedConfVersion` and the cross-lane fixtures, regenerate, re-run `regen_index.py`.
+
+### 10.2 W01b and the frozen v1 server
+
+**R4-L-09 (§3.6 law; R3-CLOSURE-3, ERR-W01B-1…4).** Old: "`row.toEchoHeaders()` equals the response's `X-Asom-*` headers exactly", "W01b-004 … one row for the request". New law: (a) `X-Asom-Served-By` and `X-Asom-Egress` of the response always equal the same headers of the request's **terminal (last) row**; (b) on a non-stream response the full `X-Asom-*` header map equals `toEchoHeaders(terminal row)`; (c) on a stream response (`text/event-stream`) only the commit-time headers (`Served-By`, `Egress`) may be present, `Egress` must be, and no `X-Asom-Cost-*` header is present, while the row's cost fields are checked separately; (d) `expect.ok.rows` pins every row the request appended, in order (W01b-004 appends a failed-candidate attempt row, then the terminal row); (e) the harness waits for the row count to stop growing (the terminal row of a stream is appended after the last byte). Pinned by W01b-002, W01b-003, W01b-004, W01b-007. The observed v1 property (stream responses never carry cost headers although the row does) is owner item **D38** in `OWNER_DECISIONS.md`; it is inside frozen §5.4's commit-time allowance and is not a lab defect.
+
+### 10.3 Strict JSON, keys and the verifier (L0.2)
+
+**R4-L-10 (§4.2; ERR-JSON-1…5, ERR-JSON-9, ERR-FX-CV7, ERR-FX-CV8(e), apple F-2).** Readings made normative:
+1. The reject code is that of the **first table row whose condition holds anywhere in the input**. A syntax error (row 1, and a BOM) outranks everything; row 2 is a check of the raw bytes of the whole input (invalid UTF-8 after the value is `INVALID_UNICODE`); bytes after the value are never parsed (`TRAILING_DATA`); the parser keeps scanning past depth 16, iteratively, so rows 4–6 outrank row 7. Pinned by M01-140..153 and M03-197..200.
+2. Depth counts containers only: 16 nested arrays or objects (with or without a scalar inside) are accepted, 17 are `MALFORMED_JSON`; a top-level scalar is accepted. Pinned by M01-013, M01-014, M01-107, M01-128.
+3. A number lexeme is the maximal run of `[0-9+-.eE]` starting at `-` or a digit; anything other than an integer without a leading zero (`-0`, `01`, `1.`, `1e`, `-`, `1-2`, and the words `NaN`, `Infinity`, `-Infinity`) is `NON_INTEGER_NUMBER`; a token starting with `+`, `.` or another letter run (`truex`, `nullnull`, `Infinityx`) is `MALFORMED_JSON`; more than 16 digits is `NUMBER_RANGE`. Pinned by M01-111..116 and M03-201..214. This supersedes `apple E-07`'s "a lone `-` is `MALFORMED_JSON`".
+4. Strict base64 (`b64either`, `b64url`): the empty string decodes to zero bytes; a length of 1 mod 4 is refused; padding is one or two `=` at the end and only when the total length is a multiple of 4; any character outside the alphabet is `ENCODING`. Pinned by M01-301..325.
+5. Object equality ignores member order; values outside the profile cannot be constructed.
+6. `:json` sets no size cap; every caller sets one (frame and container limits).
+
+**R4-L-11 (§4.5; ERR-MAN-5, ERR-FX-CV5, ERR-FX-CV6, ERR-FX-CV10, apple E-09).** Fingerprint normalisation uppercases ASCII `a`–`z` only and deletes `-` and space; every other character survives and never matches (M03-195, M03-196). Strict SPKI: the fixed 26-byte prefix, `04`, and `x`, `y` both below `p` and on the curve; anything else is `ALG_UNSUPPORTED` (M03-215). Constant-time comparisons compare lengths first (lengths are public) (M03-194).
+
+**R4-L-12 (§4.6 verifier; ERR-FX-CV1, CV3, CV4, CV8, ERR-MAN-1, ERR-MAN-2, ERR-MAN-4, ERR-CLOSURE-5, apple E-05, E-06, E-10, E-11, E-20, E-21, E-22, E-27).** Changes to the normative order:
+- **Step 3:** a container that is not an object is `CONTAINER_INVALID`; the shape of `signatures[0]` (not an object, no string `sig`, a non-string `keyid`) is `CONTAINER_INVALID` **here**, before steps 4 and 5; an empty `signatures` array is step 5 (`SIGNATURE_COUNT`).
+- **Step 4 and step 11:** a "newer major" is a canonical decimal above 1 with no leading zero; `…v02+json` is `PAYLOAD_TYPE_UNSUPPORTED`, `asom.manifest/02` is `SCHEMA_INVALID`.
+- **Step 6:** a decoded payload over 262,144 bytes is `TOO_LARGE` (unit test; the container limit is M03-144).
+- **Step 7:** a FILE `signer.spki` that is not a string is `CONTAINER_INVALID`; one that is not strict base64 is `ENCODING`. The `keyid` test precedes the SPKI shape test, as written.
+- **DER codec (signature layer):** `r = 0` or `s = 0` decodes and fails at step 8 (`SIGNATURE_INVALID`); a long-form length is `SIGNATURE_ENCODING`.
+- **Step 11:** at `schemaMinor` 0 an unknown member anywhere in the payload is `SCHEMA_INVALID` (M03-158); above the known minor it is tolerated and counted (M02-107); the five P7 names are invalid at any minor (M03-159). A FILE `presentation` is exactly `{issuedAtMs}` at any minor (M03-193; M02-121 is the accepted sibling). Typed-decoder strictness of `apple E-22` applies (challenge is 32 bytes of strict base64url; `bench.tiers` unique and in tier order; the sustain tier is one of the measured tiers; `energy` is `null`; a tier's `sha256` equals the compiled-in pin; timestamps below 2100-01-01).
+- **Step 15:** `consistency()` additionally requires every copy in the body to equal its `bench` twin: `producer.harness.confVersion`, `producer.engine.name`, `producer.engine.buildFlags`, `device.memory.totalBytes`, `device.os.family`, `device.os.version`, `device.vendor`, `device.model`, `device.soc.name`; `producer.engine.commit` and the bench commit must be prefixes of one another; `device.class` is not tied (open enum). Arithmetic overflow anywhere in step 15 or 15a is `INCONSISTENT` (M03-169). Pinned by M03-179..190, M02-122, M02-113 (and M03-131, whose two copies now change together).
+- **Step 15a:** `ctx.confFloor` has no default; the caller supplies it (vectors use `0.2.0`).
+- **Step 15c:** an evidence item whose JCS form exceeds 32,768 bytes is `CONTAINER_INVALID`.
+- **Steps 17 and 18 (the tier).** Old: "17 tier = A1 if subject.keyStorage in {strongbox, tee, secure-enclave, tpm} else A0 (self-reported; evidence unused); 18 tier >= ctx.requiredTier else TIER_INSUFFICIENT". New: "17 `displayTier` = A1 if `subject.keyStorage` ∈ {strongbox, tee, secure-enclave, tpm} else A0 (a self-reported label, shown as such); `attestedTier` = A0 (evidence is unused; A2 is deferred). 18 `attestedTier >= ctx.requiredTier` else `TIER_INSUFFICIENT`." `Verified.tier` is `displayTier`. With A2 deferred, `requiredTier` A1 and A2 always reject. This makes the lab follow design §5.1 and `manifest.md` §9.1 ("A1 is treated exactly as A0 for every decision"). Pinned by M03-191, M03-192, M03-124; M02-118 and M02-120 now use `requiredTier` A0; apple cross-lane fixture M02-930.
+
+**R4-L-13 (§4.7 signer and projections; R3-CLOSURE-1, ERR-CLOSURE-1, ERR-FX-CV9, apple E-18, E-40, ERR-FX2-ASC04, ERR-FX2-ASC09).** `projectFile(bodyOwn)` is defined:
+- `audience` = `file`; `seq` omitted; `subject` = `{nodeId: nodeId(exportKey), keyAlg: "ES256", keyStorage: "ephemeral"}`; `device.platformIds` and `device.os.securityPatch` removed;
+- the bench projection for FILE: `run.startedAtMs`, `run.endedAtMs` and every `tiers[].startedAtMs` truncated to the UTC day; `run.batteryStartPermille`, `run.screenOn`, `device.osBuild` and `device.gpuDriver` become `null`; every other bench member is kept;
+- `results` = `project(derive(benchFile), FILE)`, so `measuredAtMs` is the truncated tier start and `conditions` holds only `charging` and `thermalStart`;
+- step 15a for FILE re-derives exactly this.
+Pinned by M02-110..112, M02-115, M03-129, M03-132, M03-134, M03-135, M03-160..166 and M06-201..204 (the spec's `M06-file-001..004`; the id grammar is `<family>-<number>`). Signer rules: load, compare, persist and sign `seq` under one lock per store, write a private temp file, sync the directory after the atomic rename; `nextSeq` is at least 1, refuses a negative clock and anything above 2^53 − 1; **a FILE document is never signed by the node key**, and the per-export key is generated inside `signPresentation` (production path). **Builder action:** both lanes accept an injected export key for tests; the production entry point must not.
+
+**R4-L-14 (§4.1 schema patches; R3-CLOSURE-1(c), ERR-BENCH-1, ERR-SCHEMA-1, apple E-26).** The `asom.bench/1` patch list is normative as `lab/manifest/tools/patch_schema.py` labels it (B1..B8: `field`, `custom`, `derived`, `render`, `textSha256` forbidden and absent; raw samples only; "not measured" is an explicit `null`; `platform` gains `windows` and `ubuntu-touch`; `shell` names the daemon, standalone, CLI and app shells; `planSha256` required; `tiers` an array in tier order with per-tier `startThermal`, `restarts`, `swapDeltaBytes`; sustain windows `[tStartMs, tokens, micros, thermalCode]`; `energy` = `null`). P10 is a `$comment` on `schemaMinor`; P11: only the sustain tier's result carries `sustained`; PP1 and PP2 as `ERR-SCHEMA-1`. **New PP3 (builder action, no vector):** the public derivative's `osFamily` enum gains `windows` and `ubuntu-touch`. The Kotlin decoder is normative; the JSON schemas are test oracles.
+
+### 10.4 Benchmark core (L0.3)
+
+**R4-L-15 (§5).** `benchmark.md` §23 (revision 4 amendments) applies to `:bench-core`. The M04 vectors that pin lab-implementation detail that no spec text states (the executor traces M04-301..345, the quick and ci plans M04-401 and M04-403, the run-today consent sheet M04-425) are **lab-implementation vectors**: a second lane is not required to reproduce them until their inputs are transcribed into `benchmark.md` (apple LF-4).
+
+### 10.5 Router, tracker and simulator (L0.6)
+
+**R4-L-16 (§6.1–§6.4; R3-CLOSURE-5, ERR-R6-3, ERR-R6-4, ERR-R6-9, ERR-R6-10, ERR-CLOSURE-5).**
+- Additive local types and fields (never serialised to a peer): `SelfSituation.hasEngine/backend/localQueueMs`; `NodeView.maxContextTokens/batteryDesignMilliWh/stateRegressed/powerFreshness`; `FileKind` and `FileKey.kind`; `MeshQuery.embeddingIdentity`; `TrackerState`, `CapCounter`, `FrozenCloudView`, `Estimate`, `ScoreBreakdown`, `Exclusion`, `CapDelta` as the lab defines them. A peer on battery with no design capacity, an unknown model context and an embeddings request with no identity are excluded (F8 `battery-capacity-undefined`, F5, F16).
+- `classCeiling` values: none exist; `MeshConfig.classCeilings` and `signedReferenceP90` are empty, so the `capRef` term is absent (a prior is `claim × disc / 1000`) until the owner supplies values (**D40**). `confFloor` and `knownBadConf` belong to the manifest verifier (R4-L-12).
+- The 1-in-10 new-peer cap of design T5 is **withdrawn** for mesh-1 (see design R4 note in §4.2): RL11's 1-in-4 cap on UNVERIFIED keys is the only new-peer cap.
+- Error order (`MeshRouter.errorFor`): a v2 code when SELF was excluded for it (`THERMAL_HOLD`, `MODEL_OOM`, `CONTEXT_OVERFLOW`), then `ALL_PROVIDERS_COOLING`, then the cloud tier's own v1 code, then `LOCAL_ENGINE_ABSENT`, `MODEL_UNKNOWN`, `NO_PROVIDER_KEY`. No new code.
+- The v1 `Router` is called unmodified through a throwaway instance per plan; RL6 compares a projection of the plan.
+- A claim curve with more than 4 points or contexts that do not strictly ascend is F8 `claim-curve-invalid` (R01-084..087).
+
+**R4-L-17 (§6.5; ERR-LP-1…4, ERR-LP-5, ERR-LP-7, ERR-LP-8, ERR-FX-RT-5, ERR-FX-RT-6, ERR-FX-RT-7).**
+- An `X-Asom-Fallback` with an empty provider list leaves `P` empty (L01-011).
+- The presence FSM consumes abstract named inputs; which host observes which input is device work. `DRAINING` is observable in the step that starts it.
+- Receiver strictness for `asom.state/1`: the members of the §7.2 example are required (`manifest` and `batteryBand` may be `null`, not absent); a value outside a closed enum, a wrong type or an out-of-range integer is refused; unknown members are ignored and never stored; `sampledAgeMs` above 60,000 is accepted and clamped.
+- `seq` strictly below the last seen is EXPIRED; an equal `seq` is a repeat (W07-072, W07-073). A re-dial forgets only the highest `seq`; GOAWAY and a regressed `seq` survive it (R06-055..058).
+- **Pessimistic substitution, corrected.** Old: "`thermalBand = max(last, 1)` if last ≥ 1" (a no-op for every `last` it applies to). New: "`thermalBand = min(2, last + 1)` if last ≥ 1", the same rule as `queueBucket`. Reason: the guard "if last ≥ 1" is meaningful only for a formula that changes values ≥ 1. **Builder action:** W07-075 pins the literal no-op and must be regenerated; `LiveStateTest` follows.
+- Fields a digest does not carry (power source, charging, battery band) age from the last FULL state; `powerFreshness` and `digestFreshness` are classified separately and the candidate's freshness is the worse of the two (R01-088..091, R02-049, R02-050, R06-061..068).
+- `retryAfterMs` starting values (PROVISIONAL): 30,000 ms for a condition, model or scope decline; 5,000 ms for busy and duplicate; a presence cause uses the remaining LP-2 hold-down clamped into 5,000..600,000.
+
+**R4-L-18 (§6.6 tracker; ERR-R6-5, ERR-R6-6, ERR-FX-RT-1, ERR-FX-RT-3, ERR-FX-RT-4, apple E-34, E-38, ERR-FX-M08-1, ERR-FX-M08-2, ERR-FX2-ASC01, ERR-FX2-ASC10).**
+- Key semantics: the tracker is keyed by (peer, file); entries that differ only by backend are merged (worst state wins, any memory mark applies, strikes are the maximum, cap counters are summed; `disc` and the penalty latch count FILES). The backend selects the claim row and the ceiling only. Ratios kept across a backend switch: no new rule; `DISCARD_SETTINGS` keeps mismatched observations out. Pinned by R01-082, R01-083, R02-047, R02-048, R03-032, R03-033.
+- "Claim decode" is `decodeAt` at contextTokens = P; one tracked ratio scales every curve point; between two points `floor((lo.rate × (hi.ctx − p) + hi.rate × (p − lo.ctx)) / (hi.ctx − lo.ctx))`, clamped outside the curve. **Builder action:** add an M08 vector at a non-integer interpolation point so both lanes are pinned on the floor.
+- The tracker's E1 is the warm path (rtt plus transfer, no handshake term).
+- `Observation` has no field that can carry a peer-reported count or timing.
+- A new claim seq restarts the window W only; the discard-budget record and strikes survive (M08-068, M08-069). DISCREPANT is inherited also when no claim body was recorded before (old: inheritance required a recorded `claimSeq`; stricter now). **Builder action:** JVM `wasBad`; a vector.
+- A tripped discard budget turns UNVERIFIED, CORROBORATED and WEAK into WEAK and **never lifts DISCREPANT**. **Builder action:** add the `state` and `penalty` vectors of `apple ERR-FX2-ASC01`; the JVM behaviour is not observed in a vector yet.
+- The penalty latch: checked after every observation (kept or discarded); a running penalty is not extended; durations 7, 14, 28 … days per latch; the repeat counter never resets; durations saturate. `view()` refuses a `disc` outside 0..1000 and never returns a rate above the claim.
+- Pinned by M08-065..082.
+
+**R4-L-19 (§6.6 padding; R3-OVERCLAIM-1, ERR-R6-1, apple E-39).** Old (M08-017 row): "padding at most offsets the factor `bptCap / bpt = 2` (the stated residual)". New:
+- `outBytes` counts the answer text after normalisation: NFC, Unicode `Cf` and control characters removed, whitespace runs collapsed to one space, trimmed.
+- The stated residual is: below the cap, padding can inflate the observed ratio by up to `min(RATIO_CAP / 1000, maxTokensOffered × bptCap / trueOutBytes)`; with the spec's own numbers that is about 5×, not 2×. Placement still never exceeds the claim (`effRatio = min(1000, …)`).
+- A requester-side length check (discard with a strike any answer longer than k × the requester's own per-(app, model) output-length EWMA) is **DEFERRED**: k needs simulation; recorded in `REVISION_4.md`.
+**Builder action:** implement the normalisation in both lanes; rewrite M08-017's expected text; add M08 vectors for trailing-whitespace padding, zero-width padding and a short real answer under a large `max_tokens`.
+
+**R4-L-20 (§6.7–§6.9 laws and simulator; ERR-R6-7, ERR-R6-8, ERR-R6-13, ERR-R6-15…24, ERR-FX-5).** RL9 excludes cap swaps and the probe-only partition; RL10 holds strictly only in calm worlds and, with the cap active, for the cheapest and auto blocks; RL13 is measured among equal primary keys; RL8 is checked with unlimited attempts, for other nodes' ranks, and at file level only for the rate and warm-model inputs; RL19 is Jain's index over on-time completion (a weak law in a simulator with no per-app scheduling); the fault kinds have the semantics of `ERR-R6-18`; ids use a fifth random split taken after the four; SC01's share is measured over a 72 h run at 15 requests an hour; B4 (hindsight) is the same plan from the peers' truth over the same snapshot; scenarios live in `lab/mesh-sim/scenarios/`. The R6-FINDING-COLD behaviour (an honest lender that unloads between uses reaches DISCREPANT) is owner item **D35**; until it is ruled, `FindingsTest` pins it.
+
+### 10.6 Wire, session, TLS and ledger (L0.4, L0.5)
+
+**R4-L-21 (§7.1, §7.2; ERR-PW-1…8, ERR-PW-10, ERR-PW-11, ERR-PW-13, ERR-PW-14, ERR-PS-1, ERR-FX-2).**
+- A length below 5 and a length above 16,777,221 are both `FRAME_TOO_LARGE` and close, raised once 5 bytes are in; the length is unsigned.
+- Class limits: JSON 1,048,576 (every type but `INFER_BODY` and `INFER_CHUNK`, incl. `PAIR_*` and `MANIFEST`); `INFER_BODY` 8,388,608; `INFER_CHUNK` bounded by the frame maximum. Over the limit: `FRAME_TOO_LARGE` and close, before any payload byte is buffered.
+- The "Dir, stream" column of §7.2 is normative per type; a violation is `ERROR PROTOCOL_ERROR` and close. **The TLS client is the requester and the TLS server the lender for the life of one connection; a node borrows from a peer by dialling it.** `GOAWAY`, `ERROR`, `REVOKE_NOTICE` go both ways.
+- Every JSON payload is one strict JSON object; an empty JSON payload is `MALFORMED_JSON`; receivers do not require JCS.
+- Bounds of `ERR-PW-7` (HELLO versions 1..255; `proto` exactly `asom-mesh/1`; `name` 1–32 code points, no control character; `sw` grammar; integers 0..2^53 − 1; **all five `limits` members required**; model ids `[A-Za-z0-9._:-]{1,128}`; an optional member present as `null` is `WRONG_TYPE`).
+- Identifiers: `sessionNonce` is 22 characters (16 bytes); `nodeId`, `challenge` 43; `attemptId` 22; decoded strictly. Endpoint addresses are IP literals; unknown entries of `features` and `granted` are dropped; an unknown value of a closed single-valued enum is refused.
+- Extensions (0x80–0xFF) are skipped whatever their stream, mode or payload; producers never emit one.
+- `ERROR` codes and `GOAWAY` reasons are stored only as closed-set members; anything else is stored as `ERROR:UNKNOWN` / `GOAWAY:unknown`, and a CONTROL row's `meshCode` must match that grammar (L02-022, L02-023).
+- W06 vectors are `normative` (this file wins over `platforms.md` §5's "proposed").
+Pinned by W06 (incl. W06-001..004) and the wire side of W07.
+
+**R4-L-22 (§7.3).** Pairing frames, proof and SAS follow `trust.md` §16 (revision 4 amendments): commit-before-reveal and the typed code on D are normative from r4.
+
+**R4-L-23 (§7.4 TLS; R3-OVERCLAIM-6, R3-CLOSURE-7, ERR-PL-1…7, ERR-PL-9, ERR-PL-12…15, ERR-FX2-TT-3).** Old: "no resumption (a fresh `SSLContext` per dial, and the server issues no tickets)". New: "no resumption: the dialler builds a fresh `SSLContext` for every dial and the listener builds a fresh `SSLContext` (own key manager, trust manager and empty caches) for every accepted connection. A JSSE listener may still send TLS 1.3 tickets (no scoped switch suppresses them on JDK 17 or 21); they cannot be redeemed because the issuing context is gone. W08 asserts, per lane: no `pre_shared_key` in any ClientHello of the honest dialler; a hostile client that replays a ticket gets a full handshake with the verifier invoked once." Measured on JDK 17.0.12 and JDK 21.0.10 (LAB); other builds, Conscrypt and Network.framework are UNVERIFIED. Further W08 readings: "a client CertificateVerify in every session" is proved by what the server observes (a 2-certificate peer chain, exactly one verifier call, an Accepted verdict); hostile ClientHellos are tapped separately and must have been seen; the signature scheme is scoped by `SSLParameters.setSignatureSchemes` where the JDK has it and otherwise enforced by the verifier; ALPN is enforced by parameters, by a key-manager gate (no certificate is presented unless the negotiated protocol is `asom-mesh/1`) and after the handshake, and an absent ALPN may end with `handshake_failure`; every verifier refusal is a `CertificateException` with no message (alert `certificate_unknown`), and W08's `alert-uniform` law, not a constant getter, is the evidence; the 5 s handshake timeout is one deadline for the whole handshake; a `legacy_session_id` is evidence of resumption only when it repeats across tapped connections; SNI token gating (S-A11) is **not adopted** (design T13 stays open; the spike lives in test sources only).
+
+**R4-L-24 (§7.5 ledger model; R3-CLOSURE-6, R3-CONFORMANCE-1, ERR-LL-2, ERR-LL-3, ERR-LL-5, ERR-FX-1, desktop ERR-SINK-1, desktop ERR-FX-11, ubuntu-touch ERR-FX-UT-2).**
+- **Session grouping rules (adopted):** the dialler generates its session id before the `DIAL` intent and writes it in the `DIAL` rows; the listener writes `SESSION` open after the first frame that names the session (`HELLO`, whose `sessionNonce` is the id) and before any reply, or under a locally minted id when the session ends without one (refusal, timeout); for a pairing connection the session id is base64url of the first 16 bytes of the `PAIR_HELLO.nonceS` member as sent (under `trust.md` R4-T-10 that member carries the commitment `C`), which both ends know once `PAIR_HELLO` has crossed, and the dialler's earlier rows are grouped under a local id until then; attempt rows carry the session that carried them; a session's id never changes after its open row. Pinned by L02-013 and L02-020.
+- **Where the session id is stored is owner item D34.** The lab carries it in one additional nullable column `sessionId` (21 mesh columns). The alternative is a fixed `routeDetail` prefix `session=<id>` with 20 columns. Old text ("so no extra column exists") stands only if D34 rules the prefix.
+- `costEst` is written as a JSON string holding the shortest round-trip decimal; every other number is an integer; a row line is the JCS bytes of the row; every column is present (null when unset).
+- Row values of `ERR-LL-5` (per-frame rows have no phase; `SESSION` `meshCode` `established|pairing|close|close:ledger-failure`; statuses 200, 599, 503, 403; `INBOUND_REFUSED` keeps its count as `refused:<n>`; session and control rows use `callerPkg` `peer:<nodeTag>`; every mesh row has `egress = peer`; a request's terminal row has `bytesOut 0`).
+- `callerPkg` `self-ui:` forms (once D25 is ruled): only the Ubuntu Touch asom app's own screen and the iOS asom app's own screen (R3-CONFORMANCE-1); never iOS host apps. The desktop owner CLI is `local-uid:`/`local-sid:…(acl)`.
+- **JSONL sink, torn tail.** Opening a file whose last byte is not `\n` truncates it to just after its last `\n` (the cut bytes were never acknowledged); a failed append truncates back to the length before it and throws; a failed truncation poisons the sink; one writer per file. The torn-tail scan has no length cap (bounded memory). Only process death is claimed, never power loss.
+
+**R4-L-25 (§7.6; R3-OVERCLAIM-3, ERR-LL-8, ERR-LL-9, ERR-PL-10, ERR-PI-1, ERR-PI-2, ERR-PI-6, ERR-PI-8, ERR-PI-10, ERR-PI-11, ERR-PS-2, ERR-PS-3, ERR-PS-8, ERR-PS-16, ERR-PI-7, ERR-FX-5).**
+- **L-L15 needs three instruments that are independent of the row writer:** a socket tap (raw bytes), a plaintext tap at the frame layer that counts `9 + payload` per frame by its own formula (the rows' application bytes must equal it), and `overheadBytes` taken from the transport meter (engine `bytesProduced`/`bytesConsumed`, counted as what the channel actually took or delivered), never derived from the rows. The overhead must lie within `[22 × records, records × R + handshake allowance]`, both ends inclusive. Old: "The overhead is network bytes minus the application bytes of the frames" (true by construction).
+- **ESTIMATED form, recalibrated (PROVISIONAL).** Old: "`22 × ceilDiv(appBytesOfFlush, 16384)` per flush, plus 4,096 bytes per direction". New: "`R × ceilDiv(appBytesOfFlush, Lmax)` per flush plus a handshake allowance of 8,192 bytes per session, where `R` and `Lmax` are the per-stack calibrated record expansion and largest one-record write; for JSSE 17.0.12 and 21.0.10 with TLS_AES_256_GCM_SHA384 (LAB) `R = 38`, `Lmax = 16,367`, close_notify 40 bytes; for an uncalibrated stack `R = 22` and `Lmax = 16,384` (the RFC 8446 minimum, labelled as such)." The 22-byte figure [F51] is a **lower bound**, not the JSSE cost; the cause of the extra 16 bytes was not examined. Measured handshakes: 2,530–2,540 bytes (dialler) and 4,440–4,460 bytes (listener) on JDK 21. **Builder action:** `:ledger-model`'s ESTIMATED form.
+- Handshake overhead rides on the dialler's `DIAL` outcome and the listener's `SESSION` open; the close row carries `network − plaintext − handshake`, written after both close alerts.
+- A refused frame gets no row of its own: the answering `ERROR` gets the CONTROL row and every uncovered application byte (refused frames, bytes after a failure, a partial frame) is carried by the `SESSION` close row's `bytesIn`/`bytesOut`; a row may claim bytes of a frame whose write then failed (counted and subtracted by the oracle).
+- DIAL outcome mapping on a JVM: verifier refusal or nothing presented → `pin-mismatch`; no ALPN, no TLS 1.3, no client-auth request, failed or cut handshake → `not-tls`; the 5 s budget → `timeout`; peer alert, socket failure, refused connect → `refused`; `local-network-denied` and `firewall-blocked` come from platform layers.
+- Network.framework overhead is **ESTIMATED** until spike IA07 passes (also design §8.4).
+- A pairing-mode connection admits at most 16 inbound frames (`PAIR_*` and extensions together); the 17th is `ERROR PROTOCOL_ERROR` and close. The budget for `EXT_IGNORED` and `REVOKE_NOTICE` rows on an ESTABLISHED session is **not built** (open; `REVISION_4.md`).
+
+**R4-L-26 (§7.7; ERR-LL-4, ERR-LL-6, ERR-LL-7, ERR-LL-11, ERR-PS-11, ERR-PS-19, ERR-PI-15).**
+- **FC-5.** Old: "`CANCEL` the stream, send no `INFER_END`, then FC-2". New: "send no frame (no `INFER_END`, no `CANCEL`: `CANCEL` is a requester frame), cancel the engine locally, then FC-2." Pinned by L02-017.
+- **FC-6 (new): requester outcome append fails.** The attempt keeps its intent row (outcome unknown), the session is not closed, the node ledger is marked unavailable until the next successful write.
+- **L-L4** checks the class label only (the row is durable before the frame is sent, so a crash can leave a row for bytes that never left).
+- **L-L9** reads: intent rows carry no bytes, tokens or cost (old: "summing over all rows equals summing over outcome rows only", false once per-frame rows exist).
+- **L-L11** kills both simulated processes at every instrumented step and requires each node's durable rows to be a prefix of the failure-free run; the death of one node while the other continues is not modelled.
+- **L-L13** is scoped to what depends on the failed row (no byte of that attempt, no frame on that session after a control-row failure, no engine read after a lender intent failure, no SYN after a DIAL intent failure; a sink that keeps failing sends no content frame at all); after a control-row failure the socket may carry at most one close_notify record of the calibrated size.
+
+**R4-L-27 (§7.2 timers and limits).** The session timers and limits (idle, maximum age, body wait, request wait, cancel grace, write stall, stream and handshake limits, LRU sizes) are normative in `trust.md` §16 (R4-T-08). Note: ERR-PI-3's maximum session age of 24 h is **superseded** by design §4.3 and T9 (30 min). **Builder action:** `Session.tick` max-age constant.

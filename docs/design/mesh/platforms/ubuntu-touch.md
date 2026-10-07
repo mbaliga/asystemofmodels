@@ -1,5 +1,7 @@
 # Platform section: Ubuntu Touch (UBports / Lomiri)
 
+**Revision 4 (2026-10-07):** §12 amends this section; where they differ, §12 wins (`../REVISION_4.md`).
+
 **Date:** 2026-09-30 · **Grade:** DIRECTION (an input to the roadmap v4 design session and to the phased plan; nothing here authorises execution) · **Scope:** Ubuntu Touch 24.04-1.x and 24.04-2.x on Halium phones and tablets, as distributed by UBports; 26.04-1.x ("next") only as a CI canary; 20.04 excluded · **Target directory:** `ubuntu-touch/` (AD-3).
 **Reads with:** `OWNER_DIRECTIVES_2026-09-30.md` (D-A…D-F, AD-1…AD-6, treated as decided), `ASOM_MESH_DESIGN.md` r2 (§2.1 roles, §3 platform matrix, §4 T2/T9/T13/T17, §5.3–§5.4, §7.4 LP-1/LP-2, §8.2 IC-1…IC-8, §8.4 ledger, §8.6 quiescence, §9.3), `REVIEW_ROUND2.md`, and the sibling `platforms/linux.md` (whose JVM node this section reuses).
 **Tags:** `[UFnn]` = verified in this session (source and date in §1.1). `[UAnn]` = assumption (§1.2). `[Fnn]`/`[Ann]` = the design brief's Appendix A/B ids; `[LFnn]`/`[LAnn]` = `linux.md` ids, inherited without re-fetching unless said. `SIGN-OFF` = needs the owner. Every performance number is an estimate unless it carries a `[UF]` tag.
@@ -786,3 +788,26 @@ ubuntu-touch/                                   # AD-3; the root Gradle build ne
 | Small user base; owner device availability | medium | UT never blocks M1; one validation device is enough | Validation depends on the owner's hardware |
 | Supply chain: Temurin runtime, Clickable images, click-review in the build path | medium | Pin Temurin by sha256 and images by digest; build the jar outside the Clickable image; record image digests in `PROGRESS.md` | A compromised pinned image at pin time is not detected |
 | Presence inference if UT-2 lends | low | LP-1 PF exception with W07 vectors (R2-OVERCLAIM-9); lending only with the lend screen frontmost | A paired requester can tell when the owner leaves the lend screen; by design |
+
+
+---
+
+### 12. Revision 4 amendments (normative; 2026-10-07)
+
+**Status.** Design revision 4 (`../REVISION_4.md`) folds into this section the readings of the Ubuntu Touch track (`ubuntu-touch/ERRATA.md`; ids below are that file's). **Where this section and §1–§11 differ, this section wins**; the design and `PLATFORM_PLAN.md` still win. UT-0 ships no identity, no ledger rows in normal operation and no listener. Device items stay NEEDS-DEVICE-VALIDATION.
+
+**R4-UT-01 (§7.3 channel; ERR-UT-CTL-1, ERR-UT-CTL-2, ERR-UT-CTL-3, ERR-UT-ERR-1).** Every frame is one JSON object whose first member is `t`; decoding is strict, closed (unknown member refused) and bounded; the 1 MiB line cap is enforced while reading. A malformed, oversize or unknown frame or a second `hello` ends the session with one fixed stderr line `asom-ut: protocol violation <REASON>` and exit 65, echoing nothing. `pair`, `revoke` and `export` in UT-0 answer `error{rid:null, code:UNSUPPORTED_BY_DRIVER}`; `hello_ack` carries `nodeTag:"none"`, `keyStorage:"unknown"`. Error precedence follows the v1 router (`local-only` → `LOCAL_ENGINE_ABSENT`; unknown concrete model → `MODEL_UNKNOWN` when a catalogue exists; no paired peer → `NO_PROVIDER_KEY`; …).
+
+**R4-UT-02 (§3.3, §3.4 FSM and laws; ERR-UT-FSM-1, -2, -4, -5, ERR-FX-UT-3).** FREEZING and RESUMING return their work as effects; wire mapping STARTING/IDLE → `idle`, FREEZING/FROZEN/RESUMING/LEDGER_FAIL → `interrupted`. Boundaries: the UI is active while its last `active` report is at most 10,000 ms old; the watchdog fires on a gap strictly over 3,000 ms; idle close at 300,000 ms. `inactive` is treated as locked (no new dial, freeze at once), which subsumes L-UT3. Handlers never hold the session lock for long (the self-test runs on its own thread), because a long lock hold looks like a suspend. L-UT2's display hold: the UI holds the display from `borrow` to the terminal frame (a superset of the law's window); whether the channel gains a frame for the exact window is owner item **D39**.
+
+**R4-UT-03 (§3.5 projection, ledger and status; ERR-UT-PROJ-1, ERR-FX-UT-2, ERR-FX-UT-4, R3-CONFORMANCE-1).** Projected members are the row's own (JCS-compared); only `provenance` is derived and sanitises the peer alias. The caller label `self-ui:xyz.mdhv.asom.ut` depends on D25 and appears only in throw-away self-test rows in UT-0. The node's ledger removes a torn tail at open, checks the last row, rolls back a failed append, and moves to LEDGER_FAIL on a corrupt row; queries stream, oldest first, within a 768 KiB budget. The status page says only what is true of the build (UT-0: no identity, nothing to copy).
+
+**R4-UT-04 (§5.1 paths; ERR-UT-PATHS-1).** `~/.local/share/xyz.mdhv.asom.ut/{ledger,identity}` as siblings, cache and config likewise, all 0700; paths outside `HOME`, relative paths, `..`, symlinked application directories and directories that cannot be tightened are refused.
+
+**R4-UT-05 (§7.4 runtime; ERR-UT-JLINK-1, ERR-UT-JLINK-2, ERR-UT-CDS-1, ERR-UT-JAR-1).** jlink ignores `objcopy=PATH`: the cross objcopy goes first in PATH. Modules are `java.base,java.logging,jdk.crypto.ec,jdk.unsupported` (no `jdk.net`: no Unix socket on UT). The CDS flags are removed (they print to stdout in a jlinked runtime); `-Xlog:disable` and `-XX:+DisplayVMOutputToStderr` keep stdout for frames only. The jar excludes the v1 server's libraries (4.2 MB).
+
+**R4-UT-06 (§10.2 click and QML; ERR-UT-CLICK-1…4, ERR-UT-QML-1…3, ERR-UT-NET-1, ERR-FX-UT-1).** Every `Label`, `Text` and `TextEdit` sets `textFormat: Text.PlainText` itself (AutoText would fetch remote images named in peer strings with no ledger row); `AutoText`, `RichText`, `StyledText` and `MarkdownText` are forbidden in `qml/`. Both `X-Ubuntu-Touch=true` and `X-Lomiri-Touch=true` are written. The AppArmor file keeps its placeholder and CMake fills policy `2404.1`. QML CI runs under `xvfb-run` with Mesa software GL. UT-0 does no DNS and opens no socket.
+
+**R4-UT-07 (§3.1 claims and stolen devices; R3-OVERCLAIM-9, R3-OVERCLAIM-12, ERR-UT-CI-1).** The arm64 smoke shows the runtime starts in the Clickable SDK image, not in the device userland. A Ubuntu Touch phone has **no key-level lock binding**: only the behavioural limits L-UT1 and L-UT3 apply; a stolen phone keeps its borrow scope until revoked on each lender; the key at rest is protected only if fscrypt is enabled.
+
+**R4-UT-08 (§10 build; R3-CONFORMANCE-14, ERR-UT-MAP-1, ERR-UT-SELFTEST-1, ERR-UT-SELFTEST-2).** UT-0 maps lab modules authorised by D1a only; from UT-1 the build maps promoted modules (`PLATFORM_PLAN.md` R4-P-05). The UT-0 self-test runs M01–M03 only (no listener) and its TLS check is a JSSE behaviour test with a self-signed certificate, **not** the trust.md verifier.
