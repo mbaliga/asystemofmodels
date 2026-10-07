@@ -1950,3 +1950,26 @@ $ ./gradlew jvmTest --rerun-tasks --max-workers=2
 BUILD SUCCESSFUL in 13s   (root tests read from the XML: 139 tests, 0 failures, 0 errors, 0 skipped; the jacoco report resolved here)
 ```
 `desktop/tools/isolation.py`, `desktop/tools/check_law.py`, `ubuntu-touch/tools/isolation.py`, `ubuntu-touch/tools/check_law.py` and `ubuntu-touch/tools/check_texts.py` also printed OK. No source or test file changed in this track, so no module test result depends on it beyond the two full-lab runs above. Not run: the Swift lane (`swift test`; documentation only changed under `apple/`), any hosted job.
+
+## Gate: Apple Swift lane repaired after the merge of the seven fix groups (2026-10-07)
+
+Evidence: LAB, oracle: self, NOT DEVICE EVIDENCE. Linux Swift only; macOS and CryptoKit are unverified here. Output below is real (vector bodies not printed).
+
+Findings: (1) `SignerTests` verified a TEST-ONLY-signed FILE document with the new fail-closed default (ERR-FX-CV2): the context now says `productionKeys: false`. (2) Cross-lane fixture M02-930 claimed requiredTier A1 accepted (pre ERR-FX-CV3); retagged to requiredTier A0 (still a strongbox claim, labelled A1) and the fixtures regenerated. (3) `not-implemented.txt` was right for M04 (29) but the router group added 14 M08 vectors (kinds inherit, claimBudget, penalty, disc) the Swift tracker does not run, and 4 M08 `state` vectors it does; `known-disagreements.txt` had been merged into two copies (37 + 37 + 5 reasonless) so `lane_diff.py` reported duplicates. See `apple/ERRATA.md` ERR-FX-M08. The Swift tracker still clears the discard budget on a new claim seq (lab ERR-FX-RT-3 says it must not): a real, listed disagreement in rule, not fixed here.
+
+```
+$ swift test --package-path apple
+Executed 226 tests, with 0 failures (0 unexpected)
+$ asom-conformance check M01,M02,M03,M04,M05,M06,M08
+checked 413, mismatches 47     (42 LF-1 verdicts = known-disagreements.txt; 5 LF-1 values M04-042, M06-201..204)
+$ ./gradlew -p lab :conformance-runner:run --args='lines M01,M02,M03,M04,M05,M06,M08'   (JDK 17)
+456 lines
+$ python3 apple/ci/lane_diff.py jvm.lines swift.lines --known ... --not-implemented ...
+vectors: jvm=456 swift=413 agree=371 disagree=42 (known 42) jvm-only=43 (not implemented 43)
+  (F-1 diagnostic reading, ASOM_DIAGNOSTIC_DRIFT_FLAG=1: agree=413 disagree=0)
+$ python3 apple/ci/test_lane_diff.py   -> Ran 13 tests OK
+$ python3 apple/ci/test_crosslane.py   -> Ran 8 tests OK
+crosslane: JVM, Swift and the fixture agree on 37 of 37 (23 ok, 14 reject)
+$ python3 lab/tools/isolation.py  -> isolation check 4: OK
+$ ./gradlew -p lab :conformance-runner:test --offline -> BUILD SUCCESSFUL
+```

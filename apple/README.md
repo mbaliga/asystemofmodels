@@ -60,14 +60,14 @@ anything else is the r0 set of half I0a (M02 and M03, DSSE layer only, `check` a
 | M04 (derive, plan, consent, governor, ceilings, pins, traces) | 94 | **65**: `test` (22), `sustain` (9), `percentile` (2), `doc` (15), `plan` (1: standard), `consent` (5), `fsm` (1), `ceilings` (9), `pins` (1). **Not** 29, each BLOCKED in `apple/ci/not-implemented.txt` with its reason: the 26 executor traces (the fake engine, its presets and the event grammar are not in the spec), the quick and ci plans (their JCS form is not in the spec), the run-today consent sheet (its wording is not in the spec). `ERRATA.md` E-29 to E-31 |
 | M05 (render) | 42 | all: the manifest text (12) and the `asom.text/1` body (30) |
 | M06 (derivatives) | 10 | all: `q2`, the public derivative, the FILE projection |
-| M08 (claim tracker) | 59 | all: `evaluate` (28), `sequence` (26), `state` (3), `claimBody` (2) |
+| M08 (claim tracker) | 77 | **63 of 77**: `evaluate` (28), `sequence` (26), `state` (7), `claimBody` (2). **Not** 14, each BLOCKED in `apple/ci/not-implemented.txt`: the four kinds the JVM router fix group added, `inherit` (3), `claimBudget` (2), `penalty` (4), `disc` (5) (M08-065 to M08-078; lab `ERR-FX-RT-3/4/8`, this lane `ERRATA.md` ERR-FX-M08) |
 
-`lines` printed 370 lines at the time of writing (the 294 of half I0b, plus 17 M04 and 59 M08 vectors; the real count is in the gate entry of `PROGRESS.md`). The JVM runner prints 399 for M01 to M06 and M08; the other 29 are the BLOCKED M04 vectors above.
+`lines` printed 370 lines at the time of writing (the 294 of half I0b, plus 17 M04 and 59 M08 vectors; the real count is in the gate entry of `PROGRESS.md`). At the merge of the seven fix groups (LAB, oracle: self) `lines` prints 413 lines and the JVM runner 456 for M01 to M06 and M08; the other 43 are the BLOCKED vectors above (29 M04 and 14 M08).
 
 ## The lane diff
 
 `apple/ci/lane_diff.py` compares the two lines files **per vector** and names each difference with both verdicts. Two explicit lists sit beside it:
-`known-disagreements.txt` (37 vectors, finding LF-1, each line with its reason) and `not-implemented.txt` (29 vectors, each BLOCKED with its reason). It fails on a disagreement that is not listed, on a listed one that now agrees,
+`known-disagreements.txt` (42 vectors, finding LF-1: the 37 of I0b and the 5 that the fix-crypto vectors added, each line with its reason) and `not-implemented.txt` (43 vectors, each BLOCKED with its reason). It fails on a disagreement that is not listed, on a listed one that now agrees,
 on a vector one lane printed and the other did not, on a `not-implemented` entry that the Swift lane now prints or that the JVM lane does not print, on an entry with no reason, and on a duplicate. `apple/ci/test_lane_diff.py` runs the real script against each of those failures.
 
 **LF-1 in one paragraph.** The JVM lane's projection of `results[]` adds a row flag `thermal-drift` when an M04 test drifted (design B7). benchmark.md 13.3 lists the flags of a projected row and has no such flag.

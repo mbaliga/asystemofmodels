@@ -142,8 +142,9 @@ public enum CrossLane {
             let again = try own()
             accepts.append(Entry(id: String(format: "M02-%03d", 910 + k), description: "Swift signer, fresh signature \(k + 1) of 16 over the same body (ECDSA nonces differ; every one must verify): accepted.", document: again.document, context: mesh1, nowMs: nowMs, intent: .ok))
         }
-        let tierA1 = meshContext(pinned: key1.spki, challenge: challengeText, requiredTier: "A1")
-        accepts.append(Entry(id: "M02-930", description: "Swift signer, requiredTier A1 with a strongbox-claiming body: accepted.", document: try own().document, context: tierA1, nowMs: nowMs, intent: .ok))
+        // ERR-FX-CV3: only A0 is proven, so requiredTier A1 is TIER_INSUFFICIENT. The accept entry keeps its purpose (a strongbox claim in the body is a label, not a gate) at requiredTier A0.
+        let tierA1 = meshContext(pinned: key1.spki, challenge: challengeText, requiredTier: "A0")
+        accepts.append(Entry(id: "M02-930", description: "Swift signer, requiredTier A0 with a strongbox-claiming body (labelled A1, a label and never a gate): accepted.", document: try own().document, context: tierA1, nowMs: nowMs, intent: .ok))
         let fileDoc3 = try file(key3)
         accepts.append(Entry(id: "M02-940", description: "Swift signer, FILE, per-export key3, fingerprint not compared: SIGNER_UNVERIFIED.", document: fileDoc3.document, context: fileContext(), nowMs: nowMs, intent: .ok))
         accepts.append(Entry(id: "M02-941", description: "Swift signer, FILE, key3, the export fingerprint typed exactly: PINNED_BY_FINGERPRINT(typed).", document: fileDoc3.document, context: fileContext(fingerprint: key3.exportFingerprint, method: "typed"), nowMs: nowMs, intent: .ok))

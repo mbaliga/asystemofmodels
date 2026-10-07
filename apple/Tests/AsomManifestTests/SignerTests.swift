@@ -150,7 +150,7 @@ final class SignerTests: XCTestCase {
         let expectedBody = try FileProjection.body(ownObject: .object([JMember(name: "body", value: try ownBody())]), exportNodeId: key3.nodeId)
         XCTAssertEqual(try JCS.serialize(body), try JCS.serialize(expectedBody), "the signed body is the projection, nothing else")
         XCTAssertTrue(SignatureCodec.isLowS(p.sig))
-        var ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, nowMs: now)
+        var ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, productionKeys: false, nowMs: now)
         XCTAssertEqual(code(ManifestVerifier.verify(document: signed.document, context: ctx)), "ok")
         ctx.comparedFingerprint = signed.exportFingerprint
         ctx.compareMethod = .typed

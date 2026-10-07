@@ -118,8 +118,12 @@ final class R3ConformanceTests: XCTestCase {
                      "M04/test", "M04/sustain", "M04/percentile", "M04/doc", "M04/plan", "M04/consent", "M04/fsm", "M04/ceilings", "M04/pins", "M08/evaluate", "M08/sequence", "M08/state", "M08/claimBody", "M05/manifest", "M05/export", "M05/body", "M05/mlperf", "M06/q2", "M06/public", "M06/fileProjection"] {
             XCTAssertGreaterThan(perKind[kind] ?? 0, 0, "kind \(kind) exercised no vector")
         }
-        XCTAssertEqual(Set(skipped.keys), ["M04/trace", "M04/plan", "M04/consent"],
-                       "the only vectors this lane does not run: the executor traces, the plans the spec gives no data for, the consent sheet whose wording it does not give")
+        XCTAssertEqual(Set(skipped.keys), ["M04/trace", "M04/plan", "M04/consent", "M08/inherit", "M08/claimBudget", "M08/penalty", "M08/disc"],
+                       "the only vectors this lane does not run: the executor traces, the plans the spec gives no data for, the consent sheet whose wording it does not give, and the four M08 tracker kinds the JVM router fix group added (ERR-FX-RT-3/4/8)")
+        XCTAssertEqual(skipped["M08/inherit"], 3)
+        XCTAssertEqual(skipped["M08/claimBudget"], 2)
+        XCTAssertEqual(skipped["M08/penalty"], 4)
+        XCTAssertEqual(skipped["M08/disc"], 5)
         XCTAssertEqual(skipped["M04/trace"], 26)
         XCTAssertEqual(skipped["M04/plan"], 2)
         XCTAssertEqual(skipped["M04/consent"], 1)
@@ -130,7 +134,7 @@ final class R3ConformanceTests: XCTestCase {
         XCTAssertEqual(perKind["M04/pins"], 1)
         XCTAssertEqual(perKind["M08/evaluate"], 28)
         XCTAssertEqual(perKind["M08/sequence"], 26)
-        XCTAssertEqual(perKind["M08/state"], 3)
+        XCTAssertEqual(perKind["M08/state"], 7)
         XCTAssertEqual(perKind["M08/claimBody"], 2)
         XCTAssertGreaterThanOrEqual(perFamily["M03"] ?? 0, 70)
         XCTAssertGreaterThanOrEqual(perFamily["M01"] ?? 0, 100)
