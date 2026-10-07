@@ -16,8 +16,16 @@ Evidence label: **LAB**, `oracle: self`, never device evidence.
 | `router/R04-v1-pins.json` | R04 | recorded from the real `Router`, each hand-checked before writing |
 | `keys/TEST-ONLY-keys.json` | (data) | published private scalars; **never trusted anywhere**; production verifiers refuse these `nodeId`s (L0.2) |
 | `INDEX.json` | (data) | `[{path, sha256, family, status}]` sorted by path; detects an incomplete checkout, authenticates nothing |
-| `history/r0/` | | reserved for the r0 seed files (L0.2, never run) |
-| `manifest/`, `ledger/`, `scenarios/` | | reserved for later work items |
+| `json/M01-jcs.json` | M01 | 93 hand vectors: the strict parser, JCS and strict base64 (L0.2a) |
+| `manifest/M01-der-raw.json`, `M02-verify-accept.json`, `M03-verify-reject.json`, `M05-render.json`, `M06-derivatives.json`, `manifest/schema/` | M01 (der/raw), M02, M03, M05, M06 | 12, 18, 71, 12 and 10 generated vectors; the two JSON schemas (L0.2, L0.3). The M01 family name is shared by `json/` and `manifest/`; they are different vectors |
+| `bench/M04-derive.json`, `bench/M05-body.json` | M04, M05 | 94 and 30 generated vectors (L0.3) |
+| `ledger/L01-destination-sets.json`, `L02-frame-rows.json` | L01, L02 | 56 and 21 hand vectors (L0.4) |
+| `policy/W07-live-state.json`, `W07p-presence.json` | W07, W07p | 67 and 97 hand vectors (L0.4) |
+| `router/R01-hard-filter.json`, `R02-scoring.json`, `R03-ordering.json`, `R05-failover.json`, `R06-reducers.json`, `M08-claim-tracker.json` | R01, R02, R03, R05, R06, M08 | 81, 46, 31, 44, 54 and 59 vectors (L0.6) |
+| `wire/W04-pairing.json`, `W05-fingerprints.json`, `W06-frames.json`, `W07-state-frames.json` | W04, W05, W06, W07 | 312, 166, 284 and 31 vectors (L0.5, proto-trust and proto-wire; the W07 here is the STATE-frame half of the family whose live-state half is under `policy/`) |
+
+Not present at this commit, despite earlier versions of this table: `history/r0/` and `scenarios/` (the simulator's scenarios live in `lab/mesh-sim`, ERRATA ERR-R6-13).
+Counts are read from the files at base `f6a8f1ef` (every vector is `oracle: self`; all `normative` except the proposed ones named under Pass rules).
 
 Every vector file is one JSON object: `{family, confVersion, specRefs, vectors[]}`; each vector has `id`, `origin`
 (`hand` | `generated`), `status` (`normative` | `proposed` | `illustrative`), `oracle` (`self` | `independent` | `external`),
@@ -30,7 +38,7 @@ Every vector file is one JSON object: `{family, confVersion, specRefs, vectors[]
   exercised at least one case (the suite prints `law <family>/<name>: <n> cases` and fails on a zero).
 - A `proposed` vector runs in a non-blocking lane: its result is reported, never counted as normative, and a proposed
   vector whose module is not built is `proposed-skipped`. A family whose module is not built is `not-implemented`, never `pass`.
-- Every vector must carry an `oracle` tag; at L0.1 they are all `self`.
+- Every vector must carry an `oracle` tag; they are all `self` (at this commit, in every family).
 - Comparison: header names are matched case-insensitively against the implementation (the runner writes the observed
   names in the canonical `X-Asom-*` spelling, so vector files must use that spelling); numbers are integers; the v1 doubles (`costEst`, latency EWMAs) are decimal STRINGS holding the
   shortest round-trip form JDK 21 prints, read with `Double.parseDouble` (LAB_SPEC R6). Message text of errors is never compared.

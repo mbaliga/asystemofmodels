@@ -16,6 +16,8 @@ reading taken: [`ERRATA.md`](ERRATA.md). The units, the sysusers.d file, the pol
 | `install.sh`, `uninstall.sh` | the per-user route (no root): verify SHA256SUMS always, inspect the archive, swap `current`, write the USER unit disabled; `uninstall.sh --purge` needs a typed confirmation on the terminal |
 | `test/lab-packaging-check.sh` | everything checkable without systemd or a container engine (LAB): installers, 14 hostile archives, signature binding, purge on a pty, deb layout, maintainer scripts against stub `systemctl` in a private mount namespace |
 | `test/distro-matrix.sh` | containers `ubuntu:22.04/24.04/26.04`, `fedora`, `archlinux` (CI-ONLY, never run) |
+| `test/lab-packaging-check.sh` | everything checkable without systemd or a container engine (LAB): installers, 9 hostile archives, purge on a pty, deb layout, maintainer scripts against stub `systemctl` in a private mount namespace |
+| `test/distro-matrix.sh` | containers `ubuntu:22.04/24.04/26.04`, `fedora`, `archlinux` (CI-ONLY when written; the five `install-matrix` jobs concluded success in the hosted run at head `37332005`, see the PROGRESS entry "Corrections to the record, 2026-10-07 (fix-docs)") |
 | `test/build-probe.sh`, `test/probe/RuntimeProbe.java` | a probe run on the SHIPPED runtime: `jdk.net` SO_PEERCRED, ES256, TLS 1.3 (in memory) |
 | `test/fetch-nfpm-check.sh` | hermetic check that no unverified nfpm is ever executed (LAB, no network) |
 | `test/make-hostile-archives.py`, `test/pty-run.py` | helpers for the lab check |
@@ -42,8 +44,10 @@ anything unless the signing key's fingerprint equals the pinned one. Once the ow
 ## Evidence labels (never dropped)
 
 - `LAB`: run in a container here, on Ubuntu's OpenJDK 21 (not Temurin), x86_64 only.
-- `CI-ONLY`: written, never run on a hosted runner: the `package-linux` and `install-matrix` jobs of `desktop-linux.yml`,
-  and everything that needs real systemd (`systemctl is-enabled`).
+- `CI-ONLY`: needs a runner this container lacks. As written, the `package-linux` and `install-matrix` jobs of `desktop-linux.yml`
+  had never run; superseded 2026-10-07: both concluded success on hosted runners at head `37332005` (`CI (hosted VM) evidence`,
+  conclusions read from GitHub's check runs, URLs in PROGRESS). Everything that needs real systemd on a device
+  (`systemctl is-enabled` on a lender's machine) is still not evidence.
 - **NOT DEVICE EVIDENCE.** Nothing proves anything about a Steam Deck or a Dell: [`../../docs/DEVICE_CHECKLIST_LINUX.md`](../../docs/DEVICE_CHECKLIST_LINUX.md).
 
 ## Not done here

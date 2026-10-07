@@ -1837,3 +1837,116 @@ Built jar (`utNodeJar`, run with `-Duser.name=tester`, clean env, temp HOME), un
 Mutation checks (`python3 ubuntu-touch/tools/mutants.py --kotlin --only NAME --tests CLASS`, each restored): 12 new mutants, 12 KILLED: ledger-tail-kept, ledger-last-row-unchecked, ledger-rollback-skipped, ledger-poison-skipped, ledger-budget-ignored, ledger-limit-ignored, ledger-corrupt-uncaught, ledger-toolarge-uncaught, ledger-loss-keeps-state, selftest-under-lock, tick-stamped-after-lock, selftest-not-awaited. The QML static check was mutated by deleting one `textFormat` line from `PeersPage.qml`: it printed `VIOLATION: qml/PeersPage.qml:39 ...` and exit 1; restored. Not re-run: the older 25 mutants (their targets are unchanged apart from the `apply(event, atMs)` default parameter).
 Not done / not verified: `tst_Text.qml` (needs Qt; CI `clickable test` runs it); the workflow file `.github/workflows/ubuntu-touch.yml` was not edited (outside this track), the check runs through `isolation.sh` and `clickable.yaml`; `FileLedger.append` has no production caller in UT-0. Reading choices: `ubuntu-touch/ERRATA.md` ERR-FX-UT-1 to ERR-FX-UT-4.
 Result: HLU-1 FIXED, HLU-2 FIXED (PLAUSIBLE finding; real defect reproduced in tests), HLU-3 FIXED, HLU-8 FIXED, in the LAB sense above.
+
+## Corrections to the record, 2026-10-07 (fix-docs): HA-03 to HA-07
+
+Evidence label: **LAB** for the commands below (this machine, Linux, JDK 17.0.12 and JDK 21.0.10, `--max-workers=2`) and **CI (hosted VM)** for the check-run conclusions, read through GitHub's check-runs API (conclusions and step names only: the job logs are served from a blob host that this sandbox's `gh` refuses, so no hosted output is pasted here). NOT DEVICE EVIDENCE. Base: the worktree was created at `98ab632`, then `git fetch origin claude/asom-v1-build-brief-vw83oh && git reset --hard f6a8f1efeea47c0c3ef8653a34762e9d6b706fe0`; `git rev-parse HEAD` then printed `f6a8f1efeea47c0c3ef8653a34762e9d6b706fe0` and `docs/design/mesh/LAB_SPEC.md` exists. Nothing is committed or pushed. This section only appends; every earlier line stays as it was written, and where an earlier line is wrong this section says which one and why.
+
+### HA-03: gates recorded PASSED with the JDK 17 half never run
+
+Confirmed. LAB_SPEC 8.1 says a gate has not passed when the real output differs from the expected column, and the L0.2 gate asks for JDK 17 and 21. Each of these entries says in its own text that JDK 17 was not run, and still ends in a bare "Result: PASSED". Read them as follows (the earlier lines are not edited):
+
+| Entry (heading above) | Its own words on JDK 17 | Status to read it as |
+|---|---|---|
+| Lab L0.2a-json gate (`:json`, M01) | "JDK 17 NOT available in this container" | PASSED on JDK 21 (LAB). JDK 17 half was open when written; closed below |
+| Lab L0.2 + L0.3 gate (`:bench-core`, `:manifest`) | "JDK 17 NOT available in this container" | same |
+| Lab L0.4 gate (`:ledger-model`, `:mesh-policy`) | "JDK 17 lane NOT run here" | same |
+| Lab L0.6 gate (`:mesh-router`, `:mesh-sim`) | "JDK 17 lane NOT run here" | same |
+| Lab L0.5 gate, wire half and trust half (`:mesh-proto` wire and trust) | "JDK 17 lane NOT run here" | same (not in the finding; identical defect) |
+
+The TLS half and the session half of L0.5 and the DL0/DL1 and DL2 entries carry JDK 17 results of their own and are not affected.
+
+How the JDK 17 half is closed, with real output. JDK 17 is selected through `JAVA_HOME`; `JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab --version` printed `Launcher JVM:  17.0.12 (Eclipse Adoptium 17.0.12+7)`.
+
+```
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab test --max-workers=2 --continue
+BUILD SUCCESSFUL in 2m 14s
+58 actionable tasks: 24 executed, 34 from cache
+(every lab module's :test task executed; the 34 from cache were :core:* and :server tests, not lab modules)
+```
+Test counts read from `lab/<module>/build/test-results/test/*.xml` after that run (tests / failures / errors / skipped), JDK 17.0.12:
+```
+json                 42 / 0 / 0 / 0
+bench-core           41 / 0 / 0 / 0
+manifest             36 / 0 / 0 / 0
+ledger-model         67 / 0 / 0 / 0
+mesh-policy          32 / 0 / 0 / 0
+mesh-proto          185 / 0 / 0 / 0
+mesh-router          35 / 0 / 0 / 0
+mesh-sim             36 / 0 / 0 / 0
+conformance-runner 2013 / 0 / 0 / 7
+```
+The 7 skipped in `conformance-runner`: W00-100 to W00-104 and W01b-reach (PROPOSED vectors, reported `proposed-skipped`) and `RegenerateVectors` (runs only under `genVectors`); none is an Assumption.
+
+The same command on JDK 21.0.10 (`./gradlew -p lab test --max-workers=2 --continue --rerun-tasks`) gave identical per-module counts and 0 failures in every lab module. It ended `BUILD FAILED in 2m 27s` for one reason outside the lab: `:server:test` (the unmodified v1 test `AsomServerIntegrationTest > a failed-over attempt gets its own cloud ledger row`, line 540, 1 of 65) failed once under the full `--rerun-tasks` load; `./gradlew -p lab :server:test --rerun` then printed `BUILD SUCCESSFUL in 6s`. That is the known v1 ledger-read race class (see the re-pin tables in `lab/ERRATA.md`); it was not investigated or touched here (`server/` is outside this track).
+
+What this closes and what it does not. It is a JDK 17 result for the tree at `f6a8f1ef`, which contains those modules plus later work; it is not a re-run of each gate's own commit. It is Linux only; the Windows lane is covered only by the hosted conclusions below.
+
+Hosted conclusions (CI (hosted VM), head `37332005d32538e30b1a4330c748efcdc0a6c7cb`, read with `gh api repos/mbaliga/asystemofmodels/commits/37332005/check-runs`): 52 check runs, 52 success. `Lab (pure JVM, JDK 17)` https://github.com/mbaliga/asystemofmodels/actions/runs/37566435041/job/112615204314 and `Lab (pure JVM, JDK 21)` https://github.com/mbaliga/asystemofmodels/actions/runs/37566435041/job/112615204415 (the JDK 17 job's step "Lab tests (prints the per-family vector counts)" concluded success); `W0 lab on Windows (JDK 17)` https://github.com/mbaliga/asystemofmodels/actions/runs/37566435127/job/112616034107 and `(JDK 21)` https://github.com/mbaliga/asystemofmodels/actions/runs/37566435127/job/112616034114 concluded success. At `6711bb5d`, 58 of 58 check runs concluded success. Pasted family lines from those jobs: none (logs not reachable).
+
+Observed, outside the findings, NOT investigated: the hosted `Lab (pure JVM, JDK 17)` job concluded **failure** at `a358a1dd` (https://github.com/mbaliga/asystemofmodels/actions/runs/37604110270/job/112738342815) and at the branch tip `5b6b4352` (https://github.com/mbaliga/asystemofmodels/actions/runs/37607936621/job/112747899349), in the step "Lab tests (prints the per-family vector counts)", while the JDK 21 job concluded success at both; `Lab reference counts (Linux, JDK 17)` also failed at both. The tip commit's message is "lab: make integration tests wait on conditions (CI timing flakes)". So JDK 17 hosted is red at the tip as of this reading; the local JDK 17 pass above is at the older base `f6a8f1ef` and says nothing about those later commits.
+
+### HA-04: Apple I0b mutation report count
+
+Confirmed. The entry "Apple lane I0b gate" says "Five survived the first pass and were killed by tests added afterwards (marked *)" but marks seven:
+```
+$ sed -n 1305,1320p PROGRESS.md | grep -o 'KILLED\*' | wc -l
+7
+```
+(run before this correction was appended; the seven are D06, C01, B04, S01, S02, S06, U02). The total is right: 61 `KILLED` plus 2 `SURVIVED (equivalent)` is 63 distinct ids, none repeated (counted in lines 1307 to 1318). The mutation log is not committed, so the repository cannot show which two of the seven stars are wrong or whether "Five" was the miscount. Conservative reading: the **stars are authoritative, so seven mutants survived the first pass and were killed afterwards**; read "Five" in that line as "Seven". Nothing was re-mutated here.
+
+### HA-05: ERRATA ids that named two entries
+
+Confirmed, exactly four. Before-check (a script written for this, kept in the session scratchpad and not committed; it lists ids defined as a table row, a bold `**E-n.` item or a heading):
+```
+./apple/ERRATA.md 40 ids; duplicates: {'E-15': [82, 90]}
+./desktop/ERRATA.md 47 ids; duplicates: {'ERR-DL2-13': [52, 63]}
+./desktop/packaging/linux/ERRATA.md 14 ids; duplicates: {}
+./lab/ERRATA.md 170 ids; duplicates: {}
+./ubuntu-touch/ERRATA.md 29 ids; duplicates: {'ERR-UT-CLICK-2': [31, 59], 'ERR-UT-QML-1': [34, 63]}
+```
+ERRATA files are append-only for this track, so no heading was edited. Each now has an appended disambiguation note that gives the orchestrator section a new id: `ERR-DL2-15` (desktop/ERRATA.md), `ERR-UT-CLICK-4` and `ERR-UT-QML-3` (ubuntu-touch/ERRATA.md), `E-29` (apple/ERRATA.md). Citations, resolved:
+
+- `PROGRESS.md` line 900 cites `ERR-DL2-13` for the drain: that is the table row, correct as written.
+- The hosted-CI entry for head `aa060c4` (line 1330) cites `ERR-DL2-13` for the colon path: that means **`ERR-DL2-15`**; and cites `ERR-UT-CLICK-2` for Clickable parsing the AppArmor file as JSON: that means **`ERR-UT-CLICK-4`**.
+- `ubuntu-touch/CMakeLists.txt` line 22 cites `ERR-UT-CLICK-2` and means `ERR-UT-CLICK-4`; `ubuntu-touch/tests/run_qml_ci.sh` line 5 cites `ERR-UT-QML-1` and means `ERR-UT-QML-3`. Both files are outside this track's write set, so the comments were NOT changed (the finding suggested changing `CMakeLists.txt`); the ERRATA note is the key. A later track that owns those files should update the two comments.
+
+### HA-06: the hosted-CI entry's "Open" list is stale
+
+Confirmed against the ERRATA and the hosted state. The entry for head `aa060c4` ("Hosted CI state for the multi-platform mesh program") said the Canary failure's cause was "not investigated", the xvfb retry was "not yet read from a log", and cited no run URL. Updated state:
+
+- **Canary (26.04-1.x), cause found** (`ubuntu-touch/ERRATA.md`, `ERR-UT-QML-3`, the orchestrator section formerly headed `ERR-UT-QML-1`): the click builds; the canary image's `click-review` does not know the `ubuntu-touch-26.04-1.x` framework. The canary job now builds with `clickable build --skip-review` and runs `clickable review` as an informational step. At `37332005` the check run `Canary - the next series (26.04-1.x), NON-GATING` concluded **success**: https://github.com/mbaliga/asystemofmodels/actions/runs/37566435049/job/112616062294 (this track read the conclusion, not the log).
+- **`tst_StatusPage.qml` and the xvfb retry**: `tests/run_qml_ci.sh` now runs the real-Lomiri QML tests under `xvfb-run` with Mesa software GL as its primary path; the ERRATA records that the hosted log of the follow-up run shows 6 of 6 passing (this track did not read that log). At `37332005`, `QML tests against the real Lomiri.Components (fake node)` concluded success: https://github.com/mbaliga/asystemofmodels/actions/runs/37566435049/job/112615442506
+- **Head `37332005`: 52 of 52 check runs success** (check-runs API). Workflow runs, all `head_sha` `37332005`, conclusion success: lab https://github.com/mbaliga/asystemofmodels/actions/runs/37566435041 , ubuntu-touch https://github.com/mbaliga/asystemofmodels/actions/runs/37566435049 , desktop-linux https://github.com/mbaliga/asystemofmodels/actions/runs/37566435063 , desktop-macos https://github.com/mbaliga/asystemofmodels/actions/runs/37566435017 , desktop-windows https://github.com/mbaliga/asystemofmodels/actions/runs/37566435127 , apple-ios https://github.com/mbaliga/asystemofmodels/actions/runs/37566435004 , CI https://github.com/mbaliga/asystemofmodels/actions/runs/37566435059 .
+- **Still open** from that entry's list: the AppArmor approximation printed denials for `/proc/<pid>/net/if_inet6`, hugepages and coredump_filter (a device-checklist item); the Secure Enclave, power-assertion, PDH, netsh and DPAPI results are hosted-VM observations, not device evidence; every device and real-key item stays `NEEDS-DEVICE-VALIDATION` / `NEEDS-OWNER-VALIDATION`.
+- **No longer true** in that entry's last sentence ("Not started: `:mesh-proto` (wave 3) ..."): `:mesh-proto` is built (wire, trust, pairing, tls, transport and session packages; 185 tests, see HA-03). Not claimed here: whether the final independent review and revision 4 of the design brief are finished.
+- Also open and new: the hosted JDK 17 lab job at `a358a1dd` and `5b6b4352` (see HA-03).
+
+### HA-07: READMEs that described the code as unbuilt or never run
+
+Confirmed, with two refinements found while checking. What changed, each checked against the code or a command:
+
+- `lab/README.md`: the "empty shells" rows now describe the built modules with their test counts (json 42, bench-core 41, manifest 36, ledger-model 67, mesh-policy 32, mesh-proto 185, mesh-router 35, mesh-sim 36, conformance-runner 2013). Refinement: **`mesh-proto` is not a shell either** (the finding left it as one); only `LabModule.kt` and its shell test remain in it.
+- `lab/conformance/README.md`: the file table now lists the 30 indexed vector files by family with counts read from the files; `history/r0/` and `scenarios/` do not exist at this commit and the table called them reserved.
+- `desktop/README.md`: status rewritten. Refinement: the finding's "listens on nothing ... all are built" is **half right**. Built and tested: the control socket server and client, the mini D-Bus reader, the sleep watcher, keep-awake locks, systemd units, DL3 packaging, the Windows host (W0 to W2) and the macOS host (MC1, MC2). Still true: `asom-node` does not start the control socket (`ControlServer.notYetImplemented`, D23/D25), so a running node binds nothing; the Linux `nikStore` is `NotYetImplementedNikStore`; no engine; no mesh. The README says exactly that. Its "reserved `native/`" row is replaced: that directory does not exist.
+- `desktop/docs/LINUX.md`: the control socket's directory is 0700 for USER and FOREGROUND and 0750 for SYSTEM (`SocketDirRule.PRIVATE` and `GROUP_TRAVERSE` in `ControlServer.kt`; `RuntimeDirectoryMode=0750` in `desktop/packaging/linux/systemd/asom.service`).
+- `apple/README.md`, `ubuntu-touch/README.md`, `desktop/packaging/windows/README.md`, `desktop/packaging/macos/README.md`, `desktop/packaging/linux/README.md`: the "never run on GitHub / until a hosted run has been seen / CI-ONLY, never run" statements keep their historical text and gain a dated "Superseded 2026-10-07" note naming the hosted check runs that concluded success at `37332005` (URLs in HA-03 and HA-06 above; conclusions and step names only). The notes keep the label `CI (hosted VM) evidence` and say device results are unchanged. Not changed because still true: `apple/README.md` says `signPresentation` is not built in the Swift lane (only `lab/manifest/.../Signer.kt` has it); the Steam Deck document says nothing has run on a Deck.
+- `docs/design/mesh/OWNER_BRIEF.md`: not edited; no check made here showed a statement in it to be wrong.
+
+### Final gates for this entry (real output, LAB, base `f6a8f1ef` plus the uncommitted documentation changes)
+
+```
+$ python3 lab/tools/isolation.py
+isolation check 4: base 79ff5b81fcc4c8a435813acaa192be206874eacc (from lab/LAB_BASE_SHA), ancestor of HEAD confirmed
+isolation check 4: 136 protected files compared byte-for-byte against base 79ff5b81fcc4
+isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py
+law: 9 module build files checked against the LAB_SPEC 1.2 dependency table
+law: 236 Kotlin/Java sources scanned (no android imports, no frozen-enum reuse, no wildcard bind, listeners only in the harness or tests)
+law: OK
+$ python3 desktop/tools/check_paths.py
+check_paths: 1210 tracked paths checked, 0 problems
+$ ./gradlew jvmTest --rerun-tasks --max-workers=2
+BUILD SUCCESSFUL in 13s   (root tests read from the XML: 139 tests, 0 failures, 0 errors, 0 skipped; the jacoco report resolved here)
+```
+`desktop/tools/isolation.py`, `desktop/tools/check_law.py`, `ubuntu-touch/tools/isolation.py`, `ubuntu-touch/tools/check_law.py` and `ubuntu-touch/tools/check_texts.py` also printed OK. No source or test file changed in this track, so no module test result depends on it beyond the two full-lab runs above. Not run: the Swift lane (`swift test`; documentation only changed under `apple/`), any hosted job.

@@ -4,11 +4,13 @@
 Team ID exists. Every result is `LAB` (a Linux container) or `CI (hosted VM) evidence` (a GitHub-hosted macOS runner), **never device
 evidence**. Whatever needs a real Mac stays `NEEDS-DEVICE-VALIDATION`.
 
-**Written in a container with no macOS, no Xcode and no way to run GitHub Actions.** The Kotlin module was compiled and tested on Linux
+**Superseded 2026-10-07 (status of the paragraph below):** the hosted jobs it waits for have run. At head `37332005` the check run "MC1 MC2 macplatform on macOS (CI (hosted VM) evidence)" concluded success; its steps include `swift test` and `swift build -c release` of the helper package and `:packaging:macos:macplatform:test`. URL and the other jobs: PROGRESS entry "Corrections to the record, 2026-10-07 (fix-docs)". This track did not read the job log, only the conclusion. It is a hosted VM, not a Mac in anyone's hands: every Secure Enclave, Local Network, power-assertion and Keychain result remains `NEEDS-DEVICE-VALIDATION`.
+
+**Historical, as written: a container with no macOS, no Xcode and no way to run GitHub Actions.** The Kotlin module was compiled and tested on Linux
 against fakes and against a real child process that speaks the wire protocol. The Swift protocol target was compiled and tested on
 Linux. **The macOS-only Swift sources of the helper (`helper/Sources/asom-mac-helper/*.swift` except `main.swift`) have never been
 compiled**: only a syntax parse (`swiftc -parse`) was run. The workflow `.github/workflows/desktop-macos.yml` is what will compile and run
-them, on `macos-latest`; until a hosted run has been seen, every macOS result below is `CI-ONLY / NOT RUN`.
+them, on `macos-latest`; until a hosted run had been seen, every macOS result below was `CI-ONLY / NOT RUN` (see the supersession above).
 
 Source of truth: `docs/design/mesh/platforms/macos.md` sections 3 to 10 and `docs/design/mesh/PLATFORM_PLAN.md` section 5, with the known
 spec defects of `docs/design/mesh/REVIEW_ROUND3.md` read conservatively. Every choice is in [`ERRATA.md`](ERRATA.md); nothing was silently

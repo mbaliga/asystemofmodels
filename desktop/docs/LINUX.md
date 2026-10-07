@@ -41,7 +41,7 @@ asom` prints `disabled`). Enabling is your explicit choice: `sudo systemctl enab
 state of a running process, because the node does not yet start a control socket for the CLI to ask. Every other command
 answers `NOT_IMPLEMENTED` (exit 3).
 
-The control socket itself exists as `ControlServer` / `ControlClient` (AF_UNIX, in a 0700 directory) with `SO_PEERCRED`
+The control socket itself exists as `ControlServer` / `ControlClient` (AF_UNIX, in a directory owned by the node's own uid: mode 0700 for USER and FOREGROUND, 0750 for SYSTEM so that group `asom` can reach the socket; `SocketDirRule` in `ControlServer.kt`, `RuntimeDirectoryMode=0750` in `asom.service`) with `SO_PEERCRED`
 in both directions:
 
 - the server checks the peer before reading a byte: only the node's own user (USER, FOREGROUND), or the service user and
