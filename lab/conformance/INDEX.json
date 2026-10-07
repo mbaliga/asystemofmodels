@@ -156,6 +156,18 @@
     "status": "normative"
   },
   {
+    "path": "wire/W04-pairing.json",
+    "sha256": "69d95c14492b15e2710852d5ec1c169d16f252c9c14a9ad6e082d054df10b7eb",
+    "family": "W04",
+    "status": "normative"
+  },
+  {
+    "path": "wire/W05-fingerprints.json",
+    "sha256": "fb0de249b3103419b347c06eeb44dcee5aa311d43d4c3d4a29b4757bd754b8d3",
+    "family": "W05",
+    "status": "normative"
+  },
+  {
     "path": "wire/W06-frames.json",
     "sha256": "9dc5b54ec153a8b42b8ca56db236a9f2f01bed4e1843c8bc46bae0261c941074",
     "family": "W06",

@@ -1376,3 +1376,78 @@ Findings for the owner (ERRATA ERR-PW-1..15): (1) a length below 5 and above the
 Not verified here: JDK 17 lane (only JDK 21 present); Windows and macOS lanes (no OS-specific code or skip exists in this track: no Assumptions, no POSIX paths, `String(bytes)` is Kotlin's UTF-8 form); a hosted CI run. The W08 lines, L-L15, L-L16 and the S-A9/S-A11 tables of L0.5 are another track's (not done here). Session-level rules (reply on an unopened stream, HELLO first, authorize per frame, `st` only with scope `state`, the CONTROL EXT_IGNORED row) are not in the codec by design. `./gradlew jvmTest` as a whole task exits non-zero in this sandbox ONLY because `:core:routing:jacocoTestReport` cannot resolve `org.jacoco:org.jacoco.report:0.8.13` (not cached, offline-restricted network); every test task ran and 139 root tests pass with 0 failures, and `jvmTest -x :core:routing:jacocoTestReport` prints BUILD SUCCESSFUL. This is an environment fact, unrelated to this change (the root tree is byte-identical to the base).
 Oracle status: self-oracled (an independent Python model agrees, but it was written in the same session; the tag stays `self`)
 Result: PASSED for the wire half (local LAB evidence only)
+## Lab L0.5 gate, trust half (track proto-trust: W04 pairing, W05 fingerprints, templates and verifyPeerChain) — 2026-10-07 — LAB (not device evidence)
+Commit: base `4cf2ad05a8d68594dec24ebf1d26c5dca78b3c52` plus an UNCOMMITTED working tree (the orchestrator collects it). JDK: `openjdk version "21.0.10" 2026-01-20` (the only JDK on this machine; the JDK 17 lane was NOT run here). Runner: local, Linux, 4 cores shared, `--max-workers=2`. Oracle: **self** (see ERRATA ERR-PT-11).
+
+What was built (all pure JVM, no new dependency, no socket, nothing listens): `lab/mesh-proto/src/main/kotlin/xyz/mdhv/asom/lab/proto/trust` (DER writer and strict reader, `Pin` with constant-time whole-value comparison, the two certificate templates of trust.md 2.4, `PeerChainVerifier.verify` and `verifyServer` returning a typed `ChainVerdict`, the peer registry state machine of 4.7 over a `PeerStore` DAO) and `.../pairing` (strict QR encoder and parser, the four pairing messages with the r3 changes, proof, SAS and transcript of 4.5, the D and S state machines of 4.6 as pure functions). Vectors `lab/conformance/wire/W04-pairing.json` (312) and `W05-fingerprints.json` (166), a runner checker `ProtoTrustFamilies.kt` (two registry lines in `Suite.kt`), `INDEX.json` regenerated, a second implementation in Python (`lab/mesh-proto/tools/trust/trustlib.py`, `gen_vectors.py`, `xcheck_trust.py`, `mutants.py`) and ERRATA rows ERR-PT-1 to ERR-PT-14. Touched outside the track's own directories, all additive (ERR-PT-13): `Suite.kt` (two `checkerFor` lines), `lab/tools/xcheck.py` (a dispatch to the trust checker; without it `xcheck` exits 1 as soon as a W05 file exists), `lab/conformance/INDEX.json` (regenerated). No `*_BASE_SHA`, `core/`, `server/`, build file or workflow was touched.
+
+```
+$ ./gradlew -p lab :mesh-proto:test --rerun :conformance-runner:test --max-workers=2 --offline
+BUILD SUCCESSFUL in 15s
+32 actionable tasks: 5 executed, 27 up-to-date
+    family W04: 312 vectors, 312 pass, 0 fail, 0 proposed-skipped, oracle: self=312
+    family W05: 166 vectors, 166 pass, 0 fail, 0 proposed-skipped, oracle: self=166
+```
+`:mesh-proto:test`: 39 tests, 0 failures, 0 skipped (PairCryptoTest 6, PairingFsmExhaustiveTest 5, QrUriAndMessagesTest 4, CertTemplatesTest 4, DerTest 6, PeerChainVerifierTest 8, PeerRegistryPropertyTest 3, TrustVectorsTest 2, LabModuleShellTest 1). `:conformance-runner:test`: ConformanceSuiteTest 1683 tests (6 skipped, none of them W04 or W05: both families print `0 proposed-skipped`), NegativeControlsTest 13, 0 failures. No test uses an assumption, a disabled-on-OS annotation or a per-OS skip, and none touches a temp file or a POSIX path, so the Linux and Windows test counts are the same by construction (hosted Windows NOT run).
+
+Non-vacuity (runner family laws, every required law has at least one case; a zero would print `VACUOUS` and fail the family):
+```
+W05  cert-profile 9 | chain-valid 14 | chain-negatives 108 | registry-L8 122 | pin-derive 4 | fingerprint 9 | pin-compare 13 | spki-strict 13 | test-only-key 1
+     chain-reject-<CODE> for every code of ChainReject except the defensive INTERNAL (23 codes, each >= 1: AKI_MISMATCH 5, BAD_SIGNATURE 8, CERT_MALFORMED 9, CHAIN_LENGTH 5, CLOCK_SKEW 4,
+     EXTENSION_INVALID 9, EXTENSION_MISSING 10, ISSUER_MISMATCH 6, KEY_UNSUPPORTED 6, LEAF_EKU 4, LEAF_IS_CA 3, LEAF_KEY_USAGE 1, NODE_NOT_CA 3, PAIRING_WINDOW_CLOSED 1, PATHLEN_VIOLATION 3,
+     PIN_MISMATCH 2, PIN_REVOKED 5, PIN_SUSPENDED 3, PIN_UNKNOWN 4, REGISTRY_UNREADABLE 5, SIG_ALG_UNSUPPORTED 7, TEST_ONLY_KEY 1, UNKNOWN_CRITICAL_EXTENSION 4)
+W04  qr-grammar 108 | qr-roundtrip 20 | qr-reject-<CODE> for all 18 QrReject codes (each >= 1) | proof-sas-transcript 45 | proof-invalid 49 | pin-swap 21 | nonce-swap 21
+     pair-message-ok 15 | pair-message-reject 32 | commit-no-locseed 1 | pairing-fsm-D 24 | pairing-fsm-S 17 | pairing-L1 11
+     registry-L1 18 | L2 13 | L3 2 | L4 4 | L5 2 | L6 1 | L7 1 | registry-goaway 12 | registry-per-direction 6 | registry-fail-closed 2
+```
+Module tests print their own laws and `iterations: n` (read from `lab/mesh-proto/build/test-results/test/*.xml`; ERRATA ERR-PT-13): peer registry property test `iterations: 3000 sequences x 40 operations` (law counts: L1 network event changes nothing 17134, L1 no row without both approvals 7535, L2 authorize iff paired and granted 2,880,000, L3 revoked absorbing 3165, L4 restore only local 2876, L5 unknown status denies 156,120, per-direction independence 17,225, GOAWAY on leaving PAIRED 1896, fail-closed reads 660,624 and writes 1016, re-read per frame 480,000, revoked cannot re-pair 451); `verifyPeerChain`: every single-bit flip (two masks) of every byte of both certificates is refused (`iterations: 1666`), every truncation refused (834), 3009 hostile or mutated chains never throw and never accept, the 5-mode x 6-registry-state x 2-window grid (84 pairs) equals the spec grid written out by hand, 20 fresh-key chains accepted in all 6 entry points; pairing machines: D 8 states x 20 events = 160 pairs and S 12 states x 21 events = 252 pairs, each run and compared with a typed table (95 and 59 non-no-op cells; every other pair must be a no-op), and the test fails if a state or event class has no representative; proof, SAS, transcript: 200 seeded random cases against a second formulation; QR and messages: 500 round trips, 3500 garbage URIs and 2000 garbage payloads never throw; templates: 25 fresh-key certificate pairs parsed and signature-checked by the JDK's own X.509 parser (`jdk-verifies-signature` 25).
+
+The worked vector of trust.md 4.5 reproduces from the spec text, untuned: proof `becQGXmCCTwCLN4BK4hj0qa3AW-AT9DgDikj7RA_baM`, SAS `865 412`, transcript `a7cfd74766ca9d6eab6393ad20c52a1e103e394678101b503f1e48c6f473ffb1`, and the pin-swapped proof `r3iMlWpfvBBdchUUFGHUoCSNIi283ymNyEqeqNjoAC8` (W04-200, W04-201; `PairCryptoTest.theWorkedVectorOfTrustMd45`, which types the strings from the spec). The 170-character URI of 4.2 also parses (W04-001).
+
+```
+$ ./gradlew -p lab :conformance-runner:run --args='lines W04,W05' --quiet | tail -n 5
+W05-417 reject ISSUER_MISMATCH
+W05-418 reject ISSUER_MISMATCH
+W05-419 reject ISSUER_MISMATCH
+W05-420 reject ISSUER_MISMATCH
+W05-421 reject ISSUER_MISMATCH
+(478 lines in all: 312 W04 and 166 W05; 190 `ok`, 288 `reject <CODE>`)
+$ python3 lab/tools/xcheck.py lab/conformance          (tail)
+xcheck W04: 249 agree, 0 disagree
+xcheck W05: 195 agree, 0 disagree
+xcheck oracle status: self-oracled (same-session cross-check; never clears the oracle tag)
+$ python3 lab/mesh-proto/tools/trust/xcheck_trust.py lab/conformance
+xcheck W04: 249 agree, 0 disagree (63 fsm/registry vectors are Kotlin-only)
+xcheck W05: 166 agree, 0 disagree
+xcheck W05 openssl (OpenSSL 3.0.13 30 Jan 2024 (Library: OpenSSL 3.0.13 30 Jan 2024)): templates 9 agree, 0 disagree; chains 20 agree, 0 disagree
+$ python3 lab/tools/isolation.py
+isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py
+law: OK
+$ ./gradlew jvmTest --rerun-tasks --max-workers=2          (repo root, once, at the end; `--offline` failed on an uncached jacoco artefact, so this run used the network)
+BUILD SUCCESSFUL in 15s      21 actionable tasks: 21 executed
+root tests: 139   failures: 0   (baseline: 139)
+```
+The Python second implementation agrees on all 415 vectors it covers (it re-derives pins, tags, templates including the RFC 6979 signature byte for byte, the whole `verifyPeerChain` verdict of every chain vector with its own parser and verifier, QR parse and encode, proof, SAS, transcript, and the message codec). The 63 W04 state-machine and registry vectors are typed by hand from trust.md 4.6 and 4.7 and checked only by the Kotlin code (and by the exhaustive tables). OpenSSL 3.0.13 independently reads the nine golden templates (`x509 -text`: version 3, `CA:TRUE, pathlen:0`, `Certificate Sign`, `CA:FALSE`, `Digital Signature`, serverAuth and clientAuth, AKI, `Not After: Dec 31 23:59:59 9999 GMT`; `verify -check_ss_sig` accepts the node certificates) and agrees on 20 chain vectors (accepts the valid ones, rejects the bad signatures). `openssl asn1parse` on W05-200 and W05-205 shows the intended structure (UTF8String names, UTCTime and GeneralizedTime in their RFC forms, critical BC and KU, `30060101FF020100`, `03020204`, `03020780`). The Kotlin encoder's output is those same bytes (`template` vectors compare its TBS and assembled certificate with the Python-written golden ones). `gen_vectors.py` run twice writes byte-identical files.
+
+Mutation checks (`python3 lab/mesh-proto/tools/trust/mutants.py`: each mutant is an exact-string edit of one source file, the suite is run, a failure is required, the original bytes are restored and compared). **21 mutants, 21 killed, 0 survivors, 0 non-compiling**, each against `:mesh-proto:test`:
+```
+ 1 a CA leaf accepted                              KILLED (W05 chain vectors)    12 node pathLen check removed                       KILLED (W05)
+ 2 a P-384 key accepted                            KILLED (W05)                  13 leaf EKU not checked                              KILLED (W05)
+ 3 a SHA-1 signature accepted                      KILLED (W05)                  14 unknown critical extension ignored                KILLED (W05)
+ 4 AKI not compared with the node SKI              KILLED (W05)                  15 chain length 3 accepted                           KILLED (W05)
+ 5 leaf validity not checked                       KILLED (W05)                  16 ceremony commits without the LOCAL approval       KILLED (W04)
+ 6 a pin compared with a prefix                    KILLED (W05)                  17 unknown registry status reads as PAIRED           KILLED (property test)
+ 7 SAS truncation off by one                       KILLED (W04)                  18 REVOKED pin with a valid proof reaches the challenge KILLED (W04)
+ 8 proof checked over a swapped nonce              KILLED (D exhaustive table)   19 second valid hello accepted after consumption     KILLED (D exhaustive table)
+ 9 a revoked peer still authorised                 KILLED (W04)                  20 Forget removes a row that is not REVOKED          KILLED (W04)
+10 a suspended peer authorised for any scope       KILLED (property test)        21 a network status claim restores a SUSPENDED row   KILLED (property test)
+11 node self-signature not verified                KILLED (W05)
+```
+Mutants 1, 7, 9 and 17 were also run against `:conformance-runner:test` and the runner fails each (`runner(fails)`), so the gate command itself catches them, not only the module's tests. The ten the assignment names are 1, 2, 3, 4, 5, 6, 7, 8, 9, 10.
+
+Findings during the build (each kept as a test or a vector): extension presence is checked before the CA profile, so a swapped chain reports `EXTENSION_MISSING` (my first hand-typed expectation said `NODE_NOT_CA`; the vector was corrected, not the code); OpenSSL does not check the signature of a trust anchor unless `-check_ss_sig` is given (the xcheck adds it); OpenSSL has no clock skew, so the two within-skew vectors are excluded from its comparison.
+
+BLOCKED(L10, L11): trust.md 15 L10 needs the per-frame ledger writer and L11 the two listeners, both of the later track; nothing here can honestly exercise them and no counter claims them (ERRATA ERR-PT-10). L9 and L12 are superseded (LAB_SPEC 7.3).
+NOT VERIFIED: the JDK 17 lane and the Windows lane (this machine has JDK 21 only, no hosted run); `JAVA_TOOL_OPTIONS` was left as the sandbox sets it (the module tests start no child JVM). Not independent: every vector is `oracle: self`; the Python tool shares an author and a session with the Kotlin code (ERR-PT-11). Not done, by design: the TLS profile, the hostile-node suite W08, the per-frame ledger writer and the S-A9 and S-A11 spikes (a later track); the verifier-side cap on a leaf's lifetime (ERR-PT-4); the registry is an in-memory DAO with fault injection, not a persistent store.
+Result: **PASSED** for items 1 to 6 of the assignment (templates and strict pins, W05, `verifyPeerChain`, W04 with the worked vector reproduced, the registry laws L1 to L8, the law counters) in the LAB sense above; **BLOCKED(scope)** for L10 and L11. Evidence label: LAB (self-oracled; NOT DEVICE EVIDENCE).

@@ -18,7 +18,8 @@ What it checks at L0.1:
         and FILE projection re-derivation
   M04, M05 (bench body)   lab/bench-core/tools/xcheck_m04.py: bench_ref.py (the design sketch) plus the B7/9.4 rules ported, the
         benchmark.md 4.2 pin table, the 5.2 plan JSON, the 11.3 ceilings and the 11.4 edge list parsed or transcribed from the spec
-Family W05 is owned by a later work item; it prints `absent` until its vectors exist.
+W04 and W05 (pairing; fingerprints, certificate templates, verifyPeerChain) are checked by lab/mesh-proto/tools/trust/xcheck_trust.py: a second, hand-written
+        implementation of the trust layer, plus OpenSSL on the certificates. The W04 fsm and registry vectors are Kotlin-only.
 
 It was written in the same session as the generators, so its agreement NEVER clears the `oracle: self` tag
 (LAB_SPEC 4.10, R9): it shows consistency, not independent reading.
@@ -31,7 +32,7 @@ import sys
 from decimal import ROUND_HALF_UP, Decimal
 
 VECTOR_DIRS = ["wire", "manifest", "router", "ledger", "json", "bench", "policy"]
-DEFAULT_FAMILIES = ["W01", "keys", "INDEX", "M01", "M01der", "M02", "M03", "M04", "M05", "M06", "W05"]
+DEFAULT_FAMILIES = ["W01", "keys", "INDEX", "M01", "M01der", "M02", "M03", "M04", "M05", "M06", "W04", "W05"]
 
 P256_P = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF
 P256_B = 0x5AC635D8AA3A93E7B3EBBD55769886BC651D06B0CC53B0F63BCE3C3E27D2604B
@@ -202,6 +203,11 @@ def check_policy(root, family):
     return mod.check(root, family)
 
 
+def check_trust(root, family):
+    """W04 and W05 are checked by the proto-trust track's own Python implementation (lab/mesh-proto/tools/trust/xcheck_trust.py), plus OpenSSL on the certificates."""
+    return _load_tool(("mesh-proto", "tools", "trust", "xcheck_trust.py"), "xcheck_trust").check(root, family)
+
+
 def family_present(root, family):
     return any(doc.get("family") == family for _, doc in load_vector_files(root))
 
@@ -233,6 +239,8 @@ def main(argv):
             res = (m[0] + b[0], m[1] + b[1])
         elif fam in ("L01", "W07", "W07p"):
             res = check_policy(root, fam)
+        elif fam in ("W04", "W05"):
+            res = check_trust(root, fam)
         elif family_present(root, fam):
             print(f"xcheck {fam}: present but not covered by this xcheck build", file=sys.stderr)
             bad += 1
