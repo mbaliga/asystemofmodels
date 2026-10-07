@@ -2153,3 +2153,18 @@ $ ./gradlew -p lab test (JDK 21.0.10) -> BUILD SUCCESSFUL, counts above
 $ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab test -> BUILD SUCCESSFUL, counts above
 ```
 Not run: the Swift lane (`swift` is not installed on this machine) and hosted CI for these edits. Result: **PARTIAL**: HON-3 (W00 half), HON-4 (printed line), HON-5, HON-6 and HON-8 corrected; HON-9 explained, label unchanged; HON-2 open with the exact procedure recorded.
+
+## Gate: Swift lane repaired after fix wave 2 (M04-057 to M04-059 text), 2026-10-07 (LAB, oracle: self, NOT DEVICE EVIDENCE)
+
+Cause: `apple/Sources/AsomBenchCore/TextRenderer.swift` lacked two NOTES rules of the JVM renderer (heat-test low-confidence line; `running <name>` wording for a test outside the wording table). Derivation (BRP-01, BRP-05) was already in step. Details: `apple/ERRATA.md` ERR-FX2-SW2. No lab file touched, no vector or list edited. Real output (Linux Swift 6.1, JDK 21.0.10; JDK 17 not available here and not needed, nothing under lab/ changed):
+```
+$ swift test --package-path apple  -> Executed 243 tests, with 0 failures (0 unexpected)
+$ swift run --package-path apple asom-conformance check M01,M02,M03,M04,M05,M06,M08  -> checked 436, mismatches 47 (the 42 LF-1 vectors of known-disagreements.txt + M04-042, M06-201..M06-204, all LF-1 value differences)
+$ ./gradlew --offline -p lab :conformance-runner:run --args='lines M01,M02,M03,M04,M05,M06,M08'  -> 465 lines
+$ python3 apple/ci/lane_diff.py jvm.lines swift.lines --known apple/ci/known-disagreements.txt --not-implemented apple/ci/not-implemented.txt  -> vectors: jvm=465 swift=436 agree=394 disagree=42 (known 42) jvm-only=29 (not implemented 29)
+$ (diagnostic lines, ASOM_DIAGNOSTIC_DRIFT_FLAG=1, no known list)  -> agree=436 disagree=0 jvm-only=29 (not implemented 29)
+$ python3 apple/ci/test_lane_diff.py  -> Ran 13 tests ... OK
+$ ./gradlew -p lab :conformance-runner:test --offline  -> BUILD SUCCESSFUL
+$ python3 lab/tools/isolation.py  -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+```
+Not run: macOS lane, hosted CI, JDK 17, the crosslane step.

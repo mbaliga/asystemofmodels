@@ -212,7 +212,7 @@ public enum TextRenderer {
         for t in derived.tiers {
             let label = modelLabel(t.pin)
             for r in t.tests {
-                let words = testWords[r.test.name] ?? r.test.name
+                let words = testWords[r.test.name] ?? "running \(r.test.name)"
                 if r.stat.flags.contains("OUTLIER_EXCLUDED") {
                     notes.append("\(label), \(words): \(r.stat.n - r.stat.kept) of \(r.stat.n) timings discarded as outliers.")
                 }
@@ -230,6 +230,7 @@ public enum TextRenderer {
             }
         }
         if let s = derived.sustain {
+            if s.confidence <= .low { notes.append("Heat test: \(s.confidence.name) confidence.") }
             if s.flags.contains("PLATEAU_NOT_REACHED") { notes.append("Heat test: the slowed-down speed had not settled when the test ended.") }
             if s.flags.contains("HARD_CEILING") { notes.append("Heat test: stopped early at a safety limit.") }
         }
