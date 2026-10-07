@@ -27,10 +27,14 @@ class PeerEof(val handshake: Boolean) : IOException("end of stream")
  * Byte counts are EXACT network counts: [networkBytesOut] is the sum of `bytesProduced` over every `wrap`, [networkBytesIn] the sum of
  * `bytesConsumed` over every `unwrap` (LAB_SPEC 7.6, "MEASURED"). They include handshake flights, alerts and close_notify records.
  *
+ * Every write after the handshake is bounded by [writeStallMs]: a peer that stops reading cannot hold the write lock for ever. A write that
+ * stalls past it kills the connection (a half-written record cannot be continued) and ends in a [SocketTimeoutException]. [close] never needs the
+ * write lock to reach the socket: if a writer holds it, the socket is closed under the writer, which wakes it.
+ *
  * One reader and one writer may work at once (the engine allows a concurrent wrap and unwrap); a post-handshake message that needs a reply
  * (a key update) is answered by whichever thread met it, under the write lock.
  */
-class TlsEngineIo(private val net: NetChannel, val engine: SSLEngine) {
+class TlsEngineIo(private val net: NetChannel, val engine: SSLEngine, private val writeStallMs: Long = MeshTlsProfile.WRITE_STALL_MS) {
     private val readLock = ReentrantLock()
     private val writeLock = ReentrantLock()
     private var netIn: ByteBuffer = ByteBuffer.allocate(engine.session.packetBufferSize)
@@ -172,7 +176,7 @@ class TlsEngineIo(private val net: NetChannel, val engine: SSLEngine) {
                 return engine.handshakeStatus
             }
             HandshakeStatus.NEED_WRAP -> if (!handshake) {
-                wrapAndSend(empty, 0)
+                wrapAndSend(empty, writeStallMs)
                 return engine.handshakeStatus
             }
             else -> Unit
@@ -226,7 +230,12 @@ class TlsEngineIo(private val net: NetChannel, val engine: SSLEngine) {
         var idle = 0
         while (src.hasRemaining()) {
             val before = src.remaining()
-            val res = wrapAndSend(src, 0)
+            val res = try {
+                wrapAndSend(src, writeStallMs)
+            } catch (e: SocketTimeoutException) {
+                net.close()
+                throw e
+            }
             if (res.status == Status.CLOSED) throw java.nio.channels.ClosedChannelException()
             if (res.handshakeStatus == HandshakeStatus.NEED_TASK) runTasks()
             idle = if (src.remaining() == before && res.bytesProduced() == 0) idle + 1 else 0
@@ -261,36 +270,47 @@ class TlsEngineIo(private val net: NetChannel, val engine: SSLEngine) {
 
     // ------------------------------------------------------------------------------------------------- closing
 
-    /** Writes whatever the engine has left to say (close_notify, or the alert after a fatal error), bounded and without throwing. */
-    private fun flushClosing() {
-        writeLock.withLock {
+    /**
+     * Writes whatever the engine has left to say (close_notify, or the alert after a fatal error), bounded and without throwing. Returns false when
+     * the write lock could not be had within [MeshTlsProfile.CLOSE_WAIT_MS] (a writer is stalled against a peer that does not read): nothing was said.
+     */
+    private fun flushClosing(): Boolean {
+        if (!writeLock.tryLock(MeshTlsProfile.CLOSE_WAIT_MS, TimeUnit.MILLISECONDS)) return false
+        try {
             repeat(8) {
                 netOut.clear()
                 val res = try {
                     engine.wrap(empty, netOut)
                 } catch (e: SSLException) {
-                    return
+                    return true
                 }
-                if (res.bytesProduced() == 0) return
+                if (res.bytesProduced() == 0) return true
                 netOut.flip()
                 try {
                     countWritten(MeshTlsProfile.CLOSE_WAIT_MS)
                 } catch (e: IOException) {
-                    return
+                    return true
                 }
-                if (res.status == Status.CLOSED) return
+                if (res.status == Status.CLOSED) return true
             }
+            return true
+        } finally {
+            writeLock.unlock()
         }
     }
 
-    /** close_notify, then wait (bounded) for the peer's, then close the socket. Idempotent. */
+    /**
+     * close_notify, then wait (bounded) for the peer's, then close the socket. Idempotent. The close never waits longer than [MeshTlsProfile.CLOSE_WAIT_MS]
+     * for a stalled writer: without the write lock no close_notify is sent and the socket is closed anyway, which wakes the writer.
+     */
     fun close() {
         try {
+            var flushed = true
             if (closing.compareAndSet(false, true)) {
                 engine.closeOutbound()
-                flushClosing()
+                flushed = flushClosing()
             }
-            awaitInbound(MeshTlsProfile.CLOSE_WAIT_MS)
+            if (flushed) awaitInbound(MeshTlsProfile.CLOSE_WAIT_MS)
         } finally {
             net.close()
             finished = true

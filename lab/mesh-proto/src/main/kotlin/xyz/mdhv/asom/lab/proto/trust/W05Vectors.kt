@@ -152,7 +152,7 @@ object W05Vectors {
                 VectorEval(VectorOutcome.Ok(jobj("pin" to jstr(verdict.pin.nodeId), "mode" to jstr(name))), listOf("chain-valid", "registry-L8"))
             }
             is ChainVerdict.Rejected -> {
-                if (verdict.alert != "certificate_unknown") throw VectorLawViolation("a refusal must reach the peer as certificate_unknown")
+                // Rejected.alert is a constant, so asserting it here would be no evidence; the alert a refused peer observes is W08's alert-uniform law
                 VectorEval(VectorOutcome.Reject(verdict.code.name), listOf("chain-negatives", "registry-L8", "chain-reject-${verdict.code}"))
             }
         }

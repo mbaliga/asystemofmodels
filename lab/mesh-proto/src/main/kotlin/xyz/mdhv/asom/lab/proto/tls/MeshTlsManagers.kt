@@ -25,6 +25,7 @@ class MeshTlsEnv(
     val clock: () -> Instant = { Instant.now() },
     val pairingWindowOpen: () -> Boolean = { false },
     val productionKeys: Boolean = true,
+    val writeStallMs: Long = MeshTlsProfile.WRITE_STALL_MS,
 )
 
 /**

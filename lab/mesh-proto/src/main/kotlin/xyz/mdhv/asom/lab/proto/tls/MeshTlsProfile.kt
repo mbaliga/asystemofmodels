@@ -17,6 +17,9 @@ object MeshTlsProfile {
     /** How long a close waits for the peer's close_notify before the socket is closed anyway. */
     const val CLOSE_WAIT_MS = 500L
 
+    /** How long one application write may wait for a peer that is not reading before the connection is killed (a zero-window peer, PTT-1). */
+    const val WRITE_STALL_MS = 30_000L
+
     /**
      * `SSLParameters.setSignatureSchemes` exists from JDK 19 on. It is looked up by reflection so the code compiles and runs on JDK 17,
      * where this knob cannot be set scoped (S-A9): there the signature scheme is enforced one layer up, by the key manager (EC keys only)

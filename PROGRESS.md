@@ -2012,3 +2012,15 @@ Failures seen on the way and what they were (all fixed in later commits on this 
 Root `./gradlew jvmTest` is now 140 tests (was 139): the never-run `AnthropicDriverTest` case runs; `ROOT_TEST_BASELINE` and the three base-SHA pins were updated in a later commit with ERRATA re-pin rows.
 
 Open: LF-1 (`thermal-drift` projection flag vs benchmark.md 13.3) needs an owner decision; the second independent review is running.
+
+## Gate: fix-tls-trust (PTT-1 write stall and close, PTT-2 registry race, PTT-4 constant alert law)
+
+Evidence label: LAB, oracle: self, NOT DEVICE EVIDENCE. Base 3a91da05 (worktree reset to it first). Failing-before runs (JDK 21, `./gradlew -p lab :mesh-proto:test --tests ...`):
+- `WriteStallTest`: `closeReturnsInBoundedTimeWhileAWriterIsStalledAgainstAPeerThatDoesNotRead` and `revokingAPeerWhoseSessionIsStalledReturnsInBoundedTime` FAILED with "the call did not return within 8000 ms".
+- `PeerRegistryConcurrencyTest`: 5 of 5 cases FAILED, e.g. "restore: a revoke that returned Changed was overwritten (status Known(status=PAIRED))", "pause: ... (status Known(status=SUSPENDED))", "round 0 ... status Known(status=PAIRED) after a revoke returned Changed".
+
+After the fix: `WriteStallTest` 3 tests pass (revoke with a stalled session took 502 ms; laws close-bounded 1, close-wakes-writer 1, revoke-bounded 1, write-budget-typed 1); `PeerRegistryConcurrencyTest` 6 tests pass (stress: 40 of 40 rounds revoked; laws L3-under-race 4, L3-stress 40, revoke-landed-in-window 4). Mutation checks (each failed the suite, then restored): write timeout 0 (write-budget test fails "must end within its budget"); blocking `writeLock.lock()` in `flushClosing` (both close tests fail "did not return within 8000 ms"); no lock in `update` (scope and route cases and the stress case fail); no lock in `transition` (restore, pause, scope, route and stress cases fail).
+
+Full runs, `./gradlew -p lab :mesh-proto:test :conformance-runner:test`: JDK 21 BUILD SUCCESSFUL, mesh-proto 221 tests 0 failures 0 skipped, conformance-runner 2102 tests 0 failures (7 skipped, the known PROPOSED/genVectors ones). JDK 17 (`JAVA_HOME=/opt/jdks/jdk-17`, fresh daemon, `--rerun-tasks`): BUILD SUCCESSFUL, the same counts. `python3 lab/tools/isolation.py`: "isolation check 4: OK". `python3 lab/tools/check_law.py`: "law: OK". Root `./gradlew jvmTest`: BUILD SUCCESSFUL, 140 tests, 0 failures (the base already pins 140; the assignment text said 139).
+
+Open: BLOCKED(other-track) for PTT-1's last sentence: `integration/Node.kt` should post the GOAWAY to the session driver instead of writing on the revoking thread (see ERR-FX2-1).

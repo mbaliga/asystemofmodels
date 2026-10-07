@@ -1,5 +1,8 @@
 package xyz.mdhv.asom.lab.proto.trust
 
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 import xyz.mdhv.asom.lab.json.JArray
 import xyz.mdhv.asom.lab.json.JString
 import xyz.mdhv.asom.lab.json.Jcs
@@ -88,29 +91,29 @@ class InMemoryPeerStore : PeerStore {
     var failWrites = false
     private val unreadable = HashSet<String>()
 
-    override fun read(pin: Pin): StoreRead {
+    @Synchronized override fun read(pin: Pin): StoreRead {
         if (failReads || pin.nodeId in unreadable) return StoreRead.Unreadable
         return rows[pin.nodeId]?.let { StoreRead.Present(it) } ?: StoreRead.Absent
     }
 
-    override fun write(row: StoredRow): Boolean {
+    @Synchronized override fun write(row: StoredRow): Boolean {
         if (failWrites) return false
         rows[row.pin.nodeId] = row
         return true
     }
 
-    override fun delete(pin: Pin): Boolean {
+    @Synchronized override fun delete(pin: Pin): Boolean {
         if (failWrites) return false
         rows.remove(pin.nodeId)
         return true
     }
 
-    fun pins(): List<Pin> = rows.values.map { it.pin }
+    @Synchronized fun pins(): List<Pin> = rows.values.map { it.pin }
 
-    fun markUnreadable(pin: Pin) { unreadable += pin.nodeId }
+    @Synchronized fun markUnreadable(pin: Pin) { unreadable += pin.nodeId }
 
     /** Plants a row exactly as given (including a status or scopes value the code does not know). */
-    fun plant(row: StoredRow) { rows[row.pin.nodeId] = row }
+    @Synchronized fun plant(row: StoredRow) { rows[row.pin.nodeId] = row }
 }
 
 class PairingCeremony(
@@ -179,9 +182,14 @@ fun interface RegistryListener {
  * The peer registry of trust.md 4.7 as a state machine over a [PeerStore]. Only the listed transitions exist; every local one needs a
  * local action (a method call here; a network event can reach [onNetworkEvent] only, which never changes a row). Everything unreadable,
  * absent, corrupt or unrecognised denies. A change is durable before any listener hears of it.
+ *
+ * Every mutation is a read-modify-write of one stored row, so mutations are serialised by one lock held across the read, the write and the
+ * listener calls (the lock is reentrant; a listener may call back). A revoke can therefore never land between another mutation's read and its
+ * write and be overwritten (trust.md 15 L3). Reads ([authorize], [statusLookup], ...) take no lock and read the store afresh.
  */
 class PeerRegistry(private val store: PeerStore) {
-    private val listeners = ArrayList<RegistryListener>()
+    private val listeners = CopyOnWriteArrayList<RegistryListener>()
+    private val mutation = ReentrantLock()
 
     fun addListener(l: RegistryListener) { listeners += l }
 
@@ -224,7 +232,9 @@ class PeerRegistry(private val store: PeerStore) {
     // ---------------------------------------------------------------- the registry state machine (trust.md 4.7)
 
     /** (absent) to PAIRED: a completed ceremony with the LOCAL user's approval and the peer's. A revoked pin cannot re-pair until it is forgotten. */
-    fun commitPairing(c: PairingCeremony, nowMs: Long): RegistryResult {
+    fun commitPairing(c: PairingCeremony, nowMs: Long): RegistryResult = mutation.withLock { commitPairingLocked(c, nowMs) }
+
+    private fun commitPairingLocked(c: PairingCeremony, nowMs: Long): RegistryResult {
         if (!c.localApproved) return refuse(RegistryRefusal.LOCAL_APPROVAL_REQUIRED)
         if (!c.remoteApproved) return refuse(RegistryRefusal.REMOTE_APPROVAL_REQUIRED)
         if (c.clazz != PeerClass.OWN) return refuse(RegistryRefusal.CLASS_OTHER_NOT_IN_MESH1)
@@ -245,7 +255,10 @@ class PeerRegistry(private val store: PeerStore) {
         return RegistryResult.Changed(change)
     }
 
-    private fun transition(pin: Pin, from: Set<PeerStatus>, to: PeerStatus, wrong: RegistryRefusal, goaway: GoawayReason?, reason: String, nowMs: Long): RegistryResult {
+    private fun transition(pin: Pin, from: Set<PeerStatus>, to: PeerStatus, wrong: RegistryRefusal, goaway: GoawayReason?, reason: String, nowMs: Long): RegistryResult =
+        mutation.withLock { transitionLocked(pin, from, to, wrong, goaway, reason, nowMs) }
+
+    private fun transitionLocked(pin: Pin, from: Set<PeerStatus>, to: PeerStatus, wrong: RegistryRefusal, goaway: GoawayReason?, reason: String, nowMs: Long): RegistryResult {
         val l = load(pin)
         val row = when (l) {
             Loaded.Absent -> return refuse(RegistryRefusal.NOT_FOUND)
@@ -271,7 +284,9 @@ class PeerRegistry(private val store: PeerStore) {
         transition(pin, setOf(PeerStatus.PAIRED, PeerStatus.SUSPENDED), PeerStatus.REVOKED, RegistryRefusal.REVOKED_ROW, GoawayReason.REVOKED, "user", nowMs)
 
     /** REVOKED to absent: only the user's Forget, and only for a revoked row. */
-    fun forget(pin: Pin): RegistryResult {
+    fun forget(pin: Pin): RegistryResult = mutation.withLock { forgetLocked(pin) }
+
+    private fun forgetLocked(pin: Pin): RegistryResult {
         val row = when (val l = load(pin)) {
             Loaded.Absent -> return refuse(RegistryRefusal.NOT_FOUND)
             Loaded.Unreadable -> return refuse(RegistryRefusal.STORE_UNREADABLE)
@@ -292,7 +307,9 @@ class PeerRegistry(private val store: PeerStore) {
     /** What I do toward this peer. Does not touch the status or the inbound scopes. */
     fun setRoute(pin: Pin, enabled: Boolean, ceiling: RouteCeiling): RegistryResult = update(pin) { it.copy(routeEnabled = if (enabled) 1 else 0, routeCeiling = ceiling.name) }
 
-    private fun update(pin: Pin, f: (StoredRow) -> StoredRow): RegistryResult {
+    private fun update(pin: Pin, f: (StoredRow) -> StoredRow): RegistryResult = mutation.withLock { updateLocked(pin, f) }
+
+    private fun updateLocked(pin: Pin, f: (StoredRow) -> StoredRow): RegistryResult {
         val row = when (val l = load(pin)) {
             Loaded.Absent -> return refuse(RegistryRefusal.NOT_FOUND)
             Loaded.Unreadable -> return refuse(RegistryRefusal.STORE_UNREADABLE)

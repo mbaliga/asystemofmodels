@@ -128,7 +128,7 @@ object MeshTls {
             val params = engine.sslParameters
             MeshTlsProfile.apply(params, client)
             engine.sslParameters = params
-            io = TlsEngineIo(net, engine)
+            io = TlsEngineIo(net, engine, env.writeStallMs)
         } catch (e: Exception) {
             net.close()
             throw translate(e, stage, observer)
@@ -186,7 +186,7 @@ object MeshTls {
         if (e is MeshTlsException) return e
         (observer.verdict as? ChainVerdict.Rejected)?.let { return MeshTlsException(MeshTlsRefusal.PEER_CHAIN_REJECTED, stage, chainReject = it.code) }
         observer.gate?.let { return MeshTlsException(it, stage) }
-        if (e is SocketTimeoutException) return MeshTlsException(MeshTlsRefusal.HANDSHAKE_TIMEOUT, stage)
+        if (e is SocketTimeoutException) return MeshTlsException(if (stage == TlsStage.ESTABLISHED) MeshTlsRefusal.TRANSPORT_IO else MeshTlsRefusal.HANDSHAKE_TIMEOUT, stage)
         if (e is PeerEof) return MeshTlsException(MeshTlsRefusal.PEER_CLOSED, stage)
         if (e is SSLException) {
             val m = (e.message ?: "").lowercase()
