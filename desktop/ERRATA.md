@@ -59,6 +59,7 @@ implements, the CONSERVATIVE reading was taken and is recorded here. Nothing was
 | 2026-09-30 | 74fe9a04 | 770a44da | Same reviewed change as lab/ERRATA.md: a race fix in two v1 streaming integration tests (server/src/test only). Pinned to the same commit as `lab/LAB_BASE_SHA`. |
 | 2026-09-30 | 770a44da | 70eb11d1 | Orchestrator fixed a second flake in a v1 test (`AsomServerIntegrationTest` chopped-stream test compared bodies that embed a per-second `created` stamp; server/src/test only, no production code). Re-pinned in a later commit than the change. |
 | 2026-09-30 | 70eb11d1 | 79ff5b81 | Orchestrator fixed a ledger-read race in `AsomServerIntegrationTest.every routed request writes exactly one ledger row` (it read the ledger straight after the response; server/src/test only, no production code). Re-pinned in a later commit than the change. |
+| 2026-10-07 | 79ff5b81 | 5b16c799 | Orchestrator fixed a never-run test in the v1 server (`AnthropicDriverTest` 'a stream that ends without message_stop fails rather than looking complete' returned a non-Unit value so JUnit did not run it; server/src/test only, no production code), which moves the root test count 139 -> 140 (ROOT_TEST_BASELINE updated in the same commit). Re-pinned in a later commit than the change. |
 
 ## ERR-DL2-13 (orchestrator, first hosted run 2026-09-30): three defects only a hosted run could show
 

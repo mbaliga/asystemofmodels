@@ -55,6 +55,7 @@ CONSERVATIVE reading was taken and is recorded here. Nothing was silently guesse
 |---|---|---|---|
 | 2026-09-30 | dc8a45dc | 70eb11d1 | The UT pin was taken before the orchestrator's reviewed race and flake fixes to two v1 tests (`server/src/test` only, no production code; see lab/ERRATA.md re-pin history). Same commit as `lab/LAB_BASE_SHA`; the protected tree is byte-identical to it. Re-pinned in a later commit than the change. |
 | 2026-09-30 | 70eb11d1 | 79ff5b81 | Orchestrator fixed a ledger-read race in `AsomServerIntegrationTest.every routed request writes exactly one ledger row` (it read the ledger straight after the response; server/src/test only, no production code). Re-pinned in a later commit than the change. |
+| 2026-10-07 | 79ff5b81 | 5b16c799 | Orchestrator fixed a never-run test in the v1 server (`AnthropicDriverTest` 'a stream that ends without message_stop fails rather than looking complete' returned a non-Unit value so JUnit did not run it; server/src/test only, no production code), which moves the root test count 139 -> 140 (ROOT_TEST_BASELINE updated in the same commit). Re-pinned in a later commit than the change. |
 
 ## ERR-UT-CLICK-2 (orchestrator, first hosted Clickable run 2026-09-30)
 
