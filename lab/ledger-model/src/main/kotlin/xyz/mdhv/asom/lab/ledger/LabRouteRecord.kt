@@ -86,6 +86,7 @@ data class LabRouteRecord(
             if (meshKind == MeshKind.INFER_SENT || meshKind == MeshKind.INFER_SERVED) {
                 need(phase != null && attemptId != null, "an attempt row has a phase and an attemptId")
             }
+            if (meshKind == MeshKind.CONTROL) need(ClosedCodes.isControlCode(meshCode), "a CONTROL row's meshCode is a frame name, ERROR:<MeshError> or GOAWAY:<reason> (LAB_SPEC 7.2)")
             if (meshKind == MeshKind.INFER_SERVED) need(requestId == null, "a lender row never carries a requestId")
             if (meshKind != MeshKind.INFER_SENT && meshKind != MeshKind.INFER_SERVED && meshKind != MeshKind.DIAL) {
                 need(phase == null, "$meshKind rows are single rows without a phase")

@@ -39,28 +39,48 @@ class MemorySink : RowSink {
 /**
  * The desktop and lab ledger (LAB_SPEC 7.5): one JCS row per line, UTF-8, `\n`; `FileChannel.write` then `force(false)` per append, and
  * the append returns only after `force`. It throws on failure. Only process death is claimed, never power loss.
+ *
+ * Opening a file whose last byte is not `\n` truncates the torn tail (a write cut by process death; `append` never returned for it, so it
+ * was never reported durable) before the first append, so a new row can never merge onto it. An append that fails after any byte was
+ * written truncates the file back to its length before the append (ERRATA ERR-FX-1).
  */
-class JsonlSink(val path: Path, private val force: (FileChannel) -> Unit = { it.force(false) }) : RowSink, Closeable {
-    private val channel: FileChannel = open(path)
+class JsonlSink(
+    val path: Path,
+    private val force: (FileChannel) -> Unit = DEFAULT_FORCE,
+    opener: (Path) -> FileChannel = ::openChannel,
+) : RowSink, Closeable {
+    private val channel: FileChannel = opener(path)
 
     @Synchronized
     override fun append(row: LabRouteRecord) {
         row.requireWellFormed()
         val line = row.toRowBytes() + '\n'.code.toByte()
+        var start = -1L
         try {
+            start = channel.size()
             val buf = ByteBuffer.wrap(line)
             while (buf.hasRemaining()) channel.write(buf)
             force(channel)
         } catch (e: IOException) {
+            if (start >= 0) {
+                try {
+                    channel.truncate(start)
+                } catch (_: IOException) {
+                }
+            }
             throw LedgerWriteException("append failed: ${e.message}", e)
         }
     }
 
     override fun close() = channel.close()
 
-    private companion object {
+    companion object {
+        internal val DEFAULT_FORCE: (FileChannel) -> Unit = { it.force(false) }
+
+        private const val SCAN_BLOCK = 8192
+
         /** The desktop ledger file is mode 0600 (contract.md 4.10) where the file system has POSIX permissions; an existing file keeps its mode. */
-        fun open(path: Path): FileChannel {
+        internal fun openChannel(path: Path): FileChannel {
             if (!Files.exists(path)) {
                 try {
                     Files.createFile(path, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
@@ -68,7 +88,31 @@ class JsonlSink(val path: Path, private val force: (FileChannel) -> Unit = { it.
                 } catch (_: java.nio.file.FileAlreadyExistsException) {
                 }
             }
+            truncateTornTail(path)
             return FileChannel.open(path, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND)
+        }
+
+        private fun truncateTornTail(path: Path) {
+            FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE).use { ch ->
+                val size = ch.size()
+                if (size == 0L) return
+                val block = ByteBuffer.allocate(SCAN_BLOCK)
+                var end = size
+                while (end > 0) {
+                    val from = maxOf(0L, end - SCAN_BLOCK)
+                    block.clear().limit((end - from).toInt())
+                    while (block.hasRemaining()) if (ch.read(block, from + block.position()) < 0) break
+                    for (i in (end - from).toInt() - 1 downTo 0) {
+                        if (block.get(i) == '\n'.code.toByte()) {
+                            val keep = from + i + 1
+                            if (keep < size) ch.truncate(keep)
+                            return
+                        }
+                    }
+                    end = from
+                }
+                ch.truncate(0)
+            }
         }
     }
 }

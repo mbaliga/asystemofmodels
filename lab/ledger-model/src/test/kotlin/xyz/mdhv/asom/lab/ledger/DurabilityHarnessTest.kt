@@ -64,6 +64,25 @@ class DurabilityHarnessTest {
         return verified
     }
 
+    private fun tornBytesByHand(f: Path): Int {
+        val bytes = Files.readAllBytes(f)
+        return bytes.size - (bytes.lastIndexOf('\n'.code.toByte()) + 1)
+    }
+
+    private fun reopenAndAppend(f: Path, tag: String): Int {
+        val before = JsonlReader.read(f).rows
+        val torn = tornBytesByHand(f)
+        val next = LabRouteRecord(
+            ts = 1_000_000L, callerPkg = "peer:restart", requestedModel = "", egress = LabEgress.peerClass, meshKind = MeshKind.CONTROL, meshCode = "HELLO",
+            sessionId = "restart-$tag",
+        )
+        JsonlSink(f).use { it.append(next) }
+        val after = JsonlReader.read(f)
+        assertEquals(before + next, after.rows, "$tag: a restarted sink appends after every durable row and the file is still readable")
+        assertEquals(0, after.tornTailBytes, "$tag: no torn bytes remain after the restart append")
+        return torn
+    }
+
     @Test
     fun rowsAreIntactAfterSigkillAtEveryDurabilityPoint() {
         var points = 0
@@ -80,6 +99,11 @@ class DurabilityHarnessTest {
                     assertEquals(expectedInFile, inFile, "before the kill the files hold exactly the rows reported durable")
                     val matching = listOf("A", "B").sumOf { n -> JsonlReader.read(dir.resolve("$n.jsonl")).rows.count(entry.second) }
                     assertEquals(if (mode == "before") 0 else 1, matching, "rows of this kind on disk after a kill $mode the point")
+                    for (n in listOf("A", "B")) {
+                        val f = dir.resolve("$n.jsonl")
+                        assertEquals(tornBytesByHand(f), JsonlReader.read(f).tornTailBytes, "the reported torn tail is the bytes after the last newline")
+                        reopenAndAppend(f, "$index-$mode-$n")
+                    }
                     println("rows intact after kill at ${entry.first} [$mode]: $verified durable rows verified byte for byte, torn tail bytes: ${listOf("A", "B").sumOf { JsonlReader.read(dir.resolve("$it.jsonl")).tornTailBytes }}")
                     points++
                 } finally {
@@ -93,6 +117,7 @@ class DurabilityHarnessTest {
     @Test
     fun rowsAreIntactAfterSigkillDuringAWriteHeavyRun() {
         var totalDurable = 0
+        var tornSeen = 0
         repeat(3) { round ->
             val dir = Files.createTempDirectory("asom-dur-stress-")
             try {
@@ -101,7 +126,10 @@ class DurabilityHarnessTest {
                 val read = JsonlReader.read(dir.resolve("S.jsonl"))
                 assertTrue(read.rows.size >= run.durable.size, "the file holds every row reported durable (${read.rows.size} >= ${run.durable.size})")
                 for ((i, d) in run.durable.withIndex()) assertEquals(d.second, DurabilityChild.digest(read.rows[i].toRowBytes()), "row $i differs")
-                assertTrue(read.tornTailBytes >= 0)
+                val file = dir.resolve("S.jsonl")
+                assertEquals(tornBytesByHand(file), read.tornTailBytes, "the reported torn tail is exactly the bytes after the last newline")
+                tornSeen += read.tornTailBytes
+                reopenAndAppend(file, "stress-$round")
                 totalDurable += run.durable.size
                 println("rows intact after kill at arbitrary moment #$round: ${run.durable.size} durable rows verified, ${read.rows.size} complete rows in the file, torn tail bytes: ${read.tornTailBytes}")
             } finally {
@@ -109,5 +137,28 @@ class DurabilityHarnessTest {
             }
         }
         assertTrue(totalDurable > 100)
+        println("stress kills left $tornSeen torn bytes in total; every file was reopened, appended to and read back")
+    }
+
+    @Test
+    fun aRestartAfterSigkillInsideAWriteTruncatesTheTornTailAndAppendsCleanly_LTQ03() {
+        val dir = Files.createTempDirectory("asom-dur-tear-")
+        try {
+            val run = launch(dir, "tear", killWhen = { it == "TORN" })
+            assertEquals("TORN", run.stopped, "the child must have been killed in the middle of a write")
+            assertTrue(run.exit != 0)
+            assertEquals(2, run.durable.size)
+            val file = dir.resolve("T.jsonl")
+            val read = JsonlReader.read(file)
+            assertEquals(2, read.rows.size)
+            assertTrue(read.tornTailBytes > 0, "a real kill inside write left torn bytes")
+            assertEquals(tornBytesByHand(file), read.tornTailBytes)
+            for ((i, d) in run.durable.withIndex()) assertEquals(d.second, DurabilityChild.digest(read.rows[i].toRowBytes()))
+            val torn = reopenAndAppend(file, "tear")
+            assertEquals(read.tornTailBytes, torn)
+            println("rows intact after kill inside a write: ${run.durable.size} durable rows verified, torn tail bytes: $torn, restart append read back clean")
+        } finally {
+            dir.toFile().deleteRecursively()
+        }
     }
 }

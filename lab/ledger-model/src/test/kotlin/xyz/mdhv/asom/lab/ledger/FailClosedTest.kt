@@ -60,6 +60,23 @@ class FailClosedTest {
     }
 
     @Test
+    fun fc2TheSessionClosesTheConnectionItselfBeforeItsCloseLedgerFailureRowNotTheHarness_LTQ10() {
+        val at = indexOf("A") { it.meshKind == MeshKind.CONTROL && it.meshCode == "STATE_REQ" }
+        val w = failing("A", at)
+        val ev = w.trace.events
+        val failed = ev.indexOfFirst { it is AppendFailed && it.node == "A" }
+        val closed = ev.indexOfFirst { it is Closed && it.node == "A" }
+        val closeRow = ev.indexOfFirst { it is xyz.mdhv.asom.lab.ledger.laws.Appended && it.node == "A" && it.row.meshCode == "close:ledger-failure" }
+        assertTrue(failed >= 0 && closed > failed, "the connection was closed after the failed append")
+        assertTrue(closeRow > closed, "the SESSION close row follows the close of the connection (wire.close() before the close row)")
+        val row = (ev[closeRow] as xyz.mdhv.asom.lab.ledger.laws.Appended).row
+        assertEquals(503, row.status)
+        assertEquals(MeshKind.SESSION, row.meshKind)
+        assertTrue(ev.drop(failed).none { it is xyz.mdhv.asom.lab.ledger.laws.Appended && it.node == "A" && it.row.meshKind == MeshKind.SESSION && it.row.meshCode == "close" },
+            "no ordinary close row: only close:ledger-failure")
+    }
+
+    @Test
     fun fc2ReceivedFrameControlRowFailureSendsNoReply() {
         val at = indexOf("B") { it.meshKind == MeshKind.CONTROL && it.meshCode == "HELLO" }
         val w = failing("B", at, sticky = true)

@@ -2924,6 +2924,278 @@
           ]
         }
       }
+    },
+    {
+      "id": "L02-022",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a received ERROR code and GOAWAY reason that are free text (an address, prompt text, a device name) are stored as ERROR:UNKNOWN and GOAWAY:unknown on both nodes: peer-authored text never reaches a row (LAB_SPEC 7.2, LTQ-04)",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "ERROR",
+            "payload": 30,
+            "stream": "0",
+            "code": "x 192.168.1.20 my prompt text"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "GOAWAY",
+            "payload": 17,
+            "stream": "0",
+            "code": "see you, Alice's iPad"
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ],
+        "onlyKinds": [
+          "control"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 309,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 0,
+              "i": 209,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "ERROR:UNKNOWN",
+              "o": 0,
+              "i": 39,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "GOAWAY:unknown",
+              "o": 0,
+              "i": 26,
+              "st": 200,
+              "s": 1
+            }
+          ],
+          "B": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 0,
+              "i": 309,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 209,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "ERROR:UNKNOWN",
+              "o": 39,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "GOAWAY:unknown",
+              "o": 26,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "L02-023",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a code that only resembles a member of the closed set (lower case, a trailing space, an embedded newline, a prefix) is not a member: it is stored as UNKNOWN (LTQ-04)",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "ERROR",
+            "payload": 30,
+            "stream": "0",
+            "code": "peer_busy"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "GOAWAY",
+            "payload": 17,
+            "stream": "0",
+            "code": "IDLE\nidle"
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ],
+        "onlyKinds": [
+          "control"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 309,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 0,
+              "i": 209,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "ERROR:UNKNOWN",
+              "o": 0,
+              "i": 39,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "GOAWAY:unknown",
+              "o": 0,
+              "i": 26,
+              "st": 200,
+              "s": 1
+            }
+          ],
+          "B": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 0,
+              "i": 309,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 209,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "ERROR:UNKNOWN",
+              "o": 39,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "GOAWAY:unknown",
+              "o": 26,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            }
+          ]
+        }
+      }
     }
   ]
 }

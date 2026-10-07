@@ -102,6 +102,39 @@ fun interface ByteCounter {
  */
 data class RowShape(val meshKind: MeshKind, val meshCode: String)
 
+/**
+ * The closed sets a CONTROL row's `meshCode` may draw from (LAB_SPEC 7.2). `ERROR` and `GOAWAY` codes arrive from the peer, so the row writer
+ * stores a member of these sets or the fallback, never the received text (ERRATA ERR-FX-2).
+ */
+object ClosedCodes {
+    const val UNKNOWN_ERROR = "UNKNOWN"
+    const val UNKNOWN_REASON = "unknown"
+
+    /** `<MeshError>` of LAB_SPEC 7.2 plus `UNKNOWN`, the stored form of a code outside the set. */
+    val MESH_ERRORS: Set<String> = linkedSetOf(
+        "PEER_NOT_PAIRED", "SCOPE_DENIED", "PROTOCOL_ERROR", "VERSION_UNSUPPORTED", "FRAME_TOO_LARGE", "DUPLICATE_ATTEMPT", "CLOCK_SKEW", "MODEL_NOT_OFFERED",
+        "PEER_BUSY", "PEER_UNAVAILABLE", "MANIFEST_UNAVAILABLE", "PAIRING_WINDOW_CLOSED", "PAIRING_PROOF_INVALID", "PAIRING_REFUSED", UNKNOWN_ERROR,
+    )
+
+    /** The `GOAWAY` reasons of LAB_SPEC 7.2 plus `unknown`. */
+    val GOAWAY_REASONS: Set<String> = linkedSetOf("revoked", "suspended", "shutdown", "network-change", "idle", "max-age", UNKNOWN_REASON)
+
+    private val FRAME_NAMES = setOf("HELLO", "HELLO_ACK", "STATE_REQ", "STATE", "MANIFEST_REQ", "EXT_IGNORED")
+
+    fun errorCode(raw: String?): String = if (raw != null && raw in MESH_ERRORS) raw else UNKNOWN_ERROR
+
+    fun goawayReason(raw: String?): String = if (raw != null && raw in GOAWAY_REASONS) raw else UNKNOWN_REASON
+
+    /** True when [code] is a `meshCode` a CONTROL row may carry: a frame name, `ERROR:<MeshError>` or `GOAWAY:<reason>`. */
+    fun isControlCode(code: String?): Boolean = when {
+        code == null -> false
+        code in FRAME_NAMES -> true
+        code.startsWith("ERROR:") -> code.substring(6) in MESH_ERRORS
+        code.startsWith("GOAWAY:") -> code.substring(7) in GOAWAY_REASONS
+        else -> false
+    }
+}
+
 object FrameRows {
     /** Frames of the "yes" rows of the L-L16 table: exactly one row on each node that sent or received them. */
     val L16_KINDS: List<String> = listOf(
@@ -126,8 +159,8 @@ object FrameRows {
         LedgerClass.CONTROL -> RowShape(
             MeshKind.CONTROL,
             when (f.kind) {
-                FrameKind.ERROR -> "ERROR:${f.code ?: "UNKNOWN"}"
-                FrameKind.GOAWAY -> "GOAWAY:${f.code ?: "unknown"}"
+                FrameKind.ERROR -> "ERROR:${ClosedCodes.errorCode(f.code)}"
+                FrameKind.GOAWAY -> "GOAWAY:${ClosedCodes.goawayReason(f.code)}"
                 else -> f.kind.name
             },
         )
