@@ -176,3 +176,48 @@ PLATFORM_PLAN,ASOM_MESH_DESIGN,LAB_SPEC,TOOLCHAIN_NOTES,REVIEW_ROUND3}.md` and `
 `CLAUDE.md`, roadmap §14, PP §0, §1, §9-§12, the owner directives, the `OWNER_BRIEF.md` decision table, D17, D25 and
 milestone lines of the design, platform effort tables, the `PROGRESS.md` hosted-CI section, `ubuntu-touch/ERRATA.md`,
 and an `upload-artifact` grep of `.github/workflows/`.
+
+## Owner rulings and the proposed line (added 2026-10-07)
+
+Status: PLAN. Nothing here is built, run on a device, signed or submitted. The program-level plan is Personal-Tracker `PORTING_PROGRAM.md` ([PR #10](https://github.com/mbaliga/Personal-Tracker/pull/10)), which holds the owner's rulings and section 5A, the proposed port / no-port line. The cells, estimates and open questions above are this repo's original plan and are unedited. Where the owner has since answered a question, the answer is below. Section 5A is a proposal; the owner has not yet confirmed it.
+
+### Where asystemofmodels sits in the proposed line (program section 5A.3, a proposal)
+
+| Target       | Verdict | Weeks and flags |
+| ------------ | ------- | --------------- |
+| Ubuntu Touch | port    | 6.5w o          |
+| Linux        | port    | 7w o            |
+| iOS/iPadOS   | port    | 16.5w o         |
+| macOS        | port    | 8w o            |
+| Windows      | port    | 8w o            |
+
+Key: `follows` means it ports only as far as the products that depend on it; `exists` means the program reads it as already running there, unverified (finish, verify and sign); flags: `g` gated on a prerequisite, `r` re-estimate or floor, `o` its own program, `s` scope note. The program's P4, P8, P12 and P13 gate whole columns or repos and are not flagged per cell. A port verdict counts the deliverable in the line; where this repo's plan calls a deliverable a reframe (program rule R12) it keeps that label. Tests cited in the reason: (a) the owner said it is needed there; (b) its job is really done on that OS by real users; (c) that OS is where it is sold or its audience is; it has no reason to exist if (x) its surface is absent or untouchable, (y) the capability is forbidden or impossible, or (z) the only form is a thin wrapper or a different product nobody asked for. P-numbers and OQ-numbers refer to the program plan (Personal-Tracker `PORTING_PROGRAM.md`, sections 5A.5 and 8).
+
+Reason: Its own program under asom:D-E (decided 2026-09-30): UT is a foreground-only requester (UT-1), never an unattended lender or a cross-app daemon (UT-2, an optional frontmost lender, is unscheduled); iOS is iPad-first; macOS waits for an Apple-silicon Mac (its macOS node is macOS 15+ and arm64 only, so it cannot be built or tested on the 2015 Intel MacBook Pro). Not re-planned here (program section 4.0).
+
+### Owner rulings that apply here
+
+- **No program ruling changes an asom rule, invariant or decision (program directive I-9: PLATFORM_PLAN.md governs).** The rulings are recorded in Personal-Tracker `PORTING_PROGRAM.md`, section Owner rulings. In particular this section does not change asom's Ubuntu Touch rules (no BYOK keys; a foreground-only requester in UT-1, never an unattended lender or cross-app daemon; 24.04-1.x and 24.04-2.x only, with 26.04 a CI canary; never 20.04), Invariant 4 and the keyStorage rule, or the no-KMP rule. The program's focal pre-spike is the program's own S-UT1 (focal) on the owner's device, not asom's S-UT1 / DV-UT01.
+- **OQ-31 Mac (2026-10-06 and 2026-10-07):** "Buy a Mac", and on 2026-10-07 an Apple-silicon Mac mini, not yet bought; no Apple device gate is called checkable before then.
+
+### Prerequisites and open questions that touch this repo (program sections 5A.5 and 8)
+
+Prerequisites (program-level; not costed here):
+
+- program P4: A device that can run the 24.04 Ubuntu Touch the program plan targets (the owner's OnePlus 6 is read as 20.04-only)
+- program P8: An Apple-silicon Mac (OQ-31: a Mac mini chosen on 2026-10-07, not yet bought)
+
+Owner questions in the program register that concern this repo (status as of 2026-10-07):
+
+- OQ-1 (ruled): Ubuntu Touch device: an input to asom's D28 inventory; asom's Ubuntu Touch rules (24.04-1.x and 24.04-2.x only, never 20.04) are unchanged
+- OQ-5 (ruled): Hardware stance: a fact for asom's D28 inventory (the Dell's operating system); changes no asom rule
+- OQ-7 (open): Repo-local gates, clause (d): the asom ratifications
+- OQ-17 (ruled): Toolchain pins: the 'Also' confirmation that asom's no-KMP rule is asom-local is unanswered
+- OQ-20 (ruled): CI minutes, storage and repo visibility (this repo is public; the ruling does not answer the artifact-storage point in plan item 13)
+- OQ-22 (ruled): Secret custody per platform: asom's keys stay governed by asom (program directive I-9)
+- OQ-24 (open): Sharing mechanism for non-Gradle artefacts and prebuilt binaries
+- OQ-31 (ruled): CI for App Store builds; which Mac
+- OQ-33 (open): Hardware details still open
+- OQ-37 (answered in part): A second Ubuntu Touch device; the program focal pre-spike is on a 20.04 device that asom excludes
+
+When the owner confirms or changes the line, this repo's original cells above stay as the engineering detail; only the verdicts and re-costs in program section 5A change.
