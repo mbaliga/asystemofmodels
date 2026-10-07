@@ -61,6 +61,37 @@ extension R3 {
         ])
     }
 
+    /// The attempt an `{bytes, elapsed}` observation of the sequence-like kinds stands for: one chunk and the `done` end at `elapsed`, no claim key
+    /// mismatch (E-36).
+    static func observationResult(_ o: JValue, _ i: JValue, id: String) throws -> AttemptResult {
+        guard let p = i.member("promptTokens")?.intValue, let b = i.member("promptBytes")?.intValue, let maxTokens = i.member("maxTokens")?.intValue,
+              let bytes = o.member("bytes")?.intValue, let elapsed = o.member("elapsed")?.intValue else { throw ConformanceError("\(id): observation") }
+        var concurrent = false
+        if case let .bool(c)? = o.member("concurrent") { concurrent = c }
+        return try AttemptEvaluator.evaluate(AttemptInput(
+            tBodyMs: 0, chunks: [ContentChunk(tMs: elapsed, bytes: bytes)], end: InferEnd(tMs: elapsed, payload: doneEnd), promptTokens: p, promptBytes: b,
+            maxTokens: maxTokens, link: try linkEstimate(i.member("link")), claim: try claimRow(i.member("claim")), bpt: bytesPerToken(i.member("bpt")),
+            concurrent: concurrent, claimFileSha256: sentinelFileSha256
+        ))
+    }
+
+    /// The first claim body of the vectors that publish a new claim seq: seq 1 at 0 ms. The vector gives only `newClaimAtMs`, which is read as the
+    /// time of seq 2 (apple/ERRATA.md ERR-FX-M08-1); the gate then decides `accepted`.
+    static func newClaimAccepted(_ i: JValue) throws -> Bool {
+        guard let at = i.member("newClaimAtMs")?.intValue else { throw ConformanceError("newClaimAtMs") }
+        var gate = ClaimBodyGate()
+        guard gate.accept(seq: 1, atMs: 0) else { throw ConformanceError("first claim body") }
+        return gate.accept(seq: 2, atMs: at)
+    }
+
+    static func trackedJSON(_ r: TrackedRates) -> JValue {
+        .object(["prefill": .int(r.prefill), "decodeAtP": .int(r.decodeAtP), "steady": .int(r.steady)])
+    }
+
+    static func penaltyJSON(_ p: DiscPenalty?) -> JValue {
+        p.map { .object(["untilWallMs": .int($0.untilWallMs), "repeats": .int(Int64($0.repeats))]) } ?? .null
+    }
+
     static let doneEnd = "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
 
     static func observeM08(_ v: Vector) throws -> Observed {
@@ -122,6 +153,52 @@ extension R3 {
                     accepted.append(.bool(gate.accept(seq: seq, atMs: at)))
                 }
                 return .ok(.object(["accepted": .array(accepted)]))
+            case "inherit":
+                let claim = try claimRow(i.member("claim")), p = i.member("promptTokens")?.intValue ?? 0
+                var tracker = ClaimTracker()
+                for o in i.member("before")?.elements ?? [] { tracker.onObservation(try observationResult(o, i, id: v.id)) }
+                let accepted = try newClaimAccepted(i)
+                if accepted { tracker.onNewClaimSeq() }
+                var states: [JValue] = []
+                for o in i.member("after")?.elements ?? [] {
+                    tracker.onObservation(try observationResult(o, i, id: v.id))
+                    states.append(.string(try tracker.view(claim: claim, promptTokens: p).state.rawValue))
+                }
+                return .ok(.object(["accepted": .bool(accepted), "states": .array(states)]))
+            case "claimBudget":
+                let claim = try claimRow(i.member("claim")), p = i.member("promptTokens")?.intValue ?? 0
+                var tracker = ClaimTracker()
+                for o in i.member("observations")?.elements ?? [] { tracker.onObservation(try observationResult(o, i, id: v.id)) }
+                let accepted = try newClaimAccepted(i)
+                if accepted { tracker.onNewClaimSeq() }
+                let view = try tracker.view(claim: claim, promptTokens: p)
+                return .ok(.object(["accepted": .bool(accepted), "state": .string(view.state.rawValue), "budgetTripped": .bool(view.budgetTripped), "n": .int(Int64(view.n)), "tracked": trackedJSON(view.tracked)]))
+            case "penalty":
+                var book = PeerClaimBook()
+                for e in i.member("events")?.elements ?? [] {
+                    guard let file = e.member("file")?.stringValue, let at = e.member("at")?.intValue else { throw ConformanceError("\(v.id): event") }
+                    try book.onObservation(file: file, result: try observationResult(e, i, id: v.id), atWallMs: at)
+                }
+                var discs: [JValue] = []
+                for t in i.member("probes")?.elements ?? [] {
+                    guard let now = t.intValue else { throw ConformanceError("\(v.id): probe") }
+                    discs.append(.int(book.discPermille(atWallMs: now)))
+                }
+                return .ok(.object(["penalty": penaltyJSON(book.penalty), "disc": .array(discs)]))
+            case "disc":
+                guard let now = i.member("now")?.intValue else { throw ConformanceError("\(v.id): disc input") }
+                var files: [String: ClaimTracker] = [:]
+                for s in i.member("states")?.elements ?? [] {
+                    guard let file = s.member("file")?.stringValue else { throw ConformanceError("\(v.id): state file") }
+                    var inherited = false
+                    if case let .bool(b)? = s.member("inherited") { inherited = b }
+                    files[file] = ClaimTracker(window: intArray(s.member("ratios")), recent: [], strikes: 0, inheritedDiscrepant: inherited)
+                }
+                var penalty: DiscPenalty?
+                if let pen = i.member("penalty"), pen.isObject, let until = pen.member("untilWallMs")?.intValue, let repeats = pen.member("repeats")?.intValue {
+                    penalty = DiscPenalty(untilWallMs: until, repeats: Int(repeats))
+                }
+                return .ok(.object(["disc": .int(PeerClaimBook(files: files, penalty: penalty).discPermille(atWallMs: now))]))
             default:
                 return .notImplemented(kind)
             }

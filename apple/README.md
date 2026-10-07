@@ -27,7 +27,7 @@ fixture directory the JVM lane verifies, the M08 claim tracker (`AsomRouterCore`
 | `AsomDSSE` | `PAE`, `SPKI`, `ES256` and `ES256Signer` (low-S, strict 91-byte SPKI), `SignatureCodec`, `NodeIdentity` (pin, node id and tag, fingerprints, the TEST-ONLY deny-list of four keys, SHA-256), `DSSEEnvelope` (verifier steps 1 to 10 and the container producer) |
 | `AsomBenchCore` | `Checked` (overflow-checked 64-bit arithmetic), `SchemaReader`, `BenchSet` (the compiled-in Q1 pins; L1 loads only under a D18 ruling flag and has none), `BenchDocument` (the typed `asom.bench/1` decoder), `Stats` and `SustainDerivation` (M04), `Derivation`, `Projection`, `TextRenderer` (`asom.text/1`), **`RunPlan`** (the standard plan, benchmark.md 5.2), **`ConsentSheet` and `ConsentGate`** (11.1), **`Governor`** (11.4 with B9), **`Ceilings`** (11.3) |
 | `AsomManifest` | `ManifestDecoder` (step 11), `Consistency` (manifest.md 8.4), `ManifestVerifier` (steps 1 to 19), `FileProjection`, `PublicDerivative`, `ManifestText`, **`ManifestSigner`** (`signPresentation`, the self-check, `nextSeq`) |
-| `AsomRouterCore` | **`ClaimTracker`**, `AttemptEvaluator`, `ClaimBodyGate`, `CapRef` (LAB_SPEC 6.6; M08) |
+| `AsomRouterCore` | **`ClaimTracker`**, `PeerClaimBook` (cross-file `disc`, the 7-day penalty), `AttemptEvaluator`, `ClaimBodyGate`, `CapRef` (LAB_SPEC 6.6; M08) |
 | `AsomConformanceKit` | The logic behind the CLI, so that tests can call it (`Conformance` for the r0 set, `R3` for the r3 set, `CrossLane` for the fixtures). Not a product |
 | `asom-conformance` | The CLI (`Sources/asom-conformance/main.swift`) |
 
@@ -60,14 +60,14 @@ anything else is the r0 set of half I0a (M02 and M03, DSSE layer only, `check` a
 | M04 (derive, plan, consent, governor, ceilings, pins, traces) | 94 | **65**: `test` (22), `sustain` (9), `percentile` (2), `doc` (15), `plan` (1: standard), `consent` (5), `fsm` (1), `ceilings` (9), `pins` (1). **Not** 29, each BLOCKED in `apple/ci/not-implemented.txt` with its reason: the 26 executor traces (the fake engine, its presets and the event grammar are not in the spec), the quick and ci plans (their JCS form is not in the spec), the run-today consent sheet (its wording is not in the spec). `ERRATA.md` E-29 to E-31 |
 | M05 (render) | 42 | all: the manifest text (12) and the `asom.text/1` body (30) |
 | M06 (derivatives) | 10 | all: `q2`, the public derivative, the FILE projection |
-| M08 (claim tracker) | 77 | **63 of 77**: `evaluate` (28), `sequence` (26), `state` (7), `claimBody` (2). **Not** 14, each BLOCKED in `apple/ci/not-implemented.txt`: the four kinds the JVM router fix group added, `inherit` (3), `claimBudget` (2), `penalty` (4), `disc` (5) (M08-065 to M08-078; lab `ERR-FX-RT-3/4/8`, this lane `ERRATA.md` ERR-FX-M08) |
+| M08 (claim tracker) | 77 | all: `evaluate` (28), `sequence` (26), `state` (7), `claimBody` (2) and the four kinds the JVM router fix group added, `inherit` (3), `claimBudget` (2), `penalty` (4), `disc` (5) (M08-065 to M08-078; lab `ERR-FX-RT-3/4/8`; `PeerClaimBook` and the discard-budget record kept across a claim seq, this lane `ERRATA.md` ERR-FX-M08-1, -2) |
 
-`lines` printed 370 lines at the time of writing (the 294 of half I0b, plus 17 M04 and 59 M08 vectors; the real count is in the gate entry of `PROGRESS.md`). At the merge of the seven fix groups (LAB, oracle: self) `lines` prints 413 lines and the JVM runner 456 for M01 to M06 and M08; the other 43 are the BLOCKED vectors above (29 M04 and 14 M08).
+`lines` printed 370 lines at the time of writing (the 294 of half I0b, plus 17 M04 and 59 M08 vectors; the real count is in the gate entry of `PROGRESS.md`). At the merge of the seven fix groups (LAB, oracle: self) `lines` printed 413 lines and the JVM runner 456 for M01 to M06 and M08; after the router-tracker change (ERR-FX-M08-1) `lines` prints 427 and the other 29 are the BLOCKED M04 vectors above.
 
 ## The lane diff
 
 `apple/ci/lane_diff.py` compares the two lines files **per vector** and names each difference with both verdicts. Two explicit lists sit beside it:
-`known-disagreements.txt` (42 vectors, finding LF-1: the 37 of I0b and the 5 that the fix-crypto vectors added, each line with its reason) and `not-implemented.txt` (43 vectors, each BLOCKED with its reason). It fails on a disagreement that is not listed, on a listed one that now agrees,
+`known-disagreements.txt` (42 vectors, finding LF-1: the 37 of I0b and the 5 that the fix-crypto vectors added, each line with its reason) and `not-implemented.txt` (29 vectors, each BLOCKED with its reason). It fails on a disagreement that is not listed, on a listed one that now agrees,
 on a vector one lane printed and the other did not, on a `not-implemented` entry that the Swift lane now prints or that the JVM lane does not print, on an entry with no reason, and on a duplicate. `apple/ci/test_lane_diff.py` runs the real script against each of those failures.
 
 **LF-1 in one paragraph.** The JVM lane's projection of `results[]` adds a row flag `thermal-drift` when an M04 test drifted (design B7). benchmark.md 13.3 lists the flags of a projected row and has no such flag.

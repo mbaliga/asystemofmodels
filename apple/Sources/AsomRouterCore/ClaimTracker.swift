@@ -19,8 +19,10 @@ public enum TrackerConstants {
     public static let clampMinBytes: Int64 = 8
     public static let inheritedClearObservations = 10
     public static let defaultDiscPermille: Int64 = 700
-    public static let discrepantPeerDiscPermille: Int64 = 400
-    public static let claimBodyIntervalMs: Int64 = 86_400_000
+        public static let claimBodyIntervalMs: Int64 = 86_400_000
+    /// The first penalty of a peer: "for >= 7 days, doubling on repeat".
+    public static let penaltyBaseMs: Int64 = 604_800_000
+    public static let repeatedDiscPermille: Int64 = 400
     public static let bytesPerTokenDefault: Int64 = 4000
     public static let bytesPerTokenCapDefault: Int64 = 8000
 }
@@ -340,12 +342,13 @@ public struct ClaimTracker: Sendable, Equatable {
         }
     }
 
-    /// A new claim seq restarts the window against the new claim and inherits DISCREPANT until 10 new observations have
-    /// `best >= CORR`. Strikes survive. The recent observations restart with the window (no vector; ERRATA E-35).
+    /// A new claim seq restarts W against the new claim and inherits DISCREPANT until 10 new observations have `best >= CORR`. Strikes survive,
+    /// and so does the discard-budget record `recent`: only W restarts (LAB_SPEC 6.6, "a new claim seq restarts W but inherits DISCREPANT";
+    /// lab ERR-FX-RT-3, M08-068/-069). Without that a peer clamped to WEAK by truncation would escape the clamp by publishing a new seq once
+    /// per 24 h, because WEAK itself is not inherited. The record ages out through new observations (the last 20, more than half discarded).
     public mutating func onNewClaimSeq() {
         if Self.state(window: window, recent: recent, inheritedDiscrepant: inheritedDiscrepant).state == .discrepant { inheritedDiscrepant = true }
         window = []
-        recent = []
     }
 
     static func best(_ ratios: [Int64]) -> Int64? {
@@ -426,5 +429,68 @@ public struct ClaimBodyGate: Sendable, Equatable {
         lastSeq = seq
         lastAcceptedAtMs = atMs
         return true
+    }
+}
+
+/// The per-peer penalty of `disc`: "400 if >= 2 keys of this peer are DISCREPANT (for >= 7 days, doubling on repeat)". Wall-clock milliseconds.
+public struct DiscPenalty: Sendable, Equatable {
+    public let untilWallMs: Int64
+    public let repeats: Int
+
+    public init(untilWallMs: Int64, repeats: Int) {
+        self.untilWallMs = untilWallMs
+        self.repeats = repeats
+    }
+
+    /// The penalty is running while `now < untilWallMs`: at `untilWallMs` it has ended (M08-078).
+    public func runs(atWallMs now: Int64) -> Bool { now < untilWallMs }
+}
+
+/// What a peer's files (keys k = (peer, file)) say together: the trackers by file and the one penalty latch of the peer.
+public struct PeerClaimBook: Sendable, Equatable {
+    public private(set) var files: [String: ClaimTracker]
+    public private(set) var penalty: DiscPenalty?
+
+    public init(files: [String: ClaimTracker] = [:], penalty: DiscPenalty? = nil) {
+        self.files = files
+        self.penalty = penalty
+    }
+
+    /// Files whose state is DISCREPANT (by ratios or by inheritance). Files, not observations.
+    public var discrepantFileCount: Int {
+        files.values.filter { ClaimTracker.state(window: $0.window, recent: $0.recent, inheritedDiscrepant: $0.inheritedDiscrepant).state == .discrepant }.count
+    }
+
+    /// Feeds one finished attempt of `file`. Once it is applied, two or more DISCREPANT files latch a penalty when none is running: 7 days
+    /// from `atWallMs`, doubled for every earlier latch (7, 14, 28 ... days). A running penalty is not extended, the repeat count is never
+    /// reset, and a duration or end that would overflow saturates at `Int64.max` (apple/ERRATA.md ERR-FX-M08-2).
+    public mutating func onObservation(file: String, result: AttemptResult, atWallMs: Int64) throws {
+        var tracker = files[file] ?? ClaimTracker()
+        tracker.onObservation(result)
+        files[file] = tracker
+        guard discrepantFileCount >= 2 else { return }
+        if let running = penalty, running.runs(atWallMs: atWallMs) { return }
+        let repeats = (penalty?.repeats ?? 0) + 1
+        var duration = TrackerConstants.penaltyBaseMs
+        for _ in 1..<max(repeats, 1) {
+            let (doubled, overflow) = duration.multipliedReportingOverflow(by: 2)
+            if overflow { duration = Int64.max; break }
+            duration = doubled
+        }
+        let (until, overflow) = atWallMs.addingReportingOverflow(duration)
+        penalty = DiscPenalty(untilWallMs: overflow ? Int64.max : until, repeats: repeats)
+    }
+
+    /// A new claim seq of `file` (after `ClaimBodyGate` accepted it). A file the book has not seen stays unseen.
+    public mutating func onNewClaimSeq(file: String) {
+        guard var tracker = files[file] else { return }
+        tracker.onNewClaimSeq()
+        files[file] = tracker
+    }
+
+    /// `disc`: 400 while a penalty runs or while two or more files are DISCREPANT, else 700.
+    public func discPermille(atWallMs now: Int64) -> Int64 {
+        if let penalty, penalty.runs(atWallMs: now) { return TrackerConstants.repeatedDiscPermille }
+        return discrepantFileCount >= 2 ? TrackerConstants.repeatedDiscPermille : TrackerConstants.defaultDiscPermille
     }
 }

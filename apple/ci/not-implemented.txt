@@ -6,10 +6,6 @@
 # transcription of the vectors, not an implementation of the spec (apple/ERRATA.md E-29).
 # BLOCKED(plan): benchmark.md 5.2 gives the JCS form of the standard plan only; quick and ci are prose in the table of 5.1 (E-30).
 # BLOCKED(consent): the sheet wording for a run today (the extra tick) is not in the spec (E-31).
-# BLOCKED(m08-tracker): M08-065..M08-078 are four vector kinds (inherit, claimBudget, penalty, disc) that the JVM router fix group (lab/ERRATA.md
-# ERR-FX-RT-3, ERR-FX-RT-4, ERR-FX-RT-8) added to the claim-tracker family AFTER this lane's tracker was written. The Swift ClaimTracker has no
-# per-peer penalty latch or cross-file disc computation, and it still restarts the discard-budget record on a new claim seq (apple/ERRATA.md E-35, which
-# the JVM lane's ERR-FX-RT-3 now contradicts). Not produced rather than guessed: see apple/ERRATA.md ERR-FX-M08.
 M04-301 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
 M04-302 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
 M04-303 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
@@ -39,17 +35,3 @@ M04-345 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not 
 M04-401 BLOCKED(plan: quick plan JCS form not in the spec)
 M04-403 BLOCKED(plan: ci plan JCS form not in the spec)
 M04-425 BLOCKED(consent: wording of the run-today sheet not in the spec)
-M08-065 BLOCKED(m08-tracker: kind inherit added by the JVM router fix group; Swift tracker lacks the penalty latch and cross-file disc)
-M08-066 BLOCKED(m08-tracker: kind inherit added by the JVM router fix group; Swift tracker lacks the penalty latch and cross-file disc)
-M08-067 BLOCKED(m08-tracker: kind inherit added by the JVM router fix group; Swift tracker lacks the penalty latch and cross-file disc)
-M08-068 BLOCKED(m08-tracker: kind claimBudget added by the JVM router fix group; Swift tracker lacks the penalty latch and cross-file disc)
-M08-069 BLOCKED(m08-tracker: kind claimBudget added by the JVM router fix group; Swift tracker lacks the penalty latch and cross-file disc)
-M08-070 BLOCKED(m08-tracker: kind penalty added by the JVM router fix group; Swift tracker lacks the penalty latch and cross-file disc)
-M08-071 BLOCKED(m08-tracker: kind penalty added by the JVM router fix group; Swift tracker lacks the penalty latch and cross-file disc)
-M08-072 BLOCKED(m08-tracker: kind penalty added by the JVM router fix group; Swift tracker lacks the penalty latch and cross-file disc)
-M08-073 BLOCKED(m08-tracker: kind penalty added by the JVM router fix group; Swift tracker lacks the penalty latch and cross-file disc)
-M08-074 BLOCKED(m08-tracker: kind disc added by the JVM router fix group; Swift tracker lacks the penalty latch and cross-file disc)
-M08-075 BLOCKED(m08-tracker: kind disc added by the JVM router fix group; Swift tracker lacks the penalty latch and cross-file disc)
-M08-076 BLOCKED(m08-tracker: kind disc added by the JVM router fix group; Swift tracker lacks the penalty latch and cross-file disc)
-M08-077 BLOCKED(m08-tracker: kind disc added by the JVM router fix group; Swift tracker lacks the penalty latch and cross-file disc)
-M08-078 BLOCKED(m08-tracker: kind disc added by the JVM router fix group; Swift tracker lacks the penalty latch and cross-file disc)

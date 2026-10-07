@@ -1973,3 +1973,26 @@ crosslane: JVM, Swift and the fixture agree on 37 of 37 (23 ok, 14 reject)
 $ python3 lab/tools/isolation.py  -> isolation check 4: OK
 $ ./gradlew -p lab :conformance-runner:test --offline -> BUILD SUCCESSFUL
 ```
+
+## Gate: Swift claim tracker brought to agreement with the JVM router fix group, M08-065..M08-078 (2026-10-07)
+
+Evidence: LAB, oracle: self, NOT DEVICE EVIDENCE. Linux Swift 6.1 only; macOS and CryptoKit are unverified here. Output below is real (vector bodies not printed).
+
+Change: `ClaimTracker.onNewClaimSeq` no longer clears the discard-budget record (real defect; lab ERR-FX-RT-3; apple E-35 superseded). New `PeerClaimBook` / `DiscPenalty` (cross-file `disc`, 7-day penalty doubling on repeat); the M08 adapter runs `inherit` (3), `claimBudget` (2), `penalty` (4), `disc` (5); the 14 `BLOCKED(m08-tracker)` entries left `apple/ci/not-implemented.txt` (43 to 29). Independence: spec 6.6, the M08 vector files and the ERR-FX-RT rows of lab/ERRATA.md were read; no `lab/*/src` Kotlin (apple/ERRATA.md ERR-FX-M08-1, -2). Spec ambiguities that no vector settles (latch timing, repeat counter never reset, overflow saturation) are listed in ERR-FX-M08-2 with the conservative reading.
+
+```
+$ swift test --package-path apple     (new tests written first: build failed on the missing PeerClaimBook type)
+Executed 235 tests, with 0 failures (0 unexpected)          (was 226; PeerClaimBookTests 9 new)
+$ asom-conformance check M01,M02,M03,M04,M05,M06,M08
+checked 427, mismatches 47     (the 42 + 5 LF-1 ones; 0 in M08)
+$ ./gradlew -p lab :conformance-runner:run --args='lines M01,M02,M03,M04,M05,M06,M08' --quiet --offline   (JDK 17)
+456 lines
+$ python3 apple/ci/lane_diff.py jvm.lines swift.lines --known ... --not-implemented ...   (exit 0)
+vectors: jvm=456 swift=427 agree=385 disagree=42 (known 42) jvm-only=29 (not implemented 29)
+$ same with ASOM_DIAGNOSTIC_DRIFT_FLAG=1 (F-1 set aside, no --known)
+vectors: jvm=456 swift=427 agree=427 disagree=0 (known 0) jvm-only=29 (not implemented 29)
+$ python3 apple/ci/test_lane_diff.py  -> OK
+$ python3 lab/tools/isolation.py      -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+```
+
+Mutation check (17 mutants of ClaimTracker.swift, each run against `swift test --filter AsomRouterCoreTests`; 17 killed, 0 survived): new seq clears `recent` again; inherited clears at 5 (constant); inherited clears at 5 (state); inherited clears at 5 (onObservation); no doubling on repeat; repeat counter does not advance; latch with one DISCREPANT file; `disc` count needs more than two files; penalty still runs at its end instant; a running penalty is extended; base penalty 6 days; repeated `disc` 500; `disc` ignores a running penalty; inherited files not counted; always inherit; best index off by one; overflow saturation dropped. (One first attempt at M06 matched a doc comment and showed "survived"; re-aimed at the code and killed.)

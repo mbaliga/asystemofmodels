@@ -370,7 +370,6 @@ final class ClaimTrackerTests: XCTestCase {
         XCTAssertEqual(try view(t).state, .discrepant)
         t.onNewClaimSeq()
         XCTAssertEqual(t.window, [])
-        XCTAssertEqual(t.recent, [])
         XCTAssertEqual(t.strikes, 2, "strikes survive a new claim")
         XCTAssertTrue(t.inheritedDiscrepant)
         XCTAssertEqual(try view(t).state, .discrepant, "no observations yet, inherited")
