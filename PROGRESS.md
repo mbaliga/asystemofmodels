@@ -1330,3 +1330,49 @@ Evidence label: **CI (hosted VM)**. NOT DEVICE EVIDENCE. Read from GitHub's chec
 What the first hosted runs found (each is in an ERRATA file): a colon in a fixture path made the repo uncheckable on Windows (ERR-DL2-13); a JVM SIGTERM exits 143 (unit files now declare `SuccessExitStatus=143`); the macOS control-socket limit measured 102 bytes, not 103 (ERR-MC-SOCK-1); an rpm left `/opt/asom` behind (ERR-DL3-RPM-1); Clickable parses the AppArmor file as JSON before substituting (ERR-UT-CLICK-2); three v1 tests had ledger-read or clock races (test-only fixes, isolation pins re-moved in later commits, see the re-pin tables).
 
 Open, not closed by these runs: `tst_StatusPage.qml` crashes natively under the offscreen platform with the real Lomiri widgets and passes only via the xvfb retry in `tests/run_qml_ci.sh` (which retry is not yet read from a log); the AppArmor run printed denials for `/proc/<pid>/net/if_inet6`, hugepages and coredump_filter (flag for the device checklist); the Canary failure above; the Secure Enclave, power-assertion, PDH, netsh and DPAPI results are hosted-VM observations, not device evidence. Every device and real-key item stays `NEEDS-DEVICE-VALIDATION` / `NEEDS-OWNER-VALIDATION`. Not started: `:mesh-proto` (wave 3), the final independent Opus review, revision 4 of the design brief.
+
+## Lab L0.5 gate, wire half (track `proto-wire`: `xyz.mdhv.asom.lab.proto.wire` in `:mesh-proto`, vector family W06, the STATE side of W07) — 2026-10-07 — LAB (not device evidence)
+Base: 4cf2ad05a8d68594dec24ebf1d26c5dca78b3c52 (working tree, uncommitted)   JDK: openjdk 21.0.10 (JDK 17 lane NOT run here: only JDK 21 in the container; the build config targets 17)   Runner: local
+Worktree base: HEAD was 98ab632, not the base, so `git fetch origin claude/asom-v1-build-brief-vw83oh && git reset --hard 4cf2ad05...` was run; `git rev-parse HEAD` then printed 4cf2ad05a8d68594dec24ebf1d26c5dca78b3c52 and `docs/design/mesh/LAB_SPEC.md` exists.
+```
+$ ./gradlew -p lab :mesh-proto:test :conformance-runner:test --rerun-tasks      BUILD SUCCESSFUL   (mesh-proto 42 tests, 0 failures; conformance-runner 1533 tests, 0 failures, 7 skipped = the existing proposed-lane skips, none of them W06/W07)
+family W06: 284 vectors, 284 pass, 0 fail, 0 proposed-skipped, oracle: self=284
+family W07: 98 vectors, 98 pass, 0 fail, 0 proposed-skipped, oracle: self=98          (67 existing in policy/W07-live-state.json + 31 new in wire/W07-state-frames.json)
+law W06/byte-accounting: 208   encode-decode-roundtrip: 37   extension-skip: 9   frame-length-bounds: 55   incremental-split: 33827   no-message-member: 2   size-limits: 9
+law W06/stream-parity: 244   strict-json: 223   typed-parse-reject: 73   unknown-type: 17   version-rule: 21         (cases counted from observed behaviour; a zero fails the family)
+law W07/state-producer-strict: 13   wire-state-build: 4   wire-state-decode-ok: 5   wire-state-decode-reject: 9   wire-presence-ignored: 1      (the 15 existing W07 laws unchanged)
+law wire/ (mesh-proto WireLawsTest, over many random cases, each > 0, plus a test that fails on any zero):
+  frame-length-bounds: 78   stream-parity: 1056   unknown-type: 424   extension-skip: 513   strict-json: 51   size-limits: 11   no-message-member: 136   state-producer-strict: 403   version-rule: 443   incremental-split: 43028
+$ ./gradlew -p lab :conformance-runner:run --args='lines W06' --quiet | tail -n 5        (284 lines)
+W06-666 reject PROTOCOL_ERROR
+W06-667 ok
+W06-668 reject PROTOCOL_ERROR
+W06-669 reject VERSION_UNSUPPORTED
+W06-670 ok
+$ python3 lab/mesh-proto/tools/wire/w06_tool.py --check
+selftest: the four worked encodings of LAB_SPEC 7.1 match byte for byte (HELLO 16, GOAWAY 26, STATE_REQ 16, CANCEL 67 bytes in total)
+xcheck-wire W06 (W06-frames.json): 284 of 284 agree
+xcheck-wire W07 (W07-state-frames.json): 31 of 31 agree
+xcheck-wire total: 315 agree, 0 disagree
+$ python3 lab/tools/xcheck.py lab/conformance     keys 4 agree, INDEX 29 agree, M01 94, M01der 15, M02 90, M03 185, M04 759, M05 210, M06 82 (0 disagree everywhere), W05: absent
+$ python3 lab/tools/isolation.py          isolation check 4: 136 protected files compared byte-for-byte against base 79ff5b81fcc4 ... OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py          law: 9 module build files checked ... law: 171 Kotlin/Java sources scanned ... law: OK
+$ ./gradlew jvmTest --rerun-tasks         root tests: 139   failures: 0   (see the note on jacoco below)
+```
+What was built: the incremental frame decoder (`FrameDecoder`, byte-exact accounting, checks at fixed prefix lengths so the events do not depend on the chunking), the producer (`FrameEncoder`), every 7.2 frame as a typed builder and strict parser (`MessageCodec`), the PAIR_* type numbers with raw payloads and a `PairPayloadHook`, the version rule and the HELLO/HELLO_ACK decisions as pure functions (`Handshake`), `StoredTextProbe`. The STATE frame reuses `:mesh-policy`'s `StateDoc`, `StateParser` and `ProducerStrict` (no presence field exists to fill). Vectors: W06-frames.json (284: the four worked encodings W06-001..004, a golden encoding of every frame type, the negatives of the assignment, the schema accept and reject pairs for every frame type, the version rule) and W07-state-frames.json (31). Independent oracle: `lab/mesh-proto/tools/wire/w06_model.py` (struct.pack, Python json/ipaddress/base64, no Kotlin code) computed every expectation; `w06_tool.py --write` writes both files, `--check` re-derives them (315 of 315 agree).
+Mutation checks (each applied to the real source, the WHOLE `:mesh-proto:test :conformance-runner:test` run, the original restored; the mesh-proto and runner suites together went green again afterwards: 42 + 1533 tests, 0 failures):
+```
+M01 length lower bound off by one (accepts 4)   KILLED 3      M02 length upper bound +1 (accepts MAX+1)   KILLED 4     M03 length upper bound -1 (rejects MAX)   KILLED 5
+M04 stream parity inverted                      KILLED 159    M05 unknown type below 0x80 accepted         KILLED 17    M06 float accepted in a payload           KILLED 9
+M07 message member stored from a received ERROR KILLED 7      M08 presence field emitted by the STATE builder KILLED 17  M09 0x80 skipped without EXT_IGNORED      KILLED 14
+M10 INFER_BODY limit +1 KILLED 4    M11 JSON limit -1 KILLED 4    M12 version rule picks the lowest KILLED 5    M13 direction not enforced KILLED 8
+M14 accounting counts payload only KILLED 149   M15 HELLO nodeId vs TLS identity not compared KILLED 3   M17 five endpoints KILLED 3   M18 unknown ERROR code kept as PROTOCOL_ERROR KILLED 6
+M19 DNS name accepted as an address KILLED 3   M20 payload limit never refused early KILLED 7   M21 pairing mode accepts any type KILLED 4   M22 duplicate member accepted KILLED 3
+M23 DECLINE retry floor 4999 KILLED 3   M24 STATE builder adds a presence member after the check KILLED 17   M25 decoder loses its header when a chunk ends inside it KILLED 220
+M26 INFER_ACCEPT keeps queuePos KILLED 1   M27 nodeId alphabet and unused bits unchecked KILLED 3
+M16 nodeId length check removed (>= 42): SURVIVED, EQUIVALENT: a string that decodes to 32 bytes under the unpadded URL alphabet has 43 characters, so the length test is redundant; M27 (decoding removed) is the real mutant and is killed.
+```
+Findings for the owner (ERRATA ERR-PW-1..15): (1) a length below 5 and above the maximum share the single code FRAME_TOO_LARGE as written (ERR-PW-1); (2) the spec gives no per-type stream table nor a code for a parity violation: the 7.2 "Dir, stream" column was made normative per type and the code is PROTOCOL_ERROR (ERR-PW-3); (3) a pairing-mode connection must also accept ERROR (ERR-PW-4); (4) platforms.md says W06 is `proposed`, LAB_SPEC says computed: normative taken (ERR-PW-10); (5) W07 is one family over two files and the registry needed a wrapper checker, one changed (not added) line in Suite.kt (ERR-PW-9).
+Not verified here: JDK 17 lane (only JDK 21 present); Windows and macOS lanes (no OS-specific code or skip exists in this track: no Assumptions, no POSIX paths, `String(bytes)` is Kotlin's UTF-8 form); a hosted CI run. The W08 lines, L-L15, L-L16 and the S-A9/S-A11 tables of L0.5 are another track's (not done here). Session-level rules (reply on an unopened stream, HELLO first, authorize per frame, `st` only with scope `state`, the CONTROL EXT_IGNORED row) are not in the codec by design. `./gradlew jvmTest` as a whole task exits non-zero in this sandbox ONLY because `:core:routing:jacocoTestReport` cannot resolve `org.jacoco:org.jacoco.report:0.8.13` (not cached, offline-restricted network); every test task ran and 139 root tests pass with 0 failures, and `jvmTest -x :core:routing:jacocoTestReport` prints BUILD SUCCESSFUL. This is an environment fact, unrelated to this change (the root tree is byte-identical to the base).
+Oracle status: self-oracled (an independent Python model agrees, but it was written in the same session; the tag stays `self`)
+Result: PASSED for the wire half (local LAB evidence only)

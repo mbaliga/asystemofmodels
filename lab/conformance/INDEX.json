@@ -154,5 +154,17 @@
     "sha256": "9164ae541d422b84d6e6ddbfbeb96949afdd30806ba2060bb736dfb436a12557",
     "family": "W03",
     "status": "normative"
+  },
+  {
+    "path": "wire/W06-frames.json",
+    "sha256": "9dc5b54ec153a8b42b8ca56db236a9f2f01bed4e1843c8bc46bae0261c941074",
+    "family": "W06",
+    "status": "normative"
+  },
+  {
+    "path": "wire/W07-state-frames.json",
+    "sha256": "7d4aaad28513c5d0e332543f6f64fe9f11be6c0ff5ea48c7f0ba2710f2de098d",
+    "family": "W07",
+    "status": "normative"
   }
 ]

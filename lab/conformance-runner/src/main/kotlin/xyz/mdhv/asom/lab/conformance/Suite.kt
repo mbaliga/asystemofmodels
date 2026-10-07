@@ -27,7 +27,8 @@ fun checkerFor(family: String): FamilyChecker? = when (family) {
     "M06" -> M06Checker()
     "L01" -> L01Checker()
     "L02" -> L02Checker()
-    "W07" -> W07Checker()
+    "W06" -> W06Checker()
+    "W07" -> W07WireChecker()
     "W07p" -> W07pChecker()
     else -> null
 }
