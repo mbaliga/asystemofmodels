@@ -1451,3 +1451,58 @@ Findings during the build (each kept as a test or a vector): extension presence 
 BLOCKED(L10, L11): trust.md 15 L10 needs the per-frame ledger writer and L11 the two listeners, both of the later track; nothing here can honestly exercise them and no counter claims them (ERRATA ERR-PT-10). L9 and L12 are superseded (LAB_SPEC 7.3).
 NOT VERIFIED: the JDK 17 lane and the Windows lane (this machine has JDK 21 only, no hosted run); `JAVA_TOOL_OPTIONS` was left as the sandbox sets it (the module tests start no child JVM). Not independent: every vector is `oracle: self`; the Python tool shares an author and a session with the Kotlin code (ERR-PT-11). Not done, by design: the TLS profile, the hostile-node suite W08, the per-frame ledger writer and the S-A9 and S-A11 spikes (a later track); the verifier-side cap on a leaf's lifetime (ERR-PT-4); the registry is an in-memory DAO with fault injection, not a persistent store.
 Result: **PASSED** for items 1 to 6 of the assignment (templates and strict pins, W05, `verifyPeerChain`, W04 with the worked vector reproduced, the registry laws L1 to L8, the law counters) in the LAB sense above; **BLOCKED(scope)** for L10 and L11. Evidence label: LAB (self-oracled; NOT DEVICE EVIDENCE).
+
+
+## L0.5 TLS half (track `proto-tls`): JSSE TLS 1.3 mesh transport, record tap, S-A9, S-A11, W08 handshake suite
+
+Evidence label: **LAB**, `oracle: self`, Linux only, JDK 17.0.12 and JDK 21.0.10, loopback 127.0.0.1 only. NOT Windows, NOT Conscrypt, NOT Network.framework, NOT DEVICE EVIDENCE. Worktree base: the worktree was created at 98ab632 and was reset to f028376704e26ef8e9ca3f6cc82593e73ce9dc2e (fetch of claude/asom-v1-build-brief-vw83oh, then reset --hard); `rev-parse HEAD` then printed f028376 and `docs/design/mesh/LAB_SPEC.md` exists. Nothing committed or pushed. Written: `lab/mesh-proto/src/main/kotlin/xyz/mdhv/asom/lab/proto/tls/**`, `.../src/test/kotlin/.../tls/**`, `lab/mesh-proto/tools/tls/tap_xcheck.py`, `lab/mesh-proto/docs/S-A9-S-A11.md`, an append to `lab/ERRATA.md` (ERR-PL-1 to ERR-PL-17) and this entry. Spec defects met are in ERRATA (the big ones: ERR-PL-1 the listener cannot suppress tickets scoped, so it builds a fresh `SSLContext` per accepted connection; ERR-PL-2 the client CertificateVerify is encrypted, so it is proved by what the server observes; ERR-PL-4 no scoped signature-scheme API on JDK 17; ERR-PL-5 JSSE accepts an absent ALPN).
+
+```
+$ ./gradlew -p lab :mesh-proto:cleanTest :conformance-runner:cleanTest :mesh-proto:test :conformance-runner:test --max-workers=2 --offline        (JDK 21.0.10, then JAVA_HOME=/opt/jdks/jdk-17)
+BUILD SUCCESSFUL   (both JDKs)
+mesh-proto          tests 120   skipped 0   failures 0   errors 0   (JDK 21)      same on JDK 17
+  of which package tls: HandshakeTimeoutTest 2, KnobMatrixTest 12, MeshTlsTransportTest 8, NoGlobalJsseStateTest 3, RecordTapTest 5, SniGatingSpikeTest 1, TapCrossCheckDumpTest 1, W08HandshakeTest 8 = 40
+conformance-runner  tests 2013  skipped 7   failures 0   errors 0   (both JDKs; the 7 skips are not from this track, I added no skip)
+$ W08 (from TEST-xyz.mdhv.asom.lab.proto.tls.W08HandshakeTest.xml, system-out; the module's build file shows no test output)
+JDK 21.0.10  W08-handshake: accepted bad chains: 0; ClientHellos with pre_shared_key: 0; sessions with client CertificateVerify: 6/6
+JDK 17.0.12  W08-handshake: accepted bad chains: 0; ClientHellos with pre_shared_key: 0; sessions with client CertificateVerify: 6/6
+$ python3 lab/tools/isolation.py
+isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py
+law: OK
+$ python3 lab/tools/xcheck.py lab/conformance          (tail)
+xcheck W04: 249 agree, 0 disagree
+xcheck W05: 195 agree, 0 disagree
+xcheck oracle status: self-oracled (same-session cross-check; never clears the oracle tag)
+$ python3 lab/mesh-proto/tools/tls/tap_xcheck.py          (second reader of the record tap, same author, so oracle: self)
+tap-xcheck jdk17.json: 13 hellos, 0 disagree
+tap-xcheck jdk21.json: 13 hellos, 0 disagree
+tap-xcheck: 26 hellos, 0 disagree, kinds: client 18 server 8, psk 4, early_data 2, sni 4
+$ ./gradlew jvmTest --rerun-tasks --max-workers=2 --offline -x :core:routing:jacocoTestReport          (repo root, once, at the end)
+BUILD SUCCESSFUL      root tests: 139   failures: 0   (baseline: 139)
+```
+Law counters (non-vacuity; each class fails its `@AfterAll` on a zero, JDK 17 run): tls-1.3-only 2 | client-auth-required 2 | sigalg-only 6 | no-resumption 4 (+3 in transport, +W08) | no-early-data 3 | alpn-required 4 | no-sni 1 | no-hostname-check 2 | chain-only-through-verifyPeerChain 10 (+1 source scan) | no-system-properties 18 (sources scanned) + runtime-properties-unchanged 3 | measured-bytes 2 | handshake-timeout 3 | W08: typed-refusal 32, alert-uniform 22 (JDK 21: 18), client-verifies-server-first 11, client-cert-verify 6, record-tap-detects-psk 1, record-tap-detects-early-data 1 | record tap: psk 4, early_data 4, sni 4, reuse 1, reassembly 1. `sigalg-offer-scoped` is required only where `SSLParameters.setSignatureSchemes` exists (JDK 21: 1 case; absent on 17, not required there).
+
+Mutation checks (`mutate.py` in the session scratchpad, not committed: one exact-string edit at a time, the whole `xyz.mdhv.asom.lab.proto.tls.*` suite on JDK 21 AND JDK 17, a failure required on both, the file restored from the saved text and the tree compared with `diff -r` afterwards). 28 mutants: **25 killed on both JDKs, 3 survivors (all redundant defensive layers, see below), 0 non-compiling**:
+```
+KILLED  hostname check enabled (endpoint identification HTTPS)                      3 tests fail     KILLED  a REVOKED pin accepted (VerifyPeerChain.kt)            2
+KILLED  hostname check enabled (trust manager demands a SAN)                       25                KILLED  a SUSPENDED pin accepted (VerifyPeerChain.kt)          2
+KILLED  verifyPeerChain verdict ignored on the client side                           8                KILLED  record tap does not detect pre_shared_key              9
+KILLED  client side bypassed and post-handshake verdict requirement removed          8                KILLED  record tap does not detect early_data                  5
+KILLED  server does not require client authentication                               21                KILLED  trust manager does chain logic of its own              2
+KILLED  resumption allowed: shared SSLContext + peer host on the dialler            25                KILLED  a JSSE system property is set                         8
+KILLED  ALPN not required (gate and post-handshake check removed)                    3                KILLED  byte counter off by one on large unwraps               3
+KILLED  ALPN not required (post-handshake check removed)                             5                KILLED  verdict ignored on the server side                      6
+KILLED  a P-384 (KEY_UNSUPPORTED) chain accepted *                                   1 (21) / 5 (17)  KILLED  refusals are not one alert (expired-path cause)       6 (21) / 2 (17)
+KILLED  TLS 1.2 enabled                                                              5                KILLED  dialler does not insist on being asked for a certificate 1
+KILLED  handshake timeout removed (deadline 1000x)                                   2                KILLED  TEST-ONLY keys trusted in production mode              2
+KILLED  handshake timeout constant 5 s -> 60 s                                       3                KILLED  shared listener SSLContext (fresh per connection removed) 21
+KILLED  SNI sent (explicit empty server-name list removed AND a dotted peer host)    2
+SURVIVED  session.protocol not checked after the handshake      (redundant: the protocol restriction already holds; TLS 1.2 enabled is killed above)
+SURVIVED  SNI via a dotted peer host only                        (redundant: the explicit empty server-name list still suppresses it; killed once both are removed)
+SURVIVED  close_notify during the handshake no longer a refusal  (redundant: the JSSE throws on it first; the unit test `aCloseNotifyInsteadOfAServerHello...` is green either way)
+* the first run SURVIVED on JDK 21 (0 failing tests: a JDK 21 hostile P-384 peer cannot sign with the one scheme offered, so the handshake fails by itself and masks the mutant). I added `theTrustManagerItselfRefusesEveryHostileChainWhateverTheJsseDoes`, which calls the trust manager entry point directly; re-run: killed on both JDKs (1 test on 21, 5 on 17).
+```
+Findings during the build (each kept as a test): JSSE accepts a ClientHello with no ALPN and a server that selects none, so the key managers withhold the certificate until ALPN matched (a listener sent 326 bytes on JDK 17 / 266 on JDK 21 to such a dialler, a ServerHello and an alert, against about 3.3 KB); a shared server `SSLContext` resumes a ticket on both JDKs and `setSessionTimeout`, `setSessionCacheSize` and server-side `invalidate` change nothing, a fresh context per accepted connection does; a custom `X509ExtendedTrustManager` is not given an identity check by JSSE even when `endpointIdentificationAlgorithm` is `HTTPS`; JDK 21 prefixes local alert text with `(alert_name)` and sends `certificate_required` where JDK 17 sends `bad_certificate`; the engine has no handshake timeout (5 s is enforced by the transport: measured 5306, 5306, 5303 ms on 17 and 5296, 5299, 5295 ms on 21 for three silent or dripping peers, including a 200 ms drain after the failure); S-A11 works with caveats on both JDKs (the token is replayable for the hour; not adopted).
+Not done / not verified: Conscrypt and Network.framework columns of S-A9; a hostile post-handshake `CertificateRequest`; any JDK build other than the two named; the Windows lane (no hosted run here; no per-OS skip or Assumption was used, and the only OS-aware line is a tolerated reset on Windows); the per-frame ledger writer and L-L15 itself (session track; this track hands it exact `TransportCounters` and `RecordTap`); the W08 frame-level cases. `TlsMeshConnection.verifiedPin` is an ERRATA request against `MeshConnection` (ERR-PL-8). Not independent: the tap's Python second reader and every JSSE observation share one author and one session.
+Result: **PASSED** in the LAB sense above for the assignment's items 1 to 6 on JDK 17.0.12 and JDK 21.0.10; items depending on other stacks or on the session track are listed as not done. Evidence label: LAB (self-oracled; NOT DEVICE EVIDENCE).
