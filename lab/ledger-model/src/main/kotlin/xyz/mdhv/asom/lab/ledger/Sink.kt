@@ -85,6 +85,11 @@ class JsonlSink(
                 try {
                     Files.createFile(path, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
                 } catch (_: UnsupportedOperationException) {
+                    // no POSIX permissions here (Windows): create the file without them, or the tail scan below would find no file
+                    try {
+                        Files.createFile(path)
+                    } catch (_: java.nio.file.FileAlreadyExistsException) {
+                    }
                 } catch (_: java.nio.file.FileAlreadyExistsException) {
                 }
             }
