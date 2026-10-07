@@ -33,7 +33,7 @@ class W00Checker : FamilyChecker("W00") {
 
     override fun observe(v: Vector): Observed {
         if (v.id.substringAfter('-').toIntOrNull()?.let { it >= 100 } == true) {
-            throw NotRunnable("mesh addition: needs the lab types of :ledger-model / :mesh-policy (L0.4), ruled by ${v.input.strOrNull("decision")}")
+            throw NotRunnable("PROPOSED mesh addition: awaiting owner ruling ${v.input.strOrNull("decision")}, and the v1 contract is frozen; the runner has no checker for it (the lab modules exist)")
         }
         bump("constants")
         return when (val kind = v.input.str("kind")) {

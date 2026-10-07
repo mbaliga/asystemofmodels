@@ -57,7 +57,7 @@ JDK 17 and 21 are both gates (the build targets Java 17 bytecode; CI runs both).
 | Path | Contents | Owner |
 |---|---|---|
 | `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties` | the isolation mechanism (LAB_SPEC 2.2, copied): the five pure-JVM root projects mapped **by directory**, redirected build dirs, never `includeBuild`; `desktopTest` | desktop-core |
-| `DESKTOP_BASE_SHA`, `ROOT_TEST_BASELINE` | the pinned base for isolation check 4; the root test-count floor (139) | desktop-core |
+| `DESKTOP_BASE_SHA`, `ROOT_TEST_BASELINE` | the pinned base for isolation check 4; the root test-count floor (140, as `ROOT_TEST_BASELINE` states; it was 139 until the never-run `AnthropicDriverTest` case started running) | desktop-core |
 | `node-core/` | `:node-core`, host-agnostic, no OS-specific code: `Main`, `DesktopPlatform`, `NodeConfig`, `control/`, `cli/`, `governor/`, `ledger/`, `engine/` | desktop-core |
 | `node/` | `:node`, the Linux host: `LinuxPlatform`, `probes/`, `host/`; ServiceLoader registration; the `asom-node` and `asom` launchers | desktop-core |
 | `tools/` | `isolation.py`, `isolation.sh`, `check_law.py` | desktop-core |

@@ -6,7 +6,11 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-/** Every family name LAB_SPEC 3.2 allows in the envelope's `family` field. */
+/**
+ * Every family name LAB_SPEC 3.2 allows in the envelope's `family` field. W08 (the hostile-node suite) has no vector file:
+ * its cases are code in `:mesh-proto`'s tests, so the runner prints `not-implemented` for it and that means "no vectors
+ * here", not "module not built" (conformance/README.md says where W08 runs).
+ */
 val ALL_FAMILIES: List<String> = listOf(
     "W00", "W01", "W01b", "W02", "W03", "W04", "W05", "W06", "W07", "W07p", "W08",
     "M01", "M02", "M03", "M04", "M05", "M06", "M08",

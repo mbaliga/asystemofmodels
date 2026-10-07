@@ -33,7 +33,7 @@ over a private pipe, and does nothing on the network until the owner asks.
 | `tests/` | `qml/` (qmltestrunner tests), `native/` (Qt Test), `fake_node.py`, `smoke/arm64-selftest.sh`. |
 | `tools/` | Isolation checks, token and text checks, click-tree check, jar check, local runners. |
 | `docs/` | `UBUNTU_TOUCH.md` (what runs when, what leaves the phone), `DEVICE_CHECKLIST_UT.md` (DV-UT01 to DV-UT16). |
-| `UT_BASE_SHA`, `ROOT_TEST_BASELINE` | The pinned base for the isolation check and the root test-count floor (139). |
+| `UT_BASE_SHA`, `ROOT_TEST_BASELINE` | The pinned base for the isolation check and the root test-count floor (140, as `ROOT_TEST_BASELINE` states; it was 139 until the never-run `AnthropicDriverTest` case started running). |
 | `../.github/workflows/ubuntu-touch.yml` | The CI jobs. |
 
 ## How to run what runs here

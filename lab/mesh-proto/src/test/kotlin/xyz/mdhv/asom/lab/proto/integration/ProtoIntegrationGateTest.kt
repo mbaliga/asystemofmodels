@@ -59,7 +59,8 @@ class ProtoIntegrationGateTest {
             println("calibration: cipher ${TlsCalibration.measured.cipherSuite}; one TLS record costs ${TlsCalibration.recordOverhead} bytes over the plaintext (spec figure [F51]: 22), the close alert is ${TlsCalibration.alertRecord} bytes, the largest single-record write is ${TlsCalibration.measured.maxRecordPlaintext} bytes")
             println("runs: $cleanRuns clean seeded sessions, $failureRuns failure-injection runs, $resetRuns runs cut by a peer reset, $pairingRuns pairing sessions, 1 lifecycle walk ($lifecycleRows rows)")
             println("L-L15 MEASURED sessions: ${l15.measuredSessions} (n > 0), mismatches: ${l15.mismatches}")
-            println("L-L15 detail: rows ${l15.rowAppBytes} application bytes + ${l15.overheadBytes} overhead bytes = ${l15.rowAppBytes + l15.overheadBytes} = ${l15.tapBytes} bytes counted by the record tap; handshake figure ${l15.handshakeBytesMin}..${l15.handshakeBytesMax} bytes; sessions that lost ${l15.sessionsWithUnsentClaims} write-ahead claims totalling ${l15.unsentBytesClaimed} bytes; cross-checked socket to socket on every clean run: ${connects - wireDisagreements}/$connects")
+            val outOfSession = l15.tapBytes - l15.rowAppBytes - l15.overheadBytes
+            println("L-L15 detail: rows ${l15.rowAppBytes} application bytes + ${l15.overheadBytes} overhead bytes + $outOfSession bytes written outside the session (derived as the tap total minus the other two; each session checks them exactly) = ${l15.rowAppBytes + l15.overheadBytes + outOfSession} = ${l15.tapBytes} bytes counted by the record tap; handshake figure ${l15.handshakeBytesMin}..${l15.handshakeBytesMax} bytes; sessions that lost ${l15.sessionsWithUnsentClaims} write-ahead claims totalling ${l15.unsentBytesClaimed} bytes; cross-checked socket to socket on every clean run: ${connects - wireDisagreements}/$connects")
             println("L-L15 ESTIMATED sessions (a node that crashed and wrote no close row): ${l15.estimatedSessions}; largest |estimate - tap| ${l15.maxEstimateDeviation} bytes; ${l15.estimateLines.joinToString("; ")}")
             println("L-L16 iterations: ${counts.sessions} sessions; frames matched to a row on the node that sent or received them: ${counts.checks}; rows of failed appends tolerated: ${counts.toleratedFailedRows}")
             println("L-L16 per-frame-type counts: ${counts.perType}")
@@ -90,6 +91,7 @@ class ProtoIntegrationGateTest {
             // non-vacuity: every law and every family counted something
             assertTrue(l15.measuredSessions > 0, "L-L15 exercised zero MEASURED sessions")
             assertEquals(0, l15.mismatches, "L-L15 mismatches")
+            assertTrue(outOfSession >= 0, "L-L15: the rows and their overhead count more bytes ($outOfSession) than the record tap saw")
             assertTrue(l15.estimatedSessions > 0, "no ESTIMATED session was exercised")
             assertTrue(W08Tls.l15.measuredSessions > 0 && W08Tls.l15.mismatches == 0, "L-L15 over the W08 sessions")
             val zero = FrameRows.L16_KINDS.filter { (counts.perType[it] ?: 0) == 0 }
