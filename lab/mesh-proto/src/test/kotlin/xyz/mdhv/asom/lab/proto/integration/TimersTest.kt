@@ -59,7 +59,7 @@ class TimersTest {
             val sb = link.sessionB!!
             quiet(w)
             val idleAt = sa.lastStreamActivity + SessionLimits.IDLE_MS
-            w.b.engine.script = { listOf(EngineEvent.Head(200, "m1")) + List(2_000) { EngineEvent.Chunk(ByteArray(8)) } + EngineEvent.End(Terminal.DONE, 200, 1) }
+            w.b.engine.script = { listOf(EngineEvent.Head(200, "m1")) + List(20_000) { EngineEvent.Chunk(ByteArray(8)) } + EngineEvent.End(Terminal.DONE, 200, 1) }
             w.b.engine.paceNanos = PacedEngine.DEFAULT_PACE_NANOS
             val rec = Waiting()
             val id = sa.offer(spec(), "{}".toByteArray(), rec)
@@ -69,7 +69,7 @@ class TimersTest {
             assertTrue(!sa.closed, "an open stream was cut by the idle timer")
             sa.cancel(id, CancelReason.CLIENT_GONE)
             val outcome = rec.await()
-            assertEquals(Terminal.CANCELLED, outcome.terminal)
+            assertEquals(Terminal.CANCELLED, outcome.terminal, "the cancelled stream ended as $outcome")
             w.b.engine.paceNanos = 0
             quiet(w)
             // five minutes after the last stream activity, extension frames from the peer do not move the timer
