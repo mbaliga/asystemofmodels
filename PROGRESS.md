@@ -2046,3 +2046,21 @@ The 7 skipped conformance tests are the PROPOSED vectors and `RegenerateVectors`
 Mutation checks (a main-source line broken, the narrow suite run, the file restored; `git status` shows only the intended files afterwards): 16 mutants, 16 killed, 0 survived on the three first classes: commitment check always true; typed code not compared; S puts nonce_S on the wire; D's SAS from the commitment; connection binding off; direction guard off; budget off; window probe "any non-closed state"; D still shows the code; QR expiry always enforced; first frame may be anything; typed-code length unchecked; S reveals on decline; wrong codes uncounted; WINDOW_CLOSED treated as a decline; transcript over the commitment. `PairRelayAttackTest` alone kills the typed-compare, nonce-on-wire and (after `r3-late-opening-refused` was added) commitment-check mutants; the commitment mutant first SURVIVED it, which is why that test exists.
 
 Honest limits. (1) The R3 profile, `QrExpiry.NONE` and `FROM_TLS_ROLE` are NOT the defaults: 41 frozen W04 `fsm` vectors, 104 `qrParse` vectors, `PairingFsmExhaustiveTest` and the session-track harnesses (which send `PAIR_HELLO` from the TLS server) pin the first-built behaviour, and none of those files is in this track's write set (ERRATA ERR-FX2-7 lists the flip). (2) No W04 vector was added to `W04-pairing.json` (outside the write set); `W04Vectors` can evaluate them. (3) PPW-6 and PSL-5 are PARTIAL (ERR-FX2-5, ERR-FX2-6). (4) `ProtoIntegrationGateTest.w08FramesAttemptsAndRegistry` ("revoked during a served attempt", engine never cancelled within 30 s) failed twice in a row on a loaded shared machine (load average about 5) and passed on the third run and in every later run; the same test passed at the untouched base copy; it does not touch pairing code, and was not changed.
+## Review fixes, track fix-session (PSL-1, 2, 3, 4, 6, 7, 8, 9, 10; 2026-10-07)
+
+Base `3a91da05` (worktree reset to it). Evidence label: LAB, oracle: self, NOT DEVICE EVIDENCE. Rows: `lab/ERRATA.md` ERR-FX2-1 to ERR-FX2-10.
+
+```
+$ ./gradlew -p lab :mesh-proto:test --tests '*SessionFixesTest*'   (session code at base; new constants only)
+13 tests completed, 13 failed
+$ same after the fix (JDK 21)                                       BUILD SUCCESSFUL (14 tests)
+$ ./gradlew -p lab :mesh-proto:test --tests '*HandshakeLimiterTest*'  (limiter at base)
+7 tests completed, 3 failed
+$ ./gradlew -p lab test                      (JDK 21)   BUILD SUCCESSFUL; 2693 lab tests, 0 failures
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab test --rerun-tasks   BUILD SUCCESSFUL; 2693 lab tests, 0 failures (mesh-proto 233)
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py -> law: OK
+$ ./gradlew jvmTest                          BUILD SUCCESSFUL; 140 tests, 0 failures
+```
+
+Mutation check: 23 mutants of the session and limiter sources killed, 1 equivalent mutant (removed), 2 survived the first versions of the tests and were killed after strengthening them; list in ERR-FX2 closing paragraph. NOT RUN: Windows, hosted CI, `swift test` (outside this track).

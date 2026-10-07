@@ -164,20 +164,28 @@ class TestManifestPort(private val key: TestOnlyKeys.Entry, private val peerSpki
 
 class FailPlan(val failAt: Set<Int>, val sticky: Boolean, val mode: FailMode = FailMode.BEFORE_WRITE)
 
-class Kit(val name: String, val key: TestOnlyKeys.Entry, val log: Log, seed: Long, fail: FailPlan?, peerSpki: Map<String, ByteArray>) {
+class Kit(val name: String, val key: TestOnlyKeys.Entry, val log: Log, seed: Long, fail: FailPlan?, peerSpki: Map<String, ByteArray>, limits: xyz.mdhv.asom.lab.proto.wire.Limits? = null) {
     val pin: Pin = Pin.fromNodeId(key.nodeId)!!
     val store = InMemoryPeerStore()
     val registry = PeerRegistry(store)
     val mem = MemorySink()
     val crash: CrashInjectingSink? = fail?.let { CrashInjectingSink(mem, it.failAt, it.mode, it.sticky) }
     private val clock = AtomicLong(CLOCK_BASE)
+
+    /** The injected clock without reading it (a read moves it by 3 ms). */
+    fun peek(): Long = clock.get()
+
+    fun advance(ms: Long): Long = clock.addAndGet(ms)
+
     val ledger = NodeLedger(name, SpySink(name, crash ?: mem, log)) { clock.addAndGet(3) }
     val engine = FakeEngine(name, log)
     val live = FakeLive()
     var serving = ServingView()
     val manifest = TestManifestPort(key, peerSpki)
     val node = MeshNode(
-        NodeConfig(pin, "Display Name $name", Platform.LINUX, KeyTier.FILE, "asom-lab/0.0.1", productionKeys = false), ledger, registry, engine, { serving }, live, manifest, SeededIds(seed),
+        if (limits == null) NodeConfig(pin, "Display Name $name", Platform.LINUX, KeyTier.FILE, "asom-lab/0.0.1", productionKeys = false)
+        else NodeConfig(pin, "Display Name $name", Platform.LINUX, KeyTier.FILE, "asom-lab/0.0.1", limits = limits, productionKeys = false),
+        ledger, registry, engine, { serving }, live, manifest, SeededIds(seed),
         SessionObserver { s, type, stream, payload -> log.add(Ev.Dispatch(name, s, type, stream, payload)) },
     )
 
@@ -196,14 +204,14 @@ class Link(val kit: String, val session: Session, val conn: MemConnection) {
     var eof = false
 }
 
-class World(val seed: Long = 1, failA: FailPlan? = null, failB: FailPlan? = null, val maxChunk: Int = 64, keyAName: String = "key1", keyBName: String = "key2", val measured: Boolean = true) {
+class World(val seed: Long = 1, failA: FailPlan? = null, failB: FailPlan? = null, val maxChunk: Int = 64, keyAName: String = "key1", keyBName: String = "key2", val measured: Boolean = true, limitsB: xyz.mdhv.asom.lab.proto.wire.Limits? = null) {
     val log = Log()
     val rnd = SplittableRandom(seed)
     private val keyA = TestOnlyKeys.key(keyAName)
     private val keyB = TestOnlyKeys.key(keyBName)
     private val spkis = TestOnlyKeys.entries.associate { it.nodeId to it.spki }
     val a = Kit("A", keyA, log, seed * 2 + 1, failA, spkis)
-    val b = Kit("B", keyB, log, seed * 2 + 2, failB, spkis)
+    val b = Kit("B", keyB, log, seed * 2 + 2, failB, spkis, limitsB)
     val links = ArrayList<Link>()
 
     /** The scopes B granted A (random runs change them before the dial). */

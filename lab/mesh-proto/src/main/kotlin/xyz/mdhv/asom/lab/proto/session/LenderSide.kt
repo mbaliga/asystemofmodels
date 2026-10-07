@@ -63,11 +63,18 @@ internal class LenderSide(private val s: Session) {
         var servedModel: String = accept.servedModel
         var startTs = 0L
         var acceptedAt = 0L
+        var expired = false
+    }
+
+    /** An attempt that ended: a frame that raced with its end is tolerated once per kind (ERRATA ERR-PS-14, ERR-FX2-1, ERR-FX2-3), never twice. */
+    private class Finished(val attemptId: String, val expired: Boolean) {
+        var lateCancelUsed = false
+        var lateBodyUsed = false
     }
 
     private val served = LinkedHashMap<Long, Served>()
-    private val finished = object : LinkedHashMap<Long, String>() {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, String>?): Boolean = size > 4_096
+    private val finished = object : LinkedHashMap<Long, Finished>() {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, Finished>?): Boolean = size > 4_096
     }
 
     fun onFrame(f: RawFrame, msg: Message) {
@@ -109,7 +116,7 @@ internal class LenderSide(private val s: Session) {
         a.bytesIn += appBytes(f)
         a.startTs = now
         when (val r = decision.reply) {
-            is LenderReply.Accept -> if (served.size >= SessionLimits.MAX_STREAMS) {
+            is LenderReply.Accept -> if (s.node.servedOf(s.peer).get() >= SessionLimits.MAX_STREAMS) {
                 s.node.counters.count(Refusal.PEER_BUSY)
                 decline(a, DeclineWire.PEER_BUSY, LenderDecisionTable.BUSY_RETRY_MS)
             } else {
@@ -147,6 +154,7 @@ internal class LenderSide(private val s: Session) {
         a.acceptedAt = s.node.ledger.now()
         served[a.stream] = a
         s.node.inflight.incrementAndGet()
+        s.node.servedOf(s.peer).incrementAndGet()
         s.writeAttemptFrame(frame)
     }
 
@@ -165,8 +173,11 @@ internal class LenderSide(private val s: Session) {
     )
 
     private fun release(a: Served) {
-        if (served.remove(a.stream) != null) s.node.inflight.decrementAndGet()
-        finished[a.stream] = a.offer.attemptId
+        if (served.remove(a.stream) != null) {
+            s.node.inflight.decrementAndGet()
+            s.node.servedOf(s.peer).decrementAndGet()
+        }
+        finished[a.stream] = Finished(a.offer.attemptId, a.expired)
     }
 
     /** A decline: an outcome row only (503 and the code), durable before the `INFER_DECLINE` leaves. A failed append is FC-2. */
@@ -193,7 +204,16 @@ internal class LenderSide(private val s: Session) {
 
     private fun body(f: RawFrame, b: InferBody) {
         val a = served[f.stream]
-        if (a == null || a.state != Stage.ACCEPTED) return s.fail(Refusal.BODY_WITHOUT_OFFER)
+        if (a == null) {
+            val late = finished[f.stream]
+            if (late != null && late.expired && !late.lateBodyUsed) {
+                late.lateBodyUsed = true
+                s.node.lateBodies.incrementAndGet()
+                return s.ignoreFrame()
+            }
+            return s.fail(Refusal.BODY_WITHOUT_OFFER)
+        }
+        if (a.state != Stage.ACCEPTED) return s.fail(Refusal.BODY_WITHOUT_OFFER)
         a.bytesIn += appBytes(f)
         when (val auth = s.node.registry.authorize(s.peer, "infer")) {
             is AuthDecision.Allow -> Unit
@@ -236,9 +256,15 @@ internal class LenderSide(private val s: Session) {
         for (a in served.values.toList()) {
             if (a.state != Stage.ACCEPTED || s.closed) continue
             val wait = minOf(a.offer.deadlineMs, SessionLimits.BODY_WAIT_MS)
-            if (now - a.acceptedAt >= wait) finish(a, EngineEvent.End(Terminal.ERROR, 408, null))
+            if (now - a.acceptedAt >= wait) {
+                a.expired = true
+                finish(a, EngineEvent.End(Terminal.ERROR, 408, null))
+            }
         }
     }
+
+    /** When the accept of the attempt on [stream] was written, on the node's clock; null if it is not open. */
+    internal fun acceptedAt(stream: Long): Long? = served[stream]?.acceptedAt
 
     fun advance(): Int {
         var n = 0
@@ -314,9 +340,11 @@ internal class LenderSide(private val s: Session) {
 
     private fun cancel(f: RawFrame, c: Cancel) {
         val a = served[f.stream]
-        if (a == null && finished[f.stream] == c.attemptId) {
+        val late = finished[f.stream]
+        if (a == null && late != null && late.attemptId == c.attemptId && !late.lateCancelUsed) {
+            late.lateCancelUsed = true
             s.node.lateCancels.incrementAndGet()
-            return
+            return s.ignoreFrame()
         }
         if (a == null || a.offer.attemptId != c.attemptId) return s.fail(Refusal.CANCEL_UNKNOWN_ATTEMPT)
         a.bytesIn += appBytes(f)
@@ -335,7 +363,11 @@ internal class LenderSide(private val s: Session) {
     /** Every attempt that is still open ends with an `interrupted` outcome row (no `INFER_END` can follow); engines are cancelled. Failures are ignored: the session is closing. */
     fun abortAll() {
         for (a in served.values.toList()) {
-            a.run?.cancel()
+            try {
+                a.run?.cancel()
+            } catch (e: RuntimeException) {
+                s.node.callbackErrors.incrementAndGet()
+            }
             val rec = ServedRecord(a.servedModel, 499, "interrupted", null)
             try {
                 s.rows.attempt(outcomeRow(a, rec.status, rec.meshCode, a.bytesOut, if (a.intent) rec.servedModel else null))

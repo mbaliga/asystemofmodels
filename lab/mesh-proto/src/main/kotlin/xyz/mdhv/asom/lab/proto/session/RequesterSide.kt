@@ -50,17 +50,40 @@ internal class RequesterSide(private val s: Session) {
         var cancelSent = false
         var headSeen = false
         var startTs = 0L
+        var lastActivity = 0L
+        var cancelAt = 0L
     }
 
     private sealed interface Pending {
-        class State(val cb: (StateResult) -> Unit) : Pending
+        val since: Long
 
-        class Manifest(val challenge: ByteArray, val cb: (ManifestResult) -> Unit) : Pending
+        class State(override val since: Long, val cb: (StateResult) -> Unit) : Pending
+
+        class Manifest(override val since: Long, val challenge: ByteArray, val cb: (ManifestResult) -> Unit) : Pending
     }
 
     private var nextStream = 1L
     private val attempts = LinkedHashMap<Long, Attempt>()
     private val pending = LinkedHashMap<Long, Pending>()
+
+    /** Streams whose request this side gave up on (ERRATA ERR-FX2-2): the one late reply each may still get is ignored, not a protocol error. */
+    private val lapsed = object : LinkedHashSet<Long>() {
+        override fun add(element: Long): Boolean = super.add(element).also { while (size > 4_096) remove(first()) }
+    }
+
+    /** While the session closes the host callbacks wait here until the close row is written (ERRATA ERR-FX2-8). */
+    private var deferring = false
+    private val deferred = ArrayList<() -> Unit>()
+
+    private fun hostLater(block: () -> Unit) {
+        if (deferring) deferred += block else s.hostCall(Unit, block)
+    }
+
+    fun runDeferred() {
+        val todo = deferred.toList()
+        deferred.clear()
+        for (b in todo) s.hostCall(Unit, b)
+    }
 
     private fun newStream(): Long = nextStream.also { nextStream += 2 }
 
@@ -81,6 +104,7 @@ internal class RequesterSide(private val s: Session) {
         node.ledger.appendIntent(intentRow(spec, id))
         val a = Attempt(stream, id, spec, body, listener)
         a.startTs = node.ledger.now()
+        a.lastActivity = a.startTs
         a.bytesOut += appBytes(frame)
         attempts[stream] = a
         s.writeAttemptFrame(frame)
@@ -97,20 +121,63 @@ internal class RequesterSide(private val s: Session) {
         if (a.cancelSent) return
         val frame = MessageCodec.frame(Cancel(a.id, reason), a.stream)
         a.cancelSent = true
+        a.cancelAt = s.node.ledger.now()
         a.bytesOut += appBytes(frame)
         s.writeAttemptFrame(frame)
     }
 
     fun requestState(cb: (StateResult) -> Unit) {
         val stream = newStream()
-        pending[stream] = Pending.State(cb)
+        pending[stream] = Pending.State(s.node.ledger.now(), cb)
         s.sendControl(StateReq, stream)
     }
 
     fun requestManifest(challenge: ByteArray, cb: (ManifestResult) -> Unit) {
+        val msg = try {
+            ManifestReq(Base64Strict.encodeUrlNoPad(challenge))
+        } catch (e: WireRefusal) {
+            throw IllegalArgumentException("the challenge is not a valid MANIFEST_REQ challenge: ${e.reason}")
+        }
         val stream = newStream()
-        pending[stream] = Pending.Manifest(challenge, cb)
-        s.sendControl(ManifestReq(Base64Strict.encodeUrlNoPad(challenge)), stream)
+        pending[stream] = Pending.Manifest(s.node.ledger.now(), challenge, cb)
+        s.sendControl(msg, stream)
+    }
+
+    /**
+     * The requester's own bounds (ERRATA ERR-FX2-2). A `STATE_REQ` or `MANIFEST_REQ` unanswered for [SessionLimits.REQUEST_WAIT_MS] fails as lost. An attempt with no
+     * frame either way for its own `deadlineMs` is cancelled (`CANCEL deadline`), and one cancelled that does not end within [SessionLimits.CANCEL_GRACE_MS] means
+     * the lender is wedged: the session closes and every attempt ends as a lost peer. So no stream can pin a session without bound.
+     */
+    fun expire(now: Long) {
+        for ((stream, p) in pending.entries.toList()) {
+            if (now - p.since < SessionLimits.REQUEST_WAIT_MS) continue
+            pending.remove(stream)
+            lapsed.add(stream)
+            when (p) {
+                is Pending.State -> hostLater { p.cb(StateResult.Lost) }
+                is Pending.Manifest -> hostLater { p.cb(ManifestResult.Lost) }
+            }
+        }
+        for (a in attempts.values.toList()) {
+            if (s.closed) return
+            if (a.cancelSent) {
+                if (now - a.cancelAt >= SessionLimits.CANCEL_GRACE_MS) return s.closeNow()
+            } else if (now - a.lastActivity >= a.spec.deadlineMs) {
+                cancel(a.id, CancelReason.DEADLINE)
+            }
+        }
+    }
+
+    private fun unsolicitedReply(f: RawFrame) = unsolicited(f.stream)
+
+    /** A reply on a stream this side no longer waits for: the one for a request it gave up on is ignored once, any other is a protocol error. */
+    private fun unsolicited(stream: Long) {
+        if (lapsed.remove(stream)) {
+            s.node.lateReplies.incrementAndGet()
+            s.ignoreFrame()
+        } else {
+            s.fail(Refusal.UNSOLICITED_REPLY)
+        }
     }
 
     // ------------------------------------------------------------------------------------------------------------ replies
@@ -131,17 +198,18 @@ internal class RequesterSide(private val s: Session) {
     private fun known(f: RawFrame, id: String?): Attempt? {
         val a = attempts[f.stream]
         if (a == null || (id != null && a.id != id)) {
-            s.fail(Refusal.UNSOLICITED_REPLY)
+            if (a == null) unsolicited(f.stream) else s.fail(Refusal.UNSOLICITED_REPLY)
             return null
         }
         a.bytesIn += appBytes(f)
+        a.lastActivity = s.node.ledger.now()
         return a
     }
 
     private fun accept(a: Attempt, msg: InferAccept) {
         if (a.stage != Stage.OFFERED) return s.fail(Refusal.UNSOLICITED_REPLY)
         a.stage = Stage.ACCEPTED
-        val go = a.listener.onAccepted(msg) && !a.cancelSent
+        val go = s.hostCall(false) { a.listener.onAccepted(msg) } && !a.cancelSent
         if (!go) {
             if (!a.cancelSent) cancel(a.id, CancelReason.POLICY_CHANGED)
             return
@@ -149,18 +217,19 @@ internal class RequesterSide(private val s: Session) {
         val frame = MessageCodec.frame(InferBody(a.body), a.stream)
         a.bytesOut += appBytes(frame)
         a.stage = Stage.BODY_SENT
+        a.lastActivity = s.node.ledger.now()
         s.writeAttemptFrame(frame)
     }
 
     private fun head(a: Attempt, msg: InferHead) {
         if (a.stage != Stage.BODY_SENT || a.headSeen) return s.fail(Refusal.UNSOLICITED_REPLY)
         a.headSeen = true
-        a.listener.onHead(msg)
+        s.hostCall(Unit) { a.listener.onHead(msg) }
     }
 
     private fun chunk(a: Attempt, msg: InferChunk) {
         if (!a.headSeen) return s.fail(Refusal.UNSOLICITED_REPLY)
-        a.listener.onChunk(msg.bytes)
+        s.hostCall(Unit) { a.listener.onChunk(msg.bytes) }
     }
 
     private fun end(a: Attempt, msg: InferEnd) {
@@ -179,9 +248,15 @@ internal class RequesterSide(private val s: Session) {
 
     /** An `ERROR` that answers a pending `STATE_REQ` or `MANIFEST_REQ`. True when it did. */
     fun onStreamError(stream: Long, code: MeshError): Boolean {
-        when (val p = pending.remove(stream) ?: return false) {
-            is Pending.State -> p.cb(StateResult.Failed(code))
-            is Pending.Manifest -> p.cb(ManifestResult.Failed(code))
+        val p = pending.remove(stream)
+        if (p == null) {
+            if (!lapsed.remove(stream)) return false
+            s.node.lateReplies.incrementAndGet()
+            return true
+        }
+        when (p) {
+            is Pending.State -> hostLater { p.cb(StateResult.Failed(code)) }
+            is Pending.Manifest -> hostLater { p.cb(ManifestResult.Failed(code)) }
         }
         return true
     }
@@ -200,16 +275,17 @@ internal class RequesterSide(private val s: Session) {
         } catch (e: LedgerWriteException) {
             null
         }
-        a.listener.onFinished(AttemptOutcome(a.id, status, code, terminal, decline, error, durable))
+        val outcome = AttemptOutcome(a.id, status, code, terminal, decline, error, durable)
+        hostLater { a.listener.onFinished(outcome) }
     }
 
     // ------------------------------------------------------------------------------------------------------------ STATE and MANIFEST
 
     private fun state(f: RawFrame, msg: StateMsg) {
-        val p = pending[f.stream] as? Pending.State ?: return s.fail(Refusal.UNSOLICITED_REPLY)
+        val p = pending[f.stream] as? Pending.State ?: return unsolicitedReply(f)
         s.recvControl(f, msg)
         pending.remove(f.stream)
-        p.cb(StateResult.Ok(msg.doc))
+        hostLater { p.cb(StateResult.Ok(msg.doc)) }
     }
 
     private sealed interface Verdict {
@@ -219,18 +295,18 @@ internal class RequesterSide(private val s: Session) {
     }
 
     private fun manifest(f: RawFrame, msg: ManifestMsg) {
-        val p = pending[f.stream] as? Pending.Manifest ?: return s.fail(Refusal.UNSOLICITED_REPLY)
+        val p = pending[f.stream] as? Pending.Manifest ?: return unsolicitedReply(f)
         val verdict = verify(f.payload, p.challenge)
         s.recvControl(f, msg, verdict = if (verdict is Verdict.Bad) verdict.code.name else "VERIFIED")
         pending.remove(f.stream)
         when (verdict) {
             is Verdict.Ok -> {
                 s.node.manifest.onVerified(s.peer, verdict.verified)
-                p.cb(ManifestResult.Accepted(verdict.verified))
+                hostLater { p.cb(ManifestResult.Accepted(verdict.verified)) }
             }
             is Verdict.Bad -> {
                 s.node.counters.count(Refusal.MANIFEST_REJECTED)
-                p.cb(ManifestResult.Rejected(verdict.code, verdict.step))
+                hostLater { p.cb(ManifestResult.Rejected(verdict.code, verdict.step)) }
             }
         }
     }
@@ -260,14 +336,18 @@ internal class RequesterSide(private val s: Session) {
 
     // ------------------------------------------------------------------------------------------------------------ closing
 
-    /** Every attempt still open ends as a lost peer (599), every pending request fails. Row failures are ignored: the session is closing. */
+    /**
+     * Every attempt still open ends as a lost peer (599), every pending request fails. Row failures are ignored: the session is closing. The outcome rows are
+     * written here; the host callbacks are held until the session has closed its connection and written its close row, and then run by [runDeferred].
+     */
     fun abortAll() {
+        deferring = true
         for (a in attempts.values.toList()) finish(a, 599, "PEER_UNREACHABLE", error = null)
         val p = pending.values.toList()
         pending.clear()
         for (x in p) when (x) {
-            is Pending.State -> x.cb(StateResult.Lost)
-            is Pending.Manifest -> x.cb(ManifestResult.Lost)
+            is Pending.State -> hostLater { x.cb(StateResult.Lost) }
+            is Pending.Manifest -> hostLater { x.cb(ManifestResult.Lost) }
         }
     }
 }

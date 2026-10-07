@@ -85,6 +85,20 @@ class MeshNode(
     /** `CANCEL` frames that named an attempt this lender had already finished (the requester cancelled before it saw the end): ignored, their bytes are uncovered input (ERRATA ERR-PS-14). */
     val lateCancels = AtomicInteger(0)
 
+    /** `INFER_BODY` frames that arrived for an attempt this lender had expired (ERRATA ERR-FX2-3): ignored, their bytes are uncovered input. */
+    val lateBodies = AtomicInteger(0)
+
+    /** Replies to a `STATE_REQ`, `MANIFEST_REQ` or an attempt the requester had already given up on (ERRATA ERR-FX2-2): ignored, their bytes are uncovered input. */
+    val lateReplies = AtomicInteger(0)
+
+    /** Exceptions thrown by host callbacks (a listener, a result callback) and contained by the session (ERRATA ERR-FX2-8). */
+    val callbackErrors = AtomicInteger(0)
+
+    private val servedByPin = java.util.concurrent.ConcurrentHashMap<String, AtomicInteger>()
+    private val claimedIds = object : LinkedHashMap<String, Boolean>() {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Boolean>?): Boolean = size > 65_536
+    }
+
     init {
         registry.addListener(
             RegistryListener { change ->
@@ -97,6 +111,12 @@ class MeshNode(
     fun sessionsOf(pin: Pin): List<Session> = sessions.filter { it.peer == pin }
 
     fun openSessions(): List<Session> = sessions.toList()
+
+    /** The open served attempts of one peer across all its sessions: the 4-stream limit of trust.md 3.3 is per peer (ERRATA ERR-FX2-6). */
+    internal fun servedOf(pin: Pin): AtomicInteger = servedByPin.getOrPut(pin.nodeId) { AtomicInteger() }
+
+    /** Records a session id (one this node dialed or minted, or a `HELLO` nonce) and says whether it was new: a session id names the rows of one session on this node. */
+    internal fun claimSessionId(id: String): Boolean = synchronized(claimedIds) { claimedIds.put(id, true) == null }
 
     internal fun register(s: Session) {
         sessions += s
@@ -121,6 +141,7 @@ class MeshNode(
     fun dial(peer: Pin, destAddr: String, addrSource: String, dialer: Dialer): DialReport {
         require(addrSource in ADDR_SOURCES) { "addrSource is qr, hello or user" }
         val sessionId = ids.b64(16)
+        claimSessionId(sessionId)
         val tag = peer.nodeTag
 
         fun row(phase: Phase, code: String?, status: Int, overhead: Long?, basis: OverheadBasis?, path: PeerPath?) = LabRouteRecord(

@@ -66,11 +66,61 @@ class HandshakeLimiterTest {
         assertEquals(1, l.trackedSources, "only the source seen inside the window is tracked")
     }
 
+    private fun assertRefused(a: Admission, why: String) {
+        assertTrue(a is Admission.Refused && a.reason.name == why, "expected a refusal for $why, got ${(a as? Admission.Refused)?.reason ?: "an admission"}")
+    }
+
     @Test
-    fun overRealSocketsTheNinthStalledConnectionIsClosedAtOnceAndEveryRefusalIsOneRowWithoutAnAddress() {
-        TlsWorld(7).use { w ->
-            val clock = FakeClock()
-            val limiter = HandshakeLimiter(clock::peek)
+    fun oneSourceCannotHoldEveryHandshakeSlot() {
+        val clock = FakeClock()
+        val l = HandshakeLimiter(clock::peek)
+        val held = (0 until 4).map { admitted(l.admit("203.0.113.9")) }
+        assertRefused(l.admit("203.0.113.9"), "PER_SOURCE_IN_FLIGHT")
+        admitted(l.admit("198.51.100.4"))
+        assertEquals(5, l.inFlightNow)
+        held[0].release()
+        admitted(l.admit("203.0.113.9"))
+    }
+
+    @Test
+    fun anIpv6SourceIsKeyedByItsSlash64AndAnIpv4MappedAddressByItsIpv4Form() {
+        val clock = FakeClock()
+        val v6 = HandshakeLimiter(clock::peek)
+        repeat(4) { admitted(v6.admit("2001:db8:1:2:${it + 1}:0:0:9")) }
+        assertRefused(v6.admit("2001:DB8:1:2:ffff:eeee:dddd:cccc"), "PER_SOURCE_IN_FLIGHT")
+        assertRefused(v6.admit("2001:db8:1:2::7%eth0"), "PER_SOURCE_IN_FLIGHT")
+        admitted(v6.admit("2001:db8:1:3::1"))
+        val mapped = HandshakeLimiter(clock::peek)
+        repeat(4) { admitted(mapped.admit("10.0.0.5")) }
+        assertRefused(mapped.admit("::ffff:10.0.0.5"), "PER_SOURCE_IN_FLIGHT")
+        assertRefused(mapped.admit("::FFFF:a00:5"), "PER_SOURCE_IN_FLIGHT")
+        admitted(mapped.admit("::ffff:10.0.0.6"))
+        val rotating = HandshakeLimiter(clock::peek)
+        repeat(10) { admitted(rotating.admit("2001:db8:7:7:${it + 1}::1")).release() }
+        assertRefused(rotating.admit("2001:db8:7:7:abcd::1"), "PER_SOURCE_RATE")
+        assertEquals(1, rotating.trackedSources, "ten addresses of one /64 are one source")
+    }
+
+    @Test
+    fun aTicketTheHostNeverReleasesIsReclaimedAfterTenSecondsAndItsLateReleaseDoesNothing() {
+        val clock = FakeClock(2_000_000)
+        val l = HandshakeLimiter(clock::peek)
+        val tickets = (0 until 8).map { admitted(l.admit("10.7.0.${it + 1}")) }
+        assertRefused(l.admit("10.7.1.1"), "GLOBAL_IN_FLIGHT")
+        clock.advance(9_999)
+        assertRefused(l.admit("10.7.1.1"), "GLOBAL_IN_FLIGHT")
+        clock.advance(1)
+        val fresh = admitted(l.admit("10.7.1.1"))
+        assertEquals(1, l.inFlightNow, "the eight leaked tickets were reclaimed")
+        tickets.forEach { it.release() }
+        assertEquals(1, l.inFlightNow, "a late release of a reclaimed ticket changes nothing")
+        fresh.release()
+        assertEquals(0, l.inFlightNow)
+    }
+
+    /** Nine connections from the one loopback source stall in the handshake: the first [held] hold a ticket, every later one is refused by the limiter before any TLS byte. */
+    private fun nineStalledConnections(seed: Long, limiter: HandshakeLimiter, held: Int) {
+        TlsWorld(seed).use { w ->
             val results = CopyOnWriteArrayList<Accepted>()
             val clients = ArrayList<SocketChannel>()
             Loopback().use { lb ->
@@ -80,11 +130,14 @@ class HandshakeLimiterTest {
                     clients += client
                     val server = lb.accept()
                     threads += Thread { results += acceptOn(w.b, server, "B<S$i", w.log, limiter) }.also { it.isDaemon = true; it.start() }
-                    if (i < 8) Wait.until("connection $i to hold its ticket") { limiter.inFlightNow == i + 1 }
+                    if (i < held) {
+                        Wait.until("connection $i to hold its ticket") { limiter.inFlightNow == i + 1 }
+                    } else {
+                        Wait.until("connection $i to be refused without a handshake") { results.size == i - held + 1 }
+                    }
                 }
-                Wait.until("the ninth connection to be refused without a handshake") { results.size == 1 }
-                assertTrue(results.single().let { it.conn == null && it.refusal == null }, "refused by the limiter, before any TLS byte")
-                assertEquals(8, limiter.inFlightNow, "eight tickets held while the ninth is refused")
+                assertTrue(results.all { it.conn == null && it.refusal == null }, "refused by the limiter, before any TLS byte")
+                assertEquals(held, limiter.inFlightNow, "$held tickets held while the rest are refused")
                 clients.forEach { runCatching { it.close() } }
                 threads.forEach { it.join(15_000) }
             }
@@ -92,10 +145,21 @@ class HandshakeLimiterTest {
             assertEquals(0, limiter.inFlightNow, "every ticket was released, whatever its handshake did")
             val row = w.b.node.inboundRefused.flush(force = true)
             assertEquals(MeshKind.INBOUND_REFUSED, row!!.meshKind)
-            assertEquals("refused:9", row.meshCode, "nine refusals counted: one by the limiter, eight by a handshake that ended with its peer closed; results=${results.map { it.refusal?.toString() ?: it.conn?.toString() ?: "limiter" }}")
+            assertEquals("refused:9", row.meshCode, "nine refusals counted: ${9 - held} by the limiter, $held by a handshake that ended with its peer closed; results=${results.map { it.refusal?.toString() ?: it.conn?.toString() ?: "limiter" }}")
             val text = String(row.toRowBytes(), Charsets.UTF_8)
             assertTrue(!Regex("[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}").containsMatchIn(text), "a refusal row carries no address")
             assertEquals(1, w.b.rows().count { it.meshKind == MeshKind.INBOUND_REFUSED })
         }
+    }
+
+    @Test
+    fun overRealSocketsTheNinthStalledConnectionIsClosedAtOnceAndEveryRefusalIsOneRowWithoutAnAddress() {
+        // every loopback connection has the one source 127.0.0.1, so the per-source share is lifted to the global cap here to test the global cap alone
+        nineStalledConnections(7, HandshakeLimiter(FakeClock()::peek, perSourceInFlight = 8), held = 8)
+    }
+
+    @Test
+    fun overRealSocketsOneSourceIsHeldToItsShareOfTheHandshakeSlots() {
+        nineStalledConnections(8, HandshakeLimiter(FakeClock()::peek), held = 4)
     }
 }

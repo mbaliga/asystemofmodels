@@ -2,6 +2,7 @@ package xyz.mdhv.asom.lab.proto.integration
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import org.junit.jupiter.api.Timeout
 import xyz.mdhv.asom.lab.ledger.MeshKind
@@ -187,6 +188,31 @@ class TimersTest {
             assertEquals(0x16, c.peer.awaitFrames(1, "INFER_END").single().type)
         }
     }
+
+    /** Ticks at exactly `acceptedAt + wait - 1` (nothing) and `acceptedAt + wait` (`INFER_END` 408), with `acceptedAt` read from the lender, not from a clock estimate. */
+    private fun bodyWaitBoundary(seed: Long, deadlineMs: Long, wait: Long) {
+        TlsWorld(seed).use { w ->
+            val c = w.rawClient()
+            c.establish()
+            quiet(w)
+            c.peer.writeRaw(Build.offer(attemptIdOf(30), 1, deadlineMs = deadlineMs))
+            c.peer.awaitFrames(1, "INFER_ACCEPT")
+            val at = assertNotNull(c.honest.lender.acceptedAt(1), "the attempt is open")
+            c.honest.tick(at + wait - 1)
+            Wait.stable("no INFER_END one millisecond before the boundary") { c.peer.receivedBytes }
+            assertEquals(0, c.peer.frames().size, "the attempt expired one millisecond early (wait $wait)")
+            c.honest.tick(at + wait)
+            val end = c.peer.awaitFrames(1, "INFER_END at exactly the boundary").single()
+            assertEquals(0x16, end.type)
+            assertTrue(end.text.contains("\"status\":408"), end.text)
+        }
+    }
+
+    @Test
+    fun theBodyWaitExpiresAtExactlyThirtySecondsAfterTheAccept() = bodyWaitBoundary(8, deadlineMs = 60_000, wait = 30_000)
+
+    @Test
+    fun aShortDeadlineEndsTheBodyWaitAtExactlyTheDeadline() = bodyWaitBoundary(9, deadlineMs = 5_000, wait = 5_000)
 
     @Test
     fun aFifthConcurrentStreamIsDeclinedPeerBusyAndAFinishedOneFreesASlot() {

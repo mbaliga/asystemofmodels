@@ -20,4 +20,13 @@ object SessionLimits {
 
     /** PROVISIONAL: how long an accepted attempt waits for its `INFER_BODY` (never longer than the offer's own `deadlineMs`). */
     const val BODY_WAIT_MS: Long = 30_000L
+
+    /** PROVISIONAL (ERRATA ERR-FX2-2): how long the requester waits for the answer to a `STATE_REQ` or `MANIFEST_REQ` before it gives up on it. */
+    const val REQUEST_WAIT_MS: Long = 30_000L
+
+    /** PROVISIONAL (ERRATA ERR-FX2-2): how long after a `CANCEL` the requester waits for the attempt to end before it treats the lender as wedged and closes the session. */
+    const val CANCEL_GRACE_MS: Long = 30_000L
+
+    /** PROVISIONAL (ERRATA ERR-FX2-7): the extension frames a listener holds before `HELLO` has named the session; one more is `FRAME_BEFORE_HELLO`. */
+    const val MAX_EARLY_EXTENSIONS: Int = 16
 }

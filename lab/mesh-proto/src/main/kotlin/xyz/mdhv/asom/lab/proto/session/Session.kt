@@ -87,10 +87,12 @@ class Session private constructor(
     internal val requester = RequesterSide(this)
     private val usedStreams = HashSet<Long>()
     private var failClosedDone = false
+    private var frameSkipped = false
+    private val earlyExtensions = ArrayList<Long>()
     private val startedAt = node.ledger.now()
     private var establishedAt = 0L
 
-    /** The last moment a stream was open or a frame of a stream (not of stream 0) moved either way: the idle timer runs from here (trust.md 3.3, ERRATA ERR-PI-3). */
+    /** The last moment a stream was open or an ACCEPTED frame of a stream (not of stream 0) moved either way: the idle timer runs from here (trust.md 3.3, ERRATA ERR-PI-3, ERR-FX2-1). */
     internal var lastStreamActivity = 0L
         private set
 
@@ -201,10 +203,11 @@ class Session private constructor(
     /**
      * The timers of an established session, on the injected clock: an accepted attempt whose body never came expires (lender), a session with no stream for
      * [SessionLimits.IDLE_MS] says `GOAWAY idle`, and one older than [SessionLimits.MAX_AGE_MS] says `GOAWAY max-age` at the first moment it has no stream.
-     * An open stream keeps the session alive: it is the attempt's own deadline that ends it, not a timer of the session.
+     * An open stream keeps the session alive: it is the attempt's own deadline that ends it, not a timer of the session. On the requester the bounds of
+     * [RequesterSide.expire] guarantee that no unanswered request or stalled attempt stays open for ever (ERRATA ERR-FX2-2).
      */
     private fun timers(now: Long) {
-        if (role == PeerRole.TLS_SERVER) lender.expireBodies(now)
+        if (role == PeerRole.TLS_SERVER) lender.expireBodies(now) else requester.expire(now)
         if (phase != Phase.ESTABLISHED) return
         if (openStreams() > 0) {
             lastStreamActivity = now
@@ -280,7 +283,27 @@ class Session private constructor(
     private fun frame(f: RawFrame) {
         node.observer?.inbound(this, f.type, f.stream, f.payload.size)
         wire.noteReceived(appBytes(f))
-        touch(f.stream)
+        frameSkipped = false
+        dispatch(f)
+        if (!frameSkipped) touch(f.stream)
+    }
+
+    /** The frame was ignored or refused: it does not restart the idle timer (ERRATA ERR-FX2-1). */
+    internal fun ignoreFrame() {
+        frameSkipped = true
+    }
+
+    /** A host callback never takes the session down with it: a throw is contained and counted (ERRATA ERR-FX2-8). A ledger failure still propagates. */
+    internal fun <T> hostCall(default: T, block: () -> T): T = try {
+        block()
+    } catch (e: FailClosed) {
+        throw e
+    } catch (e: RuntimeException) {
+        node.callbackErrors.incrementAndGet()
+        default
+    }
+
+    private fun dispatch(f: RawFrame) {
         val msg = when (val p = MessageCodec.parse(f)) {
             is Parsed.Ok -> p.message
             is Parsed.Reject -> return fail(Refusal.BAD_PAYLOAD, p.error)
@@ -300,7 +323,11 @@ class Session private constructor(
     private fun extension(e: Inbound.ExtIgnored) {
         node.observer?.inbound(this, e.type, e.stream, (e.appBytes - 9).toInt())
         wire.noteReceived(e.appBytes)
-        openIfListener()
+        if (role == PeerRole.TLS_SERVER && !rows.opened) {
+            if (earlyExtensions.size >= SessionLimits.MAX_EARLY_EXTENSIONS) return fail(Refusal.FRAME_BEFORE_HELLO)
+            earlyExtensions += e.appBytes
+            return
+        }
         rows.control(rows.frameRow(MeshKind.CONTROL, "EXT_IGNORED", inn = e.appBytes))
     }
 
@@ -319,6 +346,12 @@ class Session private constructor(
     }
 
     private fun onHello(f: RawFrame, h: Hello) {
+        check(!rows.opened) { "the session id is fixed once the SESSION open row is written" }
+        if (!node.claimSessionId(h.sessionNonce)) {
+            openIfListener()
+            recvControl(f, h)
+            return fail(Refusal.HELLO_NODE_MISMATCH)
+        }
         rows.sessionId = h.sessionNonce
         rows.joinId = h.sessionNonce
         openIfListener()
@@ -401,8 +434,14 @@ class Session private constructor(
         touch(frame.stream)
     }
 
+    /** The listener's `SESSION` open row. Extension frames that came before the session had a name are rowed right after it, under the same id (ERRATA ERR-FX2-7). */
     internal fun openIfListener() {
-        if (role == PeerRole.TLS_SERVER && !rows.opened) rows.open("established")
+        if (role == PeerRole.TLS_SERVER && !rows.opened) {
+            rows.open("established")
+            val early = earlyExtensions.toList()
+            earlyExtensions.clear()
+            for (bytes in early) rows.control(rows.frameRow(MeshKind.CONTROL, "EXT_IGNORED", inn = bytes))
+        }
     }
 
     /** A typed refusal on the connection: `ERROR`, then (for a closing refusal) the close. Counted. */
@@ -429,7 +468,10 @@ class Session private constructor(
 
     // ------------------------------------------------------------------------------------------------------------ closing
 
-    /** Ends the session after a normal or protocol close: attempts are finished, the TLS connection closed, the SESSION close row written. */
+    /**
+     * Ends the session after a normal or protocol close: attempts are finished (their outcome rows written), the TLS connection closed, the SESSION close row
+     * written, and only then do the host callbacks run, each contained, so that none of them can stop the close (ERRATA ERR-FX2-8).
+     */
     internal fun closeNow(code: String = "close", status: Int = 200) {
         if (phase == Phase.CLOSED) return
         phase = Phase.CLOSED
@@ -443,7 +485,8 @@ class Session private constructor(
         wire.kill()
         rows.close(code, status)
         node.unregister(this)
-        listener.onClosed()
+        requester.runDeferred()
+        hostCall(Unit) { listener.onClosed() }
     }
 
     /** FC-2. Nothing further is sent (not even GOAWAY), the connection closes, the ledger is already marked unavailable by the failed append, the close row is attempted. */
@@ -456,7 +499,8 @@ class Session private constructor(
         requester.abortAll()
         rows.close("close:ledger-failure", 503)
         node.unregister(this)
-        listener.onClosed()
+        requester.runDeferred()
+        hostCall(Unit) { listener.onClosed() }
     }
 
     companion object {
@@ -464,7 +508,9 @@ class Session private constructor(
         private val STREAM_LEVEL = setOf(MeshError.SCOPE_DENIED, MeshError.MANIFEST_UNAVAILABLE)
 
         internal fun listener(node: MeshNode, conn: MeshConnection, peer: Pin, peerPath: xyz.mdhv.asom.lab.ledger.PeerPath?): Session {
-            val s = Session(node, conn, peer, node.ids.b64(16), 0, peerPath)
+            val id = node.ids.b64(16)
+            node.claimSessionId(id)
+            val s = Session(node, conn, peer, id, 0, peerPath)
             node.register(s)
             return s
         }
