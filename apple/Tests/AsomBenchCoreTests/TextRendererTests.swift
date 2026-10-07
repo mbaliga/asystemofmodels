@@ -29,6 +29,16 @@ final class TextRendererTests: XCTestCase {
         XCTAssertEqual(TextRenderer.duration(micros: 120_000_000, estimated: false), "2 min")
     }
 
+    /// Design T8, at most 72 characters per line: a word longer than a line is split, as the JVM renderer does (ERR-FX-CV1).
+    func testAWordLongerThanALineIsSplitAtSeventyTwoColumns() {
+        let long = String(repeating: "x", count: 100)
+        XCTAssertEqual(TextRenderer.wrap(lead: "  ", text: "A " + long, cont: "    "),
+                       ["  A", "    " + String(repeating: "x", count: 68), "    " + String(repeating: "x", count: 32)])
+        XCTAssertEqual(TextRenderer.wrap(lead: "  ", text: "Example Phone X1 - android 16", cont: "    "), ["  Example Phone X1 - android 16"])
+        XCTAssertEqual(TextRenderer.wrap(lead: "  ", text: long, cont: "    "), ["  " + String(repeating: "x", count: 70), "    " + String(repeating: "x", count: 30)])
+        for line in TextRenderer.wrap(lead: "  ", text: "w " + String(repeating: "?", count: 192) + " tail", cont: "    ") { XCTAssertLessThanOrEqual(line.count, 72) }
+    }
+
     func testNonAsciiBecomesOneQuestionMarkPerCodePoint() {
         XCTAssertEqual(TextRenderer.asciiOnly("a\u{E9}\u{1F600}b"), "a??b")
         XCTAssertEqual(TextRenderer.asciiOnly("\u{7F}"), "?")

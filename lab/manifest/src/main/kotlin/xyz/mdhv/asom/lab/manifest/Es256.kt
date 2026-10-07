@@ -96,8 +96,21 @@ object Spki {
         return listOf(f.substring(0, 5), f.substring(5, 10), f.substring(10, 14), f.substring(14, 18), f.substring(18, 22), f.substring(22, 26)).joinToString("-")
     }
 
-    /** Uppercase, delete `-` and spaces, nothing else (LAB_SPEC 4.5). */
-    fun normaliseFingerprint(s: String): String = s.uppercase().replace("-", "").replace(" ", "")
+    /**
+     * Uppercase the ASCII letters a-z, delete `-` and spaces, nothing else (LAB_SPEC 4.5). Unicode upper-casing is NOT used: it maps U+017F and
+     * U+0131 onto base32 letters and U+00DF onto two (ERR-FX-CV6, apple E-09).
+     */
+    fun normaliseFingerprint(s: String): String {
+        val out = StringBuilder(s.length)
+        for (ch in s) {
+            when {
+                ch == '-' || ch == ' ' -> Unit
+                ch in 'a'..'z' -> out.append(ch - 32)
+                else -> out.append(ch)
+            }
+        }
+        return out.toString()
+    }
 
     fun fromPublic(key: PublicKey): ByteArray = key.encoded
 

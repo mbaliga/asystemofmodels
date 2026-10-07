@@ -43,19 +43,25 @@
   },
   {
     "path": "manifest/M02-verify-accept.json",
-    "sha256": "ef6958d76e62203db0ce4c3884db6e2958278e431087c267f37211c096d2150e",
+    "sha256": "68000a8b664b33831d017f5be2d048dff787263605be70308ed89e84284f8d55",
     "family": "M02",
     "status": "normative"
   },
   {
+    "path": "manifest/M03-verify-reject-fx.json",
+    "sha256": "554d3a1d1359edeec3ed21854a99d9f15bf2dacef7bd5cc709f4d55937f15ac5",
+    "family": "M03",
+    "status": "normative"
+  },
+  {
     "path": "manifest/M03-verify-reject.json",
-    "sha256": "37270ae1e0009de3f6298a4e19baf42195dfed4174da921408d2609a5c53d375",
+    "sha256": "b01c3b7c0b3e258c4666fdcc799f18300b1f7946a8bfaa9e269a9a14ce86e710",
     "family": "M03",
     "status": "normative"
   },
   {
     "path": "manifest/M05-render.json",
-    "sha256": "9ea4e311e0a0d32bf450d132fa6e3c4f522a8ac59bb5f16a10fa53bfb7459cf4",
+    "sha256": "a3739fcb03115f0dcda8cf148c341e93fb987358dd34cc5827e227dcb217df28",
     "family": "M05",
     "status": "normative"
   },

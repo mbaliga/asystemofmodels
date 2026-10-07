@@ -66,7 +66,10 @@ public enum ManifestDecoder {
         let bench = try BenchDocument.decode(try body.required("bench"), fileForm: audience == .file, state: state)
         try body.finish()
 
-        let p = try root.object("presentation")
+        // a FILE presentation is exactly { issuedAtMs }, whatever the minor (P3, ERR-FX-CV4): it is read with a state that tolerates nothing
+        let p = audience == .file
+            ? try ObjectReader(try root.required("presentation"), "payload.presentation", DecodeState(tolerateUnknown: false))
+            : try root.object("presentation")
         let issued = try p.int("issuedAtMs", SchemaRules.epochLow...(SchemaRules.epochHigh - 1))
         var expires: Int64?
         var challenge: String?

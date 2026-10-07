@@ -205,7 +205,7 @@ public enum R3 {
             throw ConformanceError("no context or nowMs")
         }
         guard let floor = c.member("confFloor")?.stringValue else { throw ConformanceError("no confFloor") }
-        var ctx = VerifyContext(mode: mode == "MESH" ? .mesh : .file, confFloor: floor, nowMs: now)
+        var ctx = VerifyContext(mode: mode == "MESH" ? .mesh : .file, confFloor: floor, productionKeys: false, nowMs: now)
         ctx.projectionPolicy = policy
         switch mode {
         case "MESH":

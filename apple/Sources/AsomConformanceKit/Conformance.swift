@@ -185,9 +185,9 @@ public enum Conformance {
             guard let b64 = context.member("pinnedSpki")?.stringValue, let spki = Base64Strict.decodeEither(b64) else {
                 throw ConformanceError("\(id): pinnedSpki unreadable")
             }
-            dsseContext = DSSEContext(mode: .mesh, pinnedSpki: spki)
+            dsseContext = DSSEContext(mode: .mesh, pinnedSpki: spki, productionKeys: false)
         case ("tofu", "M03-127"):
-            dsseContext = DSSEContext(mode: .file)
+            dsseContext = DSSEContext(mode: .file, productionKeys: false)
         default:
             throw ConformanceError("\(id): context mode \(mode) has no r3 mapping")
         }

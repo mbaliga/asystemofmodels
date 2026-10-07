@@ -10,6 +10,7 @@ import xyz.mdhv.asom.lab.bench.Checked
 object Consistency {
     fun check(o: ManifestObj): String? {
         val b = o.body
+        sameRecord(b)?.let { return it }
         val issued = o.presentation.issuedAtMs
         val seen = HashSet<Pair<String, String>>()
         for (r in b.results) {
@@ -40,6 +41,29 @@ object Consistency {
             if (r.measuredAtMs > issued) return "measured after issued"
             if (r.power.method == "unavailable" && r.power.avgMilliW != null) return "power reading with an unavailable method"
         }
+        return null
+    }
+
+    /**
+     * M2 / LM-3, one record: `body.bench` is the only measurement source, so every fact the body states a second time (producer harness and engine,
+     * device identity, memory, OS) must equal its `bench` twin. The engine commit may be an abbreviation of the bench commit (or the reverse).
+     * `device.class` is NOT tied to `bench.device.form`: the class is an open enum (a viewer shows an unknown one as "other"), the form a closed one.
+     */
+    private fun sameRecord(b: Body): String? {
+        val h = b.bench.harness
+        val bd = b.bench.device
+        val d = b.device
+        val p = b.producer
+        if (p.harness.confVersion != h.confVersion) return "producer.harness.confVersion differs from bench.harness.confVersion"
+        if (p.engine.name != h.engine.name) return "producer.engine.name differs from bench.harness.engine.name"
+        if (!h.engine.commit.startsWith(p.engine.commit) && !p.engine.commit.startsWith(h.engine.commit)) return "producer.engine.commit differs from bench.harness.engine.commit"
+        if (p.engine.buildFlags != h.engine.buildFlags) return "producer.engine.buildFlags differs from bench.harness.engine.buildFlags"
+        if (d.memoryTotalBytes != bd.memTotalBytes) return "device.memory.totalBytes differs from bench.device.memTotalBytes"
+        if (d.os.family != bd.platform) return "device.os.family differs from bench.device.platform"
+        if (d.os.version != bd.osVersion) return "device.os.version differs from bench.device.osVersion"
+        if (d.vendor != bd.maker) return "device.vendor differs from bench.device.maker"
+        if (d.model != bd.model) return "device.model differs from bench.device.model"
+        if (d.socName != bd.soc) return "device.soc.name differs from bench.device.soc"
         return null
     }
 }

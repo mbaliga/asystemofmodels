@@ -59,7 +59,7 @@ final class ProjectionTests: XCTestCase {
         let export = try ES256Signer.generateEphemeral()
         let key = LabKey(signer: export, spki: export.spki, nodeId: NodeIdentity.nodeId(spki: export.spki))
         let file = try exportFile(key: key)
-        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, nowMs: Fixture.nowMs)
+        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, productionKeys: false, nowMs: Fixture.nowMs)
         guard case let .success(ok) = ManifestVerifier.verify(document: file.document, context: ctx) else { return XCTFail("file rejected") }
         XCTAssertEqual(ok.pin, .signerUnverified)
         XCTAssertEqual(ok.tier, .a0)
@@ -81,7 +81,7 @@ final class ProjectionTests: XCTestCase {
     func testFileRejectsWhatTheFileFormForbids() throws {
         let export = try ES256Signer.generateEphemeral()
         let key = LabKey(signer: export, spki: export.spki, nodeId: NodeIdentity.nodeId(spki: export.spki))
-        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, nowMs: Fixture.nowMs)
+        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, productionKeys: false, nowMs: Fixture.nowMs)
         func verdict(_ mutate: @escaping (JValue) -> JValue) throws -> String {
             code(ManifestVerifier.verify(document: try exportFile(key: key, mutateBody: mutate).document, context: ctx))
         }
@@ -101,7 +101,7 @@ final class ProjectionTests: XCTestCase {
     func testFileRulesHoldWhereUnknownMembersAreTolerated() throws {
         let export = try ES256Signer.generateEphemeral()
         let key = LabKey(signer: export, spki: export.spki, nodeId: NodeIdentity.nodeId(spki: export.spki))
-        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, nowMs: Fixture.nowMs)
+        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, productionKeys: false, nowMs: Fixture.nowMs)
         func payload(_ mutate: (JValue) -> JValue) throws -> [UInt8] {
             let body = mutate(try FileProjection.body(ownObject: try Fixture.basePayload(), exportNodeId: key.nodeId))
             let p: JValue = .object(["schema": .string("asom.manifest/1"), "schemaMinor": .int(1), "body": body,
@@ -120,7 +120,7 @@ final class ProjectionTests: XCTestCase {
         let export = try ES256Signer.generateEphemeral()
         let key = LabKey(signer: export, spki: export.spki, nodeId: NodeIdentity.nodeId(spki: export.spki))
         let file = try exportFile(key: key)
-        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, nowMs: Fixture.nowMs)
+        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, productionKeys: false, nowMs: Fixture.nowMs)
         let container = try Fixture.parse(file.document)
         XCTAssertEqual(code(ManifestVerifier.verify(document: try JCS.serialize(container.removing([.key("signer")])), context: ctx)), "KEY_NOT_PINNED")
         let lie = container.setting([.key("dsse"), .key("signatures"), .at(0), .key("keyid")], to: .string(try labKey("key2").nodeId))
@@ -133,7 +133,7 @@ final class ProjectionTests: XCTestCase {
         let export = try ES256Signer.generateEphemeral()
         let key = LabKey(signer: export, spki: export.spki, nodeId: NodeIdentity.nodeId(spki: export.spki))
         let file = try exportFile(key: key, nodeId: try labKey("key1").nodeId)
-        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, nowMs: Fixture.nowMs)
+        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, productionKeys: false, nowMs: Fixture.nowMs)
         XCTAssertEqual(code(ManifestVerifier.verify(document: file.document, context: ctx)), "SUBJECT_KEY_MISMATCH")
     }
 

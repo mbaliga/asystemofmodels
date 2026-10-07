@@ -1648,3 +1648,58 @@ Races fixed (each by waiting on the condition with the 30 s `Wait.until`, assert
 Verification (8 busy loops, 4 cores): `./gradlew -p lab :mesh-proto:test --offline --max-workers=2 --rerun-tasks`
   JDK 17.0.12: 3 consecutive full passes after the last edit (plus 1 earlier pass); JDK 21 (default): 1 pass, all under load.
   `python3 lab/tools/isolation.py` -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+
+## Review fixes CV-1 to CV-10 (track `fix-crypto`: `lab/manifest`, `lab/json`, `lab/conformance/manifest`, `apple/`) — 2026-10-07 — LAB (not device evidence)
+
+Evidence label: LAB and CI-APPROX on this machine (JDK 21 default, JDK 17 at /opt/jdks/jdk-17, Swift 6.1 on Linux with swift-crypto). `oracle: self` on every vector. NOT DEVICE EVIDENCE. Nothing was run on macOS, Windows or hosted CI. Base commit `f6a8f1efeea47c0c3ef8653a34762e9d6b706fe0` (the worktree started on another commit and was reset to it). No commit was made.
+
+Findings: CV-1, CV-3, CV-5, CV-6, CV-7, CV-8, CV-9, CV-10 FIXED; CV-2 and CV-4 FIXED (Swift); CV-3 is a ruling (see `lab/ERRATA.md` ERR-FX-CV3): the JVM and Swift lanes now refuse `requiredTier` A1 and A2 because the A1 label is a self-report. Readings: `lab/ERRATA.md` ERR-FX-CV1, -CV3 to -CV10 and ERR-FX-FILES; `apple/ERRATA.md` "Review fixes" section.
+
+Failing-before evidence (real output, before the fix):
+```
+$ ./gradlew -p lab :manifest:test --tests '*OneRecordTiesTest' --tests '*SelfReportedTierTest' --tests '*FingerprintNormalisationTest' --tests '*LaneAgreementReadingsTest' --tests '*SeqRaceTest' --tests '*NonReducedCoordinateTest'
+15 tests completed, 10 failed
+FingerprintNormalisationTest > nonAsciiLettersThatUnicodeUppercasesToBase32LettersAreNotFolded() FAILED   expected: <ſ> but was: <S>
+LaneAgreementReadingsTest > aContainerThatIsNotAnObjectIsContainerInvalid() FAILED   []: 3 ==> expected: <CONTAINER_INVALID> but was: <CONTAINER_VERSION_UNKNOWN>
+LaneAgreementReadingsTest > aFileSignerSpkiThatIsNotAStringIsContainerInvalid() FAILED   signer.spki = 5: 7 no signer.spki ==> expected: <CONTAINER_INVALID> but was: <KEY_NOT_PINNED>
+LaneAgreementReadingsTest > aPayloadTypeOrSchemaMajorMustBeACanonicalDecimal() FAILED   payloadType v02: 4 ==> expected: <PAYLOAD_TYPE_UNSUPPORTED> but was: <SCHEMA_MAJOR_UNKNOWN>
+LaneAgreementReadingsTest > theShapeOfTheFirstSignatureEntryIsDecidedAtStepThreeBeforeThePayloadTypeAndTheCount() FAILED   signatures [1,2]: 5 ==> expected: <CONTAINER_INVALID> but was: <SIGNATURE_COUNT>
+OneRecordTiesTest > everySecondCopyOfABenchFactMustAgreeWithBench() FAILED   producer confVersion below the floor: expected INCONSISTENT at step 15, the verifier accepted
+OneRecordTiesTest > theSameTiesHoldForAFileExport() FAILED   body.producer.harness.confVersion: expected INCONSISTENT at step 15, the verifier accepted
+SelfReportedTierTest > aHardwareClaimIsALabelAndNeverSatisfiesARequiredTierAboveA0() FAILED   strongbox required A1: expected TIER_INSUFFICIENT at step 18, the verifier accepted
+SeqRaceTest > concurrentWritersOfTheFileStoreNeitherFailNorLeaveTemporaryFiles() FAILED   NoSuchFileException: .../seq.tmp -> .../seq
+SeqRaceTest > twoDifferentBodiesSignedInTheSameSecondNeverShareASeq() FAILED   ExecutionException: NoSuchFileException: .../seq.tmp -> .../seq
+$ (original src/main restored, new vectors in the generator) ./gradlew -p lab :manifest:genManifestVectors     -> generator refuses to write:
+M03-179..M03-189: expected INCONSISTENT, but the verifier accepted        M03-191, M03-192: expected TIER_INSUFFICIENT, but the verifier accepted
+M03-195, M03-196: expected FINGERPRINT_MISMATCH, but the verifier accepted
+M03-201, M03-202: expected CONTAINER_INVALID at step 3, got CONTAINER_VERSION_UNKNOWN at step 3     M03-203: ... got SIGNATURE_COUNT at step 5     M03-204: ... got PAYLOAD_TYPE_UNSUPPORTED at step 4
+M03-205: expected CONTAINER_INVALID at step 7, got KEY_NOT_PINNED at step 7     M03-206: expected PAYLOAD_TYPE_UNSUPPORTED at step 4, got SCHEMA_MAJOR_UNKNOWN at step 4     M03-207: expected SCHEMA_INVALID at step 11, got SCHEMA_MAJOR_UNKNOWN at step 11
+$ ASOM_DIAGNOSTIC_DRIFT_FLAG=1 swift run --package-path apple asom-conformance check     (Swift lane before its fixes, new vectors present)
+MISMATCH M03-179..M03-190 (expected reject INCONSISTENT, observed ok)   MISMATCH M03-191, M03-192 (expected reject TIER_INSUFFICIENT, observed ok)
+MISMATCH M03-193 (expected reject SCHEMA_INVALID, observed ok)   MISMATCH M03-194 (expected reject FINGERPRINT_MISMATCH, observed ok)
+MISMATCH M03-197..M03-200 (expected NON_INTEGER_NUMBER / DUPLICATE_KEY / INVALID_UNICODE / NUMBER_RANGE, observed reject MALFORMED_JSON)
+MISMATCH M03-208 (expected reject CONTAINER_INVALID, observed ok)   MISMATCH M03-209, M03-210 (expected MALFORMED_JSON, observed TRAILING_DATA)   MISMATCH M03-211 (expected MALFORMED_JSON, observed NON_INTEGER_NUMBER)
+MISMATCH M03-212, M03-213, M03-214 (expected NON_INTEGER_NUMBER, observed MALFORMED_JSON)   MISMATCH M05-109 (line 20: 96 '?' in this lane, 64 in the JVM lane)
+checked 332, mismatches 28
+```
+Not reproduced as failures before the fix (test or vector gaps, as the review said): CV-10 (the JVM and Swift range clause existed; `NonReducedCoordinateTest`, `FixCryptoTests.testANonReducedCoordinate...` and M03-215 pass before and after, and are killed by the mutants below), CV-4, CV-5 and CV-7 on the JVM (already correct: the failure is Swift-only), and CV-6 in Swift (already ASCII-only). The Swift-only unit tests for CV-2 and CV-5 were written after the fix; their failing-before evidence is the mutants Y02, Y02b, Y05a and Y05b below, each of which restores the old code and fails the new tests (for example `FixCryptoManifestTests.testDefaultContextsRefuseTheTestOnlyKeys` and `testTheChallengeComparisonDoesNotFoldTheLengths` with `+256`).
+
+After the fix (real output):
+```
+$ ./gradlew -p lab test                      (JDK 21)  -> BUILD SUCCESSFUL; M01 105, M02 20, M03 108, M05 42, M06 10 vectors, 0 fail
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab test     -> BUILD SUCCESSFUL (Launcher JVM 17.0.12); :manifest 53 tests, :json 42, :conformance-runner 2052, :mesh-proto 185, 0 failures
+$ swift test --package-path apple            -> Executed 176 tests, with 0 failures (0 unexpected)     (166 before; +10)
+$ ASOM_DIAGNOSTIC_DRIFT_FLAG=1 swift run ... asom-conformance check -> checked 332, mismatches 0
+$ python3 apple/ci/lane_diff.py jvm.lines swift.lines --known apple/ci/known-disagreements.txt ... -> vectors: jvm=379 swift=333 agree=291 disagree=42 (known 42) jvm-only=46 (not implemented 46)
+$ python3 apple/ci/lane_diff.py jvm.lines swift_diag.lines --not-implemented ...                    -> vectors: jvm=379 swift=333 agree=333 disagree=0 (known 0) jvm-only=46 (not implemented 46)
+$ python3 lab/tools/xcheck.py lab/conformance -> xcheck M02: 100 agree, 0 disagree; M03: 264 agree, 0 disagree; INDEX: 32 agree ... (all families 0 disagree)
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py -> law: OK
+$ ./gradlew cleanTest jvmTest (root) -> BUILD SUCCESSFUL; root tests: 139, 0 failures
+```
+Mutation checks (narrow driver, each mutant applied, the suite run, the source restored byte for byte; the same mutants are registered as V31 to V41 in `lab/manifest/tools/mutants.py`, which was NOT run through its full three-layer harness): JVM, 23 mutants, 22 KILLED, 1 SURVIVED. Killed: every one-record tie separately (confVersion, engine name, commit, buildFlags, memory, os family, os version, vendor, model, soc), the whole rule, the tier gate on the label, Unicode uppercase, non-object container as version-unknown, no `signatures[0]` shape at step 3, non-string `signer.spki` as unpinned, a leading-zero major, no evidence item limit, no signer lock, a per-call lock, the fixed temp name, no coordinate range. SURVIVED: `X12-no-store-lock` (the per-path lock inside `FileSeqStore`): equivalent on Linux, because unique temp names and an atomic rename already make concurrent writers safe there; the lock exists for Windows, which refuses concurrent renames onto one target, and that cannot be tested here. Swift, 15 mutants, 15 KILLED: the whole one-record rule, default `productionKeys` false in `VerifyContext` and in `DSSEContext`, the tier gate on the label, the tolerant FILE presentation, the folding length compare for the challenge and for the fingerprint, the scan that stops at depth 17, two lexer mutants (a literal prefix followed by data; a digits-only number), no evidence item limit, no coordinate range, no long-word split. Two earlier lexer mutants were killed only by a crash or by an unrelated parse failure and were replaced by the two named. The directory sync after the rename in `FileSeqStore` is not observable by a test and has no mutant.
+
+Changed existing tests (ruling-driven, each recorded in the ERRATA): `BoundaryTest.onlyHardwareBackedStorageIsTierA1` (CV-3); `VerifierTests.testTierFromKeyStorageAndTheRequiredTier` (CV-3); `StrictJSONTests.testRejectTable` row "lone minus" from `MALFORMED_JSON` to `NON_INTEGER_NUMBER` (CV-8, ERR-JSON-3); four Swift tests that edited one copy of a duplicated fact now edit both (CV-1); 27 Swift call sites now say `productionKeys: false` explicitly (CV-2). Changed vectors: M02-113, M02-118, M02-120, M03-131 (and M05-109, regenerated from M02-113). Added vectors: M02-121, M02-122, M03-179..215 (37, in `lab/conformance/manifest/M03-verify-reject-fx.json`).
+
+NOT DONE / BLOCKED / for the orchestrator: (1) `lab/conformance/INDEX.json` was regenerated with `lab/tools/regen_index.py` (outside the track's directories; a generated dependant; it will conflict with any other track that regenerates it, so regenerate it once after merging). (2) `lab/conformance/VERSION` was not bumped and `lab/conformance/README.md` was not edited. (3) `HostileFramesTest` in `:mesh-proto` pins `vectors.size == 71` for `M03-verify-reject.json`; the new M03 vectors therefore live in a second file of the same family and that count still holds. (4) The M01-family vectors for the lexer and depth readings (CV-7, CV-8) are M03 vectors at step 2, because `lab/conformance/json` is outside this track. (5) `.github/workflows/apple-ios.yml` needed no edit (it reads `known-disagreements.txt`, which gained five ids). (6) Not run: macOS/CryptoKit, Windows, hosted CI; two PROCESSES writing one seq store is not covered (needs an OS file lock). (7) CV-3 is a design ruling the next design revision must fold into LAB_SPEC 4.6 steps 17/18 and the M02-118 row. (8) `docs/design/mesh/*.md` were not edited.
+Result: **PASSED** for the ten findings in the LAB (oracle: self).

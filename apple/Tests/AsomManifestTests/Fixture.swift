@@ -63,7 +63,7 @@ enum Fixture {
     }
 
     static func meshContext(key: LabKey, mutate: (inout VerifyContext) -> Void = { _ in }) throws -> VerifyContext {
-        var c = VerifyContext(mode: .mesh, pinnedSpki: key.spki, expectedChallenge: try challenge(), confFloor: confFloor, nowMs: nowMs)
+        var c = VerifyContext(mode: .mesh, pinnedSpki: key.spki, expectedChallenge: try challenge(), confFloor: confFloor, productionKeys: false, nowMs: nowMs)
         mutate(&c)
         return c
     }

@@ -4,6 +4,8 @@
 ///
 /// Error priority follows the table order of section 4.2. A structural error (not one JSON value) stops the
 /// parse at once. The other classes are recorded while the parse goes on, and the lowest-numbered class wins.
+/// Depth beyond 16 is recorded and the scan goes on, iteratively, so that rows 2 to 6 still outrank row 7 wherever
+/// they sit (ERR-JSON-1; ERR-FX-CV7) and a deep document cannot exhaust the stack.
 public enum StrictJSON {
     public static let maxDepth = 16
     public static let maxSafeInteger: Int64 = 9_007_199_254_740_991
@@ -23,12 +25,13 @@ private enum Rank {
     static let trailing = 8
 }
 
-private enum Stop: Error { case structural, depth }
+private enum Stop: Error { case structural }
 
 private struct Parser {
     let b: [UInt8]
     var i = 0
     var soft: (rank: Int, code: RejectCode)?
+    var tooDeep = false
 
     init(_ bytes: [UInt8]) { b = bytes }
 
@@ -42,12 +45,10 @@ private struct Parser {
         let value: JValue
         do {
             value = try parseValue(depth: 1)
-        } catch Stop.depth {
-            note(Rank.depth, .malformedJSON)
-            return .failure(soft!.code)
         } catch {
             return .failure(.malformedJSON)
         }
+        if tooDeep { note(Rank.depth, .malformedJSON) }
         skipWhitespace()
         if i < b.count {
             note(Rank.trailing, .trailingData)
@@ -87,19 +88,50 @@ private struct Parser {
         switch b[i] {
         case 0x7B: return try parseObject(depth: depth)
         case 0x5B: return try parseArray(depth: depth)
-        case 0x22: return .string(try parseString())
-        case 0x74: try expect("true"); return .bool(true)
-        case 0x66: try expect("false"); return .bool(false)
-        case 0x6E: try expect("null"); return .null
-        case 0x4E: try expect("NaN"); note(Rank.nonInteger, .nonIntegerNumber); return .null
-        case 0x49: try expect("Infinity"); note(Rank.nonInteger, .nonIntegerNumber); return .null
-        case 0x2D, 0x30...0x39: return try parseNumber()
-        default: throw Stop.structural
+        default: return try parseScalar()
         }
     }
 
+    /// A string, a literal, or a number. A letter run and a number run are each ONE token, taken maximally: `truex` and `Infinityx` are
+    /// not a value followed by data, and `1-2`, `-` and `[-NaN]` are number lexemes outside the profile (ERR-JSON-3; ERR-FX-CV8).
+    mutating func parseScalar() throws -> JValue {
+        guard i < b.count else { throw Stop.structural }
+        let c = b[i]
+        switch c {
+        case 0x22: return .string(try parseString())
+        case 0x2D:
+            if i + 1 < b.count, isLetter(b[i + 1]) { return try parseWord(skip: 1) }
+            return try parseNumber()
+        case 0x30...0x39: return try parseNumber()
+        default:
+            if isLetter(c) { return try parseWord(skip: 0) }
+            throw Stop.structural
+        }
+    }
+
+    func isLetter(_ c: UInt8) -> Bool { (c >= 0x61 && c <= 0x7A) || (c >= 0x41 && c <= 0x5A) }
+
+    mutating func parseWord(skip: Int) throws -> JValue {
+        let start = i
+        i += skip
+        let from = i
+        while i < b.count, isLetter(b[i]) { i += 1 }
+        let word = Array(b[from..<i])
+        if skip == 0 {
+            if word == Array("true".utf8) { return .bool(true) }
+            if word == Array("false".utf8) { return .bool(false) }
+            if word == Array("null".utf8) { return .null }
+        }
+        if word == Array("NaN".utf8) || word == Array("Infinity".utf8) {
+            note(Rank.nonInteger, .nonIntegerNumber)
+            return .null
+        }
+        i = start
+        throw Stop.structural
+    }
+
     mutating func parseObject(depth: Int) throws -> JValue {
-        if depth > StrictJSON.maxDepth { throw Stop.depth }
+        if depth > StrictJSON.maxDepth { return try skimDeep() }
         i += 1
         var members: [JMember] = []
         var seen = Set<[UInt16]>()
@@ -124,7 +156,7 @@ private struct Parser {
     }
 
     mutating func parseArray(depth: Int) throws -> JValue {
-        if depth > StrictJSON.maxDepth { throw Stop.depth }
+        if depth > StrictJSON.maxDepth { return try skimDeep() }
         i += 1
         var elements: [JValue] = []
         skipWhitespace()
@@ -139,29 +171,81 @@ private struct Parser {
         }
     }
 
+    /// The whole lexeme (a maximal run of digits, signs, dots and e/E, starting at the current byte) is judged as one number.
     mutating func parseNumber() throws -> JValue {
-        var negative = false
-        if b[i] == 0x2D { negative = true; i += 1 }
-        guard i < b.count else { throw Stop.structural }
-        if b[i] == 0x49 { try expect("Infinity"); note(Rank.nonInteger, .nonIntegerNumber); return .null }
-        guard isDigit(b[i]) else { throw Stop.structural }
         let start = i
-        while i < b.count, isDigit(b[i]) { i += 1 }
-        let digits = b[start..<i]
-        var offProfile = digits.count > 1 && digits.first == 0x30
-        if i < b.count, b[i] == 0x2E || b[i] == 0x65 || b[i] == 0x45 {
-            offProfile = true
-            while i < b.count, isDigit(b[i]) || b[i] == 0x2E || b[i] == 0x65 || b[i] == 0x45 || b[i] == 0x2B || b[i] == 0x2D {
-                i += 1
-            }
+        while i < b.count, isDigit(b[i]) || b[i] == 0x2D || b[i] == 0x2B || b[i] == 0x2E || b[i] == 0x65 || b[i] == 0x45 { i += 1 }
+        let negative = b[start] == 0x2D
+        let digits = b[(start + (negative ? 1 : 0))..<i]
+        let integerForm = !digits.isEmpty && digits.allSatisfy(isDigit) && (digits.count == 1 || digits.first != 0x30)
+        if !integerForm || (negative && digits.count == 1 && digits.first == 0x30) {
+            note(Rank.nonInteger, .nonIntegerNumber)
+            return .null
         }
-        if negative, digits.count == 1, digits.first == 0x30 { offProfile = true }
-        if offProfile { note(Rank.nonInteger, .nonIntegerNumber); return .null }
         if digits.count > 16 { note(Rank.range, .numberRange); return .null }
         var magnitude: Int64 = 0
         for d in digits { magnitude = magnitude * 10 + Int64(d - 0x30) }
         if magnitude > StrictJSON.maxSafeInteger { note(Rank.range, .numberRange); return .null }
         return .int(negative ? -magnitude : magnitude)
+    }
+
+    /// Entered at the opening bracket of a container nested deeper than the limit. Records the depth fault, then scans to the matching
+    /// close without recursion, applying every check of the recursive path (strings, numbers, duplicate names), and returns a placeholder.
+    mutating func skimDeep() throws -> JValue {
+        tooDeep = true
+        var stack: [(isObject: Bool, seen: Set<[UInt16]>)] = []
+        func readKey(_ p: inout Parser) throws {
+            p.skipWhitespace()
+            guard p.i < p.b.count, p.b[p.i] == 0x22 else { throw Stop.structural }
+            let name = try p.parseString()
+            if !stack[stack.count - 1].seen.insert(Array(name.utf16)).inserted { p.note(Rank.duplicate, .duplicateKey) }
+            p.skipWhitespace()
+            guard p.i < p.b.count, p.b[p.i] == 0x3A else { throw Stop.structural }
+            p.i += 1
+        }
+        while true {
+            skipWhitespace()
+            guard i < b.count else { throw Stop.structural }
+            var completed = true
+            switch b[i] {
+            case 0x7B:
+                i += 1
+                skipWhitespace()
+                if i < b.count, b[i] == 0x7D {
+                    i += 1
+                } else {
+                    stack.append((true, []))
+                    try readKey(&self)
+                    completed = false
+                }
+            case 0x5B:
+                i += 1
+                skipWhitespace()
+                if i < b.count, b[i] == 0x5D {
+                    i += 1
+                } else {
+                    stack.append((false, []))
+                    completed = false
+                }
+            default:
+                _ = try parseScalar()
+            }
+            if !completed { continue }
+            closing: while true {
+                guard let top = stack.last else { return .null }
+                skipWhitespace()
+                guard i < b.count else { throw Stop.structural }
+                let c = b[i]
+                if top.isObject {
+                    if c == 0x2C { i += 1; try readKey(&self); break closing }
+                    if c == 0x7D { i += 1; stack.removeLast(); continue closing }
+                } else {
+                    if c == 0x2C { i += 1; break closing }
+                    if c == 0x5D { i += 1; stack.removeLast(); continue closing }
+                }
+                throw Stop.structural
+            }
+        }
     }
 
     func isDigit(_ c: UInt8) -> Bool { c >= 0x30 && c <= 0x39 }

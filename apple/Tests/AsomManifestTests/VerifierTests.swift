@@ -74,7 +74,10 @@ final class VerifierTests: XCTestCase {
 
     func testStringLimitsAreInCodePointsAndBidiControlsAreRefused() throws {
         let path: [Step] = [.key("body"), .key("device"), .key("model")]
-        XCTAssertEqual(code(try Fixture.verifyMesh(try base().setting(path, to: .string(String(repeating: "\u{1F600}", count: 96))))), "ok")
+        let twin: [Step] = [.key("body"), .key("bench"), .key("device"), .key("model")]
+        let astral96 = JValue.string(String(repeating: "\u{1F600}", count: 96))
+        XCTAssertEqual(code(try Fixture.verifyMesh(try base().setting(path, to: astral96).setting(twin, to: astral96))), "ok", "M02-113: both copies carry the model")
+        XCTAssertEqual(code(try Fixture.verifyMesh(try base().setting(path, to: astral96))), "INCONSISTENT", "the bench twin disagrees")
         XCTAssertEqual(code(try Fixture.verifyMesh(try base().setting(path, to: .string(String(repeating: "\u{1F600}", count: 97))))), "SCHEMA_INVALID")
         XCTAssertEqual(code(try Fixture.verifyMesh(try base().setting(path, to: .string("Phone \u{202E}evil")))), "SCHEMA_INVALID")
     }
@@ -244,7 +247,10 @@ final class VerifierTests: XCTestCase {
         XCTAssertEqual(code(try Fixture.verifyMesh(try base()) { $0.knownBadConf = ["0.2.0"] }), "DERIVATION_MISMATCH")
         XCTAssertEqual(code(try Fixture.verifyMesh(try base()) { $0.knownBadConf = ["0.2.1"] }), "ok")
         let lower = try base().setting([.key("body"), .key("bench"), .key("harness"), .key("confVersion")], to: .string("0.1.0"))
-        XCTAssertEqual(code(try Fixture.verifyMesh(lower)), "DERIVATION_MISMATCH")
+            .setting([.key("body"), .key("producer"), .key("harness"), .key("confVersion")], to: .string("0.1.0"))
+        XCTAssertEqual(code(try Fixture.verifyMesh(lower)), "DERIVATION_MISMATCH", "both copies below the floor (M03-131)")
+        let onlyBench = try base().setting([.key("body"), .key("bench"), .key("harness"), .key("confVersion")], to: .string("0.1.0"))
+        XCTAssertEqual(code(try Fixture.verifyMesh(onlyBench)), "INCONSISTENT", "the producer copy disagrees, and the one-record rule decides first (M03-179)")
     }
 
     func testAudienceMustMatchTheContext() throws {
@@ -300,7 +306,11 @@ final class VerifierTests: XCTestCase {
         }
         let soft = try base().setting([.key("body"), .key("subject"), .key("keyStorage")], to: .string("os-keystore"))
         XCTAssertEqual(code(try Fixture.verifyMesh(soft) { $0.requiredTier = .a1 }), "TIER_INSUFFICIENT")
-        XCTAssertEqual(code(try Fixture.verifyMesh(try base()) { $0.requiredTier = .a1 }), "ok")
+        // ERR-FX-CV3: the hardware label is a self-report; it never satisfies a required tier
+        XCTAssertEqual(code(try Fixture.verifyMesh(try base()) { $0.requiredTier = .a1 }), "TIER_INSUFFICIENT", "a StrongBox claim does not satisfy A1 (M03-192)")
+        let tee = try base().setting([.key("body"), .key("subject"), .key("keyStorage")], to: .string("tee"))
+        XCTAssertEqual(code(try Fixture.verifyMesh(tee) { $0.requiredTier = .a1 }), "TIER_INSUFFICIENT", "M03-191")
+        XCTAssertEqual(code(try Fixture.verifyMesh(tee)), "ok", "the label is shown at the default requirement")
         XCTAssertEqual(code(try Fixture.verifyMesh(try base()) { $0.requiredTier = .a2 }), "TIER_INSUFFICIENT", "A2 is never reachable in the lab")
     }
 

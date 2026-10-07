@@ -55,8 +55,8 @@ anything else is the r0 set of half I0a (M02 and M03, DSSE layer only, `check` a
 | Family | Vectors | This lane |
 |---|---|---|
 | M01 (JCS, strict JSON, base64, DER codec) | 105 | all |
-| M02 (verify, accept) | 18 | all |
-| M03 (verify, reject) | 71 | all |
+| M02 (verify, accept) | 20 | all |
+| M03 (verify, reject) | 108 | all |
 | M04 (derive, plan, consent, governor, ceilings, pins, traces) | 94 | **65**: `test` (22), `sustain` (9), `percentile` (2), `doc` (15), `plan` (1: standard), `consent` (5), `fsm` (1), `ceilings` (9), `pins` (1). **Not** 29, each BLOCKED in `apple/ci/not-implemented.txt` with its reason: the 26 executor traces (the fake engine, its presets and the event grammar are not in the spec), the quick and ci plans (their JCS form is not in the spec), the run-today consent sheet (its wording is not in the spec). `ERRATA.md` E-29 to E-31 |
 | M05 (render) | 42 | all: the manifest text (12) and the `asom.text/1` body (30) |
 | M06 (derivatives) | 10 | all: `q2`, the public derivative, the FILE projection |

@@ -2,8 +2,12 @@ package xyz.mdhv.asom.lab.manifest
 
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
+import java.nio.channels.FileChannel
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
 import xyz.mdhv.asom.lab.bench.Audience
 import xyz.mdhv.asom.lab.bench.BenchCodec
@@ -46,23 +50,53 @@ class InMemorySeqStore : SeqStore {
     }
 }
 
-/** A file store: temp file, `FileChannel.force(true)`, atomic move. */
+/**
+ * A file store: a temp file of its own, `FileChannel.force(true)`, atomic move, then a sync of the directory so that the rename itself is durable
+ * (where the platform lets a directory be opened; Windows does not, and its journal covers the rename).
+ */
 class FileSeqStore(private val file: File) : SeqStore {
+    /** One lock per file path, so that two instances in one process never rename onto the same target at once (Windows refuses that). */
+    private val lock: Any = locks.getOrPut(file.absoluteFile.path) { Any() }
+
     override fun load(): StoredSeq? {
-        if (!file.isFile) return null
-        val lines = file.readText(Charsets.UTF_8).split("\n")
-        val seq = lines.getOrNull(0)?.toLongOrNull() ?: return null
-        val digest = lines.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: return null
-        return StoredSeq(seq, digest)
+        synchronized(lock) {
+            if (!file.isFile) return null
+            val lines = file.readText(Charsets.UTF_8).split("\n")
+            val seq = lines.getOrNull(0)?.toLongOrNull() ?: return null
+            val digest = lines.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: return null
+            return StoredSeq(seq, digest)
+        }
     }
 
     override fun persist(stored: StoredSeq) {
-        val tmp = File(file.parentFile, file.name + ".tmp")
-        FileOutputStream(tmp).use { out ->
-            out.write("${stored.seq}\n${stored.contentDigest}\n".toByteArray(Charsets.UTF_8))
-            out.channel.force(true)
+        synchronized(lock) { write(stored) }
+    }
+
+    private fun write(stored: StoredSeq) {
+        val dir = (file.absoluteFile.parentFile ?: File(".")).toPath()
+        val tmp = Files.createTempFile(dir, file.name + ".", ".tmp")
+        try {
+            FileOutputStream(tmp.toFile()).use { out ->
+                out.write("${stored.seq}\n${stored.contentDigest}\n".toByteArray(Charsets.UTF_8))
+                out.channel.force(true)
+            }
+            Files.move(tmp, file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        } finally {
+            Files.deleteIfExists(tmp)
         }
-        Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        syncDirectory(dir)
+    }
+
+    private companion object {
+        val locks = java.util.concurrent.ConcurrentHashMap<String, Any>()
+    }
+
+    private fun syncDirectory(dir: Path) {
+        try {
+            FileChannel.open(dir, StandardOpenOption.READ).use { it.force(true) }
+        } catch (e: IOException) {
+            // a directory cannot be opened for reading on Windows
+        }
     }
 }
 
@@ -114,9 +148,22 @@ class ManifestSigner(
 ) {
     private fun sha256B64u(b: ByteArray): String = Base64Strict.encodeUrlNoPad(MessageDigest.getInstance("SHA-256").digest(b))
 
-    /** Audience `own`: NIK-signed, answers one `MANIFEST_REQ`; `challenge` is the requester's 32 bytes. */
+    private companion object {
+        private val locks = java.util.Collections.synchronizedMap(java.util.WeakHashMap<SeqStore, Any>())
+
+        fun lockFor(store: SeqStore): Any = locks.getOrPut(store) { Any() }
+    }
+
+    /**
+     * Audience `own`: NIK-signed, answers one `MANIFEST_REQ`; `challenge` is the requester's 32 bytes. The load, compare, persist and sign steps run
+     * under one lock per [seqStore], so that two different bodies presented in the same second can never be signed under one `seq` (ERR-FX-CV9).
+     */
     fun signOwn(inputs: ManifestInputs, key: EcKeyPair, keyStorage: String, challenge: ByteArray, nowMs: Long, seqStore: SeqStore): Signed {
         require(challenge.size == 32) { "the challenge is 32 bytes" }
+        synchronized(lockFor(seqStore)) { return signOwnLocked(inputs, key, keyStorage, challenge, nowMs, seqStore) }
+    }
+
+    private fun signOwnLocked(inputs: ManifestInputs, key: EcKeyPair, keyStorage: String, challenge: ByteArray, nowMs: Long, seqStore: SeqStore): Signed {
         val subject = ManifestBuilder.subjectJson(key.nodeId, keyStorage)
         val content = ManifestBuilder.bodyJson(Audience.OWN, null, subject, inputs, inputs.bench, inputs.device)
         val digest = sha256B64u(Jcs.serialize(content))

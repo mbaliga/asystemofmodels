@@ -117,8 +117,8 @@ public enum TextRenderer {
         add("this device. (estimated) = calculated from measured numbers.")
         add("")
         add("DEVICE (as reported by the device itself)")
-        add(wrapDevice("  \(asciiOnly(dev.maker)) \(asciiOnly(dev.model)) - \(dev.platform) \(asciiOnly(dev.osVersion))"))
-        add("  Chip: \(asciiOnly(dev.soc)) | Memory: \(gb(dev.memTotalBytes)) total, \(gb(doc.memory.availAtStartBytes)) free at start")
+        add(wrap(lead: "  ", text: "\(asciiOnly(dev.maker)) \(asciiOnly(dev.model)) - \(dev.platform) \(asciiOnly(dev.osVersion))", cont: "    ").joined(separator: "\n"))
+        add(wrap(lead: "  ", text: "Chip: \(asciiOnly(dev.soc)) | Memory: \(gb(dev.memTotalBytes)) total, \(gb(doc.memory.availAtStartBytes)) free at start", cont: "    ").joined(separator: "\n"))
         add("  Engine: \(eng.name) \(eng.commit.prefix(8)), \(eng.backend) backend")
         add("  Tested: \(run.dayUtc), \(run.plan) test, \(power[run.powerSource]!), started \(run.startThermal)")
         add("  Overall confidence: \(a.overallConfidence.name.uppercased())")
@@ -262,22 +262,36 @@ public enum TextRenderer {
     static func pad(_ s: String, _ width: Int) -> String { s.count >= width ? s : s + String(repeating: " ", count: width - s.count) }
     static func padLeft(_ s: String, _ width: Int) -> String { s.count >= width ? s : String(repeating: " ", count: width - s.count) + s }
 
-    /// A long device line wraps at 72 columns like a note, continuation lines indented four spaces.
-    static func wrapDevice(_ line: String) -> String {
-        guard line.count > maxColumns else { return line }
-        let words = line.dropFirst(2).split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+    /// Word wrap at 72 columns (design T8: at most 72 characters per line): the first line starts with `lead`, continuation lines with `cont`, and a
+    /// word longer than a line is split, exactly as the JVM renderer does it (ERR-FX-CV1: a long device name exposed the difference).
+    static func wrap(lead: String, text: String, cont: String) -> [String] {
         var out: [String] = []
-        var current = "  " + words[0]
-        for w in words.dropFirst() {
-            if current.count + 1 + w.count > maxColumns {
-                out.append(current)
-                current = "    " + w
-            } else {
-                current += " " + w
+        var line = lead
+        var empty = true
+        for word in text.split(separator: " ", omittingEmptySubsequences: true) {
+            var w = Substring(word)
+            while !w.isEmpty {
+                let need = (empty ? 0 : 1) + w.count
+                if line.count + need <= maxColumns {
+                    if !empty { line += " " }
+                    line += w
+                    empty = false
+                    w = ""
+                } else if empty {
+                    let room = maxColumns - line.count
+                    line += w.prefix(room)
+                    out.append(line)
+                    line = cont
+                    w = w.dropFirst(room)
+                } else {
+                    out.append(line)
+                    line = cont
+                    empty = true
+                }
             }
         }
-        out.append(current)
-        return out.joined(separator: "\n")
+        out.append(line)
+        return out
     }
 
     static func wrapNote(_ note: String) -> [String] {
