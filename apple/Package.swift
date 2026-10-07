@@ -11,6 +11,7 @@ let package = Package(
         .library(name: "AsomDSSE", targets: ["AsomDSSE"]),
         .library(name: "AsomBenchCore", targets: ["AsomBenchCore"]),
         .library(name: "AsomManifest", targets: ["AsomManifest"]),
+        .library(name: "AsomRouterCore", targets: ["AsomRouterCore"]),
         .executable(name: "asom-conformance", targets: ["asom-conformance"]),
     ],
     dependencies: [
@@ -26,14 +27,16 @@ let package = Package(
                 .product(name: "Crypto", package: "swift-crypto", condition: .when(platforms: [.linux])),
             ]
         ),
-        .target(name: "AsomBenchCore", dependencies: ["AsomJSON"]),
+        .target(name: "AsomBenchCore", dependencies: ["AsomJSON", "AsomDSSE"]),
         .target(name: "AsomManifest", dependencies: ["AsomJSON", "AsomDSSE", "AsomBenchCore"]),
-        .target(name: "AsomConformanceKit", dependencies: ["AsomJSON", "AsomDSSE", "AsomBenchCore", "AsomManifest"]),
+        .target(name: "AsomRouterCore", dependencies: ["AsomJSON", "AsomBenchCore"]),
+        .target(name: "AsomConformanceKit", dependencies: ["AsomJSON", "AsomDSSE", "AsomBenchCore", "AsomManifest", "AsomRouterCore"]),
         .executableTarget(name: "asom-conformance", dependencies: ["AsomConformanceKit"]),
         .testTarget(name: "AsomJSONTests", dependencies: ["AsomJSON"]),
         .testTarget(name: "AsomDSSETests", dependencies: ["AsomJSON", "AsomDSSE"]),
-        .testTarget(name: "AsomBenchCoreTests", dependencies: ["AsomBenchCore", "AsomJSON"]),
+        .testTarget(name: "AsomBenchCoreTests", dependencies: ["AsomBenchCore", "AsomJSON", "AsomDSSE"]),
         .testTarget(name: "AsomManifestTests", dependencies: ["AsomManifest", "AsomBenchCore", "AsomDSSE", "AsomJSON"]),
-        .testTarget(name: "AsomConformanceTests", dependencies: ["AsomConformanceKit", "AsomJSON", "AsomDSSE"]),
+        .testTarget(name: "AsomRouterCoreTests", dependencies: ["AsomRouterCore", "AsomBenchCore", "AsomJSON"]),
+        .testTarget(name: "AsomConformanceTests", dependencies: ["AsomConformanceKit", "AsomJSON", "AsomDSSE", "AsomBenchCore", "AsomManifest"]),
     ]
 )

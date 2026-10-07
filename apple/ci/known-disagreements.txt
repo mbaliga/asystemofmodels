@@ -1,42 +1,52 @@
-# Vectors on which the Swift lane (spec-literal reading) and the JVM lane print different verdicts.
-# Explicit on purpose: apple/ci/lane_diff.py fails on any disagreement NOT listed here, and on any entry that now agrees.
-# F-1: the projection of an M04 THERMAL_DRIFT into results[].flags (see apple/ERRATA.md). The JVM lane emits the row flag
-# `thermal-drift`; benchmark.md 13.3 lists no such flag, so the Swift lane's step 15a reports DERIVATION_MISMATCH before it
-# reaches the step that decides the vector.
-M02-101 F-1
-M02-104 F-1
-M02-105 F-1
-M02-106 F-1
-M02-107 F-1
-M02-108 F-1
-M02-109 F-1
-M02-110 F-1
-M02-111 F-1
-M02-112 F-1
-M02-113 F-1
-M02-115 F-1
-M02-116 F-1
-M02-117 F-1
-M02-118 F-1
-M02-119 F-1
-M02-120 F-1
-M03-111 F-1
-M03-112 F-1
-M03-124 F-1
-M03-132 F-1
-M03-133 F-1
-M05-101 F-1
-M05-102 F-1
-M05-103 F-1
-M05-104 F-1
-M05-105 F-1
-M05-106 F-1
-M05-108 F-1
-M05-109 F-1
-M05-110 F-1
-M05-111 F-1
-M06-101 F-1
-M06-103 F-1
-M06-104 F-1
-M06-105 F-1
-M06-106 F-1
+# Vectors on which the Swift lane (spec-literal reading) and the JVM lane print different verdicts: 37 of 340 (the first Swift lane
+# diff, I0b, listed the same 37). Explicit on purpose: apple/ci/lane_diff.py fails on any disagreement NOT listed here, on any entry
+# that now agrees, on an entry without a reason, and on a duplicate; apple/ci/test_lane_diff.py shows each of those failures.
+#
+# One cause, LF-1 (apple/ERRATA.md, "Findings for the lab"): the JVM lane's results[] projection adds the row flag `thermal-drift` to a
+# row whose test drifted (design B7). benchmark.md 13.3 lists the flags of a projected row and `thermal-drift` is not among them (B7 names
+# the M04 TEST flag THERMAL_DRIFT and its effect, confidence low, which the row carries as confidence-low). On the spec text as written
+# the Swift lane is the literal reading and the lab's projection (and the 42 vectors that embed or hash it) is what differs. The flag
+# field is an "open enum", so a ruling for the other reading is possible; it would be an amendment of 13.3 plus a Swift change, not a bug
+# fix, and it is the lab owner's to make.
+# `AsomConformanceTests.testTheOnlyDifferenceInEveryListedVectorIsTheThermalDriftRowFlag` shows, for every id below, that the document's
+# own results equal the Swift projection once that one flag is removed, and the diagnostic run (ASOM_DIAGNOSTIC_DRIFT_FLAG=1) agrees with
+# the JVM lane on all vectors both print. There is NO verifier step-order difference: the verifier's order is LAB_SPEC 4.6 steps 1 to 19.
+# Five of the vectors are shadowed: their document embeds the JVM flag, so the Swift verifier stops at step 15a before it reaches the
+# step the vector tests (the lines say which step); the Swift unit tests cover those steps with a re-projected base document.
+M02-101 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M02-104 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M02-105 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M02-106 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M02-107 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M02-108 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M02-109 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M02-110 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M02-111 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M02-112 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M02-113 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M02-115 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M02-116 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M02-117 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M02-118 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M02-119 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M02-120 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M03-111 LF-1 thermal-drift row flag, shadows step 16: JVM ROLLBACK, Swift stops at step 15a
+M03-112 LF-1 thermal-drift row flag, shadows step 16: JVM EQUIVOCATION, Swift stops at step 15a
+M03-124 LF-1 thermal-drift row flag, shadows step 18: JVM TIER_INSUFFICIENT, Swift stops at step 15a
+M03-132 LF-1 thermal-drift row flag, shadows step 15b: JVM AUDIENCE_MISMATCH, Swift stops at step 15a
+M03-133 LF-1 thermal-drift row flag, shadows step 15c: JVM CONTAINER_INVALID, Swift stops at step 15a
+M05-101 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M05-102 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M05-103 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M05-104 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M05-105 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M05-106 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M05-108 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M05-109 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M05-110 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M05-111 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M06-101 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M06-103 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M06-104 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M06-105 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)
+M06-106 LF-1 thermal-drift row flag: JVM accepts, Swift rejects at step 15a (DERIVATION_MISMATCH)

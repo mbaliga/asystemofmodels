@@ -9,9 +9,9 @@ import Foundation
 /// `check` additionally compares the observed value with the vector's `expect` (a self-oracled expectation).
 public enum R3 {
     public static let supportedConfVersion = "0.2.0"
-    public static let families = ["M01", "M02", "M03", "M04", "M05", "M06"]
+    public static let families = ["M01", "M02", "M03", "M04", "M05", "M06", "M08"]
     /// Directories of lab/conformance that hold vector files of these families.
-    static let vectorDirs = ["json", "manifest", "bench"]
+    static let vectorDirs = ["json", "manifest", "bench", "router"]
 
     public enum Expect {
         case ok(JValue)
@@ -141,6 +141,7 @@ public enum R3 {
             case "M04": return try observeM04(v, policy)
             case "M05": return try observeM05(v, policy)
             case "M06": return try observeM06(v, policy)
+            case "M08": return try observeM08(v)
             default: throw ConformanceError("unknown family")
             }
         } catch let error as ConformanceError {
@@ -406,9 +407,63 @@ public enum R3 {
                     return .reject(.inconsistent)
                 }
             }
+        case "plan":
+            guard let id = v.input.member("plan")?.stringValue else { throw ConformanceError("\(v.id): no plan") }
+            guard let bytes = try RunPlan.jcsBytes(id) else { return .notImplemented("plan-unspecified") }
+            return .ok(.object(["planSha256": .string(Base64Strict.encodeURL(NodeIdentity.sha256(bytes))), "jcsBytes": .int(Int64(bytes.count))]))
+        case "pins":
+            let q1 = try BenchSet.load(.q1)
+            let l1Refused: Bool
+            do { _ = try BenchSet.load(.l1) ; l1Refused = false } catch is BenchSet.RulingRequired { l1Refused = true }
+            let l1 = try BenchSet.load(.l1, d18Ruling: true)
+            return .ok(.object([
+                "defaultSetIds": .strings(BenchSet.defaultSetIds), "l1InDefaults": .bool(BenchSet.defaultKinds.contains(.l1)),
+                "l1WithoutRulingThrows": .bool(l1Refused), "l1HasPins": .bool(!l1.pins.isEmpty), "q1Status": .string(q1.status.rawValue),
+                "q1": .array(q1.pins.map { .object(["tier": .string($0.tier), "bytes": .int($0.bytes), "sha256": .string($0.sha256)]) }),
+            ]))
+        case "fsm":
+            return .ok(.object(["edges": .strings(Governor.edges)]))
+        case "ceilings":
+            let i = v.input
+            let thermal = i.member("thermal"), power = i.member("power"), presence = i.member("presence")
+            var lowPower = false
+            if case let .bool(b)? = presence?.member("lowPowerMode") { lowPower = b }
+            let inputs = CeilingInputs(
+                platform: i.member("platform")?.stringValue ?? "", form: i.member("form")?.stringValue ?? "",
+                thermalCode: thermal?.member("code")?.intValue ?? 0, headroomPermille: thermal?.member("headroom")?.intValue,
+                batteryTempDeciC: thermal?.member("batteryTempDeciC")?.intValue, powerSource: power?.member("source")?.stringValue ?? "",
+                batteryLevelPermille: power?.member("level")?.intValue, lowPowerMode: lowPower, gpuBusyHeldMs: i.member("gpuBusyHeldMs")?.intValue ?? 0
+            )
+            return .ok(.object(["ceiling": .string(try Ceilings.evaluate(inputs).text)]))
+        case "consent":
+            return try observeConsent(v.input, id: v.id)
         default:
             return .notImplemented(kind)
         }
+    }
+
+    static func observeConsent(_ i: JValue, id: String) throws -> Observed {
+        guard let plan = i.member("plan")?.stringValue, let bytes = i.member("downloadBytes")?.intValue,
+              let mint = i.member("mintNowMs")?.intValue, let consume = i.member("consumeNowMs")?.intValue,
+              let confirm = i.member("confirm")?.stringValue else { throw ConformanceError("\(id): consent input") }
+        var optIn = false, today = false, twice = false
+        if case let .bool(b)? = i.member("t3OptInOffered") { optIn = b }
+        if case let .bool(b)? = i.member("sustainedToday") { today = b }
+        if case let .bool(b)? = i.member("consumeTwice") { twice = b }
+        let inputs = ConsentInputs(
+            plan: plan, downloadBytes: bytes, tiers: (i.member("tiers")?.elements ?? []).compactMap { $0.stringValue },
+            t3OptInOffered: optIn, sustainedToday: today
+        )
+        let text = ConsentSheet.text(inputs)
+        let shown: [UInt8] = confirm == "match" ? ConsentSheet.textSha256(text) : [UInt8](repeating: 0, count: 32)
+        var gate = ConsentGate()
+        guard case let .success(token) = gate.confirm(sheetFor: inputs, shownSha256: shown, nowMs: mint) else { return .reject(RejectCode("CONSENT_REFUSED")) }
+        let spend = i.member("consumePlan")?.stringValue ?? plan
+        var outcome = gate.consume(token, plan: spend, nowMs: consume)
+        if twice, case .success = outcome { outcome = gate.consume(token, plan: spend, nowMs: consume) }
+        guard case .success = outcome else { return .reject(RejectCode("CONSENT_REFUSED")) }
+        guard ConsentSheet.wordingIsSpecified(inputs) else { return .notImplemented("consent-text-unspecified") }
+        return .ok(.object(["textSha256": .string(NodeIdentity.sha256Hex(Array(text.utf8))), "outcome": .string("consumed")]))
     }
 
     static func sustainJSON(_ s: SustainResult) -> JValue {

@@ -57,4 +57,45 @@ public enum BenchSet {
     public static func hasBattery(form: String) -> Bool {
         ["phone", "tablet", "handheld", "laptop"].contains(form)
     }
+
+    /// The sets that are loaded without any ruling. L1 is never among them (LAB_SPEC.md section 5).
+    public static let defaultKinds: [Kind] = [.q1]
+
+    /// The spec names the L1 set but gives it no id string, and this lane invents none.
+    public static func id(of kind: Kind) -> String? { kind == .q1 ? q1Id : nil }
+
+    public static var defaultSetIds: [String] { defaultKinds.compactMap { id(of: $0) } }
+
+    public enum Kind: Sendable, Equatable {
+        case q1
+        case l1
+    }
+
+    public enum Status: String, Sendable, Equatable {
+        /// Every sha256 is a proposal until the owner confirms it ([A17]).
+        case proposed = "PROPOSED"
+        /// Named but not pinned: no hash, size or revision is known (BLOCKED(D18)).
+        case unpinned = "UNPINNED"
+    }
+
+    public struct Table: Sendable, Equatable {
+        public let kind: Kind
+        public let status: Status
+        public let pins: [PinnedTier]
+    }
+
+    public struct RulingRequired: Error, Equatable, Sendable, CustomStringConvertible {
+        public var description: String { "the L1 set is loaded only under a D18 ruling flag" }
+    }
+
+    /// Q1 loads always. L1 loads only when the caller says the D18 ruling flag is set, and then has no pins at all.
+    public static func load(_ kind: Kind, d18Ruling: Bool = false) throws -> Table {
+        switch kind {
+        case .q1:
+            return Table(kind: .q1, status: .proposed, pins: q1)
+        case .l1:
+            guard d18Ruling else { throw RulingRequired() }
+            return Table(kind: .l1, status: .unpinned, pins: [])
+        }
+    }
 }

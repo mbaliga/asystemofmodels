@@ -2,6 +2,8 @@
 /// `derive()`, the projection and `consistency()` goes through here; an overflow is a typed failure, never a wrap.
 public struct BenchArithmeticError: Error, Equatable, CustomStringConvertible {
     public let operation: String
+
+    public init(operation: String) { self.operation = operation }
     public var description: String { "arithmetic overflow or undefined result in \(operation)" }
 }
 

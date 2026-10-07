@@ -262,3 +262,98 @@ A vector that would: `tg128@d0`, three reps of 10.0 s, 10.3 s and 10.6 s (rates 
 - The M04 run-plan, governor, consent and executor-trace vectors (`plan`, `consent`, `fsm`, `ceilings`, `pins`, `trace`: 46 vectors). The assignment for I0b is derive, projection and the renderer. They are listed in `apple/ci/not-implemented.txt`, and the runner prints their count on stderr; a kind that silently vanished would show as a `jvm-only` problem in the diff.
 - `signPresentation` (the signer), the claim tracker (M08), M07 (attestation, deferred), the `OWN` pin, A2.
 - Anything on macOS: the CryptoKit path and the iOS simulator job are written and unverified (this container has neither).
+
+## Half I0c (the finish of "Not done in I0b"): readings, blocked items and findings for the lab
+
+Everything below is LAB evidence from this container (Swift 6.1, Linux, swift-crypto; no macOS, no CryptoKit run). Appended; nothing above was edited, and where an earlier line says "not built"
+(the signer in E-18, the list "Not done in I0b, on purpose") this section supersedes it. The assignment ran in two sittings: a first builder was stopped by a usage limit with the work
+uncommitted, and a second builder (this author) took the tree over, rebuilt and re-ran everything, and wrote this section. Parts that the second builder reviewed and re-ran are the whole
+suite and the gates; parts it did not re-derive from the spec line by line are named in `PROGRESS.md` ("not re-verified").
+
+### What was read, and what was not, in I0c
+
+Read: `CLAUDE.md`; `LAB_SPEC.md` 4.6, 4.7, 4.10, 5, 6.6; `benchmark.md` 5.1, 5.2, 11.1 to 11.7; `ASOM_MESH_DESIGN.md` B5, B7, B9 (the lines the specs cite); `REVIEW_ROUND3.md` R3-CLOSURE-5, R3-OVERCLAIM-1; the vector files
+`lab/conformance/bench/M04-derive.json`, `lab/conformance/router/M08-claim-tracker.json`, the lab's TEST-ONLY keys file; `lab/ERRATA.md` ERR-BENCH-3, -4 and -10 (as three lines printed by a search for the word "drift", when the drift question of F-4 was checked).
+Also seen, as single lines printed by searches: one line of `lab/bench-core/.../Project.kt` (the `thermal-drift` flag, F-1) and the file names of `lab/` sources.
+
+Not read: `lab/mesh-router/**` (the JVM claim tracker), the conformance runner's M08 and M04 adapters, `lab/bench-core/src` beyond the one line above, `lab/ERRATA.md` outside the three entries named. The M08 tracker is therefore
+a second implementation for the oracle rule of LAB_SPEC 4.10 in the sense that its author worked from the spec text and the vector files; `AsomRouterCore/ClaimTracker.swift` carries the same statement in its header, written by the first sitting's builder.
+The second builder could not verify what the first one opened beyond that header and the code itself, which shows no sign of the Kotlin shape. It is **not** independence in the strong sense: the author read the vectors' expected values (so
+the agreement on any clause a vector pinned says nothing about the spec), shares the repository with the lab, and the vectors are `oracle: self`. **No oracle tag was changed.**
+
+### Readings
+
+**E-29. The executor-trace vectors (M04-301 to -345, 26 vectors) are BLOCKED(trace).** Each pins a whole event log and a document hash. Its lines contain numbers that only the lab's `FakeBenchEngine` can produce
+(`LOAD T1 coldUs=2388000 warmUs=618760/617520/622480`, the contention and abort times such as `ABORT CHARGER_REMOVED at 165216 ms`, `SUSTAIN end reason=PLATEAU windows=25`) and the per-preset scripts behind them. benchmark.md 5.4
+gives the executor as pseudocode and benchmark.md 21 item 4 ("an injectable timing model (`a + b * bytes` per token) and a scripted thermal curve") names the fake without giving a model, a preset, a curve or the log grammar.
+A Swift executor that printed these lines would be a transcription of the expected values, so it was not written. The governor's edges (E-37) are built and tested; the executor is not.
+
+**E-30. The quick and ci run plans (M04-401, -403) are BLOCKED(plan); the standard plan (M04-402) is built.** benchmark.md 5.2 gives the standard plan as JSON, member for member; the table of 5.1 describes quick and ci in prose
+(tiers, tests, reps, no sustain). No spec text fixes their JCS members (whether `depthReps`, `sustain` or `coolDown` are absent or null, which tier lists they carry), so their `jcsBytes` and `planSha256` cannot be derived without guessing, and a guess
+checked against the vector's hash is fitting. `RunPlan.jcsValue` is `nil` for them. The standard plan reproduces M04-402 (948 JCS bytes, `U5x4LJS7...`). A document's recorded `planSha256` is still only checked for shape (E-22).
+
+**E-31. The consent sheet.** The spec gives the wording of one sheet (benchmark.md 11.1: standard, with a download and the 8B opt-in); M04-420 pins its SHA-256 and this lane reproduces it. The wording for any other sheet is **this lane's own**:
+the quick/extended/sustained/battery variants, the no-download variant, and the heat-test-again line (11.6 rule 3 gives only the label "Run the heat test again today", not where the sheet says that a heat test already ran, nor its words).
+M04-425 pins the hash of that sheet, so it is BLOCKED(consent). `ConsentSheet.wordingIsSpecified` says which inputs have spec wording. The token rules (hash of the shown text, 5 minutes, one run, one plan) are the spec's and are tested at the boundary
+(299,999 ms passes, 300,000 ms is refused).
+
+**E-32. Ceilings (benchmark.md 11.3).** The table is implemented per platform with the thresholds as written (Android headroom 950 permille, battery 42.0 and 44.0 C, battery below 200 permille; iOS thermal serious, Low Power Mode, battery below 20%; macOS serious soft,
+critical hard, laptop off AC hard; Linux code 3 soft, code 4 hard, battery 45.0 C, Deck GPU busy for 10 s). Where several ceilings hold at once the spec gives no order; this lane returns the hard before the soft one, and among hard ones thermal, then battery,
+then the rest (the nine M04 vectors each name one ceiling). The end reason names come from 6.4 where it has them (`THERMAL_SOFT`, `THERMAL_HARD`, `BATTERY_TEMP`, `CHARGER_REMOVED`). Three names are taken from the vectors, not from the spec: `BATTERY_TEMP` for a battery level under 200 permille (M04-443; 6.4 has no battery-level reason), `THERMAL_HARD` for iOS Low Power Mode (M04-444), and `DEVICE_BUSY` for the Deck's GPU rule (M04-447; 6.4 does not list it, 11.4 uses it for the third yield). The memory-pressure, Stop, backgrounded and wall-cap rows of the "all" line are events of the executor, not thresholds, and are not built (E-29); the vectors' `presence` object (`foreground`, `screenOn`, `batterySaver`) and `power.source` for non-laptops are ignored by this lane (only `lowPowerMode` is read), and no vector has `foreground: false`. "Thermal status SEVERE" is read as code 3 of 6.1.
+
+**E-33. Independence (M08).** See "What was read" above. LAB_SPEC 4.10 asks for a second implementation whose author did not read the first; the second builder cannot prove what the first one read, so the statement is: the header says the Kotlin tracker and the M08 adapter were not opened, the second builder did not open them, and the vectors' expected values were read.
+
+**E-34. Interpolation rounding of the decode curve.** 6.6 says "decodeAt ... piecewise linear" (R3-CLOSURE-5 item 10) and fixes no rounding. This lane clamps outside the curve and between two points takes
+`floor((lo.rate * (hi.ctx - p) + hi.rate * (p - lo.ctx)) / (hi.ctx - lo.ctx))`. `ClaimTrackerTests.testDecodeCurve` pins the clamps and the interpolation; the floor is the lower rate, the conservative direction for a claim that observation may only lower.
+
+**E-35. A new claim seq (6.6, "restarts W but inherits DISCREPANT").** This lane restarts the window **and** the recent observations of the discard budget, because observations of the old claim are ratios against a different claim row; strikes survive. No vector decides whether the budget restarts
+too. Recorded as a reading, and as the less conservative one for the peer: keeping the old budget would be harsher.
+
+**E-36. How the vectors name the claim key.** The M08 inputs carry no claim key; `acceptedSha`, `heldBackend` and `heldCommit` appear as `null` or as a value. The adapter reads `null` as "equal to the claim row's" and a value as "different from it". This is a reading of the vector format, not of the spec.
+
+**E-37. Governor edges (benchmark.md 11.4 with B9).** The 21 edges are the ones M04-430 lists, and the table equals that list. The diagram of 11.4 draws most of them; four are not drawn and are taken from the vector (and from "any ... -> ABORTING"): `PREFLIGHT>ABORTING`, `PREPARING>ABORTING`, `COOLING>FINALIZING` and `YIELDED>FINALIZING` with the spec's "3rd yield". Every other pair is refused (`GovernorTransitionRefused`), a test sweeps all 100 pairs.
+`ABORTING>FINALIZING>DONE` is design B9; the diagram's `ABORTED` state is not a state of this lane.
+
+**E-38. The tracker's link estimate is the warm-path one (R3-CLOSURE-5 item 11).** `predicted` uses `rtt + ceilDiv(B * 8, kbps)` with no cold-handshake term, because `tBody` is taken after the handshake and a cold term would raise the ratio in the peer's favour. `LinkEstimate.sessionWarm` is carried and never read there.
+
+**E-39. The padding residual (R3-OVERCLAIM-1) is real and is not fixed here.** `outBytes` counts the bytes of the answer text as received, so padding that the owner cannot see (trailing whitespace, newlines, zero-width characters) counts. The spec's remedy (6.6, M08-017: "at most `bptCap / bpt` = 2") is not what the mechanism gives
+(the inflation is bounded by `maxTokens * bptCap / trueBytes` and by `RATIO_CAP`). This lane implements 6.6 and M08-017/-018 as written; the review's suggested normalisation is not in 6.6, so it is not built. `effRatio = min(1000, ...)` still means that a tracked rate never exceeds the claim.
+
+**E-40. The signer (LAB_SPEC 4.7).** `ManifestSigner.signPresentation` follows the pseudocode: `own` needs a 32-byte challenge and the node key, `issuedAtMs = nowMs`, `expiresAtMs = nowMs + 600000`; `file` is signed by the key the caller passes (tests pass the lab's TEST-ONLY per-export keys; production passes `ES256Signer.generateEphemeral()`),
+projects the body with `FileProjection`, and sets `issuedAtMs` to the UTC day; the node key is never used for a file. The container comes from `DSSEEnvelope.seal` (low-S, raw r||s, strict 91-byte SPKI, JCS integer profile). The result is verified by `ManifestVerifier` in the same mode before it is returned; a reject
+is `MANIFEST_UNAVAILABLE` and nothing is returned. `SelfCheck.productionKeys` is true by default, so a document under a published TEST-ONLY key is refused unless the caller says it is a test. `nextSeq` is `max(stored + 1, nowMs / 1000)`; making `seq` durable before the first signature is the caller's.
+The discarding of the per-export key and the "when `JCS(bodyOwn)` changes" test are the caller's too. ES256 signing is random-nonce here (swift-crypto; CryptoKit on Apple): signature bytes are never compared across lanes, only verification is. The test keys are read from `lab/conformance/keys/TEST-ONLY-keys.json` at test time; no private scalar is in `Sources/` (checked by a search for all four `d_hex` values).
+The CryptoKit signing path is **UNVERIFIED** (not run here).
+
+**E-41. The cross-lane fixtures (`apple/crosslane`).** 37 documents the Swift signer made (23 accepted by this lane's verifier, 14 rejected for twelve different codes; the rejected ones that the signer refuses to emit are made with `DSSEEnvelope.seal` plus a deliberate edit). The JVM lane's `lines M02,M03` over them (`apple/ci/crosslane.py`) gives, for all 37, the same verdict
+as this lane and as the file records. The body is the own-form body of the lab's M02-114 (the accept vector whose `results` both lanes agree on, so F-1 does not touch the fixtures). A regeneration changes every signature byte and no payload byte; the committed files are reviewed artefacts, and a test checks that they still verify, that a regeneration gives the same payloads, and that exactly one committed signature is high-S
+(the deliberate twin, M02-902). Only verdicts cross the lines interface: `pin`, `tier` and `bodyDigest` in a fixture's `expect.ok` are this lane's own observation.
+
+### Findings for the lab
+
+The lab was not edited. Each finding names the vector, the spec section and the evidence.
+
+**LF-1. The row flag `thermal-drift` is in the JVM projection and not in benchmark.md 13.3. 37 vectors differ in verdict, 5 more in value.**
+Vectors: M02-101, -104 to -113, -115 to -120; M03-111, -112, -124, -132, -133; M05-101 to -106, -108 to -111; M06-101, -103 to -106 (37, verdicts: JVM accepts or gives the later reject, Swift says `DERIVATION_MISMATCH` at step 15a), and the values of M04-042, M06-201 to -204.
+Spec: benchmark.md 13.3 lists the flags of a projected row (`flags`, "open enum": `charging`, `thermal-throttled`, `background-load`, `low-runs`, `unstable`, `warm-start`, `numerics-*`, `confidence-<class>`); design B7 names the M04 test flag THERMAL_DRIFT and says it caps confidence at low; nothing says a row carries `thermal-drift`. `lab/ERRATA.md` (ERR-BENCH-3) records the drift rule and not the flag.
+Evidence: `asom-conformance check` (spec-literal) reports 42 mismatches; with `ASOM_DIAGNOSTIC_DRIFT_FLAG=1` it reports 0 over 370 vectors; `AsomConformanceTests.testTheOnlyDifferenceInEveryListedVectorIsTheThermalDriftRowFlag` shows for every listed vector that the document's `results` equal the Swift projection once that one flag is removed; the lane diff of the diagnostic lines is empty (370 agree).
+**This is not a verifier step-order difference**: the verifier's order is LAB_SPEC 4.6 steps 1 to 19 in both lanes; for the five shadowed vectors (M03-111, -112, -124, -132, -133) the JVM document embeds the same results, so the Swift lane stops at 15a before the step the vector tests. A ruling is the lab owner's: either 13.3 gains `thermal-drift` (and this lane gains one line), or the lab drops the flag and regenerates the documents and hashes that contain it.
+Until then the Swift lane stays spec-literal and the 37 are listed in `apple/ci/known-disagreements.txt` with this reason.
+
+**LF-2. The minimum number of kept reps for drift: the lab and this lane read B7 differently, and no vector decides it (F-4).** `lab/ERRATA.md` ERR-BENCH-3 says strictly slowing at every step needs 4 kept reps and first-versus-last needs 3; E-23 of this lane takes 3 and 2. design B7 gives no minimum. A vector that decides it: `tg128@d0`, three reps of 10.0 s, 10.3 s and 10.6 s (drift here, medium in the lab). Neither lane's reading is changed.
+
+**LF-3. M05-211's description says "warn (1.3%)" and the expected text says `pass (1.2% from reference)` (F-6).** The text is consistent with benchmark.md 3.4; the description is off. No verdict difference.
+
+**LF-4. The executor traces, the quick and ci plans, and the run-today consent sheet cannot be reproduced from the spec (E-29 to E-31).** 29 vectors, `oracle: self`, whose expected values come from the lab's fake engine, plan data and sheet wording that no spec section states. Suggested: publish the fake's timing model, presets and log grammar, the JCS of quick and ci, and the run-today sheet in benchmark.md, or mark those vectors as lab-implementation vectors rather than spec vectors.
+
+**LF-5. M04-430 pins four edges that the diagram of benchmark.md 11.4 does not draw (E-37).** `PREFLIGHT>ABORTING`, `PREPARING>ABORTING`, `COOLING>FINALIZING`, `YIELDED>FINALIZING`. The first two follow from "any ... --> ABORTING"; the other two are readings. A one-line amendment of the diagram would settle them.
+
+### Mutation checks (I0c code)
+
+Recorded in `PROGRESS.md` ("Apple lane I0c gate"), with the mutants and what killed them.
+
+## Not done after I0c
+
+- The 26 executor traces, the quick and ci plans and the run-today consent sheet (BLOCKED, E-29 to E-31; `apple/ci/not-implemented.txt`).
+- M07 (attestation, deferred), the `OWN` pin state (E-28), A2.
+- Anything on macOS: the CryptoKit paths (the verifier and the signer), the iOS simulator job, and every hosted-CI job of `apple-ios.yml` are written and unverified (this container has neither a Mac nor a GitHub Actions run).
