@@ -349,11 +349,12 @@ class BenchSession(
         val t0 = now()
         var endReason: String
         var idx = 0
+        var base = t0
         val windowMicros = cfg.windowMs * 1000L
         fun draft(reason: String) = BSustain(pin.tier, cfg.windowMs, capMs, reason, onsetHeadroom(windows, headrooms), windows.toList())
         try {
             while (true) {
-                val winEnd = t0 + (idx + 1) * windowMicros
+                val winEnd = base + (idx + 1) * windowMicros
                 var tokens = 0L
                 var decMicros = 0L
                 var maxCode = 0
@@ -383,6 +384,20 @@ class BenchSession(
                     }
                     throw e
                 }
+                if (tokens == 0L) {
+                    // The window is dropped (the document needs 1 or more tokens in a window). While there is no window yet the grid restarts here, so the first kept window still starts at t = 0.
+                    if (windows.isEmpty()) {
+                        base = now()
+                        idx = 0
+                    } else {
+                        idx++
+                    }
+                    if ((now() - t0) / 1000L >= capMs) {
+                        endReason = "TIME_CAP"
+                        break
+                    }
+                    continue
+                }
                 windows += BWindow(idx * cfg.windowMs, tokens, maxOf(decMicros, 1L), maxCode)
                 headrooms += host.probes.thermal().headroom10sPermille?.toLong()
                 idx++
@@ -410,6 +425,10 @@ class BenchSession(
             throw e
         }
         cleanupModel(model)
+        if (windows.isEmpty()) {
+            trace += "SUSTAIN skipped (no window produced a token)"
+            return null
+        }
         trace += "SUSTAIN end reason=$endReason windows=${windows.size}"
         return draft(endReason)
     }
