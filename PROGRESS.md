@@ -2064,3 +2064,29 @@ $ ./gradlew jvmTest                          BUILD SUCCESSFUL; 140 tests, 0 fail
 ```
 
 Mutation check: 23 mutants of the session and limiter sources killed, 1 equivalent mutant (removed), 2 survived the first versions of the tests and were killed after strengthening them; list in ERR-FX2 closing paragraph. NOT RUN: Windows, hosted CI, `swift test` (outside this track).
+## Gate: Apple lane review fixes ASC-01..ASC-10 (track fix-apple, 2026-10-07)
+
+Evidence: LAB, oracle: self, NOT DEVICE EVIDENCE. Linux Swift 6.1 only; macOS and CryptoKit were not run. Output below is real. Readings and residuals are in `apple/ERRATA.md` ERR-FX2-ASC01..ASC10.
+
+Findings: ASC-01 FIXED (a tripped discard budget no longer lifts DISCREPANT to WEAK), ASC-02 FIXED (spent state lives in the token), ASC-03 FIXED (hash length fold), ASC-04 FIXED with a stated limit (node-key guard only binds when the node key is passed), ASC-05 PARTIAL (ipados fixed; windows and ubuntu-touch stay refused; iOS low-battery label kept, needs a lab ruling), ASC-07 FIXED as a SPEC_GAP reading (token carries the ticks; a caller that passes none gets `heatTestPermitted == false` when the sheet needs the tick), ASC-09 FIXED, ASC-10 FIXED.
+
+```
+$ swift test --package-path apple
+Executed 243 tests, with 0 failures (0 unexpected)          (was 235; 8 new tests)
+$ asom-conformance check M01,M02,M03,M04,M05,M06,M08
+checked 427, mismatches 47     (unchanged: the 42 + 5 LF-1 ones; 0 in M08)
+$ conformance-runner lines M01,M02,M03,M04,M05,M06,M08   (JDK 21, installDist, -Dasom.repoRoot)
+456 lines
+$ python3 apple/ci/lane_diff.py jvm.lines swift.lines --known ... --not-implemented ...
+vectors: jvm=456 swift=427 agree=385 disagree=42 (known 42) jvm-only=29 (not implemented 29)
+$ python3 apple/ci/test_lane_diff.py -> OK
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py -> law: OK
+$ ./gradlew jvmTest --max-workers=2 --offline -> BUILD SUCCESSFUL (every test task FROM-CACHE: no JVM source was touched)
+```
+
+Fail-first (each run before the fix, real failures): `PeerClaimBookTests.testATrippedBudgetNeverTakesAWindowOutOfDiscrepant` ("weak" is not equal to "discrepant"), `PeerClaimBookTests.testTruncatingEveryFileDoesNotEscapeThePenaltyOrTheDiscOf400` (count 1 not 2, penalty nil, disc 700 not 400), `ClaimTrackerTests.testATrackedRateIsNeverAboveTheClaimAndADiscOutsideZeroToOneThousandIsRefused` (did not throw for disc -1, 1001, 1500), `ProtocolTests.testASpentTokenIsSpentInEveryGateAndEveryCopyOfTheGate` (copy and other gate both succeeded), `ProtocolTests.testAHashWithTheRightPrefixAndExtraBytesMintsNothing` ("minted for a hash with 256 extra bytes"), `ProtocolTests.testIPadOSHasTheIOSHardCeilingsAndPlatformsWithoutARowAreRefused` (UnknownCeilingPlatform for ipados, 7 times), `SignerTests.testAFileExportIsNeverSignedByTheNodeKey` (did not throw, twice), `SignerTests.testSeqRule` (nextSeq nil/0 gave 0; 2^53, negative clock gave a value). `ProtocolTests.testTheTokenCarriesTheTicksAndRefusesWhatTheSheetDidNotOffer` uses the new API, so before the change it did not compile; its evidence is the mutants below.
+
+Mutation check (15 mutants, each run against the matching `swift test --filter` suite; 14 killed, 1 survived): ASC-01 budget overrides DISCREPANT (killed, 11 failures); ASC-10 disc guard removed (killed), guard bound widened to 1001 (killed), final `min(rate, claimRate)` removed (SURVIVED: unreachable behind the guard, kept as defence in depth); ASC-02 spend never records (killed); ASC-03 length folded again (killed); ASC-07 unoffered opt-in accepted, rerun tick not enforced, `heatTestPermitted` always true, ticks dropped from the token (all killed); ASC-05 ipados row removed (killed); ASC-04 node-key guard removed (killed); ASC-09 floor of 1 removed, range cap removed, negative clock accepted (all killed). Each mutant was restored; the final run above is on the restored sources.
+
+Not done: no M08 vector for ASC-01 was added (the vector files are the lab's); a scratch vector passed `asom-conformance check` here and the JVM runner's `lines` mode prints verdicts only, so the JVM lane's state value for that case was not observed. The conformance adapter (`R3Conformance.swift`, outside this track) still calls `confirm` without ticks. Existing assertions edited, not deleted: `testDiscCountsFilesDiscrepantByInheritanceToo` (it encoded the ASC-01 defect) and the `(nil, 0) -> 0` row of `testSeqRule` (the ASC-09 defect).

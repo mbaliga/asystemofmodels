@@ -136,6 +136,78 @@ final class ProtocolTests: XCTestCase {
         XCTAssertEqual(counts["hash-binding"], 32)
     }
 
+    func testASpentTokenIsSpentInEveryGateAndEveryCopyOfTheGate() throws {
+        let inputs = standard()
+        let right = ConsentSheet.textSha256(ConsentSheet.text(inputs))
+        var gate = ConsentGate()
+        let token = try XCTUnwrap(try? gate.confirm(sheetFor: inputs, shownSha256: right, nowMs: 0).get())
+        var copy = gate
+        var other = ConsentGate()
+        XCTAssertNoThrow(try gate.consume(token, plan: "standard", nowMs: 1).get())
+        XCTAssertThrowsError(try copy.consume(token, plan: "standard", nowMs: 2).get(), "a copy of the gate")
+        XCTAssertThrowsError(try other.consume(token, plan: "standard", nowMs: 2).get(), "another gate")
+        XCTAssertThrowsError(try gate.consume(token, plan: "standard", nowMs: 2).get(), "the same gate")
+        var gate2 = ConsentGate()
+        let token2 = try XCTUnwrap(try? gate2.confirm(sheetFor: inputs, shownSha256: right, nowMs: 0).get())
+        var copy2 = gate2
+        XCTAssertNoThrow(try copy2.consume(token2, plan: "standard", nowMs: 1).get())
+        XCTAssertThrowsError(try gate2.consume(token2, plan: "standard", nowMs: 1).get())
+    }
+
+    func testAHashWithTheRightPrefixAndExtraBytesMintsNothing() throws {
+        let inputs = standard()
+        let right = ConsentSheet.textSha256(ConsentSheet.text(inputs))
+        var gate = ConsentGate()
+        var refused = 0
+        for extra in [1, 2, 31, 224, 255, 256, 257, 480, 512, 768, 1024, 4096] {
+            let long = right + [UInt8](repeating: 0xAB, count: extra)
+            guard case .failure = gate.confirm(sheetFor: inputs, shownSha256: long, nowMs: 0) else { return XCTFail("minted for a hash with \(extra) extra bytes") }
+            refused += 1
+        }
+        XCTAssertEqual(refused, 12)
+        for keep in [0, 1, 31] {
+            guard case .failure = gate.confirm(sheetFor: inputs, shownSha256: Array(right.prefix(keep)), nowMs: 0) else { return XCTFail("minted for a hash cut to \(keep)") }
+            refused += 1
+        }
+        XCTAssertEqual(refused, 15)
+        guard case .success = gate.confirm(sheetFor: inputs, shownSha256: right, nowMs: 0) else { return XCTFail("the right hash must still mint") }
+        XCTAssertFalse(ConsentGate.constantTimeEqual([1, 2, 3], [1, 2, 3] + [UInt8](repeating: 0, count: 256)))
+        XCTAssertTrue(ConsentGate.constantTimeEqual([], []))
+        XCTAssertTrue(ConsentGate.constantTimeEqual(right, right))
+    }
+
+    func testTheTokenCarriesTheTicksAndRefusesWhatTheSheetDidNotOffer() throws {
+        var cases = 0
+        func mint(_ inputs: ConsentInputs, _ ticks: ConsentTicks?) -> Result<ConsentToken, ConsentRefused> {
+            var gate = ConsentGate()
+            return gate.confirm(sheetFor: inputs, shownSha256: ConsentSheet.textSha256(ConsentSheet.text(inputs)), nowMs: 0, ticks: ticks)
+        }
+        // T3 offered: ticked and unticked are different tokens.
+        let offered = standard()
+        let withT3 = try XCTUnwrap(try? mint(offered, ConsentTicks(optIns: [ConsentTicks.t3])).get())
+        XCTAssertEqual(withT3.optIns, ["T3"]); cases += 1
+        let without = try XCTUnwrap(try? mint(offered, ConsentTicks()).get())
+        XCTAssertEqual(without.optIns, []); cases += 1
+        // Unknown names and an opt-in the sheet did not offer are refused.
+        XCTAssertThrowsError(try mint(offered, ConsentTicks(optIns: ["T4"])).get()); cases += 1
+        XCTAssertThrowsError(try mint(standard(optIn: false), ConsentTicks(optIns: ["T3"])).get()); cases += 1
+        XCTAssertNoThrow(try mint(standard(optIn: false), ConsentTicks()).get()); cases += 1
+        // The rerun tick: required when a sustained phase ran today and the plan has a heat phase.
+        let today = standard(today: true)
+        XCTAssertTrue(ConsentSheet.rerunTickRequired(today))
+        XCTAssertFalse(ConsentSheet.rerunTickRequired(standard()))
+        XCTAssertFalse(ConsentSheet.rerunTickRequired(ConsentInputs(plan: "quick", downloadBytes: 0, tiers: [], t3OptInOffered: false, sustainedToday: true)))
+        XCTAssertThrowsError(try mint(today, ConsentTicks()).get(), "no tick, no token"); cases += 1
+        let ticked = try XCTUnwrap(try? mint(today, ConsentTicks(rerunHeatToday: true)).get())
+        XCTAssertTrue(ticked.rerunHeatToday); XCTAssertTrue(ticked.heatTestPermitted); cases += 1
+        XCTAssertThrowsError(try mint(standard(), ConsentTicks(rerunHeatToday: true)).get(), "a tick the sheet did not have"); cases += 1
+        // A caller that reports no ticks mints a token that cannot start a heat phase when the tick was required, and an ordinary one otherwise.
+        let unreported = try XCTUnwrap(try? mint(today, nil).get())
+        XCTAssertFalse(unreported.heatTestPermitted); XCTAssertEqual(unreported.optIns, []); cases += 1
+        XCTAssertTrue(try XCTUnwrap(try? mint(standard(), nil).get()).heatTestPermitted); cases += 1
+        XCTAssertGreaterThanOrEqual(cases, 10, "non-vacuity")
+    }
+
     // MARK: Governor
 
     func testEveryPairIsDecidedAndExactlyTheTwentyOneEdgesAreAllowed() {
@@ -274,6 +346,31 @@ final class ProtocolTests: XCTestCase {
         XCTAssertThrowsError(try Ceilings.evaluate(inputs("windows")))
         XCTAssertEqual(Ceiling.soft("THERMAL_SOFT").text, "soft THERMAL_SOFT")
         XCTAssertEqual(Ceiling.none.text, "none")
+    }
+
+    func testIPadOSHasTheIOSHardCeilingsAndPlatformsWithoutARowAreRefused() throws {
+        var checked = 0
+        for platform in ["ios", "ipados"] {
+            for (i, want) in [
+                (inputs(platform, form: "tablet", code: 1), Ceiling.none),
+                (inputs(platform, form: "tablet", code: 1, headroom: 999, batteryDeciC: 500), Ceiling.none),
+                (inputs(platform, form: "tablet", code: 3), Ceiling.hard("THERMAL_HARD")),
+                (inputs(platform, form: "tablet", code: 4), Ceiling.hard("THERMAL_HARD")),
+                (inputs(platform, form: "tablet", code: 1, lowPower: true), Ceiling.hard("THERMAL_HARD")),
+                (inputs(platform, form: "tablet", level: 199), Ceiling.hard("BATTERY_TEMP")),
+                (inputs(platform, form: "tablet", level: 200), Ceiling.none),
+            ] {
+                XCTAssertEqual(try Ceilings.evaluate(i), want, "\(platform) \(i)")
+                checked += 1
+            }
+        }
+        XCTAssertEqual(checked, 14)
+        // benchmark.md 11.3 has no row for these; a refusal is the only reading that cannot let a run past a ceiling nobody defined.
+        for platform in ["windows", "ubuntu-touch", "", "IPADOS", "iPadOS"] {
+            XCTAssertThrowsError(try Ceilings.evaluate(inputs(platform)), platform) { XCTAssertEqual($0 as? UnknownCeilingPlatform, UnknownCeilingPlatform(platform: platform)) }
+            checked += 1
+        }
+        XCTAssertEqual(checked, 19)
     }
 
     // MARK: Pins

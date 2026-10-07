@@ -363,6 +363,28 @@ final class ClaimTrackerTests: XCTestCase {
         XCTAssertThrowsError(try CapRef.rate(signedReferenceP90: Int64.max, classCeiling: 1))
     }
 
+    func testATrackedRateIsNeverAboveTheClaimAndADiscOutsideZeroToOneThousandIsRefused() throws {
+        var refused = 0
+        for disc in [Int64(-1), 1001, 1500, Int64.max, Int64.min] {
+            XCTAssertThrowsError(try view(tracker(), disc: disc), "disc \(disc)") { XCTAssertTrue($0 is BenchArithmeticError) }
+            refused += 1
+        }
+        XCTAssertEqual(refused, 5)
+        var bounded = 0
+        for disc in [Int64(0), 1, 400, 700, 1000] {
+            for ratios in [[Int64](), [900], [5000, 5000], [5000, 5000, 5000], [1000, 1000, 1000, 1000, 1000]] {
+                let v = try view(tracker(ratios: ratios), disc: disc)
+                XCTAssertLessThanOrEqual(v.tracked.prefill, 100_000)
+                XCTAssertLessThanOrEqual(v.tracked.decodeAtP, 20_000)
+                XCTAssertLessThanOrEqual(v.tracked.steady, 20_000)
+                bounded += 1
+            }
+        }
+        XCTAssertEqual(bounded, 25)
+        XCTAssertEqual(try view(tracker(), disc: 1000).tracked, TrackedRates(prefill: 100_000, decodeAtP: 20_000, steady: 20_000), "disc 1000 is the claim itself")
+        XCTAssertEqual(try view(tracker(), disc: 0).tracked, TrackedRates(prefill: 0, decodeAtP: 0, steady: 0))
+    }
+
     // MARK: Inheritance across claim seqs
 
     func testANewClaimSeqRestartsTheWindowAndInheritsDiscrepantUntilTenGoodObservations() throws {

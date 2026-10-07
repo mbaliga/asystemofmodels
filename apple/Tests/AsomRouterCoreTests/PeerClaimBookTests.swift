@@ -177,10 +177,16 @@ final class PeerClaimBookTests: XCTestCase {
         ], penalty: nil)
         XCTAssertEqual(notBad.discrepantFileCount, 0)
         XCTAssertEqual(notBad.discPermille(atWallMs: 1000), 700)
-        // A tripped budget makes a file WEAK, so it is not counted.
+        // A tripped budget demotes to WEAK and never promotes (ERR-FX2-ASC01): a file whose ratios say DISCREPANT stays counted, a file whose ratios
+        // say WEAK or CORROBORATED is WEAK and not counted.
         let truncated = (0..<4).map { _ in RecentObservation(kept: false, ratio: 10, outBytes: 50) }
-        let weak = PeerClaimBook(files: [
+        let stillBad = PeerClaimBook(files: [
             "A": ClaimTracker(window: [100, 100, 100, 100, 100], recent: truncated, strikes: 0, inheritedDiscrepant: false),
+            "B": ClaimTracker(window: [100, 100, 100, 100, 100], recent: [], strikes: 0, inheritedDiscrepant: false),
+        ], penalty: nil)
+        XCTAssertEqual(stillBad.discrepantFileCount, 2)
+        let weak = PeerClaimBook(files: [
+            "A": ClaimTracker(window: [900, 900, 900, 900, 900], recent: truncated, strikes: 0, inheritedDiscrepant: false),
             "B": ClaimTracker(window: [100, 100, 100, 100, 100], recent: [], strikes: 0, inheritedDiscrepant: false),
         ], penalty: nil)
         XCTAssertEqual(weak.discrepantFileCount, 1)
@@ -199,6 +205,55 @@ final class PeerClaimBookTests: XCTestCase {
         // A file the book has never seen is a no-op.
         book.onNewClaimSeq(file: "Z")
         XCTAssertNil(book.files["Z"])
+    }
+
+    // MARK: ERR-FX2-ASC01: the discard budget demotes and never promotes
+
+    func testATrippedBudgetNeverTakesAWindowOutOfDiscrepant() throws {
+        var t = ClaimTracker()
+        for _ in 0..<5 { t.onObservation(try result()) }
+        XCTAssertEqual(try state(t).state, .discrepant)
+        let truncated = try result(bytes: 100, elapsed: 100)
+        XCTAssertEqual(truncated.discard, .short)
+        for _ in 0..<6 { t.onObservation(truncated) }
+        let v = try state(t)
+        XCTAssertTrue(v.budgetTripped)
+        XCTAssertEqual(v.state, .discrepant, "5 kept ratios of 500 are DISCREPANT; truncating answers cannot improve that to WEAK")
+        // The clamp of a tripped budget still applies to the rates.
+        XCTAssertLessThanOrEqual(v.tracked.prefill, 50_000)
+        // A new claim seq of the truncating peer still inherits DISCREPANT.
+        t.onNewClaimSeq()
+        XCTAssertTrue(t.inheritedDiscrepant)
+        XCTAssertEqual(try state(t).state, .discrepant)
+        // The same budget on a WEAK window (best 700) is WEAK and on a CORROBORATED window is WEAK: demotion still works.
+        for ratio in [Int64(700), 900] {
+            let w = ClaimTracker(window: [Int64](repeating: ratio, count: 5), recent: (0..<6).map { _ in RecentObservation(kept: false, ratio: 5, outBytes: 100) }, strikes: 0, inheritedDiscrepant: false)
+            XCTAssertEqual(try state(w).state, .weak)
+        }
+        let unverified = ClaimTracker(window: [900, 900], recent: (0..<6).map { _ in RecentObservation(kept: false, ratio: 5, outBytes: 100) }, strikes: 0, inheritedDiscrepant: false)
+        XCTAssertEqual(try state(unverified).state, .weak)
+    }
+
+    func testTruncatingEveryFileDoesNotEscapeThePenaltyOrTheDiscOf400() throws {
+        var book = PeerClaimBook()
+        try feed(&book, file: "A", count: 5, at: 1000)
+        try feed(&book, file: "A", count: 6, at: 1000, bytes: 100, elapsed: 100)
+        XCTAssertNil(book.penalty)
+        try feed(&book, file: "B", count: 5, at: 2000)
+        XCTAssertEqual(book.discrepantFileCount, 2)
+        XCTAssertEqual(book.penalty, DiscPenalty(untilWallMs: 604_802_000, repeats: 1))
+        try feed(&book, file: "B", count: 6, at: 2000, bytes: 100, elapsed: 100)
+        XCTAssertEqual(book.discrepantFileCount, 2, "both files still DISCREPANT after the truncated answers")
+        XCTAssertEqual(book.discPermille(atWallMs: 604_802_000), 400)
+        // Truncating from the start: two files with 5 slow observations each, each also with 6 short answers, latch the same penalty.
+        var other = PeerClaimBook()
+        for file in ["A", "B"] {
+            try feed(&other, file: file, count: 5, at: 3000)
+            try feed(&other, file: file, count: 6, at: 3000, bytes: 100, elapsed: 100)
+        }
+        XCTAssertEqual(other.discrepantFileCount, 2)
+        XCTAssertEqual(other.penalty, DiscPenalty(untilWallMs: 604_803_000, repeats: 1))
+        XCTAssertEqual(other.discPermille(atWallMs: 3000), 400)
     }
 
     func testPenaltyDurationSaturatesInsteadOfTrapping() throws {

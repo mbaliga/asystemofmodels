@@ -174,6 +174,21 @@ final class SignerTests: XCTestCase {
         XCTAssertFalse(NodeIdentity.testOnlyNodeIds.contains(a.nodeId))
     }
 
+    func testAFileExportIsNeverSignedByTheNodeKey() throws {
+        let key1 = try labKey("key1"), key3 = try labKey("key3")
+        XCTAssertThrowsError(try ManifestSigner.signPresentation(
+            bodyOwn: try ownBody(), audience: .file, challenge: nil, nodeKey: key1.signer, exportKey: key1.signer, nowMs: Fixture.nowMs, check: check
+        )) { XCTAssertEqual($0 as? ManifestSigner.Failure, .exportKeyIsNodeKey) }
+        for node in [key1.signer, nil] as [ES256Signer?] {
+            let signed = try ManifestSigner.signPresentation(bodyOwn: try ownBody(), audience: .file, challenge: nil, nodeKey: node, exportKey: key3.signer, nowMs: Fixture.nowMs, check: check)
+            XCTAssertNotEqual(signed.nodeId, key1.nodeId)
+        }
+        let sameKeyAgain = try labKey("key1")
+        XCTAssertThrowsError(try ManifestSigner.signPresentation(
+            bodyOwn: try ownBody(), audience: .file, challenge: nil, nodeKey: key1.signer, exportKey: sameKeyAgain.signer, nowMs: Fixture.nowMs, check: check
+        )) { XCTAssertEqual($0 as? ManifestSigner.Failure, .exportKeyIsNodeKey) }
+    }
+
     func testAFileExportUnderATestOnlyKeyIsRefusedByAProductionSigner() throws {
         let key3 = try labKey("key3")
         XCTAssertThrowsError(try ManifestSigner.signPresentation(
@@ -195,11 +210,25 @@ final class SignerTests: XCTestCase {
     func testSeqRule() throws {
         var checked = 0
         for (stored, now, want) in [(nil, 1_790_676_060_000, 1_790_676_060), (Int64?(5), 1_790_676_060_000, 1_790_676_060), (Int64?(1_790_676_060), 1_790_676_060_999, 1_790_676_061),
-                                    (Int64?(1_790_676_100), 1_790_676_060_000, 1_790_676_101), (Int64?(0), 0, 1), (nil, 0, 0)] as [(Int64?, Int64, Int64)] {
+                                    (Int64?(1_790_676_100), 1_790_676_060_000, 1_790_676_101), (Int64?(0), 0, 1), (nil, 0, 1), (nil, 999, 1), (nil, 1000, 1), (nil, 1999, 1),
+                                    (Int64?(0), 999, 1), (Int64?(9_007_199_254_740_990), 0, 9_007_199_254_740_991)] as [(Int64?, Int64, Int64)] {
             XCTAssertEqual(try ManifestSigner.nextSeq(stored: stored, nowMs: now), want, "stored \(String(describing: stored)) now \(now)")
             checked += 1
         }
-        XCTAssertEqual(checked, 6)
+        XCTAssertEqual(checked, 11)
         XCTAssertThrowsError(try ManifestSigner.nextSeq(stored: Int64.max, nowMs: 0))
+        for (stored, now) in [(Int64?(9_007_199_254_740_991), Int64(0)), (Int64?(9_007_199_254_740_991), 9_007_199_254_740_992_000), (nil, 9_007_199_254_740_992_000), (Int64?(Int64.max - 1), 0)] {
+            XCTAssertThrowsError(try ManifestSigner.nextSeq(stored: stored, nowMs: now), "\(String(describing: stored)) \(now)") { XCTAssertEqual($0 as? ManifestSigner.Failure, .seqOutOfRange) }
+            checked += 1
+        }
+        for now in [Int64(-1), -5000, Int64.min] {
+            XCTAssertThrowsError(try ManifestSigner.nextSeq(stored: nil, nowMs: now)) { XCTAssertEqual($0 as? ManifestSigner.Failure, .clockInvalid) }
+            XCTAssertThrowsError(try ManifestSigner.nextSeq(stored: 7, nowMs: now)) { XCTAssertEqual($0 as? ManifestSigner.Failure, .clockInvalid) }
+            checked += 2
+        }
+        XCTAssertEqual(checked, 21)
+        for (stored, now) in [(nil, Int64(0)), (nil, 999), (Int64?(0), 0), (Int64?(41), 3_000)] as [(Int64?, Int64)] {
+            XCTAssertTrue((1...9_007_199_254_740_991).contains(try ManifestSigner.nextSeq(stored: stored, nowMs: now)))
+        }
     }
 }

@@ -17,6 +17,10 @@ public enum ManifestSigner {
         case missingExportKey
         /// The clock is before 1970; a day-truncated time would be negative.
         case clockInvalid
+        /// The per-export key of a file export is the node identity key: the export would be linkable to the node (LAB_SPEC 4.7).
+        case exportKeyIsNodeKey
+        /// `nextSeq` would hand out a value outside the decoder's range 1...2^53-1.
+        case seqOutOfRange
         /// A body the file projection refuses (the code is the verifier's).
         case projection(RejectCode)
         /// The self-check refused the document it had just made. Typed `MANIFEST_UNAVAILABLE` in the spec; nothing is sent.
@@ -27,6 +31,8 @@ public enum ManifestSigner {
             case .challengeRequired: return "MANIFEST_UNAVAILABLE: an own presentation needs a 32-byte challenge"
             case .missingExportKey: return "MANIFEST_UNAVAILABLE: a file export needs a per-export key"
             case .clockInvalid: return "MANIFEST_UNAVAILABLE: the clock is before 1970"
+            case .exportKeyIsNodeKey: return "MANIFEST_UNAVAILABLE: a file export is never signed by the node key"
+            case .seqOutOfRange: return "MANIFEST_UNAVAILABLE: the next seq is outside 1...2^53-1"
             case let .projection(code): return "MANIFEST_UNAVAILABLE: the file projection refused the body (\(code.rawValue))"
             case let .manifestUnavailable(code): return "MANIFEST_UNAVAILABLE: self-check reject \(code.rawValue)"
             }
@@ -62,18 +68,25 @@ public enum ManifestSigner {
         }
     }
 
-    /// `seq = max(stored + 1, nowMs / 1000)` (LAB_SPEC.md 4.7, own only). Writing it durably before the first signature is the caller's.
+    /// `seq = max(stored + 1, nowMs / 1000)` (LAB_SPEC.md 4.7, own only), kept inside the decoder's range 1...2^53-1 so that a value the caller
+    /// writes durably is one the verifier accepts. Writing it durably before the first signature is the caller's.
     public static func nextSeq(stored: Int64?, nowMs: Int64) throws -> Int64 {
-        let clock = nowMs / 1000
-        guard let stored else { return clock }
-        return max(try Checked.add(stored, 1), clock)
+        guard nowMs >= 0 else { throw Failure.clockInvalid }
+        let clock = max(1, nowMs / 1000)
+        let next: Int64
+        if let stored { next = max(try Checked.add(stored, 1), clock) } else { next = clock }
+        guard next <= maxSeq else { throw Failure.seqOutOfRange }
+        return next
     }
+
+    static let maxSeq: Int64 = 9_007_199_254_740_991
 
     /// Signs one presentation.
     ///
     /// - own: `bodyOwn` is the body as stored (it carries `seq`); `challenge` must be the 32 bytes the requester sent; signed by `nodeKey`.
     /// - file: `bodyOwn` is projected (`FileProjection`), `exportKey` signs it and is the caller's to discard afterwards. Nothing is
-    ///   signed by the node key. Pass `ES256Signer.generateEphemeral()` in production; tests pass the lab's TEST-ONLY per-export keys.
+    ///   signed by the node key: an `exportKey` equal to `nodeKey` is refused, so a caller must pass the node key here for the guard to bind
+    ///   (ERR-FX2-ASC04). Pass `ES256Signer.generateEphemeral()` in production; tests pass the lab's TEST-ONLY per-export keys.
     public static func signPresentation(
         bodyOwn: JValue, audience: Audience, challenge: [UInt8]?, nodeKey: ES256Signer?, exportKey: ES256Signer? = nil,
         nowMs: Int64, check: SelfCheck, projectionPolicy: ProjectionPolicy = .specLiteral
@@ -104,6 +117,7 @@ public enum ManifestSigner {
             exportFingerprint = nil
         case .file:
             guard let exportKey else { throw Failure.missingExportKey }
+            if let nodeKey, nodeKey.spki == exportKey.spki { throw Failure.exportKeyIsNodeKey }
             signer = exportKey
             do {
                 body = try FileProjection.body(

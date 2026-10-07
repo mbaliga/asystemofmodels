@@ -2,8 +2,9 @@ import AsomBenchCore
 import AsomJSON
 
 /// The r3 claim tracker of LAB_SPEC.md section 6.6: what a requester learns about a peer's claimed speed from its own observations.
-/// Written from the spec text and the M08 vector files only; the JVM implementation (`lab/mesh-router`) and the runner's M08 adapter
-/// were not opened, so that this is a second, independent implementation for the oracle rule of LAB_SPEC.md 4.10 (apple/ERRATA.md E-33).
+/// Written from the spec text and the M08 vector files; the JVM implementation (`lab/mesh-router`) and the runner's M08 adapter were not
+/// opened. It is a second implementation, cross-lane evidence, and NOT independent: the vectors fixed several of its readings (apple/ERRATA.md
+/// E-33, ERR-FX-M08-1, ERR-FX2-ASC10).
 /// Integers only, floor division unless `ceilDiv`, every multiplication checked.
 public enum TrackerConstants {
     public static let win = 20
@@ -381,13 +382,14 @@ public struct ClaimTracker: Sendable, Equatable {
             state = .discrepant
         }
         let tripped = budgetTripped(recent)
-        if tripped { state = .weak }
+        if tripped, state != .discrepant { state = .weak }
         if inheritedDiscrepant, !(n >= TrackerConstants.inheritedClearObservations && (best ?? 0) >= TrackerConstants.corr) { state = .discrepant }
         return (state, tripped)
     }
 
     /// The tracked rates for placement (never above the claim). `disc` is 700, or 400 when two or more keys of this peer are DISCREPANT.
     public func view(claim: ClaimRow, promptTokens: Int64, disc: Int64 = TrackerConstants.defaultDiscPermille, capRef: CapRef? = nil) throws -> TrackerView {
+        guard (0...1000).contains(disc) else { throw BenchArithmeticError(operation: "disc \(disc) outside 0...1000") }
         let n = window.count
         let sorted = window.sorted()
         let (state, tripped) = Self.state(window: window, recent: recent, inheritedDiscrepant: inheritedDiscrepant)
@@ -405,7 +407,7 @@ public struct ClaimTracker: Sendable, Equatable {
                 rate = sum / Int64(2 + n)
             }
             if tripped { rate = min(rate, try Checked.mul(claimRate, minRatio) / 1000) }
-            return rate
+            return min(rate, claimRate)
         }
         let rates = TrackedRates(
             prefill: try tracked(claim.prefillMilliTokPerSec, capRef?.prefillMilliTokPerSec),
