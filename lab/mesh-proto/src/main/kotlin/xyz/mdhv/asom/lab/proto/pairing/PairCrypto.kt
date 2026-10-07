@@ -21,6 +21,7 @@ object PairCrypto {
     private const val PROOF_LABEL = "asom-pair-v1/proof"
     private const val SAS_LABEL = "asom-pair-v1/sas"
     private const val TRANSCRIPT_LABEL = "asom-pair-v1/transcript"
+    private const val COMMIT_LABEL = "asom-pair-v1/commit"
 
     private fun label(s: String): ByteArray = s.toByteArray(Charsets.US_ASCII) + byteArrayOf(0)
 
@@ -72,4 +73,22 @@ object PairCrypto {
 
     /** What D and S compare in `PAIR_COMMIT` and `PAIR_COMMIT_ACK`; whole-value constant-time comparison. */
     fun transcriptMatches(expected: ByteArray, presented: ByteArray): Boolean = presented.size == 32 && MessageDigest.isEqual(expected, presented)
+
+    /** The R3 commitment S sends in `PAIR_HELLO.nonceS` and later opens (ERR-FX2-1). */
+    fun commitNonce(nonceS: ByteArray): ByteArray {
+        checkNonce(nonceS, "nonce_S")
+        return MessageDigest.getInstance("SHA-256").digest(cat(label(COMMIT_LABEL), nonceS))
+    }
+
+    /** Whether [revealed] opens [commitment]. Any size other than 32 on either side is a mismatch, never an error. */
+    fun commitmentOpens(commitment: ByteArray, revealed: ByteArray): Boolean =
+        commitment.size == 32 && revealed.size == NONCE_LENGTH && MessageDigest.isEqual(commitNonce(revealed), commitment)
+
+    /** The six digits a person typed on D against the SAS. Spaces and no-break spaces are ignored; anything but exactly six digits is a mismatch. */
+    fun typedCodeMatches(sas: String, typed: String): Boolean {
+        val want = sas.filter { it in '0'..'9' }
+        val got = typed.filter { it != ' ' && it != '\u00A0' }
+        if (want.length != 6 || got.length != 6 || !got.all { it in '0'..'9' }) return false
+        return MessageDigest.isEqual(want.toByteArray(Charsets.US_ASCII), got.toByteArray(Charsets.US_ASCII))
+    }
 }

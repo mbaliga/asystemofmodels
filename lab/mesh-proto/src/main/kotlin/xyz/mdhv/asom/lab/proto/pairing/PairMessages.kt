@@ -33,7 +33,8 @@ class PairEndpoint(val addr: String, val port: Int, val via: String)
 
 class PairHello(val nonceS: ByteArray, val proof: ByteArray, val name: String, val platform: String, val keyTier: String, val endpoints: List<PairEndpoint>)
 class PairChallenge(val nonceD: ByteArray, val name: String, val platform: String, val keyTier: String)
-class PairDecision(val approve: Boolean)
+/** [reveal] is S's `nonce_S`, sent with S's approval under the R3 profile; D checks it against the commitment in `PAIR_HELLO` (ERR-FX2-1). */
+class PairDecision(val approve: Boolean, val reveal: ByteArray? = null)
 
 /** `PAIR_COMMIT` carries only the transcript: `locSeed` is withdrawn in r3 (D12.6), and a received one is ignored like any unknown member. */
 class PairCommit(val transcript: ByteArray)
@@ -74,7 +75,11 @@ object PairMessages {
         return obj("v" to JInt(1), "nonceD" to JString(b64(m.nonceD)), "name" to JString(m.name), "platform" to JString(m.platform), "keyTier" to JString(m.keyTier))
     }
 
-    fun encodeDecision(m: PairDecision): ByteArray = obj("v" to JInt(1), "approve" to JBool(m.approve))
+    fun encodeDecision(m: PairDecision): ByteArray {
+        val r = m.reveal ?: return obj("v" to JInt(1), "approve" to JBool(m.approve))
+        require(r.size == 32)
+        return obj("v" to JInt(1), "approve" to JBool(m.approve), "reveal" to JString(b64(r)))
+    }
 
     fun encodeCommit(m: PairCommit): ByteArray {
         require(m.transcript.size == 32)
@@ -149,7 +154,8 @@ object PairMessages {
         val (o, rej) = root(payload)
         if (o == null) return rej!!
         val a = o["approve"] as? JBool ?: return bad("approve")
-        return MsgParse.Ok(PairDecision(a.value))
+        if (o["reveal"] == null) return MsgParse.Ok(PairDecision(a.value))
+        return MsgParse.Ok(PairDecision(a.value, fixed32(o, "reveal") ?: return bad("reveal")))
     }
 
     fun parseCommit(payload: ByteArray): MsgParse<PairCommit> {

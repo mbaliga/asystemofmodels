@@ -71,12 +71,19 @@ object W04Vectors {
         else -> throw VectorShapeException("unknown address policy")
     }
 
+    /** An optional `"expiry": "none"` selects design T8 (ERRATA ERR-FX2-4); a vector without it is the frozen r0 reading. */
+    private fun expiryOf(i: JObject): QrExpiry = if (V.strOrNull(i, "expiry") == "none") QrExpiry.NONE else QrExpiry.ENFORCE
+
+    /** An optional `"profile": "r3"` selects the R3 machines (ERRATA ERR-FX2-1, -2, -5); a vector without it is the frozen r0 reading. */
+    private fun profileOf(i: JObject): PairProfile = if (V.strOrNull(i, "profile") == "r3") PairProfile.R3 else PairProfile.R0_COMPAT
+
     private fun qrParse(i: JObject): VectorEval {
         val now = V.long(i, "nowSec")
         val policy = policyOf(i)
-        return when (val r = QrUri.parse(V.str(i, "uri"), now, policy)) {
+        val expiry = expiryOf(i)
+        return when (val r = QrUri.parse(V.str(i, "uri"), now, policy, expiry)) {
             is QrParse.Ok -> {
-                val again = QrUri.parse(QrUri.encode(r.payload), now, policy)
+                val again = QrUri.parse(QrUri.encode(r.payload), now, policy, expiry)
                 if (again !is QrParse.Ok || payloadValue(again.payload) != payloadValue(r.payload)) throw VectorLawViolation("encode(parse(uri)) does not parse back to the same payload")
                 VectorEval(VectorOutcome.Ok(payloadValue(r.payload)), listOf("qr-grammar", "qr-roundtrip"))
             }
@@ -196,26 +203,30 @@ object W04Vectors {
         else -> throw VectorShapeException("unknown status '$s'")
     }
 
+    private fun connId(o: JObject): Long = (o["connId"] as? JInt)?.value ?: 0L
+
     private fun dEvent(o: JObject): DEvent = when (val e = V.str(o, "e")) {
         "UserOpenWindow" -> DEvent.UserOpenWindow(V.hex(o, "secretHex"), V.long(o, "nowMs"))
         "HelloReceived" -> DEvent.HelloReceived(
             pinField(o, "pinS"), V.hex(o, "nonceSHex"), V.hex(o, "proofHex"), statusLookup(V.str(o, "status")), V.hex(o, "nonceDHex"), V.long(o, "nowMs"),
+            connId(o),
         )
         "ChallengeSent" -> DEvent.ChallengeSent
-        "LocalDecision" -> DEvent.LocalDecision(V.bool(o, "approve"))
-        "RemoteDecision" -> DEvent.RemoteDecision(V.bool(o, "approve"))
+        "LocalDecision" -> DEvent.LocalDecision(V.bool(o, "approve"), V.strOrNull(o, "typedCode"))
+        "RemoteDecision" -> DEvent.RemoteDecision(V.bool(o, "approve"), V.strOrNull(o, "revealHex")?.let { V.hex(o, "revealHex") }, connId(o))
         "Tick" -> DEvent.Tick(V.long(o, "nowMs"))
         "UserCancel" -> DEvent.UserCancel
         "ConnectionLost" -> DEvent.ConnectionLost
         "RowDurable" -> DEvent.RowDurable(V.long(o, "nowMs"))
         "RowWriteFailed" -> DEvent.RowWriteFailed
-        "AckReceived" -> DEvent.AckReceived(V.hex(o, "transcriptHex"))
+        "AckReceived" -> DEvent.AckReceived(V.hex(o, "transcriptHex"), connId(o))
         "SecondUnknownConnection" -> DEvent.SecondUnknownConnection
         else -> throw VectorShapeException("unknown D event '$e'")
     }
 
     private fun fsmD(i: JObject): VectorEval {
-        val fsm = DFsm(PairFsmConfig(pinField(i, "pinOwn")))
+        val profile = profileOf(i)
+        val fsm = DFsm(PairFsmConfig(pinField(i, "pinOwn"), profile = profile))
         var state: DState = DState.Closed
         val trace = ArrayList<String>()
         var localApproved = false
@@ -228,16 +239,22 @@ object W04Vectors {
         for (el in V.arr(i, "script")) {
             val o = el as JObject
             val e = dEvent(o)
-            if (e is DEvent.LocalDecision && e.approve) localApproved = true
-            if (e is DEvent.RemoteDecision && e.approve) remoteApproved = true
+            if (profile == PairProfile.R0_COMPAT && e is DEvent.LocalDecision && e.approve) localApproved = true
+            if (profile == PairProfile.R0_COMPAT && e is DEvent.RemoteDecision && e.approve) remoteApproved = true
             if (e is DEvent.UserOpenWindow) secret = e.secret
             if (e is DEvent.HelloReceived && secret != null && PairCrypto.proofValid(secret, ownPin(i), e.pinS, e.nonceS, e.proof)) {
                 validHellos++
                 if (e.pinSStatus == StatusLookup.Known(PeerStatus.REVOKED)) revokedValid = true
             }
+            val before = state
             val step = fsm.step(state, e)
             state = step.state
             trace += step.signature
+            if (profile == PairProfile.R3) {
+                // Under R3 a decision counts only when the machine itself judged it: a checked code, an opened commitment, the bound connection.
+                if (step.effects.any { it is PairEffect.SendDecision && it.approve }) localApproved = true
+                if (e is DEvent.RemoteDecision && e.approve && before is DState.AwaitDecisions && state !is DState.Closed && step.effects.none { it is PairEffect.Refuse }) remoteApproved = true
+            }
             if (step.effects.any { it is PairEffect.SendChallenge }) challenges++
             if (step.effects.any { it is PairEffect.WritePairedRow }) {
                 if (!localApproved || !remoteApproved) throw VectorLawViolation("L1: a row write was requested without both approvals")
@@ -254,7 +271,7 @@ object W04Vectors {
     private fun ownPin(i: JObject): Pin = pinField(i, "pinOwn")
 
     private fun sEvent(o: JObject): SEvent = when (val e = V.str(o, "e")) {
-        "Scanned" -> SEvent.Scanned(QrUri.parse(V.str(o, "uri"), V.long(o, "nowSec"), when (V.str(o, "policy")) { "loopbackForTests" -> AddrPolicy.MESH_PLUS_LOOPBACK_FOR_TESTS; else -> AddrPolicy.MESH }))
+        "Scanned" -> SEvent.Scanned(QrUri.parse(V.str(o, "uri"), V.long(o, "nowSec"), when (V.str(o, "policy")) { "loopbackForTests" -> AddrPolicy.MESH_PLUS_LOOPBACK_FOR_TESTS; else -> AddrPolicy.MESH }, expiryOf(o)))
         "UserConfirmConnect" -> SEvent.UserConfirmConnect(V.bool(o, "yes"), V.long(o, "nowMs"))
         "DialResult" -> SEvent.DialResult(V.strOrNull(o, "presentedPin")?.let { Pin.fromNodeId(it) ?: throw VectorShapeException("presentedPin") }, V.hex(o, "nonceSHex"), V.long(o, "nowMs"))
         "ChallengeReceived" -> SEvent.ChallengeReceived(V.hex(o, "nonceDHex"), V.long(o, "nowMs"))
@@ -271,7 +288,7 @@ object W04Vectors {
     }
 
     private fun fsmS(i: JObject): VectorEval {
-        val fsm = SFsm(PairFsmConfig(ownPin(i)))
+        val fsm = SFsm(PairFsmConfig(ownPin(i), profile = profileOf(i)))
         var state: SState = SState.Idle
         val trace = ArrayList<String>()
         var localApproved = false

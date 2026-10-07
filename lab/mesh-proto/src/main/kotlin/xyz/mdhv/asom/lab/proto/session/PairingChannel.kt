@@ -4,11 +4,15 @@ import java.io.IOException
 import xyz.mdhv.asom.lab.json.Base64Strict
 import xyz.mdhv.asom.lab.ledger.NodeLedger
 import xyz.mdhv.asom.lab.proto.pairing.MsgParse
+import xyz.mdhv.asom.lab.proto.pairing.PairDirectionGuard
 import xyz.mdhv.asom.lab.proto.pairing.PairMessages
+import xyz.mdhv.asom.lab.proto.pairing.PairOrientation
+import xyz.mdhv.asom.lab.proto.pairing.PairSide
 import xyz.mdhv.asom.lab.proto.transport.MeshConnection
 import xyz.mdhv.asom.lab.proto.wire.ConnMode
 import xyz.mdhv.asom.lab.proto.wire.FrameTypes
 import xyz.mdhv.asom.lab.proto.wire.Inbound
+import xyz.mdhv.asom.lab.proto.wire.MeshError
 import xyz.mdhv.asom.lab.proto.wire.MessageCodec
 import xyz.mdhv.asom.lab.proto.wire.PairMsg
 import xyz.mdhv.asom.lab.proto.wire.Parsed
@@ -30,9 +34,13 @@ class PairingChannel(
     /** The dialer's id for this connection (the one its `DIAL` rows carry) and the handshake figure those rows recorded, so that L-L15 counts the handshake once (ERRATA ERR-PI-7). */
     dialSessionId: String? = null,
     dialHandshakeRecorded: Long = 0,
+    /** Where S is taken from: the first `PAIR_HELLO` by default (the harnesses call either end S), or the TLS role as trust.md 4.3 draws it (ERRATA ERR-FX2-3). */
+    orientation: PairOrientation = PairOrientation.FROM_HELLO,
 ) {
     private val wire = Wire(conn)
     private val role = conn.role
+    private val guard = PairDirectionGuard(if (orientation == PairOrientation.FROM_TLS_ROLE) (if (conn.role == PeerRole.TLS_CLIENT) PairSide.S else PairSide.D) else null)
+    private var inboundFrames = 0
     private val rows = SessionRows(ledger, dialSessionId ?: ids.b64(16), null, "unknown", null, wire, dialHandshakeRecorded) { failClosedNow() }
     private var closed = false
     private val lock = Any()
@@ -71,6 +79,7 @@ class PairingChannel(
     /** Sends one `PAIR_*` frame on stream 1: row first, then the frame. */
     fun send(type: Int, payload: ByteArray) = guarded(Unit) {
         check(!closed && FrameTypes.isPair(type)) { "a PAIR_* frame on an open pairing channel" }
+        check(guard.allowOutbound(type)) { "a PAIR_* frame this end's side may send" }
         val frame = RawFrame(type, 1, payload)
         if (type == FrameTypes.PAIR_HELLO) {
             idFrom(payload)?.let {
@@ -88,20 +97,27 @@ class PairingChannel(
         for (ev in wire.decoder.feed(buf, off, len)) {
             if (closed) break
             when (ev) {
-                is Inbound.Frame -> inbound(ev.frame)
-                is Inbound.ExtIgnored -> {
+                is Inbound.Frame -> if (spent()) refuse(MeshError.PROTOCOL_ERROR) else inbound(ev.frame)
+                is Inbound.ExtIgnored -> if (spent()) {
+                    refuse(MeshError.PROTOCOL_ERROR)
+                } else {
                     openIfListener()
                     rows.control(rows.frameRow(xyz.mdhv.asom.lab.ledger.MeshKind.CONTROL, "EXT_IGNORED", inn = ev.appBytes))
                 }
-                is Inbound.Failure -> {
-                    openIfListener()
-                    val err = PeerError(ev.error)
-                    rows.control(rows.frameRow(xyz.mdhv.asom.lab.ledger.MeshKind.CONTROL, "ERROR:${ev.error.name}", out = appBytes(MessageCodec.frame(err, 0))))
-                    wire.write(MessageCodec.frame(err, 0))
-                    closeNow()
-                }
+                is Inbound.Failure -> refuse(ev.error)
             }
         }
+    }
+
+    /** Every inbound frame forces a durable row, so a peer that has not been authenticated yet gets a fixed number of them (ERRATA ERR-FX2-6). */
+    private fun spent(): Boolean = ++inboundFrames > MAX_INBOUND_FRAMES
+
+    private fun refuse(error: MeshError) {
+        openIfListener()
+        val err = PeerError(error)
+        rows.control(rows.frameRow(xyz.mdhv.asom.lab.ledger.MeshKind.CONTROL, "ERROR:${error.name}", out = appBytes(MessageCodec.frame(err, 0))))
+        wire.write(MessageCodec.frame(err, 0))
+        closeNow()
     }
 
     /** The blocking loop a real transport uses: read until the peer closes or the transport fails, then close the channel. */
@@ -137,7 +153,7 @@ class PairingChannel(
 
     private fun inbound(f: RawFrame) {
         openIfListener()
-        when (val p = MessageCodec.parse(f)) {
+        when (val p = MessageCodec.parse(f, guard)) {
             is Parsed.Reject -> {
                 val err = PeerError(p.error)
                 val frame = MessageCodec.frame(err, 0)
@@ -179,5 +195,10 @@ class PairingChannel(
         closed = true
         wire.kill()
         rows.close("close:ledger-failure", 503)
+    }
+
+    companion object {
+        /** The most frames, `PAIR_*` and extensions together, a peer may deliver on one pairing connection; a legitimate ceremony delivers six (ERRATA ERR-FX2-6). */
+        const val MAX_INBOUND_FRAMES = 16
     }
 }

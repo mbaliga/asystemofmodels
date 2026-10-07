@@ -16,7 +16,10 @@ sealed interface PairEffect {
     data object SendChallenge : PairEffect
     data class SendHello(val nonceS: ByteArray, val proof: ByteArray) : PairEffect
     data class Dial(val endpoint: QrEndpoint) : PairEffect
-    data class SendDecision(val approve: Boolean) : PairEffect
+    data class SendDecision(val approve: Boolean, val reveal: ByteArray? = null) : PairEffect
+
+    /** R3 on D: ask the person to type the code that S shows. D shows no code of its own. */
+    data object PromptTypedCode : PairEffect
     data class ShowConsent(val sas: String) : PairEffect
     data class ShowConnectConfirm(val name: String) : PairEffect
     data class ScanRejected(val code: QrReject) : PairEffect
@@ -45,7 +48,8 @@ fun PairEffect.describe(): String = when (this) {
     PairEffect.SendChallenge -> "SendChallenge"
     is PairEffect.SendHello -> "SendHello(${hex8(proof)})"
     is PairEffect.Dial -> "Dial($endpoint)"
-    is PairEffect.SendDecision -> "SendDecision($approve)"
+    is PairEffect.SendDecision -> if (reveal == null) "SendDecision($approve)" else "SendDecision($approve,reveal)"
+    PairEffect.PromptTypedCode -> "PromptTypedCode"
     is PairEffect.ShowConsent -> "ShowConsent($sas)"
     is PairEffect.ShowConnectConfirm -> "ShowConnectConfirm($name)"
     is PairEffect.ScanRejected -> "ScanRejected($code)"
@@ -59,12 +63,22 @@ fun PairEffect.describe(): String = when (this) {
     PairEffect.Done -> "Done"
 }
 
+/**
+ * [R0_COMPAT] is the machine of trust.md 4.6 as first built: both devices show the code and both people tap approve, and `PAIR_HELLO.nonceS` is the
+ * nonce itself. [R3] is design revision 3 (ERR-FX2-1 to ERR-FX2-5): S commits to `nonce_S` before D chooses `nonce_D`, D's approval is the code typed from
+ * S's screen, a decision or acknowledgement from another connection is refused, and a window closed on D is not an S-side clock verdict.
+ * R0_COMPAT stays the default only because the frozen W04 vectors and the exhaustive FSM table pin its behaviour.
+ */
+enum class PairProfile { R0_COMPAT, R3 }
+
 class PairFsmConfig(
     val ownPin: Pin,
     val windowMs: Long = 120_000,
     val maxTries: Int = 3,
     val decisionTimeoutMs: Long = 120_000,
     val ackTimeoutMs: Long = 10_000,
+    val profile: PairProfile = PairProfile.R0_COMPAT,
+    val maxCodeTries: Int = 3,
 )
 
 // ------------------------------------------------------------------------------------------------------------------------------ D (displayer)
@@ -72,27 +86,39 @@ class PairFsmConfig(
 sealed class DState(val kind: String) {
     data object Closed : DState("CLOSED")
     class Open(val secret: ByteArray, val expiresAtMs: Long, val tries: Int) : DState("OPEN")
-    class Consumed(val pinS: Pin, val nonceS: ByteArray, val nonceD: ByteArray, val sinceMs: Long) : DState("CONSUMED")
-    class AwaitDecisions(val pinS: Pin, val nonceS: ByteArray, val nonceD: ByteArray, val deadlineMs: Long, val local: Boolean, val remote: Boolean) :
-        DState(if (local) "AWAIT_LOCAL" else if (remote) "AWAIT_REMOTE" else "AWAIT_NONE")
-    class Committing(val pinS: Pin, val nonceS: ByteArray, val nonceD: ByteArray) : DState("COMMITTING")
-    class AwaitAck(val expectedTranscript: ByteArray, val deadlineMs: Long) : DState("AWAIT_ACK")
+    class Consumed(val pinS: Pin, val nonceS: ByteArray, val nonceD: ByteArray, val sinceMs: Long, val connId: Long = 0) : DState("CONSUMED")
+
+    /** Under R3 [nonceS] is the commitment from `PAIR_HELLO` until [reveal] (S's opened nonce, checked) arrives; [typed] is a code entered before that. */
+    class AwaitDecisions(
+        val pinS: Pin, val nonceS: ByteArray, val nonceD: ByteArray, val deadlineMs: Long, val local: Boolean, val remote: Boolean,
+        val connId: Long = 0, val reveal: ByteArray? = null, val typed: String? = null, val wrongCodes: Int = 0,
+    ) : DState(if (local) "AWAIT_LOCAL" else if (remote) "AWAIT_REMOTE" else "AWAIT_NONE")
+
+    /** Under R3 [nonceS] is the opened nonce. */
+    class Committing(val pinS: Pin, val nonceS: ByteArray, val nonceD: ByteArray, val connId: Long = 0) : DState("COMMITTING")
+    class AwaitAck(val expectedTranscript: ByteArray, val deadlineMs: Long, val connId: Long = 0) : DState("AWAIT_ACK")
 }
 
 sealed class DEvent(val kind: String) {
     class UserOpenWindow(val secret: ByteArray, val nowMs: Long) : DEvent("UserOpenWindow")
 
     /** `pinS` is the pin of the chain TLS presented. [freshNonceD] is a new 32-byte CSPRNG draw, used only if the hello is accepted. */
-    class HelloReceived(val pinS: Pin, val nonceS: ByteArray, val proof: ByteArray, val pinSStatus: StatusLookup, val freshNonceD: ByteArray, val nowMs: Long) : DEvent("HelloReceived")
+    class HelloReceived(
+        val pinS: Pin, val nonceS: ByteArray, val proof: ByteArray, val pinSStatus: StatusLookup, val freshNonceD: ByteArray, val nowMs: Long, val connId: Long = 0,
+    ) : DEvent("HelloReceived")
     data object ChallengeSent : DEvent("ChallengeSent")
-    class LocalDecision(val approve: Boolean) : DEvent("LocalDecision")
-    class RemoteDecision(val approve: Boolean) : DEvent("RemoteDecision")
+
+    /** [typedCode] is what the person typed on D (R3). An approval without it, or with a wrong one, never counts. */
+    class LocalDecision(val approve: Boolean, val typedCode: String? = null) : DEvent("LocalDecision")
+
+    /** [reveal] is `PAIR_DECISION.reveal` (R3). [connId] is the connection the frame arrived on; hosts that never bind connections leave it 0. */
+    class RemoteDecision(val approve: Boolean, val reveal: ByteArray? = null, val connId: Long = 0) : DEvent("RemoteDecision")
     class Tick(val nowMs: Long) : DEvent("Tick")
     data object UserCancel : DEvent("UserCancel")
     data object ConnectionLost : DEvent("ConnectionLost")
     class RowDurable(val nowMs: Long) : DEvent("RowDurable")
     data object RowWriteFailed : DEvent("RowWriteFailed")
-    class AckReceived(val transcript: ByteArray) : DEvent("AckReceived")
+    class AckReceived(val transcript: ByteArray, val connId: Long = 0) : DEvent("AckReceived")
     data object SecondUnknownConnection : DEvent("SecondUnknownConnection")
 }
 
@@ -108,6 +134,14 @@ class DFsm(private val cfg: PairFsmConfig) {
     private fun same(s: DState, vararg e: PairEffect) = DStep(s, e.toList())
 
     private fun abort(reason: AbortReason, refusal: Refusal?, vararg before: PairEffect) = DStep(DState.Closed, before.toList() + PairEffect.Abort(reason, refusal))
+
+    private val r3 get() = cfg.profile == PairProfile.R3
+
+    /**
+     * The value of the TLS layer's `pairingWindowOpen` probe: only an OPEN, unexpired window admits an unknown pin. Once a hello consumed the window a second
+     * unknown connection is refused at TLS (trust.md 4.6), so a host never has a second connection whose decision could be mistaken for S's (ERR-FX2-5).
+     */
+    fun admitsPairingConnection(s: DState, nowMs: Long): Boolean = s is DState.Open && nowMs < s.expiresAtMs
 
     fun step(s: DState, e: DEvent): DStep = when (s) {
         DState.Closed -> closed(e)
@@ -147,16 +181,19 @@ class DFsm(private val cfg: PairFsmConfig) {
             return if (tries >= cfg.maxTries) abort(AbortReason.TRIES_EXHAUSTED, Refusal.PAIRING_PROOF_INVALID)
             else DStep(DState.Open(s.secret, s.expiresAtMs, tries), listOf(PairEffect.Refuse(Refusal.PAIRING_PROOF_INVALID)))
         }
-        return DStep(DState.Consumed(e.pinS, e.nonceS.copyOf(), e.freshNonceD.copyOf(), e.nowMs), listOf(PairEffect.SendChallenge))
+        return DStep(DState.Consumed(e.pinS, e.nonceS.copyOf(), e.freshNonceD.copyOf(), e.nowMs, e.connId), listOf(PairEffect.SendChallenge))
     }
+
+    private fun foreign(connId: Long, bound: Long) = r3 && connId != bound
 
     private fun consumed(s: DState.Consumed, e: DEvent): DStep = when (e) {
         DEvent.ChallengeSent -> DStep(
-            DState.AwaitDecisions(s.pinS, s.nonceS, s.nonceD, s.sinceMs + cfg.decisionTimeoutMs, local = false, remote = false),
-            listOf(PairEffect.ShowConsent(PairCrypto.sas(cfg.ownPin, s.pinS, s.nonceS, s.nonceD))),
+            DState.AwaitDecisions(s.pinS, s.nonceS, s.nonceD, s.sinceMs + cfg.decisionTimeoutMs, local = false, remote = false, connId = s.connId),
+            listOf(if (r3) PairEffect.PromptTypedCode else PairEffect.ShowConsent(PairCrypto.sas(cfg.ownPin, s.pinS, s.nonceS, s.nonceD))),
         )
         is DEvent.HelloReceived -> same(s, PairEffect.Refuse(Refusal.PAIRING_WINDOW_CLOSED))
-        is DEvent.RemoteDecision, is DEvent.AckReceived -> abort(AbortReason.PROTOCOL, Refusal.PROTOCOL_ERROR)
+        is DEvent.RemoteDecision -> if (foreign(e.connId, s.connId)) same(s, PairEffect.Refuse(Refusal.PROTOCOL_ERROR)) else abort(AbortReason.PROTOCOL, Refusal.PROTOCOL_ERROR)
+        is DEvent.AckReceived -> if (foreign(e.connId, s.connId)) same(s, PairEffect.Refuse(Refusal.PROTOCOL_ERROR)) else abort(AbortReason.PROTOCOL, Refusal.PROTOCOL_ERROR)
         is DEvent.Tick -> if (e.nowMs >= s.sinceMs + cfg.decisionTimeoutMs) abort(AbortReason.TIMEOUT, Refusal.PAIRING_REFUSED) else same(s)
         DEvent.UserCancel -> abort(AbortReason.CANCELLED, Refusal.PAIRING_REFUSED)
         DEvent.ConnectionLost -> abort(AbortReason.CONNECTION_LOST, null)
@@ -167,39 +204,75 @@ class DFsm(private val cfg: PairFsmConfig) {
     private fun awaiting(s: DState.AwaitDecisions, e: DEvent): DStep = when (e) {
         is DEvent.LocalDecision ->
             if (!e.approve) abort(AbortReason.DECLINED_LOCAL, Refusal.PAIRING_REFUSED, PairEffect.SendDecision(false))
+            else if (r3) typedCode(s, e.typedCode)
             else if (s.local) same(s)
-            else if (s.remote) DStep(DState.Committing(s.pinS, s.nonceS, s.nonceD), listOf(PairEffect.SendDecision(true), PairEffect.WritePairedRow))
-            else DStep(DState.AwaitDecisions(s.pinS, s.nonceS, s.nonceD, s.deadlineMs, local = true, remote = false), listOf(PairEffect.SendDecision(true)))
+            else if (s.remote) DStep(DState.Committing(s.pinS, s.nonceS, s.nonceD, s.connId), listOf(PairEffect.SendDecision(true), PairEffect.WritePairedRow))
+            else DStep(DState.AwaitDecisions(s.pinS, s.nonceS, s.nonceD, s.deadlineMs, local = true, remote = false, connId = s.connId), listOf(PairEffect.SendDecision(true)))
         is DEvent.RemoteDecision ->
-            if (!e.approve) abort(AbortReason.DECLINED_REMOTE, Refusal.PAIRING_REFUSED)
+            if (foreign(e.connId, s.connId)) same(s, PairEffect.Refuse(Refusal.PROTOCOL_ERROR))
+            else if (!e.approve) abort(AbortReason.DECLINED_REMOTE, Refusal.PAIRING_REFUSED)
+            else if (r3) opened(s, e.reveal)
             else if (s.remote) same(s)
-            else if (s.local) DStep(DState.Committing(s.pinS, s.nonceS, s.nonceD), listOf(PairEffect.WritePairedRow))
-            else DStep(DState.AwaitDecisions(s.pinS, s.nonceS, s.nonceD, s.deadlineMs, local = false, remote = true), emptyList())
+            else if (s.local) DStep(DState.Committing(s.pinS, s.nonceS, s.nonceD, s.connId), listOf(PairEffect.WritePairedRow))
+            else DStep(DState.AwaitDecisions(s.pinS, s.nonceS, s.nonceD, s.deadlineMs, local = false, remote = true, connId = s.connId), emptyList())
         is DEvent.HelloReceived -> same(s, PairEffect.Refuse(Refusal.PAIRING_WINDOW_CLOSED))
         is DEvent.Tick -> if (e.nowMs >= s.deadlineMs) abort(AbortReason.TIMEOUT, Refusal.PAIRING_REFUSED) else same(s)
         DEvent.UserCancel -> abort(AbortReason.DECLINED_LOCAL, Refusal.PAIRING_REFUSED, PairEffect.SendDecision(false))
         DEvent.ConnectionLost -> abort(AbortReason.CONNECTION_LOST, null)
-        is DEvent.AckReceived -> abort(AbortReason.PROTOCOL, Refusal.PROTOCOL_ERROR)
+        is DEvent.AckReceived -> if (foreign(e.connId, s.connId)) same(s, PairEffect.Refuse(Refusal.PROTOCOL_ERROR)) else abort(AbortReason.PROTOCOL, Refusal.PROTOCOL_ERROR)
         DEvent.SecondUnknownConnection -> same(s, PairEffect.Warn("second-connection"))
         is DEvent.UserOpenWindow, DEvent.ChallengeSent, is DEvent.RowDurable, DEvent.RowWriteFailed -> same(s)
+    }
+
+    /** R3: S's approval must open the commitment of its hello. A missing, short or different nonce ends the ceremony: S cannot choose its nonce after seeing nonce_D. */
+    private fun opened(s: DState.AwaitDecisions, reveal: ByteArray?): DStep {
+        if (s.remote) return same(s)
+        if (reveal == null || !PairCrypto.commitmentOpens(s.nonceS, reveal)) return abort(AbortReason.PROTOCOL, Refusal.PROTOCOL_ERROR)
+        return judge(s, reveal.copyOf(), s.typed, s.wrongCodes)
+    }
+
+    /** R3: the code typed on D. Without a code, or with a wrong one, nothing counts. A code typed before S opened its commitment waits for it. */
+    private fun typedCode(s: DState.AwaitDecisions, typed: String?): DStep {
+        if (typed == null) return same(s, PairEffect.Warn("typed-code-required"))
+        return judge(s, s.reveal, typed, s.wrongCodes)
+    }
+
+    /** [reveal] is known exactly when S's approval has been seen, so a checked code always completes both approvals. */
+    private fun judge(s: DState.AwaitDecisions, reveal: ByteArray?, typed: String?, wrong: Int): DStep {
+        if (reveal == null || typed == null) {
+            val remote = reveal != null
+            return DStep(DState.AwaitDecisions(s.pinS, s.nonceS, s.nonceD, s.deadlineMs, local = false, remote = remote, connId = s.connId, reveal = reveal, typed = typed, wrongCodes = wrong), emptyList())
+        }
+        if (!PairCrypto.typedCodeMatches(PairCrypto.sas(cfg.ownPin, s.pinS, reveal, s.nonceD), typed)) {
+            val n = wrong + 1
+            if (n >= cfg.maxCodeTries) return abort(AbortReason.TRIES_EXHAUSTED, Refusal.PAIRING_REFUSED, PairEffect.SendDecision(false))
+            return DStep(
+                DState.AwaitDecisions(s.pinS, s.nonceS, s.nonceD, s.deadlineMs, local = false, remote = true, connId = s.connId, reveal = reveal, typed = null, wrongCodes = n),
+                listOf(PairEffect.Warn("wrong-code")),
+            )
+        }
+        return DStep(DState.Committing(s.pinS, reveal, s.nonceD, s.connId), listOf(PairEffect.SendDecision(true), PairEffect.WritePairedRow))
     }
 
     private fun committing(s: DState.Committing, e: DEvent): DStep = when (e) {
         is DEvent.RowDurable -> {
             val t = PairCrypto.transcript(cfg.ownPin, s.pinS, s.nonceS, s.nonceD)
-            DStep(DState.AwaitAck(t, e.nowMs + cfg.ackTimeoutMs), listOf(PairEffect.SendCommit(t)))
+            DStep(DState.AwaitAck(t, e.nowMs + cfg.ackTimeoutMs, s.connId), listOf(PairEffect.SendCommit(t)))
         }
         DEvent.RowWriteFailed -> abort(AbortReason.WRITE_FAILED, Refusal.PAIRING_REFUSED)
         is DEvent.HelloReceived -> same(s, PairEffect.Refuse(Refusal.PAIRING_WINDOW_CLOSED))
         DEvent.ConnectionLost -> abort(AbortReason.CONNECTION_LOST, null, PairEffect.MarkUnconfirmed("connection-lost-while-committing"))
-        is DEvent.AckReceived -> abort(AbortReason.PROTOCOL, Refusal.PROTOCOL_ERROR, PairEffect.MarkUnconfirmed("acknowledgement-before-commit"))
+        is DEvent.AckReceived ->
+            if (foreign(e.connId, s.connId)) same(s, PairEffect.Refuse(Refusal.PROTOCOL_ERROR))
+            else abort(AbortReason.PROTOCOL, Refusal.PROTOCOL_ERROR, PairEffect.MarkUnconfirmed("acknowledgement-before-commit"))
         DEvent.SecondUnknownConnection -> same(s, PairEffect.Warn("second-connection"))
         is DEvent.UserOpenWindow, DEvent.ChallengeSent, is DEvent.LocalDecision, is DEvent.RemoteDecision, is DEvent.Tick, DEvent.UserCancel -> same(s)
     }
 
     private fun awaitAck(s: DState.AwaitAck, e: DEvent): DStep = when (e) {
         is DEvent.AckReceived ->
-            if (PairCrypto.transcriptMatches(s.expectedTranscript, e.transcript)) DStep(DState.Closed, listOf(PairEffect.Done, PairEffect.Closed("done")))
+            if (foreign(e.connId, s.connId)) same(s, PairEffect.Refuse(Refusal.PROTOCOL_ERROR))
+            else if (PairCrypto.transcriptMatches(s.expectedTranscript, e.transcript)) DStep(DState.Closed, listOf(PairEffect.Done, PairEffect.Closed("done")))
             else DStep(DState.Closed, listOf(PairEffect.MarkUnconfirmed("transcript-mismatch"), PairEffect.Warn("transcript-mismatch"), PairEffect.Closed("transcript-mismatch")))
         is DEvent.Tick ->
             if (e.nowMs >= s.deadlineMs) DStep(DState.Closed, listOf(PairEffect.MarkUnconfirmed("ack-timeout"), PairEffect.Warn("may-not-have-finished"), PairEffect.Closed("ack-timeout"))) else same(s)
@@ -216,6 +289,7 @@ sealed class SState(val kind: String) {
     data object Idle : SState("IDLE")
     class ConfirmConnect(val payload: QrPayload) : SState("CONFIRM_CONNECT")
     class Dialing(val payload: QrPayload, val index: Int) : SState("DIALING")
+    /** [nonceS] is the nonce S drew. Under R3 only its commitment went on the wire, and the nonce itself leaves S with S's approval. */
     class SentHello(val payload: QrPayload, val nonceS: ByteArray) : SState("SENT_HELLO")
     class AwaitDecisions(val payload: QrPayload, val nonceS: ByteArray, val nonceD: ByteArray, val deadlineMs: Long, val local: Boolean, val remote: Boolean) :
         SState(if (local) "AWAIT_LOCAL" else if (remote) "AWAIT_REMOTE" else "AWAIT_NONE")
@@ -285,8 +359,9 @@ class SFsm(private val cfg: PairFsmConfig) {
         is SEvent.DialResult -> {
             val ok = e.presented != null && e.presented.equalsConstantTime(s.payload.pinD)
             if (ok) {
-                val proof = PairCrypto.proof(s.payload.secret, s.payload.pinD, cfg.ownPin, e.freshNonceS)
-                SStep(SState.SentHello(s.payload, e.freshNonceS.copyOf()), listOf(PairEffect.SendHello(e.freshNonceS.copyOf(), proof)))
+                val onWire = if (cfg.profile == PairProfile.R3) PairCrypto.commitNonce(e.freshNonceS) else e.freshNonceS.copyOf()
+                val proof = PairCrypto.proof(s.payload.secret, s.payload.pinD, cfg.ownPin, onWire)
+                SStep(SState.SentHello(s.payload, e.freshNonceS.copyOf()), listOf(PairEffect.SendHello(onWire, proof)))
             } else if (s.index + 1 < s.payload.endpoints.size) {
                 SStep(SState.Dialing(s.payload, s.index + 1), listOf(PairEffect.Dial(s.payload.endpoints[s.index + 1])))
             } else fail(AbortReason.CONNECTION_LOST, null)
@@ -300,7 +375,10 @@ class SFsm(private val cfg: PairFsmConfig) {
             SState.AwaitDecisions(s.payload, s.nonceS, e.nonceD.copyOf(), e.nowMs + cfg.decisionTimeoutMs, local = false, remote = false),
             listOf(PairEffect.ShowConsent(PairCrypto.sas(s.payload.pinD, cfg.ownPin, s.nonceS, e.nonceD))),
         )
-        is SEvent.ErrorReceived -> SStep(SState.Failed(AbortReason.DECLINED_REMOTE, e.code), listOf(PairEffect.Abort(AbortReason.DECLINED_REMOTE, null)))
+        is SEvent.ErrorReceived -> {
+            val why = if (cfg.profile == PairProfile.R3 && e.code == Refusal.PAIRING_WINDOW_CLOSED.name) AbortReason.WINDOW_EXPIRED else AbortReason.DECLINED_REMOTE
+            SStep(SState.Failed(why, e.code), listOf(PairEffect.Abort(why, null)))
+        }
         SEvent.ConnectionLost -> fail(AbortReason.CONNECTION_LOST, null)
         SEvent.UserCancel -> fail(AbortReason.CANCELLED, null)
         is SEvent.RemoteDecision, is SEvent.CommitReceived -> fail(AbortReason.PROTOCOL, "PROTOCOL_ERROR")
@@ -314,7 +392,7 @@ class SFsm(private val cfg: PairFsmConfig) {
             else {
                 val next = if (s.remote) SState.AwaitCommit(s.payload, s.nonceS, s.nonceD, s.deadlineMs)
                 else SState.AwaitDecisions(s.payload, s.nonceS, s.nonceD, s.deadlineMs, local = true, remote = false)
-                SStep(next, listOf(PairEffect.SendDecision(true)))
+                SStep(next, listOf(PairEffect.SendDecision(true, if (cfg.profile == PairProfile.R3) s.nonceS.copyOf() else null)))
             }
         is SEvent.RemoteDecision ->
             if (!e.approve) fail(AbortReason.DECLINED_REMOTE, "PAIRING_REFUSED")

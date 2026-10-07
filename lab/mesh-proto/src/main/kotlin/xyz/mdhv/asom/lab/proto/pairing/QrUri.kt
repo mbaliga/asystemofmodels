@@ -23,6 +23,9 @@ sealed interface QrParse {
     class Reject(val code: QrReject, val why: String) : QrParse
 }
 
+/** Whether S judges `x` against its own clock. [NONE] is design T8: D's `PAIRING_WINDOW_CLOSED` is authoritative and `x` is only checked for syntax (ERR-FX2-4). */
+enum class QrExpiry { ENFORCE, NONE }
+
 /** Which literal addresses a QR may name. [MESH] is trust.md 6.6 without its interface check (the dialer makes that check after connecting). */
 enum class AddrPolicy { MESH, MESH_PLUS_LOOPBACK_FOR_TESTS }
 
@@ -65,8 +68,11 @@ object QrUri {
 
     private fun reject(code: QrReject, why: String) = QrParse.Reject(code, why)
 
-    /** [nowSec]: S accepts a URI while `now < x + 60 s` (trust.md 4.6) and refuses an `x` beyond `now + 120 s + 60 s`. */
-    fun parse(text: String, nowSec: Long, policy: AddrPolicy = AddrPolicy.MESH): QrParse {
+    /**
+     * [nowSec]: with [QrExpiry.ENFORCE] S accepts a URI while `now < x + 60 s` (trust.md 4.6) and refuses an `x` beyond `now + 120 s + 60 s`. With [QrExpiry.NONE]
+     * (design T8, what a scanner should pass) `x` is only checked for syntax: the window is D's to close, and a phone whose clock is minutes off can still pair.
+     */
+    fun parse(text: String, nowSec: Long, policy: AddrPolicy = AddrPolicy.MESH, expiry: QrExpiry = QrExpiry.ENFORCE): QrParse {
         if (text.length > MAX_LENGTH) return reject(QrReject.TOO_LONG, "longer than $MAX_LENGTH characters")
         if (!text.startsWith("asom-pair:")) return reject(QrReject.SCHEME, "not an asom-pair URI")
         if (!text.startsWith(PREFIX)) return reject(QrReject.VERSION, "only version 1 exists")
@@ -95,8 +101,10 @@ object QrUri {
         val xText = fields.getValue("x")
         if (xText.isEmpty() || xText.length > 12 || !xText.all { it in '0'..'9' } || (xText.length > 1 && xText[0] == '0')) return reject(QrReject.BAD_EXPIRY, "x is not plain unix seconds")
         val x = xText.toLong()
-        if (nowSec >= x + EXPIRY_GRACE_SEC) return reject(QrReject.EXPIRED, "the pairing window has expired")
-        if (x > nowSec + WINDOW_SEC + EXPIRY_GRACE_SEC) return reject(QrReject.EXPIRY_TOO_FAR, "x is more than a window and a skew allowance ahead")
+        if (expiry == QrExpiry.ENFORCE) {
+            if (nowSec >= x + EXPIRY_GRACE_SEC) return reject(QrReject.EXPIRED, "the pairing window has expired")
+            if (x > nowSec + WINDOW_SEC + EXPIRY_GRACE_SEC) return reject(QrReject.EXPIRY_TOO_FAR, "x is more than a window and a skew allowance ahead")
+        }
 
         val endpoints = ArrayList<QrEndpoint>()
         val aText = fields.getValue("a")
