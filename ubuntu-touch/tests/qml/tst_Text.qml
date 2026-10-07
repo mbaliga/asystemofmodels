@@ -106,7 +106,8 @@ TestCase {
     function test_ledgerRowsAreShownAsCharacters() {
         var m = modelComponent.createObject(tc, { rows: [{ ts: 1, peerAlias: evil }] })
         var p = page("LedgerPage.qml", m)
-        assertLiteral(child(p, "ledgerRow"), JSON.stringify({ ts: 1, peerAlias: evil }))
+        // Qt keeps a model row as a QVariantMap, whose keys come back sorted: the page shows peerAlias before ts
+        assertLiteral(child(p, "ledgerRow"), JSON.stringify({ peerAlias: evil, ts: 1 }))
         p.destroy()
     }
 
