@@ -111,4 +111,24 @@ r02("this device is not subject to the usability gate (D9)", only_self(SELF(prio
 r02("saturation: a load time beyond 2^53 - 1 saturates and the sum saturates too",
     WORLD(SELF(situation=SS(engine=False)), [PEER("mac", files=[F(bytes=(1 << 60))], last_same={}, prior=PR())], config=dict(loadBytesPerMs={"DESKTOP": 1})))
 
+# review fixes (LTQ-01, LTQ-06): appended so that every earlier id keeps its number
+def two_backend_mac(state_backend):
+    p = PEER("mac", state=ST(backend=state_backend), last_same={A: NOW - 100})
+    p["priors"] = [dict(nodeId="mac", fileSha256=A, backend=b, prior=PR()) for b in ("metal", "vulkan")]
+    return p
+
+
+DISC6 = [TRK("mac", A, "metal", TS(ratios=[400] * 6))]
+metal_run = r02("tracker n = 6 of ratio 400 (DISCREPANT), live state on the claim's own backend: every rate is scaled by the lower median 400 (prefill 24,000, decode 4,800)",
+                WORLD(SELF(situation=SS(engine=False)), [two_backend_mac("metal")], tracker=DISC6),
+                anchor={"PEER:mac/a1a1a1a1": dict(preEff=24000, decEff=4800)})
+vulkan_run = r02("the same tracker after the peer's live state switches to backend vulkan: the tracker is keyed (peer, file), so the placement rate is the same (LTQ-01)",
+                 WORLD(SELF(situation=SS(engine=False)), [two_backend_mac("vulkan")], tracker=DISC6),
+                 anchor={"PEER:mac/a1a1a1a1": dict(preEff=24000, decEff=4800)})
+assert metal_run == vulkan_run
+r02("S6 charges the worse of the digest class and the power class: a FRESH digest with STALE power fields is 25% of the total, and the band 'ge80' reads 50-79 (LTQ-06)",
+    only_peer(PEER("mac", cls="LAPTOP", state=ST(src="battery", band="ge80"), design=50000, power_freshness="STALE", last_same={A: NOW - 100})))
+r02("S6 with EXPIRED power fields and a FRESH digest is 50% of the total (LTQ-06)",
+    only_peer(PEER("mac", cls="LAPTOP", state=ST(src="battery", band="ge80"), design=50000, power_freshness="EXPIRED", last_same={A: NOW - 100})))
+
 write("R02-scoring.json", "R02", ["LAB_SPEC.md 6.4 (E0-E12, S1-S6)", "LAB_SPEC.md 6.4 worked example R02-r3-001", "docs/design/mesh/REVIEW_ROUND3.md R3-CLOSURE-5"], R02)

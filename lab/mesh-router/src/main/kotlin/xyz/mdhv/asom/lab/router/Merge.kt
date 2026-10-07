@@ -94,7 +94,7 @@ object Merge {
         if (top == null || top.claimState != ClaimState.UNVERIFIED || top.key == null) return MergeResult(items, CapDelta(), false)
         val di = items.indexOfFirst { it is MergeItem.Sov && it.c !== top && it.c.usable }
         if (di < 0) return MergeResult(items, CapDelta(), false)
-        val counter = caps[top.key] ?: CapCounter()
+        val counter = ClaimTracker.capAt(caps, top.key)
         val wouldWin = counter.wouldWin + 1
         return if (counter.won >= Sat.ceilDiv(wouldWin.toLong(), 4)) {
             val out = items.toMutableList()

@@ -10891,6 +10891,1086 @@
           }
         }
       }
+    },
+    {
+      "id": "R02-047",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "tracker n = 6 of ratio 400 (DISCREPANT), live state on the claim's own backend: every rate is scaled by the lower median 400 (prefill 24,000, decode 4,800)",
+      "input": {
+        "nowMonoMs": 1000500,
+        "wallNowMs": 1790000000000,
+        "meshGlobalOn": true,
+        "query": {
+          "model": "auto",
+          "policyHeader": null,
+          "fallback": [],
+          "noTrain": false,
+          "op": "chat",
+          "stream": true,
+          "promptTokens": 500,
+          "promptBytes": 2000,
+          "maxTokensCap": 300,
+          "deadlineMs": 120000,
+          "embeddingIdentity": null,
+          "app": {
+            "pkg": "app.a",
+            "meshAllowed": true,
+            "cloudBanned": false,
+            "deviceOnly": false,
+            "allowMeshOnMetered": false,
+            "neverCloudWhenDevicesCanAnswer": false
+          }
+        },
+        "self": {
+          "nodeId": "self-node",
+          "nodeTag": "self-nod",
+          "tier": "SELF",
+          "deviceClass": "PHONE",
+          "peer": null,
+          "files": [
+            {
+              "modelId": "qwen3-8b",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "quant": "Q4_K_M",
+              "fileBytes": 5027784832,
+              "catalogueRank": null,
+              "kind": "CHAT",
+              "contextTokens": 32768
+            }
+          ],
+          "priors": [
+            {
+              "nodeId": "self-node",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "cpu",
+              "prior": {
+                "decodeAt": [
+                  [
+                    512,
+                    5000
+                  ]
+                ],
+                "prefillMilliTokPerSec": 30000,
+                "ttft0Ms": 200,
+                "steadyMilliTokPerSec": 4000,
+                "throttleOnsetMs": 180000,
+                "powerMilliW": 5000,
+                "kvBytesPerToken": 100000,
+                "peakProcessBytes": 6000000000,
+                "flags": []
+              }
+            }
+          ],
+          "self": {
+            "batteryPermille": 900,
+            "charging": false,
+            "onBattery": true,
+            "saver": false,
+            "batteryDesignMilliWh": 19000,
+            "thermalCode": 0,
+            "governor": "RUN",
+            "availBytes": 20000000000,
+            "loaded": [
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "userActive": false,
+            "busyForMs": 0,
+            "hasEngine": false,
+            "backend": "cpu",
+            "localQueueMs": 0
+          },
+          "state": null,
+          "stateRxMonoMs": null,
+          "sessionOpen": false,
+          "goawaySeen": false,
+          "link": null,
+          "breaker": {
+            "coolingUntilMonoMs": null,
+            "declineBackoffUntilMonoMs": null,
+            "halfOpen": false
+          },
+          "lastSameFileMonoMs": {},
+          "ownReservationsMs": 0,
+          "maxContextTokens": null,
+          "batteryDesignMilliWh": null,
+          "stateRegressed": false
+        },
+        "peers": [
+          {
+            "nodeId": "mac",
+            "nodeTag": "mac",
+            "tier": "PEER",
+            "deviceClass": "DESKTOP",
+            "peer": {
+              "paired": true,
+              "routeEnabled": true,
+              "inferGrantedToMe": true,
+              "requireCharging": false,
+              "limits": {
+                "maxConcurrent": 1,
+                "maxBodyBytes": 8388608,
+                "maxTokens": 4096,
+                "rpm": 30,
+                "idleUnloadMs": 300000
+              }
+            },
+            "files": [
+              {
+                "modelId": "qwen3-8b",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "quant": "Q4_K_M",
+                "fileBytes": 5027784832,
+                "catalogueRank": null,
+                "kind": "CHAT",
+                "contextTokens": 32768
+              }
+            ],
+            "priors": [
+              {
+                "nodeId": "mac",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "metal",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      512,
+                      12000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              },
+              {
+                "nodeId": "mac",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "vulkan",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      512,
+                      12000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              }
+            ],
+            "self": null,
+            "state": {
+              "seq": 10,
+              "sampledAgeMs": 0,
+              "fsm": "SERVING",
+              "powerSource": "ac",
+              "charging": false,
+              "batteryBand": null,
+              "thermalBand": 0,
+              "governor": "RUN",
+              "backend": "metal",
+              "commit": "0123abc",
+              "confVersion": "0.2.0",
+              "held": [
+                "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+              ],
+              "queueBucket": 0,
+              "manifestSeq": null,
+              "manifestDigest": null
+            },
+            "stateRxMonoMs": 1000000,
+            "sessionOpen": true,
+            "goawaySeen": false,
+            "link": {
+              "rttMs": 10,
+              "kbps": 100000,
+              "path": "LAN",
+              "metered": false,
+              "sessionWarm": true,
+              "samples": 5
+            },
+            "breaker": {
+              "coolingUntilMonoMs": null,
+              "declineBackoffUntilMonoMs": null,
+              "halfOpen": false
+            },
+            "lastSameFileMonoMs": {
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": 1000400
+            },
+            "ownReservationsMs": 0,
+            "maxContextTokens": null,
+            "batteryDesignMilliWh": null,
+            "stateRegressed": false
+          }
+        ],
+        "cloud": {
+          "keysPresent": [],
+          "coolingUntilWallMs": {},
+          "ewmaMs": {},
+          "cloudRates": {}
+        },
+        "tracker": [
+          {
+            "nodeId": "mac",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "state": {
+              "claimSeq": 1,
+              "acceptedAtWallMs": null,
+              "ratios": [
+                400,
+                400,
+                400,
+                400,
+                400,
+                400
+              ],
+              "recent": [],
+              "strikes": 0,
+              "inheritedDiscrepant": false,
+              "memoryDiscrepant": false
+            }
+          }
+        ],
+        "caps": [],
+        "penalties": {},
+        "appEwmaOut": {},
+        "config": {}
+      },
+      "expect": {
+        "ok": {
+          "attempts": {
+            "PEER:mac/a1a1a1a1": {
+              "estimate": {
+                "outTokens": 300,
+                "netMs": 11,
+                "loadMs": 0,
+                "queueMs": 0,
+                "preEff": 24000,
+                "prefillMs": 21134,
+                "decEff": 4800,
+                "decodeMs": 62292,
+                "ttftMs": 21150,
+                "totalMs": 83442,
+                "energyMilliJ": 12513900,
+                "batteryUsedPermille": 0
+              },
+              "terms": {
+                "S1": 104592,
+                "S2": 0,
+                "S3": 0,
+                "S4": 1000,
+                "S5": 800,
+                "S6": 0,
+                "S": 106392
+              },
+              "usable": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "R02-048",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "the same tracker after the peer's live state switches to backend vulkan: the tracker is keyed (peer, file), so the placement rate is the same (LTQ-01)",
+      "input": {
+        "nowMonoMs": 1000500,
+        "wallNowMs": 1790000000000,
+        "meshGlobalOn": true,
+        "query": {
+          "model": "auto",
+          "policyHeader": null,
+          "fallback": [],
+          "noTrain": false,
+          "op": "chat",
+          "stream": true,
+          "promptTokens": 500,
+          "promptBytes": 2000,
+          "maxTokensCap": 300,
+          "deadlineMs": 120000,
+          "embeddingIdentity": null,
+          "app": {
+            "pkg": "app.a",
+            "meshAllowed": true,
+            "cloudBanned": false,
+            "deviceOnly": false,
+            "allowMeshOnMetered": false,
+            "neverCloudWhenDevicesCanAnswer": false
+          }
+        },
+        "self": {
+          "nodeId": "self-node",
+          "nodeTag": "self-nod",
+          "tier": "SELF",
+          "deviceClass": "PHONE",
+          "peer": null,
+          "files": [
+            {
+              "modelId": "qwen3-8b",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "quant": "Q4_K_M",
+              "fileBytes": 5027784832,
+              "catalogueRank": null,
+              "kind": "CHAT",
+              "contextTokens": 32768
+            }
+          ],
+          "priors": [
+            {
+              "nodeId": "self-node",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "cpu",
+              "prior": {
+                "decodeAt": [
+                  [
+                    512,
+                    5000
+                  ]
+                ],
+                "prefillMilliTokPerSec": 30000,
+                "ttft0Ms": 200,
+                "steadyMilliTokPerSec": 4000,
+                "throttleOnsetMs": 180000,
+                "powerMilliW": 5000,
+                "kvBytesPerToken": 100000,
+                "peakProcessBytes": 6000000000,
+                "flags": []
+              }
+            }
+          ],
+          "self": {
+            "batteryPermille": 900,
+            "charging": false,
+            "onBattery": true,
+            "saver": false,
+            "batteryDesignMilliWh": 19000,
+            "thermalCode": 0,
+            "governor": "RUN",
+            "availBytes": 20000000000,
+            "loaded": [
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "userActive": false,
+            "busyForMs": 0,
+            "hasEngine": false,
+            "backend": "cpu",
+            "localQueueMs": 0
+          },
+          "state": null,
+          "stateRxMonoMs": null,
+          "sessionOpen": false,
+          "goawaySeen": false,
+          "link": null,
+          "breaker": {
+            "coolingUntilMonoMs": null,
+            "declineBackoffUntilMonoMs": null,
+            "halfOpen": false
+          },
+          "lastSameFileMonoMs": {},
+          "ownReservationsMs": 0,
+          "maxContextTokens": null,
+          "batteryDesignMilliWh": null,
+          "stateRegressed": false
+        },
+        "peers": [
+          {
+            "nodeId": "mac",
+            "nodeTag": "mac",
+            "tier": "PEER",
+            "deviceClass": "DESKTOP",
+            "peer": {
+              "paired": true,
+              "routeEnabled": true,
+              "inferGrantedToMe": true,
+              "requireCharging": false,
+              "limits": {
+                "maxConcurrent": 1,
+                "maxBodyBytes": 8388608,
+                "maxTokens": 4096,
+                "rpm": 30,
+                "idleUnloadMs": 300000
+              }
+            },
+            "files": [
+              {
+                "modelId": "qwen3-8b",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "quant": "Q4_K_M",
+                "fileBytes": 5027784832,
+                "catalogueRank": null,
+                "kind": "CHAT",
+                "contextTokens": 32768
+              }
+            ],
+            "priors": [
+              {
+                "nodeId": "mac",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "metal",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      512,
+                      12000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              },
+              {
+                "nodeId": "mac",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "vulkan",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      512,
+                      12000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              }
+            ],
+            "self": null,
+            "state": {
+              "seq": 10,
+              "sampledAgeMs": 0,
+              "fsm": "SERVING",
+              "powerSource": "ac",
+              "charging": false,
+              "batteryBand": null,
+              "thermalBand": 0,
+              "governor": "RUN",
+              "backend": "vulkan",
+              "commit": "0123abc",
+              "confVersion": "0.2.0",
+              "held": [
+                "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+              ],
+              "queueBucket": 0,
+              "manifestSeq": null,
+              "manifestDigest": null
+            },
+            "stateRxMonoMs": 1000000,
+            "sessionOpen": true,
+            "goawaySeen": false,
+            "link": {
+              "rttMs": 10,
+              "kbps": 100000,
+              "path": "LAN",
+              "metered": false,
+              "sessionWarm": true,
+              "samples": 5
+            },
+            "breaker": {
+              "coolingUntilMonoMs": null,
+              "declineBackoffUntilMonoMs": null,
+              "halfOpen": false
+            },
+            "lastSameFileMonoMs": {
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": 1000400
+            },
+            "ownReservationsMs": 0,
+            "maxContextTokens": null,
+            "batteryDesignMilliWh": null,
+            "stateRegressed": false
+          }
+        ],
+        "cloud": {
+          "keysPresent": [],
+          "coolingUntilWallMs": {},
+          "ewmaMs": {},
+          "cloudRates": {}
+        },
+        "tracker": [
+          {
+            "nodeId": "mac",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "state": {
+              "claimSeq": 1,
+              "acceptedAtWallMs": null,
+              "ratios": [
+                400,
+                400,
+                400,
+                400,
+                400,
+                400
+              ],
+              "recent": [],
+              "strikes": 0,
+              "inheritedDiscrepant": false,
+              "memoryDiscrepant": false
+            }
+          }
+        ],
+        "caps": [],
+        "penalties": {},
+        "appEwmaOut": {},
+        "config": {}
+      },
+      "expect": {
+        "ok": {
+          "attempts": {
+            "PEER:mac/a1a1a1a1": {
+              "estimate": {
+                "outTokens": 300,
+                "netMs": 11,
+                "loadMs": 0,
+                "queueMs": 0,
+                "preEff": 24000,
+                "prefillMs": 21134,
+                "decEff": 4800,
+                "decodeMs": 62292,
+                "ttftMs": 21150,
+                "totalMs": 83442,
+                "energyMilliJ": 12513900,
+                "batteryUsedPermille": 0
+              },
+              "terms": {
+                "S1": 104592,
+                "S2": 0,
+                "S3": 0,
+                "S4": 1000,
+                "S5": 800,
+                "S6": 0,
+                "S": 106392
+              },
+              "usable": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "R02-049",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S6 charges the worse of the digest class and the power class: a FRESH digest with STALE power fields is 25% of the total, and the band 'ge80' reads 50-79 (LTQ-06)",
+      "input": {
+        "nowMonoMs": 1000500,
+        "wallNowMs": 1790000000000,
+        "meshGlobalOn": true,
+        "query": {
+          "model": "auto",
+          "policyHeader": null,
+          "fallback": [],
+          "noTrain": false,
+          "op": "chat",
+          "stream": true,
+          "promptTokens": 500,
+          "promptBytes": 2000,
+          "maxTokensCap": 300,
+          "deadlineMs": 120000,
+          "embeddingIdentity": null,
+          "app": {
+            "pkg": "app.a",
+            "meshAllowed": true,
+            "cloudBanned": false,
+            "deviceOnly": false,
+            "allowMeshOnMetered": false,
+            "neverCloudWhenDevicesCanAnswer": false
+          }
+        },
+        "self": {
+          "nodeId": "self-node",
+          "nodeTag": "self-nod",
+          "tier": "SELF",
+          "deviceClass": "PHONE",
+          "peer": null,
+          "files": [
+            {
+              "modelId": "qwen3-8b",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "quant": "Q4_K_M",
+              "fileBytes": 5027784832,
+              "catalogueRank": null,
+              "kind": "CHAT",
+              "contextTokens": 32768
+            }
+          ],
+          "priors": [
+            {
+              "nodeId": "self-node",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "cpu",
+              "prior": {
+                "decodeAt": [
+                  [
+                    512,
+                    5000
+                  ]
+                ],
+                "prefillMilliTokPerSec": 30000,
+                "ttft0Ms": 200,
+                "steadyMilliTokPerSec": 4000,
+                "throttleOnsetMs": 180000,
+                "powerMilliW": 5000,
+                "kvBytesPerToken": 100000,
+                "peakProcessBytes": 6000000000,
+                "flags": []
+              }
+            }
+          ],
+          "self": {
+            "batteryPermille": 900,
+            "charging": false,
+            "onBattery": true,
+            "saver": false,
+            "batteryDesignMilliWh": 19000,
+            "thermalCode": 0,
+            "governor": "RUN",
+            "availBytes": 20000000000,
+            "loaded": [
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "userActive": false,
+            "busyForMs": 0,
+            "hasEngine": false,
+            "backend": "cpu",
+            "localQueueMs": 0
+          },
+          "state": null,
+          "stateRxMonoMs": null,
+          "sessionOpen": false,
+          "goawaySeen": false,
+          "link": null,
+          "breaker": {
+            "coolingUntilMonoMs": null,
+            "declineBackoffUntilMonoMs": null,
+            "halfOpen": false
+          },
+          "lastSameFileMonoMs": {},
+          "ownReservationsMs": 0,
+          "maxContextTokens": null,
+          "batteryDesignMilliWh": null,
+          "stateRegressed": false
+        },
+        "peers": [
+          {
+            "nodeId": "mac",
+            "nodeTag": "mac",
+            "tier": "PEER",
+            "deviceClass": "LAPTOP",
+            "peer": {
+              "paired": true,
+              "routeEnabled": true,
+              "inferGrantedToMe": true,
+              "requireCharging": false,
+              "limits": {
+                "maxConcurrent": 1,
+                "maxBodyBytes": 8388608,
+                "maxTokens": 4096,
+                "rpm": 30,
+                "idleUnloadMs": 300000
+              }
+            },
+            "files": [
+              {
+                "modelId": "qwen3-8b",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "quant": "Q4_K_M",
+                "fileBytes": 5027784832,
+                "catalogueRank": null,
+                "kind": "CHAT",
+                "contextTokens": 32768
+              }
+            ],
+            "priors": [
+              {
+                "nodeId": "mac",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "metal",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      512,
+                      12000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              }
+            ],
+            "self": null,
+            "state": {
+              "seq": 10,
+              "sampledAgeMs": 0,
+              "fsm": "SERVING",
+              "powerSource": "battery",
+              "charging": false,
+              "batteryBand": "ge80",
+              "thermalBand": 0,
+              "governor": "RUN",
+              "backend": "metal",
+              "commit": "0123abc",
+              "confVersion": "0.2.0",
+              "held": [
+                "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+              ],
+              "queueBucket": 0,
+              "manifestSeq": null,
+              "manifestDigest": null
+            },
+            "stateRxMonoMs": 1000000,
+            "sessionOpen": true,
+            "goawaySeen": false,
+            "link": {
+              "rttMs": 10,
+              "kbps": 100000,
+              "path": "LAN",
+              "metered": false,
+              "sessionWarm": true,
+              "samples": 5
+            },
+            "breaker": {
+              "coolingUntilMonoMs": null,
+              "declineBackoffUntilMonoMs": null,
+              "halfOpen": false
+            },
+            "lastSameFileMonoMs": {
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": 1000400
+            },
+            "ownReservationsMs": 0,
+            "maxContextTokens": null,
+            "batteryDesignMilliWh": 50000,
+            "stateRegressed": false,
+            "powerFreshness": "STALE"
+          }
+        ],
+        "cloud": {
+          "keysPresent": [],
+          "coolingUntilWallMs": {},
+          "ewmaMs": {},
+          "cloudRates": {}
+        },
+        "tracker": [],
+        "caps": [],
+        "penalties": {},
+        "appEwmaOut": {},
+        "config": {}
+      },
+      "expect": {
+        "ok": {
+          "attempts": {
+            "PEER:mac/a1a1a1a1": {
+              "estimate": {
+                "outTokens": 300,
+                "netMs": 11,
+                "loadMs": 0,
+                "queueMs": 0,
+                "preEff": 42000,
+                "prefillMs": 12205,
+                "decEff": 8400,
+                "decodeMs": 35596,
+                "ttftMs": 12221,
+                "totalMs": 47817,
+                "energyMilliJ": 1434030,
+                "batteryUsedPermille": 8
+              },
+              "terms": {
+                "S1": 60038,
+                "S2": 16000,
+                "S3": 0,
+                "S4": 1000,
+                "S5": 800,
+                "S6": 11954,
+                "S": 89792
+              },
+              "usable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "R02-050",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S6 with EXPIRED power fields and a FRESH digest is 50% of the total (LTQ-06)",
+      "input": {
+        "nowMonoMs": 1000500,
+        "wallNowMs": 1790000000000,
+        "meshGlobalOn": true,
+        "query": {
+          "model": "auto",
+          "policyHeader": null,
+          "fallback": [],
+          "noTrain": false,
+          "op": "chat",
+          "stream": true,
+          "promptTokens": 500,
+          "promptBytes": 2000,
+          "maxTokensCap": 300,
+          "deadlineMs": 120000,
+          "embeddingIdentity": null,
+          "app": {
+            "pkg": "app.a",
+            "meshAllowed": true,
+            "cloudBanned": false,
+            "deviceOnly": false,
+            "allowMeshOnMetered": false,
+            "neverCloudWhenDevicesCanAnswer": false
+          }
+        },
+        "self": {
+          "nodeId": "self-node",
+          "nodeTag": "self-nod",
+          "tier": "SELF",
+          "deviceClass": "PHONE",
+          "peer": null,
+          "files": [
+            {
+              "modelId": "qwen3-8b",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "quant": "Q4_K_M",
+              "fileBytes": 5027784832,
+              "catalogueRank": null,
+              "kind": "CHAT",
+              "contextTokens": 32768
+            }
+          ],
+          "priors": [
+            {
+              "nodeId": "self-node",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "cpu",
+              "prior": {
+                "decodeAt": [
+                  [
+                    512,
+                    5000
+                  ]
+                ],
+                "prefillMilliTokPerSec": 30000,
+                "ttft0Ms": 200,
+                "steadyMilliTokPerSec": 4000,
+                "throttleOnsetMs": 180000,
+                "powerMilliW": 5000,
+                "kvBytesPerToken": 100000,
+                "peakProcessBytes": 6000000000,
+                "flags": []
+              }
+            }
+          ],
+          "self": {
+            "batteryPermille": 900,
+            "charging": false,
+            "onBattery": true,
+            "saver": false,
+            "batteryDesignMilliWh": 19000,
+            "thermalCode": 0,
+            "governor": "RUN",
+            "availBytes": 20000000000,
+            "loaded": [
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "userActive": false,
+            "busyForMs": 0,
+            "hasEngine": false,
+            "backend": "cpu",
+            "localQueueMs": 0
+          },
+          "state": null,
+          "stateRxMonoMs": null,
+          "sessionOpen": false,
+          "goawaySeen": false,
+          "link": null,
+          "breaker": {
+            "coolingUntilMonoMs": null,
+            "declineBackoffUntilMonoMs": null,
+            "halfOpen": false
+          },
+          "lastSameFileMonoMs": {},
+          "ownReservationsMs": 0,
+          "maxContextTokens": null,
+          "batteryDesignMilliWh": null,
+          "stateRegressed": false
+        },
+        "peers": [
+          {
+            "nodeId": "mac",
+            "nodeTag": "mac",
+            "tier": "PEER",
+            "deviceClass": "LAPTOP",
+            "peer": {
+              "paired": true,
+              "routeEnabled": true,
+              "inferGrantedToMe": true,
+              "requireCharging": false,
+              "limits": {
+                "maxConcurrent": 1,
+                "maxBodyBytes": 8388608,
+                "maxTokens": 4096,
+                "rpm": 30,
+                "idleUnloadMs": 300000
+              }
+            },
+            "files": [
+              {
+                "modelId": "qwen3-8b",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "quant": "Q4_K_M",
+                "fileBytes": 5027784832,
+                "catalogueRank": null,
+                "kind": "CHAT",
+                "contextTokens": 32768
+              }
+            ],
+            "priors": [
+              {
+                "nodeId": "mac",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "metal",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      512,
+                      12000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              }
+            ],
+            "self": null,
+            "state": {
+              "seq": 10,
+              "sampledAgeMs": 0,
+              "fsm": "SERVING",
+              "powerSource": "battery",
+              "charging": false,
+              "batteryBand": "ge80",
+              "thermalBand": 0,
+              "governor": "RUN",
+              "backend": "metal",
+              "commit": "0123abc",
+              "confVersion": "0.2.0",
+              "held": [
+                "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+              ],
+              "queueBucket": 0,
+              "manifestSeq": null,
+              "manifestDigest": null
+            },
+            "stateRxMonoMs": 1000000,
+            "sessionOpen": true,
+            "goawaySeen": false,
+            "link": {
+              "rttMs": 10,
+              "kbps": 100000,
+              "path": "LAN",
+              "metered": false,
+              "sessionWarm": true,
+              "samples": 5
+            },
+            "breaker": {
+              "coolingUntilMonoMs": null,
+              "declineBackoffUntilMonoMs": null,
+              "halfOpen": false
+            },
+            "lastSameFileMonoMs": {
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": 1000400
+            },
+            "ownReservationsMs": 0,
+            "maxContextTokens": null,
+            "batteryDesignMilliWh": 50000,
+            "stateRegressed": false,
+            "powerFreshness": "EXPIRED"
+          }
+        ],
+        "cloud": {
+          "keysPresent": [],
+          "coolingUntilWallMs": {},
+          "ewmaMs": {},
+          "cloudRates": {}
+        },
+        "tracker": [],
+        "caps": [],
+        "penalties": {},
+        "appEwmaOut": {},
+        "config": {}
+      },
+      "expect": {
+        "ok": {
+          "attempts": {
+            "PEER:mac/a1a1a1a1": {
+              "estimate": {
+                "outTokens": 300,
+                "netMs": 11,
+                "loadMs": 0,
+                "queueMs": 0,
+                "preEff": 42000,
+                "prefillMs": 12205,
+                "decEff": 8400,
+                "decodeMs": 35596,
+                "ttftMs": 12221,
+                "totalMs": 47817,
+                "energyMilliJ": 1434030,
+                "batteryUsedPermille": 8
+              },
+              "terms": {
+                "S1": 60038,
+                "S2": 16000,
+                "S3": 0,
+                "S4": 1000,
+                "S5": 800,
+                "S6": 23908,
+                "S": 101746
+              },
+              "usable": true
+            }
+          }
+        }
+      }
     }
   ]
 }

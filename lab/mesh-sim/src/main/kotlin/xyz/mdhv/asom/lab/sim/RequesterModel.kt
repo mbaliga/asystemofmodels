@@ -184,6 +184,7 @@ class RequesterModel(private val sc: Scenario, private val catalogue: Catalogue,
                 goawaySeen = p.cache.goawaySinceState, link = p.link,
                 breaker = BreakerView(PureBreaker.coolingUntil(p.transport, t), p.declineUntilMono, PureBreaker.halfOpen(p.transport, t)), lastSameFileMonoMs = p.lastSame,
                 ownReservationsMs = p.reservations, maxContextTokens = null, batteryDesignMilliWh = p.spec.power.designMilliWh, stateRegressed = p.cache.regressed,
+                powerFreshness = if (p.cache.doc == null) null else LiveStateCache.powerFreshness(p.cache, t),
             )
         }
         val cooling = cloudBreakers.filter { it.value.coolingUntilMs > wall(t) }.mapValues { it.value.coolingUntilMs }

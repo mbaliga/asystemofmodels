@@ -563,7 +563,7 @@ class Simulation(val sc: Scenario, val catalogue: Catalogue, val variant: Varian
         if (PureBreakerCooling(p)) return false
         if ((p.declineUntilMono ?: 0) > loop.now) return false
         if (loop.now - (lastPullAt[p.spec.id] ?: -1_000_000) < 5_000) return false
-        val fr = LiveStateCache.freshness(p.cache, loop.now)
+        val fr = maxOf(LiveStateCache.freshness(p.cache, loop.now), LiveStateCache.powerFreshness(p.cache, loop.now))
         return fr == Freshness.STALE || fr == Freshness.EXPIRED
     }
 

@@ -17540,6 +17540,2408 @@
       "expectDetail": {
         "excluded": []
       }
+    },
+    {
+      "id": "R01-082",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "F8: a terminal=oom memory mark on backend metal excludes the file (control: the live state reports metal)",
+      "input": {
+        "nowMonoMs": 1000500,
+        "wallNowMs": 1790000000000,
+        "meshGlobalOn": true,
+        "query": {
+          "model": "auto",
+          "policyHeader": null,
+          "fallback": [],
+          "noTrain": false,
+          "op": "chat",
+          "stream": true,
+          "promptTokens": 500,
+          "promptBytes": 2000,
+          "maxTokensCap": 300,
+          "deadlineMs": 120000,
+          "embeddingIdentity": null,
+          "app": {
+            "pkg": "app.a",
+            "meshAllowed": true,
+            "cloudBanned": false,
+            "deviceOnly": false,
+            "allowMeshOnMetered": false,
+            "neverCloudWhenDevicesCanAnswer": false
+          }
+        },
+        "self": {
+          "nodeId": "self-node",
+          "nodeTag": "self-nod",
+          "tier": "SELF",
+          "deviceClass": "PHONE",
+          "peer": null,
+          "files": [
+            {
+              "modelId": "qwen3-8b",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "quant": "Q4_K_M",
+              "fileBytes": 5027784832,
+              "catalogueRank": null,
+              "kind": "CHAT",
+              "contextTokens": 32768
+            }
+          ],
+          "priors": [
+            {
+              "nodeId": "self-node",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "cpu",
+              "prior": {
+                "decodeAt": [
+                  [
+                    512,
+                    5000
+                  ]
+                ],
+                "prefillMilliTokPerSec": 30000,
+                "ttft0Ms": 200,
+                "steadyMilliTokPerSec": 4000,
+                "throttleOnsetMs": 180000,
+                "powerMilliW": 5000,
+                "kvBytesPerToken": 100000,
+                "peakProcessBytes": 6000000000,
+                "flags": []
+              }
+            }
+          ],
+          "self": {
+            "batteryPermille": 900,
+            "charging": false,
+            "onBattery": true,
+            "saver": false,
+            "batteryDesignMilliWh": 19000,
+            "thermalCode": 0,
+            "governor": "RUN",
+            "availBytes": 20000000000,
+            "loaded": [
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "userActive": false,
+            "busyForMs": 0,
+            "hasEngine": true,
+            "backend": "cpu",
+            "localQueueMs": 0
+          },
+          "state": null,
+          "stateRxMonoMs": null,
+          "sessionOpen": false,
+          "goawaySeen": false,
+          "link": null,
+          "breaker": {
+            "coolingUntilMonoMs": null,
+            "declineBackoffUntilMonoMs": null,
+            "halfOpen": false
+          },
+          "lastSameFileMonoMs": {},
+          "ownReservationsMs": 0,
+          "maxContextTokens": null,
+          "batteryDesignMilliWh": null,
+          "stateRegressed": false
+        },
+        "peers": [
+          {
+            "nodeId": "peer-a",
+            "nodeTag": "peer-a",
+            "tier": "PEER",
+            "deviceClass": "DESKTOP",
+            "peer": {
+              "paired": true,
+              "routeEnabled": true,
+              "inferGrantedToMe": true,
+              "requireCharging": false,
+              "limits": {
+                "maxConcurrent": 1,
+                "maxBodyBytes": 8388608,
+                "maxTokens": 4096,
+                "rpm": 30,
+                "idleUnloadMs": 300000
+              }
+            },
+            "files": [
+              {
+                "modelId": "qwen3-8b",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "quant": "Q4_K_M",
+                "fileBytes": 5027784832,
+                "catalogueRank": null,
+                "kind": "CHAT",
+                "contextTokens": 32768
+              }
+            ],
+            "priors": [
+              {
+                "nodeId": "peer-a",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "metal",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      512,
+                      12000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              },
+              {
+                "nodeId": "peer-a",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "vulkan",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      512,
+                      12000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              }
+            ],
+            "self": null,
+            "state": {
+              "seq": 10,
+              "sampledAgeMs": 0,
+              "fsm": "SERVING",
+              "powerSource": "ac",
+              "charging": false,
+              "batteryBand": null,
+              "thermalBand": 0,
+              "governor": "RUN",
+              "backend": "metal",
+              "commit": "0123abc",
+              "confVersion": "0.2.0",
+              "held": [
+                "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+              ],
+              "queueBucket": 0,
+              "manifestSeq": null,
+              "manifestDigest": null
+            },
+            "stateRxMonoMs": 1000000,
+            "sessionOpen": true,
+            "goawaySeen": false,
+            "link": {
+              "rttMs": 10,
+              "kbps": 100000,
+              "path": "LAN",
+              "metered": false,
+              "sessionWarm": true,
+              "samples": 5
+            },
+            "breaker": {
+              "coolingUntilMonoMs": null,
+              "declineBackoffUntilMonoMs": null,
+              "halfOpen": false
+            },
+            "lastSameFileMonoMs": {
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": 999500
+            },
+            "ownReservationsMs": 0,
+            "maxContextTokens": null,
+            "batteryDesignMilliWh": null,
+            "stateRegressed": false
+          }
+        ],
+        "cloud": {
+          "keysPresent": [],
+          "coolingUntilWallMs": {},
+          "ewmaMs": {},
+          "cloudRates": {}
+        },
+        "tracker": [
+          {
+            "nodeId": "peer-a",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "state": {
+              "claimSeq": 1,
+              "acceptedAtWallMs": null,
+              "ratios": [],
+              "recent": [],
+              "strikes": 0,
+              "inheritedDiscrepant": false,
+              "memoryDiscrepant": true
+            }
+          }
+        ],
+        "caps": [],
+        "penalties": {},
+        "appEwmaOut": {},
+        "config": {}
+      },
+      "expect": {
+        "ok": {
+          "excluded": [
+            [
+              "peer-a",
+              "a1a1a1a1",
+              "F8_CLAIM"
+            ]
+          ],
+          "survivors": [
+            "SELF:self-node/a1a1a1a1"
+          ]
+        }
+      }
+    },
+    {
+      "id": "R01-083",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "F8: the same memory mark after the peer's live state switches to backend vulkan (the tracker key is (peer, file); the backend only picks the claim row, LTQ-01)",
+      "input": {
+        "nowMonoMs": 1000500,
+        "wallNowMs": 1790000000000,
+        "meshGlobalOn": true,
+        "query": {
+          "model": "auto",
+          "policyHeader": null,
+          "fallback": [],
+          "noTrain": false,
+          "op": "chat",
+          "stream": true,
+          "promptTokens": 500,
+          "promptBytes": 2000,
+          "maxTokensCap": 300,
+          "deadlineMs": 120000,
+          "embeddingIdentity": null,
+          "app": {
+            "pkg": "app.a",
+            "meshAllowed": true,
+            "cloudBanned": false,
+            "deviceOnly": false,
+            "allowMeshOnMetered": false,
+            "neverCloudWhenDevicesCanAnswer": false
+          }
+        },
+        "self": {
+          "nodeId": "self-node",
+          "nodeTag": "self-nod",
+          "tier": "SELF",
+          "deviceClass": "PHONE",
+          "peer": null,
+          "files": [
+            {
+              "modelId": "qwen3-8b",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "quant": "Q4_K_M",
+              "fileBytes": 5027784832,
+              "catalogueRank": null,
+              "kind": "CHAT",
+              "contextTokens": 32768
+            }
+          ],
+          "priors": [
+            {
+              "nodeId": "self-node",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "cpu",
+              "prior": {
+                "decodeAt": [
+                  [
+                    512,
+                    5000
+                  ]
+                ],
+                "prefillMilliTokPerSec": 30000,
+                "ttft0Ms": 200,
+                "steadyMilliTokPerSec": 4000,
+                "throttleOnsetMs": 180000,
+                "powerMilliW": 5000,
+                "kvBytesPerToken": 100000,
+                "peakProcessBytes": 6000000000,
+                "flags": []
+              }
+            }
+          ],
+          "self": {
+            "batteryPermille": 900,
+            "charging": false,
+            "onBattery": true,
+            "saver": false,
+            "batteryDesignMilliWh": 19000,
+            "thermalCode": 0,
+            "governor": "RUN",
+            "availBytes": 20000000000,
+            "loaded": [
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "userActive": false,
+            "busyForMs": 0,
+            "hasEngine": true,
+            "backend": "cpu",
+            "localQueueMs": 0
+          },
+          "state": null,
+          "stateRxMonoMs": null,
+          "sessionOpen": false,
+          "goawaySeen": false,
+          "link": null,
+          "breaker": {
+            "coolingUntilMonoMs": null,
+            "declineBackoffUntilMonoMs": null,
+            "halfOpen": false
+          },
+          "lastSameFileMonoMs": {},
+          "ownReservationsMs": 0,
+          "maxContextTokens": null,
+          "batteryDesignMilliWh": null,
+          "stateRegressed": false
+        },
+        "peers": [
+          {
+            "nodeId": "peer-a",
+            "nodeTag": "peer-a",
+            "tier": "PEER",
+            "deviceClass": "DESKTOP",
+            "peer": {
+              "paired": true,
+              "routeEnabled": true,
+              "inferGrantedToMe": true,
+              "requireCharging": false,
+              "limits": {
+                "maxConcurrent": 1,
+                "maxBodyBytes": 8388608,
+                "maxTokens": 4096,
+                "rpm": 30,
+                "idleUnloadMs": 300000
+              }
+            },
+            "files": [
+              {
+                "modelId": "qwen3-8b",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "quant": "Q4_K_M",
+                "fileBytes": 5027784832,
+                "catalogueRank": null,
+                "kind": "CHAT",
+                "contextTokens": 32768
+              }
+            ],
+            "priors": [
+              {
+                "nodeId": "peer-a",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "metal",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      512,
+                      12000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              },
+              {
+                "nodeId": "peer-a",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "vulkan",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      512,
+                      12000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              }
+            ],
+            "self": null,
+            "state": {
+              "seq": 10,
+              "sampledAgeMs": 0,
+              "fsm": "SERVING",
+              "powerSource": "ac",
+              "charging": false,
+              "batteryBand": null,
+              "thermalBand": 0,
+              "governor": "RUN",
+              "backend": "vulkan",
+              "commit": "0123abc",
+              "confVersion": "0.2.0",
+              "held": [
+                "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+              ],
+              "queueBucket": 0,
+              "manifestSeq": null,
+              "manifestDigest": null
+            },
+            "stateRxMonoMs": 1000000,
+            "sessionOpen": true,
+            "goawaySeen": false,
+            "link": {
+              "rttMs": 10,
+              "kbps": 100000,
+              "path": "LAN",
+              "metered": false,
+              "sessionWarm": true,
+              "samples": 5
+            },
+            "breaker": {
+              "coolingUntilMonoMs": null,
+              "declineBackoffUntilMonoMs": null,
+              "halfOpen": false
+            },
+            "lastSameFileMonoMs": {
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": 999500
+            },
+            "ownReservationsMs": 0,
+            "maxContextTokens": null,
+            "batteryDesignMilliWh": null,
+            "stateRegressed": false
+          }
+        ],
+        "cloud": {
+          "keysPresent": [],
+          "coolingUntilWallMs": {},
+          "ewmaMs": {},
+          "cloudRates": {}
+        },
+        "tracker": [
+          {
+            "nodeId": "peer-a",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "state": {
+              "claimSeq": 1,
+              "acceptedAtWallMs": null,
+              "ratios": [],
+              "recent": [],
+              "strikes": 0,
+              "inheritedDiscrepant": false,
+              "memoryDiscrepant": true
+            }
+          }
+        ],
+        "caps": [],
+        "penalties": {},
+        "appEwmaOut": {},
+        "config": {}
+      },
+      "expect": {
+        "ok": {
+          "excluded": [
+            [
+              "peer-a",
+              "a1a1a1a1",
+              "F8_CLAIM"
+            ]
+          ],
+          "survivors": [
+            "SELF:self-node/a1a1a1a1"
+          ]
+        }
+      }
+    },
+    {
+      "id": "R01-084",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "F8: a claim whose decode curve descends in context is excluded with F8, not an error (LTQ-15)",
+      "input": {
+        "nowMonoMs": 1000500,
+        "wallNowMs": 1790000000000,
+        "meshGlobalOn": true,
+        "query": {
+          "model": "auto",
+          "policyHeader": null,
+          "fallback": [],
+          "noTrain": false,
+          "op": "chat",
+          "stream": true,
+          "promptTokens": 500,
+          "promptBytes": 2000,
+          "maxTokensCap": 300,
+          "deadlineMs": 120000,
+          "embeddingIdentity": null,
+          "app": {
+            "pkg": "app.a",
+            "meshAllowed": true,
+            "cloudBanned": false,
+            "deviceOnly": false,
+            "allowMeshOnMetered": false,
+            "neverCloudWhenDevicesCanAnswer": false
+          }
+        },
+        "self": {
+          "nodeId": "self-node",
+          "nodeTag": "self-nod",
+          "tier": "SELF",
+          "deviceClass": "PHONE",
+          "peer": null,
+          "files": [
+            {
+              "modelId": "qwen3-8b",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "quant": "Q4_K_M",
+              "fileBytes": 5027784832,
+              "catalogueRank": null,
+              "kind": "CHAT",
+              "contextTokens": 32768
+            }
+          ],
+          "priors": [
+            {
+              "nodeId": "self-node",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "cpu",
+              "prior": {
+                "decodeAt": [
+                  [
+                    512,
+                    5000
+                  ]
+                ],
+                "prefillMilliTokPerSec": 30000,
+                "ttft0Ms": 200,
+                "steadyMilliTokPerSec": 4000,
+                "throttleOnsetMs": 180000,
+                "powerMilliW": 5000,
+                "kvBytesPerToken": 100000,
+                "peakProcessBytes": 6000000000,
+                "flags": []
+              }
+            }
+          ],
+          "self": {
+            "batteryPermille": 900,
+            "charging": false,
+            "onBattery": true,
+            "saver": false,
+            "batteryDesignMilliWh": 19000,
+            "thermalCode": 0,
+            "governor": "RUN",
+            "availBytes": 20000000000,
+            "loaded": [
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "userActive": false,
+            "busyForMs": 0,
+            "hasEngine": true,
+            "backend": "cpu",
+            "localQueueMs": 0
+          },
+          "state": null,
+          "stateRxMonoMs": null,
+          "sessionOpen": false,
+          "goawaySeen": false,
+          "link": null,
+          "breaker": {
+            "coolingUntilMonoMs": null,
+            "declineBackoffUntilMonoMs": null,
+            "halfOpen": false
+          },
+          "lastSameFileMonoMs": {},
+          "ownReservationsMs": 0,
+          "maxContextTokens": null,
+          "batteryDesignMilliWh": null,
+          "stateRegressed": false
+        },
+        "peers": [
+          {
+            "nodeId": "peer-a",
+            "nodeTag": "peer-a",
+            "tier": "PEER",
+            "deviceClass": "DESKTOP",
+            "peer": {
+              "paired": true,
+              "routeEnabled": true,
+              "inferGrantedToMe": true,
+              "requireCharging": false,
+              "limits": {
+                "maxConcurrent": 1,
+                "maxBodyBytes": 8388608,
+                "maxTokens": 4096,
+                "rpm": 30,
+                "idleUnloadMs": 300000
+              }
+            },
+            "files": [
+              {
+                "modelId": "qwen3-8b",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "quant": "Q4_K_M",
+                "fileBytes": 5027784832,
+                "catalogueRank": null,
+                "kind": "CHAT",
+                "contextTokens": 32768
+              }
+            ],
+            "priors": [
+              {
+                "nodeId": "peer-a",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "metal",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      1024,
+                      10000
+                    ],
+                    [
+                      512,
+                      12000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              }
+            ],
+            "self": null,
+            "state": {
+              "seq": 10,
+              "sampledAgeMs": 0,
+              "fsm": "SERVING",
+              "powerSource": "ac",
+              "charging": false,
+              "batteryBand": null,
+              "thermalBand": 0,
+              "governor": "RUN",
+              "backend": "metal",
+              "commit": "0123abc",
+              "confVersion": "0.2.0",
+              "held": [
+                "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+              ],
+              "queueBucket": 0,
+              "manifestSeq": null,
+              "manifestDigest": null
+            },
+            "stateRxMonoMs": 1000000,
+            "sessionOpen": true,
+            "goawaySeen": false,
+            "link": {
+              "rttMs": 10,
+              "kbps": 100000,
+              "path": "LAN",
+              "metered": false,
+              "sessionWarm": true,
+              "samples": 5
+            },
+            "breaker": {
+              "coolingUntilMonoMs": null,
+              "declineBackoffUntilMonoMs": null,
+              "halfOpen": false
+            },
+            "lastSameFileMonoMs": {
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": 999500
+            },
+            "ownReservationsMs": 0,
+            "maxContextTokens": null,
+            "batteryDesignMilliWh": null,
+            "stateRegressed": false
+          }
+        ],
+        "cloud": {
+          "keysPresent": [],
+          "coolingUntilWallMs": {},
+          "ewmaMs": {},
+          "cloudRates": {}
+        },
+        "tracker": [],
+        "caps": [],
+        "penalties": {},
+        "appEwmaOut": {},
+        "config": {}
+      },
+      "expect": {
+        "ok": {
+          "excluded": [
+            [
+              "peer-a",
+              "a1a1a1a1",
+              "F8_CLAIM"
+            ]
+          ],
+          "survivors": [
+            "SELF:self-node/a1a1a1a1"
+          ]
+        }
+      }
+    },
+    {
+      "id": "R01-085",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "F8: a claim whose decode curve repeats a context is excluded with F8 (LTQ-15)",
+      "input": {
+        "nowMonoMs": 1000500,
+        "wallNowMs": 1790000000000,
+        "meshGlobalOn": true,
+        "query": {
+          "model": "auto",
+          "policyHeader": null,
+          "fallback": [],
+          "noTrain": false,
+          "op": "chat",
+          "stream": true,
+          "promptTokens": 500,
+          "promptBytes": 2000,
+          "maxTokensCap": 300,
+          "deadlineMs": 120000,
+          "embeddingIdentity": null,
+          "app": {
+            "pkg": "app.a",
+            "meshAllowed": true,
+            "cloudBanned": false,
+            "deviceOnly": false,
+            "allowMeshOnMetered": false,
+            "neverCloudWhenDevicesCanAnswer": false
+          }
+        },
+        "self": {
+          "nodeId": "self-node",
+          "nodeTag": "self-nod",
+          "tier": "SELF",
+          "deviceClass": "PHONE",
+          "peer": null,
+          "files": [
+            {
+              "modelId": "qwen3-8b",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "quant": "Q4_K_M",
+              "fileBytes": 5027784832,
+              "catalogueRank": null,
+              "kind": "CHAT",
+              "contextTokens": 32768
+            }
+          ],
+          "priors": [
+            {
+              "nodeId": "self-node",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "cpu",
+              "prior": {
+                "decodeAt": [
+                  [
+                    512,
+                    5000
+                  ]
+                ],
+                "prefillMilliTokPerSec": 30000,
+                "ttft0Ms": 200,
+                "steadyMilliTokPerSec": 4000,
+                "throttleOnsetMs": 180000,
+                "powerMilliW": 5000,
+                "kvBytesPerToken": 100000,
+                "peakProcessBytes": 6000000000,
+                "flags": []
+              }
+            }
+          ],
+          "self": {
+            "batteryPermille": 900,
+            "charging": false,
+            "onBattery": true,
+            "saver": false,
+            "batteryDesignMilliWh": 19000,
+            "thermalCode": 0,
+            "governor": "RUN",
+            "availBytes": 20000000000,
+            "loaded": [
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "userActive": false,
+            "busyForMs": 0,
+            "hasEngine": true,
+            "backend": "cpu",
+            "localQueueMs": 0
+          },
+          "state": null,
+          "stateRxMonoMs": null,
+          "sessionOpen": false,
+          "goawaySeen": false,
+          "link": null,
+          "breaker": {
+            "coolingUntilMonoMs": null,
+            "declineBackoffUntilMonoMs": null,
+            "halfOpen": false
+          },
+          "lastSameFileMonoMs": {},
+          "ownReservationsMs": 0,
+          "maxContextTokens": null,
+          "batteryDesignMilliWh": null,
+          "stateRegressed": false
+        },
+        "peers": [
+          {
+            "nodeId": "peer-a",
+            "nodeTag": "peer-a",
+            "tier": "PEER",
+            "deviceClass": "DESKTOP",
+            "peer": {
+              "paired": true,
+              "routeEnabled": true,
+              "inferGrantedToMe": true,
+              "requireCharging": false,
+              "limits": {
+                "maxConcurrent": 1,
+                "maxBodyBytes": 8388608,
+                "maxTokens": 4096,
+                "rpm": 30,
+                "idleUnloadMs": 300000
+              }
+            },
+            "files": [
+              {
+                "modelId": "qwen3-8b",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "quant": "Q4_K_M",
+                "fileBytes": 5027784832,
+                "catalogueRank": null,
+                "kind": "CHAT",
+                "contextTokens": 32768
+              }
+            ],
+            "priors": [
+              {
+                "nodeId": "peer-a",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "metal",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      512,
+                      10000
+                    ],
+                    [
+                      512,
+                      12000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              }
+            ],
+            "self": null,
+            "state": {
+              "seq": 10,
+              "sampledAgeMs": 0,
+              "fsm": "SERVING",
+              "powerSource": "ac",
+              "charging": false,
+              "batteryBand": null,
+              "thermalBand": 0,
+              "governor": "RUN",
+              "backend": "metal",
+              "commit": "0123abc",
+              "confVersion": "0.2.0",
+              "held": [
+                "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+              ],
+              "queueBucket": 0,
+              "manifestSeq": null,
+              "manifestDigest": null
+            },
+            "stateRxMonoMs": 1000000,
+            "sessionOpen": true,
+            "goawaySeen": false,
+            "link": {
+              "rttMs": 10,
+              "kbps": 100000,
+              "path": "LAN",
+              "metered": false,
+              "sessionWarm": true,
+              "samples": 5
+            },
+            "breaker": {
+              "coolingUntilMonoMs": null,
+              "declineBackoffUntilMonoMs": null,
+              "halfOpen": false
+            },
+            "lastSameFileMonoMs": {
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": 999500
+            },
+            "ownReservationsMs": 0,
+            "maxContextTokens": null,
+            "batteryDesignMilliWh": null,
+            "stateRegressed": false
+          }
+        ],
+        "cloud": {
+          "keysPresent": [],
+          "coolingUntilWallMs": {},
+          "ewmaMs": {},
+          "cloudRates": {}
+        },
+        "tracker": [],
+        "caps": [],
+        "penalties": {},
+        "appEwmaOut": {},
+        "config": {}
+      },
+      "expect": {
+        "ok": {
+          "excluded": [
+            [
+              "peer-a",
+              "a1a1a1a1",
+              "F8_CLAIM"
+            ]
+          ],
+          "survivors": [
+            "SELF:self-node/a1a1a1a1"
+          ]
+        }
+      }
+    },
+    {
+      "id": "R01-086",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "F8: a claim whose decode curve has five points is excluded with F8 (LTQ-15)",
+      "input": {
+        "nowMonoMs": 1000500,
+        "wallNowMs": 1790000000000,
+        "meshGlobalOn": true,
+        "query": {
+          "model": "auto",
+          "policyHeader": null,
+          "fallback": [],
+          "noTrain": false,
+          "op": "chat",
+          "stream": true,
+          "promptTokens": 500,
+          "promptBytes": 2000,
+          "maxTokensCap": 300,
+          "deadlineMs": 120000,
+          "embeddingIdentity": null,
+          "app": {
+            "pkg": "app.a",
+            "meshAllowed": true,
+            "cloudBanned": false,
+            "deviceOnly": false,
+            "allowMeshOnMetered": false,
+            "neverCloudWhenDevicesCanAnswer": false
+          }
+        },
+        "self": {
+          "nodeId": "self-node",
+          "nodeTag": "self-nod",
+          "tier": "SELF",
+          "deviceClass": "PHONE",
+          "peer": null,
+          "files": [
+            {
+              "modelId": "qwen3-8b",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "quant": "Q4_K_M",
+              "fileBytes": 5027784832,
+              "catalogueRank": null,
+              "kind": "CHAT",
+              "contextTokens": 32768
+            }
+          ],
+          "priors": [
+            {
+              "nodeId": "self-node",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "cpu",
+              "prior": {
+                "decodeAt": [
+                  [
+                    512,
+                    5000
+                  ]
+                ],
+                "prefillMilliTokPerSec": 30000,
+                "ttft0Ms": 200,
+                "steadyMilliTokPerSec": 4000,
+                "throttleOnsetMs": 180000,
+                "powerMilliW": 5000,
+                "kvBytesPerToken": 100000,
+                "peakProcessBytes": 6000000000,
+                "flags": []
+              }
+            }
+          ],
+          "self": {
+            "batteryPermille": 900,
+            "charging": false,
+            "onBattery": true,
+            "saver": false,
+            "batteryDesignMilliWh": 19000,
+            "thermalCode": 0,
+            "governor": "RUN",
+            "availBytes": 20000000000,
+            "loaded": [
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "userActive": false,
+            "busyForMs": 0,
+            "hasEngine": true,
+            "backend": "cpu",
+            "localQueueMs": 0
+          },
+          "state": null,
+          "stateRxMonoMs": null,
+          "sessionOpen": false,
+          "goawaySeen": false,
+          "link": null,
+          "breaker": {
+            "coolingUntilMonoMs": null,
+            "declineBackoffUntilMonoMs": null,
+            "halfOpen": false
+          },
+          "lastSameFileMonoMs": {},
+          "ownReservationsMs": 0,
+          "maxContextTokens": null,
+          "batteryDesignMilliWh": null,
+          "stateRegressed": false
+        },
+        "peers": [
+          {
+            "nodeId": "peer-a",
+            "nodeTag": "peer-a",
+            "tier": "PEER",
+            "deviceClass": "DESKTOP",
+            "peer": {
+              "paired": true,
+              "routeEnabled": true,
+              "inferGrantedToMe": true,
+              "requireCharging": false,
+              "limits": {
+                "maxConcurrent": 1,
+                "maxBodyBytes": 8388608,
+                "maxTokens": 4096,
+                "rpm": 30,
+                "idleUnloadMs": 300000
+              }
+            },
+            "files": [
+              {
+                "modelId": "qwen3-8b",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "quant": "Q4_K_M",
+                "fileBytes": 5027784832,
+                "catalogueRank": null,
+                "kind": "CHAT",
+                "contextTokens": 32768
+              }
+            ],
+            "priors": [
+              {
+                "nodeId": "peer-a",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "metal",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      256,
+                      10000
+                    ],
+                    [
+                      512,
+                      10000
+                    ],
+                    [
+                      768,
+                      10000
+                    ],
+                    [
+                      1024,
+                      10000
+                    ],
+                    [
+                      1280,
+                      10000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              }
+            ],
+            "self": null,
+            "state": {
+              "seq": 10,
+              "sampledAgeMs": 0,
+              "fsm": "SERVING",
+              "powerSource": "ac",
+              "charging": false,
+              "batteryBand": null,
+              "thermalBand": 0,
+              "governor": "RUN",
+              "backend": "metal",
+              "commit": "0123abc",
+              "confVersion": "0.2.0",
+              "held": [
+                "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+              ],
+              "queueBucket": 0,
+              "manifestSeq": null,
+              "manifestDigest": null
+            },
+            "stateRxMonoMs": 1000000,
+            "sessionOpen": true,
+            "goawaySeen": false,
+            "link": {
+              "rttMs": 10,
+              "kbps": 100000,
+              "path": "LAN",
+              "metered": false,
+              "sessionWarm": true,
+              "samples": 5
+            },
+            "breaker": {
+              "coolingUntilMonoMs": null,
+              "declineBackoffUntilMonoMs": null,
+              "halfOpen": false
+            },
+            "lastSameFileMonoMs": {
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": 999500
+            },
+            "ownReservationsMs": 0,
+            "maxContextTokens": null,
+            "batteryDesignMilliWh": null,
+            "stateRegressed": false
+          }
+        ],
+        "cloud": {
+          "keysPresent": [],
+          "coolingUntilWallMs": {},
+          "ewmaMs": {},
+          "cloudRates": {}
+        },
+        "tracker": [],
+        "caps": [],
+        "penalties": {},
+        "appEwmaOut": {},
+        "config": {}
+      },
+      "expect": {
+        "ok": {
+          "excluded": [
+            [
+              "peer-a",
+              "a1a1a1a1",
+              "F8_CLAIM"
+            ]
+          ],
+          "survivors": [
+            "SELF:self-node/a1a1a1a1"
+          ]
+        }
+      }
+    },
+    {
+      "id": "R01-087",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "F8: a four-point ascending decode curve is accepted",
+      "input": {
+        "nowMonoMs": 1000500,
+        "wallNowMs": 1790000000000,
+        "meshGlobalOn": true,
+        "query": {
+          "model": "auto",
+          "policyHeader": null,
+          "fallback": [],
+          "noTrain": false,
+          "op": "chat",
+          "stream": true,
+          "promptTokens": 500,
+          "promptBytes": 2000,
+          "maxTokensCap": 300,
+          "deadlineMs": 120000,
+          "embeddingIdentity": null,
+          "app": {
+            "pkg": "app.a",
+            "meshAllowed": true,
+            "cloudBanned": false,
+            "deviceOnly": false,
+            "allowMeshOnMetered": false,
+            "neverCloudWhenDevicesCanAnswer": false
+          }
+        },
+        "self": {
+          "nodeId": "self-node",
+          "nodeTag": "self-nod",
+          "tier": "SELF",
+          "deviceClass": "PHONE",
+          "peer": null,
+          "files": [
+            {
+              "modelId": "qwen3-8b",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "quant": "Q4_K_M",
+              "fileBytes": 5027784832,
+              "catalogueRank": null,
+              "kind": "CHAT",
+              "contextTokens": 32768
+            }
+          ],
+          "priors": [
+            {
+              "nodeId": "self-node",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "cpu",
+              "prior": {
+                "decodeAt": [
+                  [
+                    512,
+                    5000
+                  ]
+                ],
+                "prefillMilliTokPerSec": 30000,
+                "ttft0Ms": 200,
+                "steadyMilliTokPerSec": 4000,
+                "throttleOnsetMs": 180000,
+                "powerMilliW": 5000,
+                "kvBytesPerToken": 100000,
+                "peakProcessBytes": 6000000000,
+                "flags": []
+              }
+            }
+          ],
+          "self": {
+            "batteryPermille": 900,
+            "charging": false,
+            "onBattery": true,
+            "saver": false,
+            "batteryDesignMilliWh": 19000,
+            "thermalCode": 0,
+            "governor": "RUN",
+            "availBytes": 20000000000,
+            "loaded": [
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "userActive": false,
+            "busyForMs": 0,
+            "hasEngine": true,
+            "backend": "cpu",
+            "localQueueMs": 0
+          },
+          "state": null,
+          "stateRxMonoMs": null,
+          "sessionOpen": false,
+          "goawaySeen": false,
+          "link": null,
+          "breaker": {
+            "coolingUntilMonoMs": null,
+            "declineBackoffUntilMonoMs": null,
+            "halfOpen": false
+          },
+          "lastSameFileMonoMs": {},
+          "ownReservationsMs": 0,
+          "maxContextTokens": null,
+          "batteryDesignMilliWh": null,
+          "stateRegressed": false
+        },
+        "peers": [
+          {
+            "nodeId": "peer-a",
+            "nodeTag": "peer-a",
+            "tier": "PEER",
+            "deviceClass": "DESKTOP",
+            "peer": {
+              "paired": true,
+              "routeEnabled": true,
+              "inferGrantedToMe": true,
+              "requireCharging": false,
+              "limits": {
+                "maxConcurrent": 1,
+                "maxBodyBytes": 8388608,
+                "maxTokens": 4096,
+                "rpm": 30,
+                "idleUnloadMs": 300000
+              }
+            },
+            "files": [
+              {
+                "modelId": "qwen3-8b",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "quant": "Q4_K_M",
+                "fileBytes": 5027784832,
+                "catalogueRank": null,
+                "kind": "CHAT",
+                "contextTokens": 32768
+              }
+            ],
+            "priors": [
+              {
+                "nodeId": "peer-a",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "metal",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      256,
+                      14000
+                    ],
+                    [
+                      512,
+                      12000
+                    ],
+                    [
+                      1024,
+                      10000
+                    ],
+                    [
+                      4096,
+                      8000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              }
+            ],
+            "self": null,
+            "state": {
+              "seq": 10,
+              "sampledAgeMs": 0,
+              "fsm": "SERVING",
+              "powerSource": "ac",
+              "charging": false,
+              "batteryBand": null,
+              "thermalBand": 0,
+              "governor": "RUN",
+              "backend": "metal",
+              "commit": "0123abc",
+              "confVersion": "0.2.0",
+              "held": [
+                "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+              ],
+              "queueBucket": 0,
+              "manifestSeq": null,
+              "manifestDigest": null
+            },
+            "stateRxMonoMs": 1000000,
+            "sessionOpen": true,
+            "goawaySeen": false,
+            "link": {
+              "rttMs": 10,
+              "kbps": 100000,
+              "path": "LAN",
+              "metered": false,
+              "sessionWarm": true,
+              "samples": 5
+            },
+            "breaker": {
+              "coolingUntilMonoMs": null,
+              "declineBackoffUntilMonoMs": null,
+              "halfOpen": false
+            },
+            "lastSameFileMonoMs": {
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": 999500
+            },
+            "ownReservationsMs": 0,
+            "maxContextTokens": null,
+            "batteryDesignMilliWh": null,
+            "stateRegressed": false
+          }
+        ],
+        "cloud": {
+          "keysPresent": [],
+          "coolingUntilWallMs": {},
+          "ewmaMs": {},
+          "cloudRates": {}
+        },
+        "tracker": [],
+        "caps": [],
+        "penalties": {},
+        "appEwmaOut": {},
+        "config": {}
+      },
+      "expect": {
+        "ok": {
+          "excluded": [],
+          "survivors": [
+            "PEER:peer-a/a1a1a1a1",
+            "SELF:self-node/a1a1a1a1"
+          ]
+        }
+      }
+    },
+    {
+      "id": "R01-088",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "F11: a fresh digest does not refresh the power fields: a STALE full state with band 50-79 reads 20-49 and is excluded (LTQ-06)",
+      "input": {
+        "nowMonoMs": 1000500,
+        "wallNowMs": 1790000000000,
+        "meshGlobalOn": true,
+        "query": {
+          "model": "auto",
+          "policyHeader": null,
+          "fallback": [],
+          "noTrain": false,
+          "op": "chat",
+          "stream": true,
+          "promptTokens": 500,
+          "promptBytes": 2000,
+          "maxTokensCap": 300,
+          "deadlineMs": 120000,
+          "embeddingIdentity": null,
+          "app": {
+            "pkg": "app.a",
+            "meshAllowed": true,
+            "cloudBanned": false,
+            "deviceOnly": false,
+            "allowMeshOnMetered": false,
+            "neverCloudWhenDevicesCanAnswer": false
+          }
+        },
+        "self": {
+          "nodeId": "self-node",
+          "nodeTag": "self-nod",
+          "tier": "SELF",
+          "deviceClass": "PHONE",
+          "peer": null,
+          "files": [
+            {
+              "modelId": "qwen3-8b",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "quant": "Q4_K_M",
+              "fileBytes": 5027784832,
+              "catalogueRank": null,
+              "kind": "CHAT",
+              "contextTokens": 32768
+            }
+          ],
+          "priors": [
+            {
+              "nodeId": "self-node",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "cpu",
+              "prior": {
+                "decodeAt": [
+                  [
+                    512,
+                    5000
+                  ]
+                ],
+                "prefillMilliTokPerSec": 30000,
+                "ttft0Ms": 200,
+                "steadyMilliTokPerSec": 4000,
+                "throttleOnsetMs": 180000,
+                "powerMilliW": 5000,
+                "kvBytesPerToken": 100000,
+                "peakProcessBytes": 6000000000,
+                "flags": []
+              }
+            }
+          ],
+          "self": {
+            "batteryPermille": 900,
+            "charging": false,
+            "onBattery": true,
+            "saver": false,
+            "batteryDesignMilliWh": 19000,
+            "thermalCode": 0,
+            "governor": "RUN",
+            "availBytes": 20000000000,
+            "loaded": [
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "userActive": false,
+            "busyForMs": 0,
+            "hasEngine": true,
+            "backend": "cpu",
+            "localQueueMs": 0
+          },
+          "state": null,
+          "stateRxMonoMs": null,
+          "sessionOpen": false,
+          "goawaySeen": false,
+          "link": null,
+          "breaker": {
+            "coolingUntilMonoMs": null,
+            "declineBackoffUntilMonoMs": null,
+            "halfOpen": false
+          },
+          "lastSameFileMonoMs": {},
+          "ownReservationsMs": 0,
+          "maxContextTokens": null,
+          "batteryDesignMilliWh": null,
+          "stateRegressed": false
+        },
+        "peers": [
+          {
+            "nodeId": "peer-a",
+            "nodeTag": "peer-a",
+            "tier": "PEER",
+            "deviceClass": "DESKTOP",
+            "peer": {
+              "paired": true,
+              "routeEnabled": true,
+              "inferGrantedToMe": true,
+              "requireCharging": false,
+              "limits": {
+                "maxConcurrent": 1,
+                "maxBodyBytes": 8388608,
+                "maxTokens": 4096,
+                "rpm": 30,
+                "idleUnloadMs": 300000
+              }
+            },
+            "files": [
+              {
+                "modelId": "qwen3-8b",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "quant": "Q4_K_M",
+                "fileBytes": 5027784832,
+                "catalogueRank": null,
+                "kind": "CHAT",
+                "contextTokens": 32768
+              }
+            ],
+            "priors": [
+              {
+                "nodeId": "peer-a",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "metal",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      512,
+                      12000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              }
+            ],
+            "self": null,
+            "state": {
+              "seq": 10,
+              "sampledAgeMs": 0,
+              "fsm": "SERVING",
+              "powerSource": "battery",
+              "charging": false,
+              "batteryBand": "50-79",
+              "thermalBand": 0,
+              "governor": "RUN",
+              "backend": "metal",
+              "commit": "0123abc",
+              "confVersion": "0.2.0",
+              "held": [
+                "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+              ],
+              "queueBucket": 0,
+              "manifestSeq": null,
+              "manifestDigest": null
+            },
+            "stateRxMonoMs": 1000000,
+            "sessionOpen": true,
+            "goawaySeen": false,
+            "link": {
+              "rttMs": 10,
+              "kbps": 100000,
+              "path": "LAN",
+              "metered": false,
+              "sessionWarm": true,
+              "samples": 5
+            },
+            "breaker": {
+              "coolingUntilMonoMs": null,
+              "declineBackoffUntilMonoMs": null,
+              "halfOpen": false
+            },
+            "lastSameFileMonoMs": {
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": 999500
+            },
+            "ownReservationsMs": 0,
+            "maxContextTokens": null,
+            "batteryDesignMilliWh": 40000,
+            "stateRegressed": false,
+            "powerFreshness": "STALE"
+          }
+        ],
+        "cloud": {
+          "keysPresent": [],
+          "coolingUntilWallMs": {},
+          "ewmaMs": {},
+          "cloudRates": {}
+        },
+        "tracker": [],
+        "caps": [],
+        "penalties": {},
+        "appEwmaOut": {},
+        "config": {}
+      },
+      "expect": {
+        "ok": {
+          "excluded": [
+            [
+              "peer-a",
+              "a1a1a1a1",
+              "F11_POWER"
+            ]
+          ],
+          "survivors": [
+            "SELF:self-node/a1a1a1a1"
+          ]
+        }
+      }
+    },
+    {
+      "id": "R01-089",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "F11 is skipped when the power fields are EXPIRED although the digest fields are fresh: the offer is the probe (LTQ-06)",
+      "input": {
+        "nowMonoMs": 1000500,
+        "wallNowMs": 1790000000000,
+        "meshGlobalOn": true,
+        "query": {
+          "model": "auto",
+          "policyHeader": null,
+          "fallback": [],
+          "noTrain": false,
+          "op": "chat",
+          "stream": true,
+          "promptTokens": 500,
+          "promptBytes": 2000,
+          "maxTokensCap": 300,
+          "deadlineMs": 120000,
+          "embeddingIdentity": null,
+          "app": {
+            "pkg": "app.a",
+            "meshAllowed": true,
+            "cloudBanned": false,
+            "deviceOnly": false,
+            "allowMeshOnMetered": false,
+            "neverCloudWhenDevicesCanAnswer": false
+          }
+        },
+        "self": {
+          "nodeId": "self-node",
+          "nodeTag": "self-nod",
+          "tier": "SELF",
+          "deviceClass": "PHONE",
+          "peer": null,
+          "files": [
+            {
+              "modelId": "qwen3-8b",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "quant": "Q4_K_M",
+              "fileBytes": 5027784832,
+              "catalogueRank": null,
+              "kind": "CHAT",
+              "contextTokens": 32768
+            }
+          ],
+          "priors": [
+            {
+              "nodeId": "self-node",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "cpu",
+              "prior": {
+                "decodeAt": [
+                  [
+                    512,
+                    5000
+                  ]
+                ],
+                "prefillMilliTokPerSec": 30000,
+                "ttft0Ms": 200,
+                "steadyMilliTokPerSec": 4000,
+                "throttleOnsetMs": 180000,
+                "powerMilliW": 5000,
+                "kvBytesPerToken": 100000,
+                "peakProcessBytes": 6000000000,
+                "flags": []
+              }
+            }
+          ],
+          "self": {
+            "batteryPermille": 900,
+            "charging": false,
+            "onBattery": true,
+            "saver": false,
+            "batteryDesignMilliWh": 19000,
+            "thermalCode": 0,
+            "governor": "RUN",
+            "availBytes": 20000000000,
+            "loaded": [
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "userActive": false,
+            "busyForMs": 0,
+            "hasEngine": true,
+            "backend": "cpu",
+            "localQueueMs": 0
+          },
+          "state": null,
+          "stateRxMonoMs": null,
+          "sessionOpen": false,
+          "goawaySeen": false,
+          "link": null,
+          "breaker": {
+            "coolingUntilMonoMs": null,
+            "declineBackoffUntilMonoMs": null,
+            "halfOpen": false
+          },
+          "lastSameFileMonoMs": {},
+          "ownReservationsMs": 0,
+          "maxContextTokens": null,
+          "batteryDesignMilliWh": null,
+          "stateRegressed": false
+        },
+        "peers": [
+          {
+            "nodeId": "peer-a",
+            "nodeTag": "peer-a",
+            "tier": "PEER",
+            "deviceClass": "DESKTOP",
+            "peer": {
+              "paired": true,
+              "routeEnabled": true,
+              "inferGrantedToMe": true,
+              "requireCharging": false,
+              "limits": {
+                "maxConcurrent": 1,
+                "maxBodyBytes": 8388608,
+                "maxTokens": 4096,
+                "rpm": 30,
+                "idleUnloadMs": 300000
+              }
+            },
+            "files": [
+              {
+                "modelId": "qwen3-8b",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "quant": "Q4_K_M",
+                "fileBytes": 5027784832,
+                "catalogueRank": null,
+                "kind": "CHAT",
+                "contextTokens": 32768
+              }
+            ],
+            "priors": [
+              {
+                "nodeId": "peer-a",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "metal",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      512,
+                      12000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              }
+            ],
+            "self": null,
+            "state": {
+              "seq": 10,
+              "sampledAgeMs": 0,
+              "fsm": "SERVING",
+              "powerSource": "battery",
+              "charging": false,
+              "batteryBand": "lt20",
+              "thermalBand": 0,
+              "governor": "RUN",
+              "backend": "metal",
+              "commit": "0123abc",
+              "confVersion": "0.2.0",
+              "held": [
+                "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+              ],
+              "queueBucket": 0,
+              "manifestSeq": null,
+              "manifestDigest": null
+            },
+            "stateRxMonoMs": 1000000,
+            "sessionOpen": true,
+            "goawaySeen": false,
+            "link": {
+              "rttMs": 10,
+              "kbps": 100000,
+              "path": "LAN",
+              "metered": false,
+              "sessionWarm": true,
+              "samples": 5
+            },
+            "breaker": {
+              "coolingUntilMonoMs": null,
+              "declineBackoffUntilMonoMs": null,
+              "halfOpen": false
+            },
+            "lastSameFileMonoMs": {
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": 999500
+            },
+            "ownReservationsMs": 0,
+            "maxContextTokens": null,
+            "batteryDesignMilliWh": 40000,
+            "stateRegressed": false,
+            "powerFreshness": "EXPIRED"
+          }
+        ],
+        "cloud": {
+          "keysPresent": [],
+          "coolingUntilWallMs": {},
+          "ewmaMs": {},
+          "cloudRates": {}
+        },
+        "tracker": [],
+        "caps": [],
+        "penalties": {},
+        "appEwmaOut": {},
+        "config": {}
+      },
+      "expect": {
+        "ok": {
+          "excluded": [],
+          "survivors": [
+            "PEER:peer-a/a1a1a1a1",
+            "SELF:self-node/a1a1a1a1"
+          ]
+        }
+      }
+    },
+    {
+      "id": "R01-090",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "F9 still reads the digest fields when only the power fields are EXPIRED (LTQ-06)",
+      "input": {
+        "nowMonoMs": 1000500,
+        "wallNowMs": 1790000000000,
+        "meshGlobalOn": true,
+        "query": {
+          "model": "auto",
+          "policyHeader": null,
+          "fallback": [],
+          "noTrain": false,
+          "op": "chat",
+          "stream": true,
+          "promptTokens": 500,
+          "promptBytes": 2000,
+          "maxTokensCap": 300,
+          "deadlineMs": 120000,
+          "embeddingIdentity": null,
+          "app": {
+            "pkg": "app.a",
+            "meshAllowed": true,
+            "cloudBanned": false,
+            "deviceOnly": false,
+            "allowMeshOnMetered": false,
+            "neverCloudWhenDevicesCanAnswer": false
+          }
+        },
+        "self": {
+          "nodeId": "self-node",
+          "nodeTag": "self-nod",
+          "tier": "SELF",
+          "deviceClass": "PHONE",
+          "peer": null,
+          "files": [
+            {
+              "modelId": "qwen3-8b",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "quant": "Q4_K_M",
+              "fileBytes": 5027784832,
+              "catalogueRank": null,
+              "kind": "CHAT",
+              "contextTokens": 32768
+            }
+          ],
+          "priors": [
+            {
+              "nodeId": "self-node",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "cpu",
+              "prior": {
+                "decodeAt": [
+                  [
+                    512,
+                    5000
+                  ]
+                ],
+                "prefillMilliTokPerSec": 30000,
+                "ttft0Ms": 200,
+                "steadyMilliTokPerSec": 4000,
+                "throttleOnsetMs": 180000,
+                "powerMilliW": 5000,
+                "kvBytesPerToken": 100000,
+                "peakProcessBytes": 6000000000,
+                "flags": []
+              }
+            }
+          ],
+          "self": {
+            "batteryPermille": 900,
+            "charging": false,
+            "onBattery": true,
+            "saver": false,
+            "batteryDesignMilliWh": 19000,
+            "thermalCode": 0,
+            "governor": "RUN",
+            "availBytes": 20000000000,
+            "loaded": [
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "userActive": false,
+            "busyForMs": 0,
+            "hasEngine": true,
+            "backend": "cpu",
+            "localQueueMs": 0
+          },
+          "state": null,
+          "stateRxMonoMs": null,
+          "sessionOpen": false,
+          "goawaySeen": false,
+          "link": null,
+          "breaker": {
+            "coolingUntilMonoMs": null,
+            "declineBackoffUntilMonoMs": null,
+            "halfOpen": false
+          },
+          "lastSameFileMonoMs": {},
+          "ownReservationsMs": 0,
+          "maxContextTokens": null,
+          "batteryDesignMilliWh": null,
+          "stateRegressed": false
+        },
+        "peers": [
+          {
+            "nodeId": "peer-a",
+            "nodeTag": "peer-a",
+            "tier": "PEER",
+            "deviceClass": "DESKTOP",
+            "peer": {
+              "paired": true,
+              "routeEnabled": true,
+              "inferGrantedToMe": true,
+              "requireCharging": false,
+              "limits": {
+                "maxConcurrent": 1,
+                "maxBodyBytes": 8388608,
+                "maxTokens": 4096,
+                "rpm": 30,
+                "idleUnloadMs": 300000
+              }
+            },
+            "files": [
+              {
+                "modelId": "qwen3-8b",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "quant": "Q4_K_M",
+                "fileBytes": 5027784832,
+                "catalogueRank": null,
+                "kind": "CHAT",
+                "contextTokens": 32768
+              }
+            ],
+            "priors": [
+              {
+                "nodeId": "peer-a",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "metal",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      512,
+                      12000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              }
+            ],
+            "self": null,
+            "state": {
+              "seq": 10,
+              "sampledAgeMs": 0,
+              "fsm": "DRAINING",
+              "powerSource": "ac",
+              "charging": false,
+              "batteryBand": null,
+              "thermalBand": 0,
+              "governor": "RUN",
+              "backend": "metal",
+              "commit": "0123abc",
+              "confVersion": "0.2.0",
+              "held": [
+                "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+              ],
+              "queueBucket": 0,
+              "manifestSeq": null,
+              "manifestDigest": null
+            },
+            "stateRxMonoMs": 1000000,
+            "sessionOpen": true,
+            "goawaySeen": false,
+            "link": {
+              "rttMs": 10,
+              "kbps": 100000,
+              "path": "LAN",
+              "metered": false,
+              "sessionWarm": true,
+              "samples": 5
+            },
+            "breaker": {
+              "coolingUntilMonoMs": null,
+              "declineBackoffUntilMonoMs": null,
+              "halfOpen": false
+            },
+            "lastSameFileMonoMs": {
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": 999500
+            },
+            "ownReservationsMs": 0,
+            "maxContextTokens": null,
+            "batteryDesignMilliWh": null,
+            "stateRegressed": false,
+            "powerFreshness": "EXPIRED"
+          }
+        ],
+        "cloud": {
+          "keysPresent": [],
+          "coolingUntilWallMs": {},
+          "ewmaMs": {},
+          "cloudRates": {}
+        },
+        "tracker": [],
+        "caps": [],
+        "penalties": {},
+        "appEwmaOut": {},
+        "config": {}
+      },
+      "expect": {
+        "ok": {
+          "excluded": [
+            [
+              "peer-a",
+              "a1a1a1a1",
+              "F9_AVAILABILITY"
+            ]
+          ],
+          "survivors": [
+            "SELF:self-node/a1a1a1a1"
+          ]
+        }
+      }
+    },
+    {
+      "id": "R01-091",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a power freshness better than the digest's is ignored: the digest is STALE, so the 50-79 band still reads one lower (LTQ-06)",
+      "input": {
+        "nowMonoMs": 1000500,
+        "wallNowMs": 1790000000000,
+        "meshGlobalOn": true,
+        "query": {
+          "model": "auto",
+          "policyHeader": null,
+          "fallback": [],
+          "noTrain": false,
+          "op": "chat",
+          "stream": true,
+          "promptTokens": 500,
+          "promptBytes": 2000,
+          "maxTokensCap": 300,
+          "deadlineMs": 120000,
+          "embeddingIdentity": null,
+          "app": {
+            "pkg": "app.a",
+            "meshAllowed": true,
+            "cloudBanned": false,
+            "deviceOnly": false,
+            "allowMeshOnMetered": false,
+            "neverCloudWhenDevicesCanAnswer": false
+          }
+        },
+        "self": {
+          "nodeId": "self-node",
+          "nodeTag": "self-nod",
+          "tier": "SELF",
+          "deviceClass": "PHONE",
+          "peer": null,
+          "files": [
+            {
+              "modelId": "qwen3-8b",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "quant": "Q4_K_M",
+              "fileBytes": 5027784832,
+              "catalogueRank": null,
+              "kind": "CHAT",
+              "contextTokens": 32768
+            }
+          ],
+          "priors": [
+            {
+              "nodeId": "self-node",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "cpu",
+              "prior": {
+                "decodeAt": [
+                  [
+                    512,
+                    5000
+                  ]
+                ],
+                "prefillMilliTokPerSec": 30000,
+                "ttft0Ms": 200,
+                "steadyMilliTokPerSec": 4000,
+                "throttleOnsetMs": 180000,
+                "powerMilliW": 5000,
+                "kvBytesPerToken": 100000,
+                "peakProcessBytes": 6000000000,
+                "flags": []
+              }
+            }
+          ],
+          "self": {
+            "batteryPermille": 900,
+            "charging": false,
+            "onBattery": true,
+            "saver": false,
+            "batteryDesignMilliWh": 19000,
+            "thermalCode": 0,
+            "governor": "RUN",
+            "availBytes": 20000000000,
+            "loaded": [
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "userActive": false,
+            "busyForMs": 0,
+            "hasEngine": true,
+            "backend": "cpu",
+            "localQueueMs": 0
+          },
+          "state": null,
+          "stateRxMonoMs": null,
+          "sessionOpen": false,
+          "goawaySeen": false,
+          "link": null,
+          "breaker": {
+            "coolingUntilMonoMs": null,
+            "declineBackoffUntilMonoMs": null,
+            "halfOpen": false
+          },
+          "lastSameFileMonoMs": {},
+          "ownReservationsMs": 0,
+          "maxContextTokens": null,
+          "batteryDesignMilliWh": null,
+          "stateRegressed": false
+        },
+        "peers": [
+          {
+            "nodeId": "peer-a",
+            "nodeTag": "peer-a",
+            "tier": "PEER",
+            "deviceClass": "DESKTOP",
+            "peer": {
+              "paired": true,
+              "routeEnabled": true,
+              "inferGrantedToMe": true,
+              "requireCharging": false,
+              "limits": {
+                "maxConcurrent": 1,
+                "maxBodyBytes": 8388608,
+                "maxTokens": 4096,
+                "rpm": 30,
+                "idleUnloadMs": 300000
+              }
+            },
+            "files": [
+              {
+                "modelId": "qwen3-8b",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "quant": "Q4_K_M",
+                "fileBytes": 5027784832,
+                "catalogueRank": null,
+                "kind": "CHAT",
+                "contextTokens": 32768
+              }
+            ],
+            "priors": [
+              {
+                "nodeId": "peer-a",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "metal",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      512,
+                      12000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              }
+            ],
+            "self": null,
+            "state": {
+              "seq": 10,
+              "sampledAgeMs": 0,
+              "fsm": "SERVING",
+              "powerSource": "battery",
+              "charging": false,
+              "batteryBand": "50-79",
+              "thermalBand": 0,
+              "governor": "RUN",
+              "backend": "metal",
+              "commit": "0123abc",
+              "confVersion": "0.2.0",
+              "held": [
+                "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+              ],
+              "queueBucket": 0,
+              "manifestSeq": null,
+              "manifestDigest": null
+            },
+            "stateRxMonoMs": 900500,
+            "sessionOpen": true,
+            "goawaySeen": false,
+            "link": {
+              "rttMs": 10,
+              "kbps": 100000,
+              "path": "LAN",
+              "metered": false,
+              "sessionWarm": true,
+              "samples": 5
+            },
+            "breaker": {
+              "coolingUntilMonoMs": null,
+              "declineBackoffUntilMonoMs": null,
+              "halfOpen": false
+            },
+            "lastSameFileMonoMs": {
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": 999500
+            },
+            "ownReservationsMs": 0,
+            "maxContextTokens": null,
+            "batteryDesignMilliWh": 40000,
+            "stateRegressed": false,
+            "powerFreshness": "FRESH"
+          }
+        ],
+        "cloud": {
+          "keysPresent": [],
+          "coolingUntilWallMs": {},
+          "ewmaMs": {},
+          "cloudRates": {}
+        },
+        "tracker": [],
+        "caps": [],
+        "penalties": {},
+        "appEwmaOut": {},
+        "config": {}
+      },
+      "expect": {
+        "ok": {
+          "excluded": [
+            [
+              "peer-a",
+              "a1a1a1a1",
+              "F11_POWER"
+            ]
+          ],
+          "survivors": [
+            "SELF:self-node/a1a1a1a1"
+          ]
+        }
+      }
     }
   ]
 }

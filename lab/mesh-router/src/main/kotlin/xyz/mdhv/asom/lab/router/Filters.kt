@@ -36,7 +36,8 @@ internal object HardFilters {
         val isPeer = node.tier == Tier.PEER
         val peer = node.peer
         val now = s.nowMonoMs
-        val expired = fast?.freshness == Freshness.EXPIRED
+        val digestExpired = fast?.digestFreshness == Freshness.EXPIRED
+        val powerExpired = fast?.powerFreshness == Freshness.EXPIRED
         if (isPeer) {
             val row = peer ?: return Fail("F1_ELIGIBILITY", "no peer row")
             when (val e = PeerEligibility.evaluate(p, PeerRegistryView(if (row.paired) PeerStatus.PAIRED else PeerStatus.SUSPENDED, row.routeEnabled, row.inferGrantedToMe))) {
@@ -81,16 +82,16 @@ internal object HardFilters {
             if (onBattery && (node.batteryDesignMilliWh == null || node.batteryDesignMilliWh <= 0)) return Fail("F8_CLAIM", "battery-capacity-undefined")
         }
         // F9
-        if (isPeer && !expired && fast!!.fsm != Fsm.SERVING) return Fail("F9_AVAILABILITY", fast.fsm.name)
+        if (isPeer && !digestExpired && fast!!.fsm != Fsm.SERVING) return Fail("F9_AVAILABILITY", fast.fsm.name)
         // F10
         if (isPeer) {
-            if (!expired && (fast!!.thermalBand == 2 || fast.governor == Governor.HOLD)) return Fail("F10_THERMAL", null)
+            if (!digestExpired && (fast!!.thermalBand == 2 || fast.governor == Governor.HOLD)) return Fail("F10_THERMAL", null)
         } else {
             val self = node.self!!
             if (self.thermalCode >= 3 || self.governor == Governor.HOLD) return Fail("F10_THERMAL", null)
         }
         // F11
-        if (isPeer && !expired) {
+        if (isPeer && !powerExpired) {
             val fv = fast!!
             if (fv.powerSource == "battery" && !fv.charging) {
                 val band = fv.batteryBand

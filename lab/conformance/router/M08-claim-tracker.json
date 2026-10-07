@@ -4415,6 +4415,1413 @@
           ]
         }
       }
+    },
+    {
+      "id": "M08-065",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an inherited DISCREPANT state holds through 9 good observations and clears at the 10th (LTQ-12: not at MIN_STATE = 5)",
+      "input": {
+        "kind": "inherit",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "before": [
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          }
+        ],
+        "newClaimAtMs": 86400000,
+        "after": [
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "accepted": true,
+          "states": [
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "CORROBORATED"
+          ]
+        }
+      }
+    },
+    {
+      "id": "M08-066",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a window that was not DISCREPANT is not inherited: the new claim seq starts UNVERIFIED and reaches its state after 5 observations",
+      "input": {
+        "kind": "inherit",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "before": [
+          {
+            "bytes": 1200,
+            "elapsed": 20500
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 20500
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 20500
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 20500
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 20500
+          }
+        ],
+        "newClaimAtMs": 86400000,
+        "after": [
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "accepted": true,
+          "states": [
+            "UNVERIFIED",
+            "UNVERIFIED",
+            "UNVERIFIED",
+            "UNVERIFIED",
+            "CORROBORATED"
+          ]
+        }
+      }
+    },
+    {
+      "id": "M08-067",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an inherited DISCREPANT state does not clear on 10 observations whose best is below CORR",
+      "input": {
+        "kind": "inherit",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "before": [
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          }
+        ],
+        "newClaimAtMs": 86400000,
+        "after": [
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "accepted": true,
+          "states": [
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT"
+          ]
+        }
+      }
+    },
+    {
+      "id": "M08-068",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a new claim seq 24 h later restarts W but not the discard budget: four truncated answers still read WEAK and still clamp the rate to the lowest ratio of an answer of >= 8 bytes (40 bytes: predicted 5,461 ms, ratio 27, prefill 2,700)",
+      "input": {
+        "kind": "claimBudget",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "observations": [
+          {
+            "bytes": 40,
+            "elapsed": 200000
+          },
+          {
+            "bytes": 40,
+            "elapsed": 200000
+          },
+          {
+            "bytes": 40,
+            "elapsed": 200000
+          },
+          {
+            "bytes": 40,
+            "elapsed": 200000
+          }
+        ],
+        "newClaimAtMs": 86400001
+      },
+      "expect": {
+        "ok": {
+          "accepted": true,
+          "state": "WEAK",
+          "budgetTripped": true,
+          "n": 0,
+          "tracked": {
+            "prefill": 2700,
+            "decodeAtP": 540,
+            "steady": 540
+          }
+        }
+      }
+    },
+    {
+      "id": "M08-069",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a new claim seq with every truncated answer under 8 bytes: the clamp is 0 and the candidate fails F8",
+      "input": {
+        "kind": "claimBudget",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "observations": [
+          {
+            "bytes": 4,
+            "elapsed": 1000
+          },
+          {
+            "bytes": 4,
+            "elapsed": 1000
+          },
+          {
+            "bytes": 4,
+            "elapsed": 1000
+          },
+          {
+            "bytes": 4,
+            "elapsed": 1000
+          }
+        ],
+        "newClaimAtMs": 86400001
+      },
+      "expect": {
+        "ok": {
+          "accepted": true,
+          "state": "WEAK",
+          "budgetTripped": true,
+          "n": 0,
+          "tracked": {
+            "prefill": 0,
+            "decodeAtP": 0,
+            "steady": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "M08-070",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "one DISCREPANT file of a peer does not latch a penalty: disc stays 700",
+      "input": {
+        "kind": "penalty",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "events": [
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          }
+        ],
+        "probes": [
+          1000,
+          5000
+        ]
+      },
+      "expect": {
+        "ok": {
+          "penalty": null,
+          "disc": [
+            700,
+            700
+          ]
+        }
+      }
+    },
+    {
+      "id": "M08-071",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "two DISCREPANT files latch a 7-day penalty at the observation that makes the second DISCREPANT; disc is 400 until it ends and 400 after it while both stay DISCREPANT",
+      "input": {
+        "kind": "penalty",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "events": [
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          }
+        ],
+        "probes": [
+          2000,
+          604801999,
+          604802000
+        ]
+      },
+      "expect": {
+        "ok": {
+          "penalty": {
+            "untilWallMs": 604802000,
+            "repeats": 1
+          },
+          "disc": [
+            400,
+            400,
+            400
+          ]
+        }
+      }
+    },
+    {
+      "id": "M08-072",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a second penalty of a peer that is still DISCREPANT lasts 14 days (doubling on repeat)",
+      "input": {
+        "kind": "penalty",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "events": [
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 604802005
+          }
+        ],
+        "probes": [
+          604802005,
+          1814402004,
+          1814402005
+        ]
+      },
+      "expect": {
+        "ok": {
+          "penalty": {
+            "untilWallMs": 1814402005,
+            "repeats": 2
+          },
+          "disc": [
+            400,
+            400,
+            400
+          ]
+        }
+      }
+    },
+    {
+      "id": "M08-073",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a third penalty lasts 28 days",
+      "input": {
+        "kind": "penalty",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "events": [
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 604802005
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1814402010
+          }
+        ],
+        "probes": [
+          1814402010
+        ]
+      },
+      "expect": {
+        "ok": {
+          "penalty": {
+            "untilWallMs": 4233602010,
+            "repeats": 3
+          },
+          "disc": [
+            400
+          ]
+        }
+      }
+    },
+    {
+      "id": "M08-074",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "two files DISCREPANT only by inheritance (no observation, so no penalty was latched) still give disc 400",
+      "input": {
+        "kind": "disc",
+        "states": [
+          {
+            "file": "A",
+            "ratios": [],
+            "inherited": true
+          },
+          {
+            "file": "B",
+            "ratios": [],
+            "inherited": true
+          }
+        ],
+        "penalty": null,
+        "now": 1000
+      },
+      "expect": {
+        "ok": {
+          "disc": 400
+        }
+      }
+    },
+    {
+      "id": "M08-075",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "one file DISCREPANT by inheritance gives disc 700",
+      "input": {
+        "kind": "disc",
+        "states": [
+          {
+            "file": "A",
+            "ratios": [],
+            "inherited": true
+          }
+        ],
+        "penalty": null,
+        "now": 1000
+      },
+      "expect": {
+        "ok": {
+          "disc": 700
+        }
+      }
+    },
+    {
+      "id": "M08-076",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "two files DISCREPANT by ratios (best < 600) give disc 400",
+      "input": {
+        "kind": "disc",
+        "states": [
+          {
+            "file": "A",
+            "ratios": [
+              100,
+              100,
+              100,
+              100,
+              100
+            ],
+            "inherited": false
+          },
+          {
+            "file": "B",
+            "ratios": [
+              100,
+              100,
+              100,
+              100,
+              100
+            ],
+            "inherited": false
+          }
+        ],
+        "penalty": null,
+        "now": 1000
+      },
+      "expect": {
+        "ok": {
+          "disc": 400
+        }
+      }
+    },
+    {
+      "id": "M08-077",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a running penalty gives disc 400 whatever the states are",
+      "input": {
+        "kind": "disc",
+        "states": [],
+        "penalty": {
+          "untilWallMs": 5000,
+          "repeats": 1
+        },
+        "now": 4999
+      },
+      "expect": {
+        "ok": {
+          "disc": 400
+        }
+      }
+    },
+    {
+      "id": "M08-078",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a penalty that ended at now gives disc 700 when fewer than two files are DISCREPANT",
+      "input": {
+        "kind": "disc",
+        "states": [
+          {
+            "file": "A",
+            "ratios": [],
+            "inherited": true
+          }
+        ],
+        "penalty": {
+          "untilWallMs": 5000,
+          "repeats": 1
+        },
+        "now": 5000
+      },
+      "expect": {
+        "ok": {
+          "disc": 700
+        }
+      }
+    },
+    {
+      "id": "M08-079",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "best at n = 8 is x[6] = 700 (nearest rank, not x[5])",
+      "input": {
+        "kind": "state",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "promptTokens": 500,
+        "ratios": [
+          100,
+          200,
+          300,
+          400,
+          500,
+          600,
+          700,
+          800
+        ],
+        "recent": [],
+        "inheritedDiscrepant": false,
+        "disc": 700,
+        "ceiling": null
+      },
+      "expect": {
+        "ok": {
+          "n": 8,
+          "ratios": [
+            100,
+            200,
+            300,
+            400,
+            500,
+            600,
+            700,
+            800
+          ],
+          "best": 700,
+          "state": "WEAK",
+          "strikes": 0,
+          "budgetTripped": false,
+          "minRatio": 0,
+          "tracked": {
+            "prefill": 40000,
+            "decodeAtP": 8000,
+            "steady": 8000
+          }
+        }
+      }
+    },
+    {
+      "id": "M08-080",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "best at n = 12 is x[9] = 1000 (nearest rank, not x[8])",
+      "input": {
+        "kind": "state",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "promptTokens": 500,
+        "ratios": [
+          100,
+          200,
+          300,
+          400,
+          500,
+          600,
+          700,
+          800,
+          900,
+          1000,
+          1100,
+          1200
+        ],
+        "recent": [],
+        "inheritedDiscrepant": false,
+        "disc": 700,
+        "ceiling": null
+      },
+      "expect": {
+        "ok": {
+          "n": 12,
+          "ratios": [
+            100,
+            200,
+            300,
+            400,
+            500,
+            600,
+            700,
+            800,
+            900,
+            1000,
+            1100,
+            1200
+          ],
+          "best": 1000,
+          "state": "CORROBORATED",
+          "strikes": 0,
+          "budgetTripped": false,
+          "minRatio": 0,
+          "tracked": {
+            "prefill": 60000,
+            "decodeAtP": 12000,
+            "steady": 12000
+          }
+        }
+      }
+    },
+    {
+      "id": "M08-081",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "best at n = 16 is x[12] = 1300 (nearest rank, not x[11])",
+      "input": {
+        "kind": "state",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "promptTokens": 500,
+        "ratios": [
+          100,
+          200,
+          300,
+          400,
+          500,
+          600,
+          700,
+          800,
+          900,
+          1000,
+          1100,
+          1200,
+          1300,
+          1400,
+          1500,
+          1600
+        ],
+        "recent": [],
+        "inheritedDiscrepant": false,
+        "disc": 700,
+        "ceiling": null
+      },
+      "expect": {
+        "ok": {
+          "n": 16,
+          "ratios": [
+            100,
+            200,
+            300,
+            400,
+            500,
+            600,
+            700,
+            800,
+            900,
+            1000,
+            1100,
+            1200,
+            1300,
+            1400,
+            1500,
+            1600
+          ],
+          "best": 1300,
+          "state": "CORROBORATED",
+          "strikes": 0,
+          "budgetTripped": false,
+          "minRatio": 0,
+          "tracked": {
+            "prefill": 80000,
+            "decodeAtP": 16000,
+            "steady": 16000
+          }
+        }
+      }
+    },
+    {
+      "id": "M08-082",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "best at n = 20 is x[15] = 1600 (nearest rank, not x[14])",
+      "input": {
+        "kind": "state",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "promptTokens": 500,
+        "ratios": [
+          100,
+          200,
+          300,
+          400,
+          500,
+          600,
+          700,
+          800,
+          900,
+          1000,
+          1100,
+          1200,
+          1300,
+          1400,
+          1500,
+          1600,
+          1700,
+          1800,
+          1900,
+          2000
+        ],
+        "recent": [],
+        "inheritedDiscrepant": false,
+        "disc": 700,
+        "ceiling": null
+      },
+      "expect": {
+        "ok": {
+          "n": 20,
+          "ratios": [
+            100,
+            200,
+            300,
+            400,
+            500,
+            600,
+            700,
+            800,
+            900,
+            1000,
+            1100,
+            1200,
+            1300,
+            1400,
+            1500,
+            1600,
+            1700,
+            1800,
+            1900,
+            2000
+          ],
+          "best": 1600,
+          "state": "CORROBORATED",
+          "strikes": 0,
+          "budgetTripped": false,
+          "minRatio": 0,
+          "tracked": {
+            "prefill": 100000,
+            "decodeAtP": 20000,
+            "steady": 20000
+          }
+        }
+      }
     }
   ]
 }

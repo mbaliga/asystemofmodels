@@ -85,6 +85,48 @@ object ClaimTracker {
         return Evaluated(est, predicted, elapsed, ratio, discard)
     }
 
+    private fun sameFile(a: ClaimKey, b: ClaimKey): Boolean = a.nodeId == b.nodeId && a.fileSha256 == b.fileSha256
+
+    private fun badness(s: ClaimState): Int = when (s) {
+        ClaimState.DISCREPANT -> 3
+        ClaimState.WEAK -> 2
+        ClaimState.UNVERIFIED -> 1
+        else -> 0
+    }
+
+    /**
+     * The tracker state of [key], which LAB_SPEC 6.6 keys on `(peerNodeId, fileSha256)`: the backend only picks the claim row. The snapshot's [ClaimKey] still
+     * carries the backend, so every entry of the same peer and file is one state here (ERR-FX-RT-1): the worst state among them wins, the memory mark and the
+     * strikes of any of them apply, and a peer cannot shed DISCREPANT or an out-of-memory exclusion by reporting another `engine.backend`.
+     */
+    fun stateAt(tracker: Map<ClaimKey, TrackerState>, key: ClaimKey): TrackerState? {
+        val own = tracker[key]
+        val siblings = tracker.entries.filter { it.key != key && sameFile(it.key, key) }.sortedBy { it.key.backend }.map { it.value }
+        if (siblings.isEmpty()) return own
+        val all = listOfNotNull(own) + siblings
+        val worst = all.maxByOrNull { badness(stateOf(it)) }!!
+        return worst.copy(memoryDiscrepant = all.any { it.memoryDiscrepant }, strikes = all.maxOf { it.strikes })
+    }
+
+    /** The cap counters of the same peer and file are one counter, for the same reason as [stateAt]. */
+    fun capAt(caps: Map<ClaimKey, CapCounter>, key: ClaimKey): CapCounter {
+        var wouldWin = 0
+        var won = 0
+        for ((k, c) in caps) {
+            if (sameFile(k, key)) {
+                wouldWin += c.wouldWin
+                won += c.won
+            }
+        }
+        return CapCounter(wouldWin, won)
+    }
+
+    private fun slotOf(states: Map<ClaimKey, TrackerState>, key: ClaimKey): ClaimKey =
+        if (key in states) key else states.keys.filter { sameFile(it, key) }.minByOrNull { it.backend } ?: key
+
+    private fun discrepantFiles(states: Map<ClaimKey, TrackerState>, nodeId: String): Int =
+        states.keys.filter { it.nodeId == nodeId }.groupBy { it.fileSha256 }.count { (_, keys) -> stateOf(stateAt(states, keys.first())) == ClaimState.DISCREPANT }
+
     private fun sorted(ts: TrackerState): List<Long> = ts.ratios.sorted()
 
     /** `best = x[(3n)/4]`, the upper quartile by nearest rank; null when there is no kept ratio. */
@@ -156,20 +198,15 @@ object ClaimTracker {
     /** `disc = 700`, or 400 while a penalty is running or while at least two keys of this peer are DISCREPANT. */
     fun disc(nodeId: String, tracker: Map<ClaimKey, TrackerState>, penalties: Map<String, PeerPenalty>, wallNowMs: Long): Long {
         if ((penalties[nodeId]?.untilWallMs ?: 0L) > wallNowMs) return DISC_PENALTY
-        val bad = tracker.count { (k, v) -> k.nodeId == nodeId && stateOf(v) == ClaimState.DISCREPANT }
-        return if (bad >= 2) DISC_PENALTY else DISC_DEFAULT
+        return if (discrepantFiles(tracker, nodeId) >= 2) DISC_PENALTY else DISC_DEFAULT
     }
 
-    private fun strikesOf(book: TrackerBook, key: ClaimKey): Int =
-        book.states.entries.filter { it.key.nodeId == key.nodeId && it.key.fileSha256 == key.fileSha256 }.maxOfOrNull { it.value.strikes } ?: 0
-
-    private fun stateFor(book: TrackerBook, key: ClaimKey): TrackerState = book.states[key] ?: TrackerState(strikes = strikesOf(book, key))
+    private fun stateFor(book: TrackerBook, key: ClaimKey): TrackerState = stateAt(book.states, key) ?: TrackerState()
 
     private fun relatch(book: TrackerBook, nodeId: String, wallNowMs: Long): TrackerBook {
         val active = (book.penalties[nodeId]?.untilWallMs ?: 0L) > wallNowMs
         if (active) return book
-        val bad = book.states.count { (k, v) -> k.nodeId == nodeId && stateOf(v) == ClaimState.DISCREPANT }
-        if (bad < 2) return book
+        if (discrepantFiles(book.states, nodeId) < 2) return book
         val repeats = book.penalties[nodeId]?.repeats ?: 0
         val duration = Sat.mul(PENALTY_BASE_MS, 1L shl minOf(repeats, 20))
         return book.copy(penalties = book.penalties + (nodeId to PeerPenalty(Sat.add(wallNowMs, duration), repeats + 1)))
@@ -192,22 +229,23 @@ object ClaimTracker {
             strikes = prev.strikes + (if (ev.discard == DiscardReason.OVERLONG) 1 else 0),
         )
         next = settleInheritance(next)
-        return relatch(book.copy(states = book.states + (o.key to next)), o.key.nodeId, wallNowMs)
+        return relatch(book.copy(states = book.states + (slotOf(book.states, o.key) to next)), o.key.nodeId, wallNowMs)
     }
 
     /** A declined offer that reflects on the claim (`MODEL_NOT_OFFERED`, router.md 8.2 row 3): a candidate observation that is discarded. */
     fun onFailedAttempt(book: TrackerBook, key: ClaimKey, wallNowMs: Long): TrackerBook {
         val prev = stateFor(book, key)
         val next = prev.copy(recent = (prev.recent + ObsRecord(false, 0, 0, DiscardReason.INCOMPLETE)).takeLast(BUDGET_WINDOW))
-        return relatch(book.copy(states = book.states + (key to next)), key.nodeId, wallNowMs)
+        return relatch(book.copy(states = book.states + (slotOf(book.states, key) to next)), key.nodeId, wallNowMs)
     }
 
     /** A lender's `terminal = oom` marks the memory claim DISCREPANT (router.md 8.2 row 8); F8 then excludes the file on that peer. */
-    fun onMemoryOom(book: TrackerBook, key: ClaimKey): TrackerBook = book.copy(states = book.states + (key to stateFor(book, key).copy(memoryDiscrepant = true)))
+    fun onMemoryOom(book: TrackerBook, key: ClaimKey): TrackerBook = book.copy(states = book.states + (slotOf(book.states, key) to stateFor(book, key).copy(memoryDiscrepant = true)))
 
     /**
-     * A peer's new claim body is accepted for routing at most once per 24 h (M08-022) and only with a higher `seq`. Acceptance restarts the window
-     * (and the discard record) against the new claim, keeps the strikes, and inherits DISCREPANT until ten new observations have `best >= CORR`.
+     * A peer's new claim body is accepted for routing at most once per 24 h (M08-022) and only with a higher `seq`. Acceptance restarts the window W
+     * against the new claim, keeps the strikes and the discard record (a tripped discard budget is not a window, ERR-FX-RT-3), and inherits DISCREPANT until
+     * ten new observations have `best >= CORR`.
      * A new claim body also clears the memory mark (router.md 8.2 row 8 via manifest.md 11.5: "until a manifest with a higher seq").
      */
     fun onClaimBody(book: TrackerBook, key: ClaimKey, claimSeq: Long, wallNowMs: Long): Pair<TrackerBook, Boolean> {
@@ -218,10 +256,10 @@ object ClaimTracker {
         if (at != null && wallNowMs - at < NEW_CLAIM_INTERVAL_MS) return book to false
         val wasBad = old != null && (stateOf(prev) == ClaimState.DISCREPANT)
         val next = prev.copy(
-            claimSeq = claimSeq, acceptedAtWallMs = wallNowMs, ratios = emptyList(), recent = emptyList(),
+            claimSeq = claimSeq, acceptedAtWallMs = wallNowMs, ratios = emptyList(),
             inheritedDiscrepant = wasBad || prev.inheritedDiscrepant, memoryDiscrepant = false,
         )
-        return book.copy(states = book.states + (key to next)) to true
+        return book.copy(states = book.states + (slotOf(book.states, key) to next)) to true
     }
 }
 

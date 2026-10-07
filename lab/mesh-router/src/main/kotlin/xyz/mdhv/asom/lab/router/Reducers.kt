@@ -39,6 +39,10 @@ data class PeerStateCache(
     val regressed: Boolean = false,
     val goawaySinceState: Boolean = false,
     val sessionOpen: Boolean = false,
+    val fullRxMonoMs: Long? = null,
+    val fullSampledAgeMs: Long = 0,
+    val fullSeq: Long? = null,
+    val goawaySinceFullState: Boolean = false,
 )
 
 /**
@@ -46,20 +50,30 @@ data class PeerStateCache(
  * the requester's own record of what arrived when, on the requester's monotonic clock. A repeat of the highest `seq` seen is ignored (it is not fresher
  * and not a reset, ERRATA ERR-LP-4); a lower `seq` is stored but marks the state regressed (EXPIRED) until a state at or above the highest arrives.
  * `seq` is per (sender, session), so a new session forgets the highest `seq`.
+ *
+ * ERR-FX-RT-5: a GOAWAY and a regressed `seq` outlive a re-dial (the state they expired is still the state held) and are cleared only by a state or digest
+ * that arrives afterwards. ERR-FX-RT-6: a digest carries only `{seq, fsm, tb, gov, qb}`, so the other fields (power, held, backend) keep the receive time
+ * of the last FULL state ([powerFreshness]); an equal-`seq` full state that follows a digest of that `seq` refreshes exactly those fields.
  */
 object LiveStateCache {
-    fun onSessionOpen(c: PeerStateCache): PeerStateCache = c.copy(sessionOpen = true, highSeq = null, regressed = false, goawaySinceState = false)
+    fun onSessionOpen(c: PeerStateCache): PeerStateCache = c.copy(sessionOpen = true, highSeq = null)
 
     fun onSessionClose(c: PeerStateCache): PeerStateCache = c.copy(sessionOpen = false)
 
-    fun onGoaway(c: PeerStateCache): PeerStateCache = c.copy(goawaySinceState = true)
+    fun onGoaway(c: PeerStateCache): PeerStateCache = c.copy(goawaySinceState = true, goawaySinceFullState = true)
 
     fun onState(c: PeerStateCache, doc: StateDoc, rxMonoMs: Long): PeerStateCache {
         val high = c.highSeq
-        if (high != null && doc.seq == high) return c
+        if (high != null && doc.seq == high) {
+            val held = c.doc
+            if (held == null || doc.seq <= (c.fullSeq ?: held.seq)) return c
+            val merged = doc.copy(seq = held.seq, sampledAgeMs = held.sampledAgeMs, fsm = held.fsm, thermalBand = held.thermalBand, governor = held.governor, queueBucket = held.queueBucket)
+            return c.copy(doc = merged, fullRxMonoMs = rxMonoMs, fullSampledAgeMs = doc.sampledAgeMs, fullSeq = doc.seq, goawaySinceFullState = false)
+        }
         return c.copy(
             doc = doc, rxMonoMs = rxMonoMs, highSeq = if (high == null) doc.seq else maxOf(high, doc.seq),
             regressed = high != null && doc.seq < high, goawaySinceState = false,
+            fullRxMonoMs = rxMonoMs, fullSampledAgeMs = doc.sampledAgeMs, fullSeq = doc.seq, goawaySinceFullState = false,
         )
     }
 
@@ -73,6 +87,14 @@ object LiveStateCache {
             doc = doc, rxMonoMs = rxMonoMs, highSeq = if (high == null) d.seq else maxOf(high, d.seq),
             regressed = high != null && d.seq < high, goawaySinceState = false,
         )
+    }
+
+    /** The class of the fields a digest does not carry, aged from the last full STATE (a cache built without one falls back to [freshness]). */
+    fun powerFreshness(c: PeerStateCache, nowMonoMs: Long): Freshness {
+        val doc = c.doc
+        val rx = c.fullRxMonoMs ?: return freshness(c, nowMonoMs)
+        if (doc == null || c.regressed) return Freshness.EXPIRED
+        return Staleness.classify(StalenessInput(nowMonoMs, rx, c.fullSampledAgeMs, !c.sessionOpen, doc.seq, null, c.goawaySinceFullState))
     }
 
     fun freshness(c: PeerStateCache, nowMonoMs: Long): Freshness = classify(c.doc, c.rxMonoMs, c.sessionOpen, c.goawaySinceState, c.regressed, nowMonoMs)

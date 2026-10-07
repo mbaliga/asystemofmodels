@@ -25,6 +25,7 @@ import xyz.mdhv.asom.lab.router.LiveStateCache
 import xyz.mdhv.asom.lab.router.MeshConfig
 import xyz.mdhv.asom.lab.router.ObsRecord
 import xyz.mdhv.asom.lab.router.Observation
+import xyz.mdhv.asom.lab.router.PeerPenalty
 import xyz.mdhv.asom.lab.router.PeerStateCache
 import xyz.mdhv.asom.lab.router.PerfPrior
 import xyz.mdhv.asom.lab.router.RateCeiling
@@ -56,6 +57,7 @@ class M08Checker : FamilyChecker("M08") {
     override val requiredLaws = setOf(
         "evaluate", "sequence", "state", "claimBody", "chunk-split-invariant", "lying-end-ignored", "peer-state-ignored", "padding-over-cap", "discard-INCOMPLETE", "discard-SHORT",
         "discard-OVERLONG", "discard-CONCURRENT", "discard-SETTINGS", "budget-tripped", "only-lowers", "bpt-matches-bench-core",
+        "inherit", "claimBudget", "penalty", "disc",
     )
 
     private val key = ClaimKey("peer-x", "a1".repeat(32), "metal")
@@ -185,7 +187,75 @@ class M08Checker : FamilyChecker("M08") {
                 }
                 Observed.Ok(buildJsonObject { put("accepted", buildJsonArray { accepted.forEach { add(JsonPrimitive(it)) } }) })
             }
+            "inherit" -> {
+                bump("inherit")
+                val claim = priorOf(i.obj("claim"))
+                val bpt = bptOf(i)
+                var book = ClaimTracker.onClaimBody(TrackerBook(), key, 1, 0).first
+                for (e in i.arr("before")) book = ClaimTracker.onObservation(book, plainObservation(i, e as JsonObject, key), claim, bpt, 1_000)
+                val (changed, accepted) = ClaimTracker.onClaimBody(book, key, 2, i.long("newClaimAtMs"))
+                book = changed
+                val states = i.arr("after").map { e ->
+                    book = ClaimTracker.onObservation(book, plainObservation(i, e as JsonObject, key), claim, bpt, i.long("newClaimAtMs"))
+                    ClaimTracker.stateOf(book.states.getValue(key)).name
+                }
+                Observed.Ok(buildJsonObject { put("accepted", accepted); put("states", buildJsonArray { states.forEach { add(JsonPrimitive(it)) } }) })
+            }
+            "claimBudget" -> {
+                bump("claimBudget")
+                val claim = priorOf(i.obj("claim"))
+                val bpt = bptOf(i)
+                var book = ClaimTracker.onClaimBody(TrackerBook(), key, 1, 0).first
+                for (e in i.arr("observations")) book = ClaimTracker.onObservation(book, plainObservation(i, e as JsonObject, key), claim, bpt, 1_000)
+                val (changed, accepted) = ClaimTracker.onClaimBody(book, key, 2, i.long("newClaimAtMs"))
+                val ts = changed.states.getValue(key)
+                if (ClaimTracker.budgetTripped(ts)) bump("budget-tripped")
+                val tracked = ClaimTracker.tracked(claim, i.long("promptTokens"), ts, null, 700)
+                if (tracked.prefill > claim.prefillMilliTokPerSec) throw LawViolation("a tracked rate exceeds the claim")
+                bump("only-lowers")
+                Observed.Ok(
+                    buildJsonObject {
+                        put("accepted", accepted); put("state", ClaimTracker.stateOf(ts).name); put("budgetTripped", ClaimTracker.budgetTripped(ts)); put("n", ts.ratios.size)
+                        put("tracked", ratesJson(tracked))
+                    },
+                )
+            }
+            "penalty" -> {
+                bump("penalty")
+                val claim = priorOf(i.obj("claim"))
+                val bpt = bptOf(i)
+                var book = TrackerBook()
+                for (e in i.arr("events")) {
+                    val o = e as JsonObject
+                    book = ClaimTracker.onObservation(book, plainObservation(i, o, fileKey(o.str("file"))), claim, bpt, o.long("at"))
+                }
+                val probes = i.arr("probes").map { (it as JsonPrimitive).content.toLong() }
+                val discs = probes.map { ClaimTracker.disc("peer-x", book.states, book.penalties, it) }
+                val pen = book.penalties["peer-x"]
+                Observed.Ok(
+                    buildJsonObject {
+                        put("penalty", if (pen == null) JsonNull else buildJsonObject { put("untilWallMs", pen.untilWallMs); put("repeats", pen.repeats) })
+                        put("disc", buildJsonArray { discs.forEach { add(JsonPrimitive(it)) } })
+                    },
+                )
+            }
+            "disc" -> {
+                bump("disc")
+                val tracker = i.arr("states").associate { st ->
+                    val o = st as JsonObject
+                    fileKey(o.str("file")) to TrackerState(ratios = o.arr("ratios").map { (it as JsonPrimitive).content.toLong() }, inheritedDiscrepant = o.reqBool("inherited"))
+                }
+                val penalties = i.objOrNull("penalty")?.let { mapOf("peer-x" to PeerPenalty(it.long("untilWallMs"), it.long("repeats").toInt())) } ?: emptyMap()
+                Observed.Ok(buildJsonObject { put("disc", ClaimTracker.disc("peer-x", tracker, penalties, i.long("now"))) })
+            }
             else -> throw LawViolation("kind $kind")
         }
     }
+
+    private fun fileKey(f: String): ClaimKey = ClaimKey("peer-x", if (f == "A") "a1".repeat(32) else "b2".repeat(32), "metal")
+
+    private fun plainObservation(i: JsonObject, o: JsonObject, k: ClaimKey): Observation = Observation(
+        k, true, 0, o.long("elapsed"), o.long("bytes"), i.long("promptTokens"), i.long("maxTokens"), Estimator.warmNetMs(linkOf(i.obj("link")), i.long("promptBytes"), MeshConfig()),
+        false, null, null, null, null,
+    )
 }

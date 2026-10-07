@@ -174,4 +174,33 @@ r01("error: a concrete model that only a peer holds, for an app the mesh is off 
 r01("error: the engine is present but does not hold the concrete model and the cloud is banned: MODEL_UNKNOWN", WORLD(SELF(files=[F(model="other")]), [], q=Q(model="qwen3-8b", app=dict(APP, cloudBanned=True))),
     [], [], reject="MODEL_UNKNOWN")
 
+# review fixes (LTQ-01, LTQ-06, LTQ-15): appended so that every earlier id keeps its number
+def two_backend_peer(state_backend, **kw):
+    pr = PR()
+    p = base_peer(state=ST(backend=state_backend), **kw)
+    p["priors"] = [dict(nodeId="peer-a", fileSha256=A, backend=b, prior=dup(pr)) for b in ("metal", "vulkan")]
+    return p
+
+
+MEM = TRK("peer-a", A, "metal", TS(memory=True))
+r01("F8: a terminal=oom memory mark on backend metal excludes the file (control: the live state reports metal)", base_world(peers=[two_backend_peer("metal")], tracker=[MEM]),
+    [E("peer-a", "F8_CLAIM")], [SELF_A])
+r01("F8: the same memory mark after the peer's live state switches to backend vulkan (the tracker key is (peer, file); the backend only picks the claim row, LTQ-01)",
+    base_world(peers=[two_backend_peer("vulkan")], tracker=[MEM]), [E("peer-a", "F8_CLAIM")], [SELF_A])
+r01("F8: a claim whose decode curve descends in context is excluded with F8, not an error (LTQ-15)", base_world(peers=[base_peer(prior=PR(curve=[[1024, 10000], [512, 12000]]))]),
+    [E("peer-a", "F8_CLAIM")], [SELF_A])
+r01("F8: a claim whose decode curve repeats a context is excluded with F8 (LTQ-15)", base_world(peers=[base_peer(prior=PR(curve=[[512, 10000], [512, 12000]]))]),
+    [E("peer-a", "F8_CLAIM")], [SELF_A])
+r01("F8: a claim whose decode curve has five points is excluded with F8 (LTQ-15)", base_world(peers=[base_peer(prior=PR(curve=[[256 * i, 10000] for i in range(1, 6)]))]),
+    [E("peer-a", "F8_CLAIM")], [SELF_A])
+r01("F8: a four-point ascending decode curve is accepted", base_world(peers=[base_peer(prior=PR(curve=[[256, 14000], [512, 12000], [1024, 10000], [4096, 8000]]))]), [], [SELF_A, PEER_A])
+r01("F11: a fresh digest does not refresh the power fields: a STALE full state with band 50-79 reads 20-49 and is excluded (LTQ-06)",
+    base_world(peers=[base_peer(state=ST(src="battery", band="50-79"), design=40000, power_freshness="STALE")]), [E("peer-a", "F11_POWER")], [SELF_A])
+r01("F11 is skipped when the power fields are EXPIRED although the digest fields are fresh: the offer is the probe (LTQ-06)",
+    base_world(peers=[base_peer(state=ST(src="battery", band="lt20"), design=40000, power_freshness="EXPIRED")]), [], [SELF_A, PEER_A])
+r01("F9 still reads the digest fields when only the power fields are EXPIRED (LTQ-06)", base_world(peers=[base_peer(state=ST(fsm="DRAINING"), power_freshness="EXPIRED")]),
+    [E("peer-a", "F9_AVAILABILITY")], [SELF_A])
+r01("a power freshness better than the digest's is ignored: the digest is STALE, so the 50-79 band still reads one lower (LTQ-06)",
+    base_world(peers=[base_peer(state=ST(src="battery", band="50-79"), design=40000, rx=NOW - 100000, power_freshness="FRESH")]), [E("peer-a", "F11_POWER")], [SELF_A])
+
 write("R01-hard-filter.json", "R01", ["LAB_SPEC.md 6.3", "LAB_SPEC.md 6.2", "LAB_SPEC.md 6.7 (errors)", "docs/design/mesh/REVIEW_ROUND3.md R3-CLOSURE-5"], R01)

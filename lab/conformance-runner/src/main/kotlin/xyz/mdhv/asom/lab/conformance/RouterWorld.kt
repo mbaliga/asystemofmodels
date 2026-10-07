@@ -8,6 +8,7 @@ import xyz.mdhv.asom.catalogue.CatalogueParser
 import xyz.mdhv.asom.contract.Policy
 import xyz.mdhv.asom.lab.ledger.PeerPath
 import xyz.mdhv.asom.lab.policy.BatteryBand
+import xyz.mdhv.asom.lab.policy.Freshness
 import xyz.mdhv.asom.lab.policy.Fsm
 import xyz.mdhv.asom.lab.policy.Governor
 import xyz.mdhv.asom.lab.policy.StateDoc
@@ -88,6 +89,7 @@ object RouterWorld {
             breaker = BreakerView(b.nlong("coolingUntilMonoMs"), b.nlong("declineBackoffUntilMonoMs"), b.reqBool("halfOpen")),
             lastSameFileMonoMs = o.obj("lastSameFileMonoMs").entries.associate { (k, v) -> k to (v as JsonPrimitive).content.toLong() }, ownReservationsMs = o.long("ownReservationsMs"),
             maxContextTokens = o.nlong("maxContextTokens"), batteryDesignMilliWh = o.nlong("batteryDesignMilliWh"), stateRegressed = o.reqBool("stateRegressed"),
+            powerFreshness = o.nstr("powerFreshness")?.let { Freshness.valueOf(it) },
         )
     }
 

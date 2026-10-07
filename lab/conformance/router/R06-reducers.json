@@ -1578,6 +1578,579 @@
           ]
         }
       }
+    },
+    {
+      "id": "R06-055",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a GOAWAY survives the re-dial: with no new state the pre-GOAWAY state is still EXPIRED (LTQ-02)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "goaway"
+          },
+          {
+            "kind": "sessionClose"
+          },
+          {
+            "kind": "session"
+          }
+        ],
+        "now": 2000
+      },
+      "expect": {
+        "ok": {
+          "cls": "EXPIRED",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-056",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a full state after the re-dial clears the GOAWAY (LTQ-02)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "goaway"
+          },
+          {
+            "kind": "sessionClose"
+          },
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 1,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1500
+          }
+        ],
+        "now": 1600
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-057",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a digest after the re-dial clears the GOAWAY for the digest fields (LTQ-02)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "goaway"
+          },
+          {
+            "kind": "sessionClose"
+          },
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "piggyback",
+            "seq": 1,
+            "rxMonoMs": 1500,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          }
+        ],
+        "now": 1600
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-058",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a regressed seq survives the re-dial until a state arrives (LTQ-02)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 9,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "state",
+            "seq": 4,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 2000
+          },
+          {
+            "kind": "sessionClose"
+          },
+          {
+            "kind": "session"
+          }
+        ],
+        "now": 2100
+      },
+      "expect": {
+        "ok": {
+          "cls": "EXPIRED",
+          "regressed": true
+        }
+      }
+    },
+    {
+      "id": "R06-059",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a digest whose seq is below the highest seen marks the state regressed and EXPIRED (LTQ-13)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 9,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "piggyback",
+            "seq": 4,
+            "rxMonoMs": 1100,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          }
+        ],
+        "now": 1200
+      },
+      "expect": {
+        "ok": {
+          "cls": "EXPIRED",
+          "regressed": true
+        }
+      }
+    },
+    {
+      "id": "R06-060",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a digest at the highest seq and then above it clears the regression (LTQ-13)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 9,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "piggyback",
+            "seq": 4,
+            "rxMonoMs": 1100,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          },
+          {
+            "kind": "piggyback",
+            "seq": 10,
+            "rxMonoMs": 1300,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          }
+        ],
+        "now": 1400
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-061",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness of the power fields: with no digest the power fields age like the state",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          }
+        ],
+        "now": 6001,
+        "power": true
+      },
+      "expect": {
+        "ok": {
+          "cls": "WARM",
+          "regressed": false,
+          "powerCls": "WARM"
+        }
+      }
+    },
+    {
+      "id": "R06-062",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness of the power fields: a digest refreshes the digest fields only: ten minutes after the full state the power fields are EXPIRED (LTQ-06)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 0
+          },
+          {
+            "kind": "piggyback",
+            "seq": 6,
+            "rxMonoMs": 600000,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          }
+        ],
+        "now": 600100,
+        "power": true
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false,
+          "powerCls": "EXPIRED"
+        }
+      }
+    },
+    {
+      "id": "R06-063",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness of the power fields: 100 s after the full state the power fields are STALE under a fresh digest",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 0
+          },
+          {
+            "kind": "piggyback",
+            "seq": 6,
+            "rxMonoMs": 100000,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          }
+        ],
+        "now": 100100,
+        "power": true
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false,
+          "powerCls": "STALE"
+        }
+      }
+    },
+    {
+      "id": "R06-064",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness of the power fields: 10 s after the full state the power fields are WARM under a fresh digest",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 0
+          },
+          {
+            "kind": "piggyback",
+            "seq": 6,
+            "rxMonoMs": 10000,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          }
+        ],
+        "now": 10100,
+        "power": true
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false,
+          "powerCls": "WARM"
+        }
+      }
+    },
+    {
+      "id": "R06-065",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness of the power fields: the sampled age of the full state counts for the power fields (40,000 + 1,000 is STALE)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 40000,
+            "rxMonoMs": 0
+          },
+          {
+            "kind": "piggyback",
+            "seq": 6,
+            "rxMonoMs": 1000,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          }
+        ],
+        "now": 1000,
+        "power": true
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false,
+          "powerCls": "STALE"
+        }
+      }
+    },
+    {
+      "id": "R06-066",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness of the power fields: a full state at the seq of a known digest refreshes the power fields and leaves the digest fields alone",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 0
+          },
+          {
+            "kind": "piggyback",
+            "seq": 6,
+            "rxMonoMs": 100000,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          },
+          {
+            "kind": "state",
+            "seq": 6,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 100200
+          }
+        ],
+        "now": 100300,
+        "power": true
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false,
+          "powerCls": "FRESH"
+        }
+      }
+    },
+    {
+      "id": "R06-067",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness of the power fields: a GOAWAY, a re-dial and a digest: the digest fields are fresh, the power fields still date from before the GOAWAY (LTQ-02, LTQ-06)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "goaway"
+          },
+          {
+            "kind": "sessionClose"
+          },
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "piggyback",
+            "seq": 1,
+            "rxMonoMs": 1500,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          }
+        ],
+        "now": 1600,
+        "power": true
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false,
+          "powerCls": "EXPIRED"
+        }
+      }
+    },
+    {
+      "id": "R06-068",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness of the power fields: a full state after the GOAWAY and the re-dial refreshes both",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "goaway"
+          },
+          {
+            "kind": "sessionClose"
+          },
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 1,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1500
+          }
+        ],
+        "now": 1600,
+        "power": true
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false,
+          "powerCls": "FRESH"
+        }
+      }
     }
   ]
 }

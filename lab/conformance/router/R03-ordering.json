@@ -2361,6 +2361,185 @@
           "cappedSwap": true
         }
       }
+    },
+    {
+      "id": "R03-032",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap: the counters of backend metal still count after the peer's live state switches to vulkan (wouldWin 3, won 1 -> 4th, ceilDiv(4, 4) = 1 <= 1, swap) (LTQ-01)",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "UNVERIFIED",
+            "rank": null,
+            "key": {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "vulkan"
+            }
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              20,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": [
+          {
+            "nodeId": "p1",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "wouldWin": 3,
+            "won": 1
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p2/a1a1a1a1",
+            "PEER:p1/a1a1a1a1"
+          ],
+          "capDelta": [
+            {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "vulkan",
+              "wouldWinInc": 1,
+              "wonInc": 0,
+              "swapped": true
+            }
+          ],
+          "cappedSwap": true
+        }
+      }
+    },
+    {
+      "id": "R03-033",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap: counters on two backends of one file add up (metal 2/1 and vulkan 1/0 -> wouldWin 3, won 1 -> swap) (LTQ-01)",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "UNVERIFIED",
+            "rank": null,
+            "key": {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "vulkan"
+            }
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              20,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": [
+          {
+            "nodeId": "p1",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "wouldWin": 2,
+            "won": 1
+          },
+          {
+            "nodeId": "p1",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "vulkan",
+            "wouldWin": 1,
+            "won": 0
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p2/a1a1a1a1",
+            "PEER:p1/a1a1a1a1"
+          ],
+          "capDelta": [
+            {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "vulkan",
+              "wouldWinInc": 1,
+              "wonInc": 0,
+              "swapped": true
+            }
+          ],
+          "cappedSwap": true
+        }
+      }
     }
   ]
 }

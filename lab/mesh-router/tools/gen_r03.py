@@ -11,11 +11,11 @@ _n = [0]
 SHA = {"a": "a1" * 32, "b": "b2" * 32, "c": "c3" * 32}
 
 
-def sv(tier, node, sha="a", terms=(0, 0, 0, 0, 0, 0), usable=True, probe=False, claim=None, rank=None, model="m", key=None):
+def sv(tier, node, sha="a", terms=(0, 0, 0, 0, 0, 0), usable=True, probe=False, claim=None, rank=None, model="m", key=None, backend="metal"):
     claim = claim or ("LOCAL_MEASURED" if tier == "SELF" else "CORROBORATED")
     k = None
     if key or (tier == "PEER" and claim == "UNVERIFIED"):
-        k = dict(nodeId=node, fileSha256=SHA[sha], backend="metal")
+        k = dict(nodeId=node, fileSha256=SHA[sha], backend=backend)
     return dict(id=f"{tier}:{node}/{SHA[sha][:8]}", tier=tier, nodeId=node, modelId=model, sha=SHA[sha], terms=list(terms), usable=usable, probe=probe, claim=claim, rank=rank, key=k)
 
 
@@ -24,7 +24,7 @@ def cl(provider, model="m", rank=None, s1=None):
 
 
 def kk(x):
-    return (x["nodeId"], x["sha"], "metal")
+    return (x["nodeId"], x["sha"], x["key"]["backend"])
 
 
 def r03(desc, policy, sov, cloud=(), caps=(), never=False, order=None, swapped=None, delta=None):
@@ -44,8 +44,8 @@ def r03(desc, policy, sov, cloud=(), caps=(), never=False, order=None, swapped=N
     R03.append(vec(id_, desc, inp, ok({"order": got, "capDelta": dl, "cappedSwap": sw})))
 
 
-def cap(node, sha, ww, won):
-    return dict(nodeId=node, fileSha256=SHA[sha], backend="metal", wouldWin=ww, won=won)
+def cap(node, sha, ww, won, backend="metal"):
+    return dict(nodeId=node, fileSha256=SHA[sha], backend=backend, wouldWin=ww, won=won)
 
 
 P1, P2, P3 = "PEER:p1/a1a1a1a1", "PEER:p2/a1a1a1a1", "PEER:p3/a1a1a1a1"
@@ -121,5 +121,13 @@ r03("cap: a cloud entry ahead of the sovereign candidate means there is no would
 r03("cap: the swap takes the best OTHER usable sovereign candidate (the first usable one in order)", "auto",
     [un("p1"), sv("PEER", "p2", terms=(30, 0, 0, 0, 0, 0), usable=False), sv("PEER", "p3", terms=(40, 0, 0, 0, 0, 0))], caps=[cap("p1", "a", 1, 1)],
     order=[P3, P1, "PEER:p2/a1a1a1a1"], swapped=True)
+
+# review fix LTQ-01: appended so that every earlier id keeps its number. The cap counters are per (peer, file): the backend of the live state does not restart them.
+r03("cap: the counters of backend metal still count after the peer's live state switches to vulkan (wouldWin 3, won 1 -> 4th, ceilDiv(4, 4) = 1 <= 1, swap) (LTQ-01)", "auto",
+    [un("p1", backend="vulkan"), sv("PEER", "p2", terms=(20, 0, 0, 0, 0, 0))], caps=[cap("p1", "a", 3, 1, backend="metal")], order=[P2, P1], swapped=True,
+    delta=[dict(nodeId="p1", fileSha256=SHA["a"], backend="vulkan", wouldWinInc=1, wonInc=0, swapped=True)])
+r03("cap: counters on two backends of one file add up (metal 2/1 and vulkan 1/0 -> wouldWin 3, won 1 -> swap) (LTQ-01)", "auto",
+    [un("p1", backend="vulkan"), sv("PEER", "p2", terms=(20, 0, 0, 0, 0, 0))], caps=[cap("p1", "a", 2, 1, backend="metal"), cap("p1", "a", 1, 0, backend="vulkan")], order=[P2, P1], swapped=True,
+    delta=[dict(nodeId="p1", fileSha256=SHA["a"], backend="vulkan", wouldWinInc=1, wonInc=0, swapped=True)])
 
 write("R03-ordering.json", "R03", ["LAB_SPEC.md 6.7 (merge per policy, cap)", "LAB_SPEC.md 6.8 (RL9, RL10, RL11, RL13 exceptions)", "docs/design/mesh/router.md 5.4, 5.5"], R03)

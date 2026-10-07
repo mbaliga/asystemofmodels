@@ -168,4 +168,32 @@ for desc, curve, events, probes in (
     r06(f"breaker (pinned to CooldownRegistry): {desc}", dict(kind="breaker", curve=curve, events=events, probes=probes), ok(breaker(curve, events, probes)))
 assert breaker("provider", [F_(0)] * 7, [900000])["coolingUntil"] == 900000
 
+# review fixes (LTQ-02, LTQ-06, LTQ-13): appended so that every earlier id keeps its number
+PB = lambda seq, rx, fsm="SERVING": dict(kind="piggyback", seq=seq, rxMonoMs=rx, tb=0, qb=0, gov="RUN", fsm=fsm)
+CLOSE = dict(kind="sessionClose")
+GO = dict(kind="goaway")
+for desc, events, now, cls, regressed in (
+    ("a GOAWAY survives the re-dial: with no new state the pre-GOAWAY state is still EXPIRED (LTQ-02)", [OPEN, S(5, 0, 1000), GO, CLOSE, OPEN], 2000, "EXPIRED", False),
+    ("a full state after the re-dial clears the GOAWAY (LTQ-02)", [OPEN, S(5, 0, 1000), GO, CLOSE, OPEN, S(1, 0, 1500)], 1600, "FRESH", False),
+    ("a digest after the re-dial clears the GOAWAY for the digest fields (LTQ-02)", [OPEN, S(5, 0, 1000), GO, CLOSE, OPEN, PB(1, 1500)], 1600, "FRESH", False),
+    ("a regressed seq survives the re-dial until a state arrives (LTQ-02)", [OPEN, S(9, 0, 1000), S(4, 0, 2000), CLOSE, OPEN], 2100, "EXPIRED", True),
+    ("a digest whose seq is below the highest seen marks the state regressed and EXPIRED (LTQ-13)", [OPEN, S(9, 0, 1000), PB(4, 1100)], 1200, "EXPIRED", True),
+    ("a digest at the highest seq and then above it clears the regression (LTQ-13)", [OPEN, S(9, 0, 1000), PB(4, 1100), PB(10, 1300)], 1400, "FRESH", False),
+):
+    r06(f"freshness: {desc}", dict(kind="freshness", events=events, now=now), ok(dict(cls=cls, regressed=regressed)))
+
+
+def power(desc, events, now, cls, power_cls):
+    r06(f"freshness of the power fields: {desc}", dict(kind="freshness", events=events, now=now, power=True), ok(dict(cls=cls, regressed=False, powerCls=power_cls)))
+
+
+power("with no digest the power fields age like the state", [OPEN, S(5, 0, 1000)], 6001, "WARM", "WARM")
+power("a digest refreshes the digest fields only: ten minutes after the full state the power fields are EXPIRED (LTQ-06)", [OPEN, S(5, 0, 0), PB(6, 600000)], 600100, "FRESH", "EXPIRED")
+power("100 s after the full state the power fields are STALE under a fresh digest", [OPEN, S(5, 0, 0), PB(6, 100000)], 100100, "FRESH", "STALE")
+power("10 s after the full state the power fields are WARM under a fresh digest", [OPEN, S(5, 0, 0), PB(6, 10000)], 10100, "FRESH", "WARM")
+power("the sampled age of the full state counts for the power fields (40,000 + 1,000 is STALE)", [OPEN, S(5, 40000, 0), PB(6, 1000)], 1000, "FRESH", "STALE")
+power("a full state at the seq of a known digest refreshes the power fields and leaves the digest fields alone", [OPEN, S(5, 0, 0), PB(6, 100000), S(6, 0, 100200)], 100300, "FRESH", "FRESH")
+power("a GOAWAY, a re-dial and a digest: the digest fields are fresh, the power fields still date from before the GOAWAY (LTQ-02, LTQ-06)", [OPEN, S(5, 0, 1000), GO, CLOSE, OPEN, PB(1, 1500)], 1600, "FRESH", "EXPIRED")
+power("a full state after the GOAWAY and the re-dial refreshes both", [OPEN, S(5, 0, 1000), GO, CLOSE, OPEN, S(1, 0, 1500)], 1600, "FRESH", "FRESH")
+
 write("R06-reducers.json", "R06", ["LAB_SPEC.md 6.5", "LAB_SPEC.md 6.7 (cap)", "docs/design/mesh/router.md 3.3, 3.5, 5.5, 8", "core/routing CooldownRegistry (frozen v1)"], R06)

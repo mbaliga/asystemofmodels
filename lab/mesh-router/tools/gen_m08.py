@@ -224,4 +224,125 @@ def claim_body(id_, desc, events, want_accepts):
 claim_body("M08-022", "the peer publishes a new claim seq twice in one day: the second is ignored for routing until 24 h pass", [dict(seq=1, at=1000), dict(seq=2, at=3601000), dict(seq=2, at=86401000)], [True, False, True])
 claim_body("M08-060", "a claim body with a seq that is not higher is never accepted (rollback)", [dict(seq=5, at=0), dict(seq=5, at=90000000), dict(seq=4, at=180000000)], [True, False, False])
 
+# --- review fixes (LTQ-05, LTQ-12): appended so that every earlier id keeps its number ---------------------------------------------------------------
+DAY = 86400000
+
+
+def ratio_of_obs(o, claim=CLAIM):
+    return evaluate(base(claim=claim, chunks=[dict(t=o["elapsed"], bytes=o["bytes"])], end=dict(t=o["elapsed"], payload=END_OK)))
+
+
+def inherit(id_, desc, before, after, new_claim_at, want_accepted, want_states):
+    """A DISCREPANT window, then a new claim seq: DISCREPANT is inherited until 10 new kept observations have best >= CORR."""
+    ratios, recent = [], []
+    for o in before:
+        ev = ratio_of_obs(o)
+        ratios = (ratios + [ev["ratio"]])[-ref.WIN:]
+        recent = (recent + [dict(kept=True, ratio=ev["ratio"], outBytes=ev["outBytes"])])[-20:]
+    was_bad = ref.state_of(dict(ratios=ratios, recent=recent, inheritedDiscrepant=False)) == "DISCREPANT"
+    accepted = new_claim_at >= DAY
+    inherited, ratios = was_bad, []
+    states = []
+    for o in after:
+        ev = ratio_of_obs(o)
+        ratios = (ratios + [ev["ratio"]])[-ref.WIN:]
+        if inherited and len(ratios) >= 10 and sorted(ratios)[(3 * len(ratios)) // 4] >= ref.CORR:
+            inherited = False
+        states.append(ref.state_of(dict(ratios=ratios, recent=[], inheritedDiscrepant=inherited)))
+    assert accepted == want_accepted, f"{id_}: accepted {accepted}"
+    assert states == want_states, f"{id_}: {states} vs {want_states}"
+    inp = dict(kind="inherit", claim=CLAIM, link=LINK, promptTokens=500, promptBytes=5120, maxTokens=1024, bpt=list(BPT), before=before, newClaimAtMs=new_claim_at, after=after)
+    M08.append(vec(id_, desc, inp, ok(dict(accepted=accepted, states=states))))
+
+
+GOOD = dict(bytes=1200, elapsed=19000)
+inherit("M08-065", "an inherited DISCREPANT state holds through 9 good observations and clears at the 10th (LTQ-12: not at MIN_STATE = 5)", [HALF] * 5, [GOOD] * 10, DAY,
+        True, ["DISCREPANT"] * 9 + ["CORROBORATED"])
+inherit("M08-066", "a window that was not DISCREPANT is not inherited: the new claim seq starts UNVERIFIED and reaches its state after 5 observations", [HONEST] * 5, [GOOD] * 5, DAY,
+        True, ["UNVERIFIED"] * 4 + ["CORROBORATED"])
+inherit("M08-067", "an inherited DISCREPANT state does not clear on 10 observations whose best is below CORR", [HALF] * 5, [HALF] * 10, DAY,
+        True, ["DISCREPANT"] * 10)
+
+
+def claim_budget(id_, desc, observations, want_state, want_tracked_prefill):
+    """A tripped discard budget survives a new claim seq (only W restarts, LTQ-05)."""
+    kept, recent = [], []
+    for o in observations:
+        ev = ratio_of_obs(o)
+        is_kept = ev["discard"] is None
+        if is_kept:
+            kept = (kept + [ev["ratio"]])[-ref.WIN:]
+        recent = (recent + [dict(kept=is_kept, ratio=ev["ratio"], outBytes=ev["outBytes"])])[-20:]
+    s = summarize([], recent, 0)
+    assert s["state"] == want_state, f"{id_}: {s['state']}"
+    assert s["tracked"]["prefill"] == want_tracked_prefill, f"{id_}: {s['tracked']}"
+    inp = dict(kind="claimBudget", claim=CLAIM, link=LINK, promptTokens=500, promptBytes=5120, maxTokens=1024, bpt=list(BPT), observations=observations, newClaimAtMs=DAY + 1)
+    M08.append(vec(id_, desc, inp, ok(dict(accepted=True, state=s["state"], budgetTripped=s["budgetTripped"], n=0, tracked=s["tracked"]))))
+
+
+claim_budget("M08-068", "a new claim seq 24 h later restarts W but not the discard budget: four truncated answers still read WEAK and still clamp the rate to the lowest ratio of an answer of >= 8 bytes (40 bytes: predicted 5,461 ms, ratio 27, prefill 2,700)",
+             [dict(bytes=40, elapsed=200000)] * 4, "WEAK", 2700)
+claim_budget("M08-069", "a new claim seq with every truncated answer under 8 bytes: the clamp is 0 and the candidate fails F8", [dict(bytes=4, elapsed=1000)] * 4, "WEAK", 0)
+
+
+def penalty(id_, desc, events, probes, want_penalty, want_disc):
+    """Two files of one peer DISCREPANT latch a peer-wide penalty of 7 days, doubling on every repeat."""
+    files = {"A": dict(ratios=[]), "B": dict(ratios=[])}
+    pen = None
+    for e in events:
+        ev = ratio_of_obs(e)
+        files[e["file"]]["ratios"] = (files[e["file"]]["ratios"] + [ev["ratio"]])[-ref.WIN:]
+        active = pen is not None and pen["untilWallMs"] > e["at"]
+        bad = sum(1 for f in files.values() if ref.state_of(dict(ratios=f["ratios"], recent=[], inheritedDiscrepant=False)) == "DISCREPANT")
+        if not active and bad >= 2:
+            reps = pen["repeats"] if pen else 0
+            pen = dict(untilWallMs=e["at"] + 7 * DAY * (1 << reps), repeats=reps + 1)
+    discs = []
+    for t in probes:
+        bad = sum(1 for f in files.values() if ref.state_of(dict(ratios=f["ratios"], recent=[], inheritedDiscrepant=False)) == "DISCREPANT")
+        discs.append(400 if (pen is not None and pen["untilWallMs"] > t) or bad >= 2 else 700)
+    assert pen == want_penalty, f"{id_}: {pen} vs {want_penalty}"
+    assert discs == want_disc, f"{id_}: {discs} vs {want_disc}"
+    inp = dict(kind="penalty", claim=CLAIM, link=LINK, promptTokens=500, promptBytes=5120, maxTokens=1024, bpt=list(BPT), events=events, probes=probes)
+    M08.append(vec(id_, desc, inp, ok(dict(penalty=pen, disc=discs))))
+
+
+def bad_obs(file, at):
+    return dict(file=file, bytes=1200, elapsed=39911, at=at)
+
+
+FIVE_A = [bad_obs("A", 1000)] * 5
+FIVE_B = [bad_obs("B", 2000)] * 5
+penalty("M08-070", "one DISCREPANT file of a peer does not latch a penalty: disc stays 700", FIVE_A, [1000, 5000], None, [700, 700])
+penalty("M08-071", "two DISCREPANT files latch a 7-day penalty at the observation that makes the second DISCREPANT; disc is 400 until it ends and 400 after it while both stay DISCREPANT",
+        FIVE_A + FIVE_B, [2000, 2000 + 7 * DAY - 1, 2000 + 7 * DAY], dict(untilWallMs=2000 + 7 * DAY, repeats=1), [400, 400, 400])
+penalty("M08-072", "a second penalty of a peer that is still DISCREPANT lasts 14 days (doubling on repeat)", FIVE_A + FIVE_B + [bad_obs("B", 2000 + 7 * DAY + 5)],
+        [2000 + 7 * DAY + 5, 2000 + 21 * DAY + 4, 2000 + 21 * DAY + 5], dict(untilWallMs=2000 + 7 * DAY + 5 + 14 * DAY, repeats=2), [400, 400, 400])
+penalty("M08-073", "a third penalty lasts 28 days", FIVE_A + FIVE_B + [bad_obs("B", 2000 + 7 * DAY + 5), bad_obs("B", 2000 + 21 * DAY + 10)], [2000 + 21 * DAY + 10],
+        dict(untilWallMs=2000 + 21 * DAY + 10 + 28 * DAY, repeats=3), [400])
+
+
+def disc_vec(id_, desc, states, penalty_, now, want):
+    got = None
+    if penalty_ is not None and penalty_["untilWallMs"] > now:
+        got = 400
+    else:
+        bad = sum(1 for st in states if ref.state_of(dict(ratios=st["ratios"], recent=[], inheritedDiscrepant=st["inherited"])) == "DISCREPANT")
+        got = 400 if bad >= 2 else 700
+    assert got == want, f"{id_}: {got} vs {want}"
+    M08.append(vec(id_, desc, dict(kind="disc", states=states, penalty=penalty_, now=now), ok(dict(disc=got))))
+
+
+INH = lambda f: dict(file=f, ratios=[], inherited=True)
+disc_vec("M08-074", "two files DISCREPANT only by inheritance (no observation, so no penalty was latched) still give disc 400", [INH("A"), INH("B")], None, 1000, 400)
+disc_vec("M08-075", "one file DISCREPANT by inheritance gives disc 700", [INH("A")], None, 1000, 700)
+disc_vec("M08-076", "two files DISCREPANT by ratios (best < 600) give disc 400", [dict(file="A", ratios=[100] * 5, inherited=False), dict(file="B", ratios=[100] * 5, inherited=False)], None, 1000, 400)
+disc_vec("M08-077", "a running penalty gives disc 400 whatever the states are", [], dict(untilWallMs=5000, repeats=1), 4999, 400)
+disc_vec("M08-078", "a penalty that ended at now gives disc 700 when fewer than two files are DISCREPANT", [INH("A")], dict(untilWallMs=5000, repeats=1), 5000, 700)
+
+# best = x[(3n)/4] at the lengths where nearest-rank differs from the next index down (LTQ-12)
+for n_, want_best in ((8, 700), (12, 1000), (16, 1300), (20, 1600)):
+    rs = [100 * (k + 1) for k in range(n_)]
+    state_vec(f"M08-{79 + (8, 12, 16, 20).index(n_):03d}", f"best at n = {n_} is x[{(3 * n_) // 4}] = {want_best} (nearest rank, not x[{(3 * n_ - 1) // 4}])", rs, want=dict(best=want_best))
+
 write("M08-claim-tracker.json", "M08", ["LAB_SPEC.md 6.6", "ASOM_MESH_DESIGN.md 5.7", "docs/design/mesh/REVIEW_ROUND3.md R3-OVERCLAIM-1, R3-CLOSURE-5"], M08)
