@@ -2172,3 +2172,9 @@ Not run: macOS lane, hosted CI, JDK 17, the crosslane step.
 ## Design revision 4 (docs only), 2026-10-07
 
 Pointer: `docs/design/mesh/REVISION_4.md` (change log: the 39 round-3 findings and every ERRATA reading, each ADOPTED, OWNER DECISION, REJECTED or DEFERRED) and `docs/design/mesh/OWNER_DECISIONS.md` (every open ratification). Docs-only: no code, vector or workflow changed; nothing here is device evidence.
+
+## Hosted CI at ee88fc4 and design revision 4 (2026-10-07)
+
+`gh api repos/mbaliga/asystemofmodels/commits/ee88fc4/check-runs`: **58 non-cleanup check runs, all `completed/success`** (lab Linux and Windows on JDK 17 and 21, desktop, apple-swift-lane on macOS CryptoKit and Linux swift-crypto, lane-diff, UT, QML, click, AppArmor approximation, install matrix). `CI (hosted VM) evidence`, conclusions read from check runs, not logs. NOT DEVICE EVIDENCE. Includes fix wave 2 (review round 2: 40 confirmed findings in seven groups) and the Swift text-renderer repair; PTT-1 is only partly closed (the revoke listener in `integration/Node.kt` still writes GOAWAY on the revoking thread, bounded by the 30 s write-stall budget).
+
+Design revision 4 (docs only, `docs/design/mesh/REVISION_4.md`, `OWNER_DECISIONS.md`) folds the round-3 dispositions and implementation readings into the design and lists 17 builder actions and the owner decisions (including D30 `thermal-drift`, recommended: add to benchmark.md 13.3). Nothing in the code was changed by it.
