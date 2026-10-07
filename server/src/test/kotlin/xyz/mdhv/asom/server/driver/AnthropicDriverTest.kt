@@ -221,6 +221,7 @@ class AnthropicDriverTest {
             stream = true,
         )
         assertFailsWith<IOException> { assertIs<DriverOutcome.Stream>(outcome).events.toList() }
+        Unit
     }
 
     @Test
