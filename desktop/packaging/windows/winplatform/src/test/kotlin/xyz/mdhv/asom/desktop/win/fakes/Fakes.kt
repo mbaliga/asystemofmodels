@@ -105,6 +105,9 @@ class FakeCng : CngPort {
     val created = ArrayList<String>()
     val deleted = ArrayList<String>()
     var providerMissing = emptySet<CngProvider>()
+
+    /** The provider exists but cannot be opened right now (TBS stopped, TPM not ready): open and create throw, never "no key". */
+    var providerUnavailable = emptySet<CngProvider>()
     var failCreate = emptySet<CngProvider>()
     var badSignatureLength = emptySet<CngProvider>()
     var corruptSignature = emptySet<CngProvider>()
@@ -113,6 +116,7 @@ class FakeCng : CngPort {
 
     override fun createEcdsaP256(provider: CngProvider, name: String, scope: KeyScope, sddl: String?): CngKeyHandle {
         if (provider in providerMissing) throw WinApiException("provider \"${provider.providerName}\" is not available on this machine")
+        if (provider in providerUnavailable) throw WinApiException("NCryptOpenStorageProvider failed (0x80090030)", 0x80090030.toInt())
         if (provider in failCreate) throw WinApiException("NCryptCreatePersistedKey failed (0x80090029)", 0x80090029.toInt())
         check(keys[provider to name] == null) { "key exists" }
         val pair = KeyPairGenerator.getInstance("EC").apply { initialize(ECGenParameterSpec("secp256r1")) }.generateKeyPair()
@@ -123,6 +127,7 @@ class FakeCng : CngPort {
 
     override fun open(provider: CngProvider, name: String, scope: KeyScope): CngKeyHandle? {
         if (provider in providerMissing) return null
+        if (provider in providerUnavailable) throw WinApiException("NCryptOpenStorageProvider failed (0x80090030)", 0x80090030.toInt())
         opened++
         val s = keys[provider to name] ?: return null
         return Handle(provider, name, s.pair)

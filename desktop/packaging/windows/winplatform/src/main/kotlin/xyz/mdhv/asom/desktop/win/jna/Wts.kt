@@ -5,6 +5,7 @@ import com.sun.jna.ptr.IntByReference
 import com.sun.jna.ptr.PointerByReference
 import com.sun.jna.win32.StdCallLibrary
 import xyz.mdhv.asom.desktop.win.api.SessionApi
+import xyz.mdhv.asom.desktop.win.api.WinApiException
 import xyz.mdhv.asom.desktop.win.api.WtsSession
 
 internal interface WtsApi : StdCallLibrary {
@@ -60,31 +61,37 @@ object WtsInfoExLayout {
     private fun i64(b: ByteArray, o: Int): Long = (i32(b, o).toLong() and 0xffffffffL) or (i32(b, o + 4).toLong() shl 32)
 }
 
-class JnaSessions : SessionApi {
+internal class JnaSessions(
+    private val consoleId: () -> Int = { Libs.kernel32.WTSGetActiveConsoleSessionId() },
+    private val rawQuery: (Int) -> ByteArray? = ::queryNative,
+) : SessionApi {
+    /** Null only when Windows says there is no console session; a session that exists but cannot be read throws, so it never looks like "nobody is here". */
     override fun consoleSession(): WtsSession? {
-        val id = Libs.kernel32.WTSGetActiveConsoleSessionId()
-        return if (id == NO_SESSION) null else query(id)
+        val id = consoleId()
+        if (id == NO_SESSION) return null
+        return query(id) ?: throw WinApiException("the console session $id exists but WTSQuerySessionInformationW could not be read or parsed")
     }
 
     override fun currentSession(): WtsSession? = query(WTS_CURRENT_SESSION)
 
-    private fun query(sessionId: Int): WtsSession? {
-        val w = Libs.wtsapi32
-        val pp = PointerByReference()
-        val n = IntByReference()
-        if (!w.WTSQuerySessionInformationW(null, sessionId, WTS_SESSION_INFO_EX, pp, n)) return null
-        val p = pp.value ?: return null
-        try {
-            if (n.value < WtsInfoExLayout.MIN_SIZE) return null
-            return WtsInfoExLayout.parse(p.getByteArray(0, n.value))
-        } finally {
-            w.WTSFreeMemory(p)
-        }
-    }
+    private fun query(sessionId: Int): WtsSession? = rawQuery(sessionId)?.let { WtsInfoExLayout.parse(it) }
 
     private companion object {
         const val WTS_CURRENT_SESSION = -1
         const val NO_SESSION = -1
         const val WTS_SESSION_INFO_EX = 25
+
+        fun queryNative(sessionId: Int): ByteArray? {
+            val w = Libs.wtsapi32
+            val pp = PointerByReference()
+            val n = IntByReference()
+            if (!w.WTSQuerySessionInformationW(null, sessionId, WTS_SESSION_INFO_EX, pp, n)) return null
+            val p = pp.value ?: return null
+            try {
+                return p.getByteArray(0, n.value)
+            } finally {
+                w.WTSFreeMemory(p)
+            }
+        }
     }
 }

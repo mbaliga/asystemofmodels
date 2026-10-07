@@ -57,6 +57,11 @@ class WinPlatform(
 ) : DesktopPlatform, HostRulesProvider {
     override val id: String = "windows"
 
+    /** The DACL reader the service host verifies its state directory with (windows ERRATA ERR-FX-HWM-3). */
+    val acl: xyz.mdhv.asom.desktop.win.acl.WinAcl get() = natives.acl
+
+    val serviceName: String get() = options.serviceName
+
     @Volatile
     private var mode: HostMode = HostMode.USER
 

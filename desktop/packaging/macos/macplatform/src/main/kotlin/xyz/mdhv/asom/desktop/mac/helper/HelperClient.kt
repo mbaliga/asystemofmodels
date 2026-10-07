@@ -23,6 +23,12 @@ interface HelperTransport {
 
     /** True while the transport believes the helper is alive. */
     val alive: Boolean
+
+    /**
+     * Which helper process answers: it changes every time a new one is started. State the helper keeps (the power assertion)
+     * dies with its process, so a caller that placed such state compares this before relying on it (mac ERRATA ERR-FX-HWM-9).
+     */
+    val epoch: Long get() = 0L
 }
 
 /** Typed calls over a [HelperTransport]. Every reply is validated by the codec before it reaches this class. */
@@ -34,6 +40,9 @@ class HelperClient(private val transport: HelperTransport) {
     data class MemInfo(val physicalBytes: Long, val gpuRecommendedMaxWorkingSetBytes: Long?)
 
     val alive: Boolean get() = transport.alive
+
+    /** See [HelperTransport.epoch]. */
+    val epoch: Long get() = transport.epoch
 
     fun subscribe(listener: (Event) -> Unit): AutoCloseable = transport.subscribe(listener)
 

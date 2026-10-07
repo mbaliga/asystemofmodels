@@ -21,8 +21,8 @@ import xyz.mdhv.asom.desktop.win.acl.ServiceSid
  * permission on the socket file [FW33]. Ledger rows therefore carry `callerPkg = local-sid:<owner SID>(acl)`.
  *
  * STATED LIMITS: any process running as the owner can connect, exactly as on Linux same-uid, and there is no
- * second-direction credential check like `SO_PEERCRED`. The client-side precheck ([precheck]) reads the socket
- * directory's owner and DACL before connecting; it is TOCTOU-prone (the directory can change between the read and the
+ * second-direction credential check like `SO_PEERCRED`. The client-side precheck ([precheckConnect]) reads the owner and
+ * DACL of the socket's directory AND of the socket file before connecting; it is TOCTOU-prone (the directory can change between the read and the
  * connect) and says so. An Administrator or SYSTEM can do everything here.
  *
  * WHAT THIS CLASS DOES NOT DO: it does not bind. [start] throws [NotYetImplementedException]. Two reasons, both recorded in
@@ -57,6 +57,27 @@ class WinControlSocket(override val path: Path) : ControlSocketServer, Partially
          * principal and its DACL must honour [plan]. Returns the violations; empty means the check passed (TOCTOU-prone).
          */
         fun precheck(plan: AclPlan, dir: AclSnapshot): List<String> = AclVerifier.violations(plan, dir)
+
+        /** The DACL and owner the socket FILE itself must carry (windows.md 3.3(c)): owned by the service (service mode) or the owner (user mode). */
+        fun socketFilePlan(mode: HostMode, ownerSid: String, serviceName: String = "asom"): AclPlan =
+            if (mode == HostMode.SYSTEM) AclPlan.serviceSocketFile(ownerSid, ServiceSid.of(serviceName)) else AclPlan.userSocketFile(ownerSid)
+
+        /**
+         * The whole client-side check before connecting: the run directory against [runDirPlan] AND the socket file against
+         * [socketFilePlan]. A socket file that cannot be read fails (an absent socket means nothing to connect to). It is
+         * TOCTOU-prone, as the spec says: the file can be replaced between this read and the connect, and the JDK exposes no
+         * peer credentials on Windows to check the other direction (AW04). In user mode an elevated owner whose new files are
+         * owned by Administrators fails the owner rule: stricter than the directory plan, NEEDS-DEVICE-VALIDATION.
+         */
+        fun precheckConnect(acl: WinAcl, mode: HostMode, ownerSid: String, runDir: Path, socketFile: Path, serviceName: String = "asom"): List<String> {
+            val dir = precheck(acl, runDir, runDirPlan(mode, ownerSid, serviceName)).map { "run directory: $it" }
+            val file = try {
+                AclVerifier.violations(socketFilePlan(mode, ownerSid, serviceName), acl.snapshot(socketFile)).map { "socket file: $it" }
+            } catch (e: Exception) {
+                listOf("cannot read the socket file's ACL: ${e.message ?: e::class.simpleName}")
+            }
+            return dir + file
+        }
 
         fun precheck(acl: WinAcl, runDir: Path, plan: AclPlan): List<String> = try {
             precheck(plan, acl.snapshot(runDir))

@@ -27,9 +27,17 @@ interface SidResolver {
 /** NTFS permission sets to the three rights the node reasons about, and back. Pure, so it is tested on any OS. */
 object AclRights {
     private val writeBits = setOf(
-        AclEntryPermission.WRITE_DATA, AclEntryPermission.APPEND_DATA, AclEntryPermission.DELETE,
-        AclEntryPermission.DELETE_CHILD, AclEntryPermission.WRITE_ATTRIBUTES, AclEntryPermission.WRITE_NAMED_ATTRS,
-        AclEntryPermission.WRITE_ACL, AclEntryPermission.WRITE_OWNER,
+        AclEntryPermission.WRITE_DATA, AclEntryPermission.APPEND_DATA,
+        AclEntryPermission.WRITE_ATTRIBUTES, AclEntryPermission.WRITE_NAMED_ATTRS,
+    )
+
+    /**
+     * Rights that let a holder change who else has access, or remove what another principal created: a holder of any of
+     * them is FULL in effect (it can grant itself anything, or delete the service's socket and plant its own), so they are
+     * a separate right a plan must name, never part of plain WRITE (windows ERRATA ERR-FX-HWM-4).
+     */
+    private val controlBits = setOf(
+        AclEntryPermission.WRITE_ACL, AclEntryPermission.WRITE_OWNER, AclEntryPermission.DELETE, AclEntryPermission.DELETE_CHILD,
     )
     private val readBits = setOf(
         AclEntryPermission.READ_DATA, AclEntryPermission.READ_ATTRIBUTES, AclEntryPermission.READ_NAMED_ATTRS,
@@ -43,6 +51,7 @@ object AclRights {
     fun rightsOf(perms: Set<AclEntryPermission>): Set<AclRight> {
         val out = HashSet<AclRight>(3)
         if (perms.containsAll(fullBits)) out += AclRight.FULL
+        if (perms.any { it in controlBits }) out += AclRight.CONTROL
         if (perms.any { it in writeBits }) out += AclRight.WRITE
         if (perms.any { it in readBits }) out += AclRight.READ
         return out
@@ -51,6 +60,7 @@ object AclRights {
     fun permissionsFor(rights: Set<AclRight>): Set<AclEntryPermission> {
         val out = HashSet<AclEntryPermission>()
         if (AclRight.FULL in rights) out += AclEntryPermission.entries
+        if (AclRight.CONTROL in rights) out += setOf(AclEntryPermission.WRITE_ACL, AclEntryPermission.WRITE_OWNER)
         if (AclRight.WRITE in rights) {
             out += setOf(
                 AclEntryPermission.WRITE_DATA, AclEntryPermission.APPEND_DATA, AclEntryPermission.WRITE_ATTRIBUTES,

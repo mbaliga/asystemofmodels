@@ -44,7 +44,11 @@ interface CngPort {
      */
     fun createEcdsaP256(provider: CngProvider, name: String, scope: KeyScope, sddl: String? = null): CngKeyHandle
 
-    /** Null when the provider or the key does not exist. */
+    /**
+     * Null when the provider is definitively absent from this machine or the key does not exist under it. Throws
+     * [WinApiException] when the provider cannot be opened for any other reason: that is not "no key", and reading it as
+     * "no key" would let a first enable create a second identity beside one it cannot see.
+     */
     fun open(provider: CngProvider, name: String, scope: KeyScope): CngKeyHandle?
 }
 
@@ -122,7 +126,11 @@ data class WtsSession(
 )
 
 interface SessionApi {
-    /** The active console session, or null if there is none or it cannot be read. */
+    /**
+     * The active console session, or null when there is none. A session that exists but cannot be read throws
+     * [WinApiException]: "unreadable" must never be told apart from "nobody is logged in" by a caller that treats the
+     * second as permission to lend (windows ERRATA ERR-FX-HWM-6).
+     */
     fun consoleSession(): WtsSession?
 
     /** The session this process runs in, or null if it cannot be read. */
@@ -167,7 +175,8 @@ interface MutexPort {
 
 // ---- Firewall and network (windows.md 4) -----------------------------------------------------------------------------
 
-data class RunResult(val exitCode: Int, val stdout: ByteArray, val timedOut: Boolean = false)
+/** [truncated] is true when the tool printed more than the runner's output cap: [stdout] is then a prefix, never the whole listing. */
+data class RunResult(val exitCode: Int, val stdout: ByteArray, val timedOut: Boolean = false, val truncated: Boolean = false)
 
 interface ProcessRunner {
     /** Runs one of the few read-only system tools the node is allowed to read from. Never a shell, never PowerShell. */

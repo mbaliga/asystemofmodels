@@ -211,7 +211,7 @@ class PathsAndGuardTest {
     }
 
     @Test
-    fun `another Mac, a missing binding, a corrupt binding and an unreadable one are all NIK_MIGRATED`() {
+    fun `another Mac, a missing binding and a corrupt binding are NIK_MIGRATED, an unreadable one is not presented`() {
         val dir = Files.createTempDirectory("asom-guard-")
         var digest = ByteArray(32) { 1 }
         val g = guardIn(dir) { digest }
@@ -231,9 +231,10 @@ class PathsAndGuardTest {
             assertIs<MigrationGuard.Verdict.Migrated>(g.check(true), bad)
             Files.delete(f)
         }
-        // a directory where the file should be: unreadable
+        // a directory where the file should be: unreadable. That says nothing about this Mac, so it is not a mismatch and does not
+        // unpair anyone (ERR-FX-HWM-11); the enforce/unpair behaviour is pinned in FixMacTest
         Files.createDirectory(f)
-        assertIs<MigrationGuard.Verdict.Migrated>(g.check(true))
+        assertIs<MigrationGuard.Verdict.Unverifiable>(g.check(true))
         laws.hit("guard-migrated", 10)
     }
 

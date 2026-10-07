@@ -89,20 +89,25 @@ class NetAndControlTest {
     private fun snap(name: String, vararg addrs: String, up: Boolean = true) = InterfaceSnapshot(name, up, addrs.map(::ip))
 
     @Test
-    fun `the overlay resolves to the utun that carries an overlay address, deterministically`() {
+    fun `the overlay resolves to the one utun that carries an overlay address, and to the selected one when several do`() {
         val ifs = listOf(
             snap("lo0", "127.0.0.1"), snap("en0", "192.168.1.5"), snap("utun3", "fe80::1"), snap("utun5", "100.101.102.103", "fd7a:115c:a1e0::5"),
             snap("utun4", "100.90.0.1"),
         )
-        val e = InterfaceEligibility.resolveOverlay(ifs)
+        // two utun interfaces carry overlay addresses: the node does not pick the lowest name (ERR-FX-HWM-8); the user selects
+        assertIs<Eligibility.Refuse>(InterfaceEligibility.resolveOverlay(ifs))
+        val e = InterfaceEligibility.resolveOverlay(ifs, ip("100.90.0.1"))
         assertIs<Eligibility.Bind>(e)
-        assertEquals("utun4", e.binding.interfaceName, "lowest interface name among the IPv4 candidates")
+        assertEquals("utun4", e.binding.interfaceName)
         assertEquals(ip("100.90.0.1"), e.binding.address)
         assertEquals(InterfaceKind.OVERLAY_CANDIDATE, e.binding.kind)
+        // one candidate with both families: IPv4 is preferred
+        val dual = InterfaceEligibility.resolveOverlay(listOf(snap("lo0", "127.0.0.1"), snap("utun5", "fd7a:115c:a1e0::5", "100.101.102.103"))) as Eligibility.Bind
+        assertEquals(ip("100.101.102.103"), dual.binding.address)
         // IPv6-only overlay
         val v6 = InterfaceEligibility.resolveOverlay(listOf(snap("utun2", "fd7a:115c:a1e0::9"))) as Eligibility.Bind
         assertEquals("utun2", v6.binding.interfaceName)
-        laws.hit("overlay-resolve", 2)
+        laws.hit("overlay-resolve", 4)
     }
 
     @Test
@@ -147,7 +152,7 @@ class NetAndControlTest {
         val moved = InterfaceEligibility.reresolve(overlay, listOf(snap("utun7", "100.90.0.1")), false)
         assertIs<Reresolution.Moved>(moved)
         assertEquals("utun7", moved.binding.interfaceName)
-        assertIs<Reresolution.Moved>(InterfaceEligibility.reresolve(overlay, listOf(snap("utun4", "100.90.0.77")), false), "a new overlay address is a change")
+        assertIs<Reresolution.Lost>(InterfaceEligibility.reresolve(overlay, listOf(snap("utun4", "100.90.0.77")), false), "a different overlay address is not the one the user selected (ERR-FX-HWM-8)")
         assertIs<Reresolution.Lost>(InterfaceEligibility.reresolve(overlay, listOf(snap("utun4", "fe80::1")), false))
         val lan = ListenBinding(InterfaceKind.LAN_CANDIDATE, "en0", ip("192.168.1.5"))
         assertIs<Reresolution.Same>(InterfaceEligibility.reresolve(lan, listOf(snap("en0", "192.168.1.5", "192.168.1.6")), true), "an extra address does not flap")

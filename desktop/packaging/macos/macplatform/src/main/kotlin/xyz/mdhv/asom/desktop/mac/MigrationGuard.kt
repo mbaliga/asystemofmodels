@@ -49,12 +49,20 @@ class MigrationGuard(
     }
 
     fun check(identityExists: Boolean): Verdict {
-        val text = try {
-            Files.readString(bindingFile, Charsets.UTF_8)
+        val bytes = try {
+            Files.readAllBytes(bindingFile)
         } catch (_: NoSuchFileException) {
             return if (identityExists) Verdict.Migrated("an identity exists but there is no binding record") else Verdict.Fresh
         } catch (e: Exception) {
-            return Verdict.Migrated("the binding record cannot be read (${e::class.simpleName})")
+            // EACCES, EIO, a directory in its place: nothing was learned about this Mac, and the answer to a mismatch is to
+            // unpair every peer, which cannot be undone. Not presented, not unpaired (ERR-FX-HWM-11).
+            return Verdict.Unverifiable("the binding record cannot be read (${e::class.simpleName}); the identity is not presented, and no peer is unpaired")
+        }
+        val text = try {
+            Charsets.UTF_8.newDecoder().onMalformedInput(java.nio.charset.CodingErrorAction.REPORT).onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                .decode(java.nio.ByteBuffer.wrap(bytes)).toString()
+        } catch (_: java.nio.charset.CharacterCodingException) {
+            return Verdict.Migrated("the binding record is corrupt")
         }
         val record = parse(text) ?: return Verdict.Migrated("the binding record is corrupt")
         val digest = try {

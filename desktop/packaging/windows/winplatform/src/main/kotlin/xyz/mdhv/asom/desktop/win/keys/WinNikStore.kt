@@ -54,9 +54,17 @@ class WinNikStore(
         return FileNik.open(paths.identityDir, backends.dpapi)
     }
 
-    /** Refuses when a key already exists: an identity is never silently replaced. */
+    /**
+     * Refuses when a key already exists: an identity is never silently replaced. It also refuses when it cannot tell: a
+     * provider that fails to open (a stopped TBS service, a TPM that is not ready) may be hiding a T2 identity, and a T1 key
+     * created beside it would give the node two identities that swap whenever the TPM comes and goes.
+     */
     fun createAtFirstMeshEnable(request: KeyTierRequest): NikSelection {
-        val present = existing()
+        val present = try {
+            existing()
+        } catch (e: Exception) {
+            throw IllegalStateException("cannot tell whether a node key already exists (${e.message ?: e::class.simpleName}); nothing was created, retry when the key provider is available", e)
+        }
         if (present != null) {
             present.close()
             throw IllegalStateException("a node key already exists; delete it explicitly (asom key destroy) if a new identity is meant")

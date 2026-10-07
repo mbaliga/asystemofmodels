@@ -74,8 +74,9 @@ sealed interface Reresolution {
  * network the user confirmed, at private or link-local addresses. NEVER a wildcard, loopback or public address, whatever the
  * caller asks for. This module only decides; it binds nothing.
  *
- * `utun` numbering is not stable, so an overlay selection is recorded as (kind = overlay, address prefix) and is re-resolved on
- * every wake ([reresolve]). If no kernel `utun` carries an overlay address (for example `tailscaled` in userspace-networking mode),
+ * `utun` numbering is not stable, so an overlay selection is recorded as (kind = overlay, the selected ADDRESS) and is re-resolved
+ * on every wake ([reresolve]) only to the `utun` that carries that exact address: a prefix cannot tell Tailscale from another
+ * VPN that uses the same carrier-grade NAT range, so an address that is gone is `Lost` and the user selects again. If no kernel `utun` carries an overlay address (for example `tailscaled` in userspace-networking mode),
  * the answer is "overlay mode unsupported: use a kernel TUN", and loopback is never used as a substitute.
  */
 object InterfaceEligibility {
@@ -124,13 +125,35 @@ object InterfaceEligibility {
         }
     }
 
-    /** Finds a `utun` that carries an overlay address. Prefers IPv4, then the lowest interface name, so the answer is deterministic. */
-    fun resolveOverlay(interfaces: List<InterfaceSnapshot>): Eligibility {
-        val candidates = interfaces.filter { it.isUp && kindOf(it.name) == InterfaceKind.OVERLAY_CANDIDATE }
-            .flatMap { i -> i.addresses.filter(::isOverlayAddress).map { ListenBinding(InterfaceKind.OVERLAY_CANDIDATE, i.name, it) } }
-            .sortedWith(compareBy({ it.address !is Inet4Address }, { it.interfaceName }))
-        return candidates.firstOrNull()?.let { Eligibility.Bind(it) }
-            ?: Eligibility.Refuse("overlay mode unsupported: use a kernel TUN (no utun interface carries an overlay address; a userspace-networking tailscaled is not usable, and loopback is never used instead)")
+    /**
+     * The `utun` the overlay listener may bind. 100.64.0.0/10 is shared carrier-grade NAT space that other VPNs also use
+     * (Cloudflare WARP takes 100.96.0.0/12), so an address inside it does not say WHICH VPN it belongs to, and the node never
+     * picks between interfaces on its own (mac ERRATA ERR-FX-HWM-8):
+     *  - with a [selected] address (the one the user confirmed): only the `utun` that carries exactly that address, else refused;
+     *  - with none: the one `utun` that carries an overlay address, when there is exactly one; two or more are refused and
+     *    named, and the user selects. Within the one interface IPv4 is preferred over IPv6.
+     */
+    fun resolveOverlay(interfaces: List<InterfaceSnapshot>, selected: InetAddress? = null): Eligibility {
+        val carriers = interfaces.filter { it.isUp && kindOf(it.name) == InterfaceKind.OVERLAY_CANDIDATE }
+            .map { i -> i to i.addresses.filter(::isOverlayAddress) }
+            .filter { it.second.isNotEmpty() }
+        if (selected != null) {
+            val owner = carriers.firstOrNull { (_, addrs) -> selected in addrs }
+                ?: return Eligibility.Refuse("no up utun interface carries the selected overlay address ${selected.hostAddress}; select the overlay interface again")
+            return Eligibility.Bind(ListenBinding(InterfaceKind.OVERLAY_CANDIDATE, owner.first.name, selected))
+        }
+        if (carriers.isEmpty()) {
+            return Eligibility.Refuse("overlay mode unsupported: use a kernel TUN (no utun interface carries an overlay address; a userspace-networking tailscaled is not usable, and loopback is never used instead)")
+        }
+        if (carriers.size > 1) {
+            return Eligibility.Refuse(
+                "more than one utun interface carries a 100.64.0.0/10 or Tailscale address (${carriers.map { it.first.name }.sorted().joinToString(", ")}); " +
+                    "another VPN may share that range, so select the overlay interface explicitly",
+            )
+        }
+        val (iface, addrs) = carriers.single()
+        val address = addrs.sortedBy { it !is Inet4Address }.first()
+        return Eligibility.Bind(ListenBinding(InterfaceKind.OVERLAY_CANDIDATE, iface.name, address))
     }
 
     /** A Wi-Fi or Ethernet interface the user confirmed, at a private or link-local address. */
@@ -146,7 +169,7 @@ object InterfaceEligibility {
 
     /** Re-resolves a recorded selection after a wake or a change of network. A change of anything the listener depends on is not "Same". */
     fun reresolve(previous: ListenBinding, interfaces: List<InterfaceSnapshot>, lanConfirmed: Boolean): Reresolution = when (previous.kind) {
-        InterfaceKind.OVERLAY_CANDIDATE -> when (val e = resolveOverlay(interfaces)) {
+        InterfaceKind.OVERLAY_CANDIDATE -> when (val e = resolveOverlay(interfaces, previous.address)) {
             is Eligibility.Refuse -> Reresolution.Lost(e.reason)
             is Eligibility.Bind -> if (e.binding == previous) Reresolution.Same else Reresolution.Moved(e.binding)
         }

@@ -1785,3 +1785,39 @@ Mutation checks: install.sh (old script into the lab check: 16 failures, above);
 BLOCKED / NOT DONE (honest): EGR-11 (`apple-ios.yml` is not in this track's file list; two path-filter lines, ERR-FX-14). EGR-9 PARTIAL: matrix images pinned by digest and checkouts stop persisting credentials in `desktop-linux.yml` and `lab.yml`; NOT `desktop-windows.yml` (its byte-for-byte canonical copy under desktop/packaging/windows/ci is the Windows track's, ERR-FX-4) and NOT the whole-checkout mount in `ubuntu-touch.yml`'s smoke container (not in the file list). The image digests came from mirror.gcr.io; Docker Hub returned 429. HLU-4 PARTIAL BY DESIGN: `Governor` is strict by default and the Linux host adopts it; Windows and macOS keep the old start until their (unowned) tests are warmed up, because with the strict start on, 2 Windows and 3 macOS tests failed (ERR-FX-5). EGR-7 is a proposal only; the unit file is unchanged. CI-ONLY, never run on a hosted runner: the new `fetch-nfpm-check.sh` step, the digest-pinned install matrix (the digests were not pulled here: no Docker), `systemd-vm.sh` check 1b, the new lab.yml steps, `check_workflows.py` inside `isolation.sh` on JDK 17/21 and aarch64. The signature accept path uses a scratch key and a sed-substituted copy of the installer; no real owner fingerprint exists.
 Oracle status: self-oracled where vectors are concerned (none were changed); the Python cross-checks in lab.yml never clear the oracle tag.
 Result: PASSED for the findings fixed (LAB evidence only); PARTIAL and BLOCKED items as listed.
+
+
+## Gate: fix-windows-mac (review findings HWM-1 to HWM-9, HWM-11, HWM-12, HWM-13, HA-01, HA-08)
+
+Evidence label: LAB (Linux container, fakes behind the Windows and macOS port interfaces). NOT DEVICE EVIDENCE: nothing here ran on Windows or macOS; the Windows and macOS integration tests (`*IT`) SKIPPED as designed.
+Base `f6a8f1efeea47c0c3ef8653a34762e9d6b706fe0` confirmed (the worktree started at another commit and was reset to it).
+
+Failing before the fix (new tests `FixWindowsTest`, `FixMacTest`, run against the production code with only behaviour-preserving seams added): winplatform had 11 failing tests (HWM-1 x2, HWM-2, HWM-3, HWM-4, HWM-5, HWM-6, HWM-12, HWM-13 x2, plus the law-vacuity check); macplatform had 9 failing tests (HWM-7, HWM-8, HWM-9 x3, HWM-11, HA-01, HA-08, plus the law-vacuity check). Captured JUnit XML is in the builder's scratchpad (`fixwm/win-before-fix.xml`, `fixwm/mac-before-fix.xml`).
+
+After the fix, real output:
+
+```
+./gradlew --max-workers=2 --offline -p desktop :packaging:windows:winplatform:test :packaging:macos:macplatform:test   (JDK 21)
+winplatform test summary: 153 tests, 126 passed, 0 failed, 27 skipped   (os=Linux; ...)
+macplatform test summary: 150 tests, 139 passed, 0 failed, 11 skipped   (os=Linux; ...)
+BUILD SUCCESSFUL in 50s
+JAVA_HOME=/opt/jdks/jdk-17 ./gradlew ... (same command)
+winplatform test summary: 153 tests, 126 passed, 0 failed, 27 skipped   (os=Linux; ...)
+macplatform test summary: 150 tests, 139 passed, 0 failed, 11 skipped   (os=Linux; ...)
+BUILD SUCCESSFUL in 1m 56s
+python3 lab/tools/isolation.py      -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+python3 lab/tools/check_law.py      -> law: OK
+python3 desktop/tools/isolation.py  -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+python3 desktop/tools/check_law.py  -> law: OK
+python3 desktop/tools/check_paths.py -> check_paths: 1210 tracked paths checked, 0 problems
+./gradlew --offline jvmTest (root)  -> BUILD SUCCESSFUL (tasks FROM-CACHE / UP-TO-DATE: the root build was not changed, so this re-ran nothing; the 139-test count is NOT re-observed here)
+```
+
+Mutation checks (apply, run the suite, restore; all restored, `git diff` shows only the intended changes): 26 mutants, 25 killed, 1 equivalent.
+Killed: HWM-1 providerAbsent always true; HWM-1 store swallows existing(); HWM-2 old any-self-test bypass; HWM-3 no state-tree check; HWM-3 directory only; HWM-4 escalation rights folded into WRITE; HWM-5 socket file unchecked; HWM-5 socket owner rule relaxed; HWM-6 unreadable console read as none; HWM-12 narrow before range check; HWM-13 truncation ignored; HWM-13 exit code ignored; HWM-13 runner never reads past the cap; HWM-7 stored SPKI check removed; HWM-8 reresolve ignores the recorded address; HWM-8 several candidates pick lowest name; HWM-9 stale assertion never detected; HWM-9 epoch ignored; HWM-9 read does not re-assert; HWM-9 HelperProcess epoch constant; HWM-11 unreadable binding migrated; HA-01/08 node limit raised to 103; HA-08 zero escape restored; HA-01 checklist reverted; HA-08 tried-check removed (first run SURVIVED, a partial-probe case was added to the test, re-run killed).
+Equivalent (not killable): HWM-12 `isFinite` check removed: `Math.round(+Infinity)` is `Long.MAX_VALUE`, which the range check on the Long rejects anyway, so the explicit check is redundant defence.
+
+Existing assertions changed because they pinned the behaviour a finding says is wrong (recorded in the ERRATA rows, not hidden): `NetAndControlTest` (two cases: several overlay candidates without a selection, and a changed overlay address on the same utun; HWM-8) and `PathsAndGuardTest` (an unreadable binding record is `Unverifiable`, not `Migrated`; HWM-11).
+
+NEEDS-DEVICE-VALIDATION (open): `desktop/packaging/windows/docs/DEVICE_CHECKLIST_WINDOWS.md` FX-1, FX-3, FX-5, FX-6; `DEVICE_CHECKLIST_MACOS.md` S-M7a (its pass criterion corrected). PARTIAL: HWM-6 does not enumerate RDP sessions. Rows: `desktop/packaging/windows/ERRATA.md` and `desktop/packaging/macos/ERRATA.md`, ids `ERR-FX-*`.
+Result: **PASSED in the LAB** for the pure logic of every finding; the Windows and macOS runtime behaviour is unverified.
