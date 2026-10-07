@@ -75,7 +75,7 @@ fun finishCase(w: TlsWorld, honestKit: TNode, honest: Session, honestConn: Tappe
     }
     if (!honest.closed) honest.close()
     Wait.until("the honest session to close") { honest.closed }
-    TlsRuns.settle(w)
+    TlsRuns.settle(w, honestKit.name to honest)
     TlsOracle.l15(w, Side(honestKit, honestConn, honest, sessionId), hostile.conn, W08Tls.l15)
     W08Tls.finish(w)
 }

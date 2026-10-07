@@ -66,7 +66,11 @@ object HostileFramesTls {
         return e
     }
 
-    private fun refused(w: TlsWorld, r: Refusal, n: Int = 1, kit: TNode = w.b) = assertEquals(n, kit.counters.of(r), "refusal counter $r")
+    private fun refused(w: TlsWorld, r: Refusal, n: Int = 1, kit: TNode = w.b) {
+        // the counter is bumped by the session thread; a test thread that has just read the reply may be ahead of it
+        Wait.until("refusal counter $r to reach $n") { kit.counters.of(r) >= n }
+        assertEquals(n, kit.counters.of(r), "refusal counter $r")
+    }
 
     private fun clientCase(name: String, seed: Long = (name.hashCode().toLong() and 0xFFFFFF) + 1000, keyA: String = "key1", keyB: String = "key2", limitsB: xyz.mdhv.asom.lab.proto.wire.Limits? = null, block: (TlsWorld, RawClient) -> Unit) {
         TlsWorld(seed, keyA = keyA, keyB = keyB, limitsB = limitsB).use { w ->
@@ -102,7 +106,7 @@ object HostileFramesTls {
             c.peer.writeRaw(hello)
             val e = errorFrame(c.peer.awaitFrames(1), "PROTOCOL_ERROR")
             assertRows(w.b, 0, open, Rw(MeshKind.CONTROL, "HELLO", 0, hello.size.toLong()), Rw(MeshKind.CONTROL, "ERROR:PROTOCOL_ERROR", e.app, 0), close())
-            assertTrue(c.honest.closed)
+            Wait.until("the session to close") { c.honest.closed }
             refused(w, Refusal.HELLO_NODE_MISMATCH)
             done(w, c, tlsClosed = true)
         }
@@ -301,6 +305,7 @@ object HostileFramesTls {
             c.peer.writeRaw(unknown)
             val e = c.peer.awaitFrames(1).single()
             assertEquals("PROTOCOL_ERROR", e.code, "the late cancel got no reply; only the unknown one is refused")
+            Wait.until("the late cancel to be counted") { w.b.node.lateCancels.get() >= 1 }
             assertEquals(1, w.b.node.lateCancels.get())
             refused(w, Refusal.CANCEL_UNKNOWN_ATTEMPT)
             Wait.until("the session to close") { c.honest.closed }
@@ -438,7 +443,10 @@ object HostileFramesTls {
             val got = c.peer.awaitType(5, "GOAWAY")
             assertEquals("revoked", got.last().reason)
             Wait.until("the session to close") { c.honest.closed }
+            Wait.until("the engine to be cancelled") { w.b.engine.cancelled.isNotEmpty() }
             assertEquals(listOf(w.b.engine.opened[0].attemptId), w.b.engine.cancelled.toList())
+            Wait.until("the INTERRUPTED outcome row and the close row") { w.b.rows().let { r -> r.any { it.meshCode == "INTERRUPTED" && it.phase == Phase.OUTCOME } && r.last().meshCode == "close" } }
+            Wait.stable("the JSONL file of B") { w.b.rows().size }
             val rows = w.b.rows().drop(3).filter { it.meshKind != MeshKind.CONTROL || it.meshCode?.startsWith("GOAWAY") == true }
             val outcome = rows.last { it.phase == Phase.OUTCOME }
             assertEquals("INTERRUPTED", outcome.meshCode)
@@ -646,7 +654,7 @@ object HostileFramesTls {
             val e = s.peer.awaitFrames(1).single()
             assertEquals("PROTOCOL_ERROR", e.code)
             Wait.until("the session to close") { s.session.closed }
-            assertEquals(1, w.a.counters.of(Refusal.BAD_PAYLOAD))
+            refused(w, Refusal.BAD_PAYLOAD, 1, w.a)
             W08Tls.rowChecks.incrementAndGet()
             doneServer(w, s, tlsClosed = true)
         }
@@ -669,7 +677,7 @@ object HostileFramesTls {
             s.peer.writeRaw(Build.ack(randomPin(3).nodeId))
             assertEquals("PROTOCOL_ERROR", s.peer.awaitFrames(1).single().code)
             Wait.until("the session to close") { s.session.closed }
-            assertEquals(1, w.a.counters.of(Refusal.HELLO_NODE_MISMATCH))
+            refused(w, Refusal.HELLO_NODE_MISMATCH, 1, w.a)
             W08Tls.rowChecks.incrementAndGet()
             doneServer(w, s, tlsClosed = true)
         }
@@ -677,21 +685,21 @@ object HostileFramesTls {
             s.peer.awaitFrames(1)
             s.peer.writeRaw(Build.ack(s.hostileNodeId, v = 2))
             assertEquals("VERSION_UNSUPPORTED", s.peer.awaitFrames(1).single().code)
-            assertEquals(1, w.a.counters.of(Refusal.HELLO_BAD_VERSION))
+            refused(w, Refusal.HELLO_BAD_VERSION, 1, w.a)
             doneServer(w, s, tlsClosed = true)
         }
         serverCase("ack clock skew") { w, s ->
             s.peer.awaitFrames(1)
             s.peer.writeRaw(Build.ack(s.hostileNodeId, ts = w.clockA.peek() + 10_800_000))
             assertEquals("CLOCK_SKEW", s.peer.awaitFrames(1).single().code)
-            assertEquals(1, w.a.counters.of(Refusal.CLOCK_SKEW))
+            refused(w, Refusal.CLOCK_SKEW, 1, w.a)
             doneServer(w, s, tlsClosed = true)
         }
         serverCase("frame before hello_ack") { w, s ->
             s.peer.awaitFrames(1)
             s.peer.writeRaw(Frames.encode(0x11, 1, """{"attemptId":"${attemptIdOf(1)}","fileSha256":"${"a".repeat(64)}","servedModel":"m1"}"""))
             assertEquals("PROTOCOL_ERROR", s.peer.awaitFrames(1).single().code)
-            assertEquals(1, w.a.counters.of(Refusal.FRAME_BEFORE_HELLO))
+            refused(w, Refusal.FRAME_BEFORE_HELLO, 1, w.a)
             doneServer(w, s, tlsClosed = true)
         }
         val accept = Frames.encode(0x11, 1, """{"attemptId":"${attemptIdOf(1)}","fileSha256":"${"a".repeat(64)}","servedModel":"m1"}""")
@@ -699,14 +707,14 @@ object HostileFramesTls {
             s.establish()
             s.peer.writeRaw(accept)
             assertEquals("PROTOCOL_ERROR", s.peer.awaitFrames(1).single().code)
-            assertEquals(1, w.a.counters.of(Refusal.UNSOLICITED_REPLY))
+            refused(w, Refusal.UNSOLICITED_REPLY, 1, w.a)
             doneServer(w, s, tlsClosed = true)
         }
         serverCase("unsolicited state") { w, s ->
             s.establish()
             s.peer.writeRaw(Frames.encode(0x21, 1, stateJson()))
             assertEquals("PROTOCOL_ERROR", s.peer.awaitFrames(1).single().code)
-            assertEquals(1, w.a.counters.of(Refusal.UNSOLICITED_REPLY))
+            refused(w, Refusal.UNSOLICITED_REPLY, 1, w.a)
             doneServer(w, s, tlsClosed = true)
         }
         serverCase("unsolicited manifest") { w, s ->
@@ -750,7 +758,7 @@ object HostileFramesTls {
             s.peer.writeRaw(half)
             s.peer.close()
             Wait.until("the session to close") { s.session.closed }
-            assertEquals(1, w.a.counters.of(Refusal.TRUNCATED))
+            refused(w, Refusal.TRUNCATED, 1, w.a)
             Wait.until("the close row") { w.a.rows().last().meshCode == "close" }
             assertRows(w.a, w.a.rows().size - 1, Rw(MeshKind.SESSION, "close", 0, half.size.toLong()))
             doneServer(w, s)
@@ -811,7 +819,7 @@ object HostileFramesTls {
                     val r = result
                     assertTrue(r is ManifestResult.Rejected && r.code == expect, "$id through a session: ${(r as? ManifestResult.Rejected)?.code} (${r?.let { it::class.simpleName }}), expected $expect")
                     assertRows(w.a, w.a.rows().size.coerceAtLeast(1) - 1, Rw(MeshKind.MANIFEST_RECEIVED, expect.name, 0, frame.size.toLong()))
-                    assertEquals(1, w.a.counters.of(Refusal.MANIFEST_REJECTED))
+                    refused(w, Refusal.MANIFEST_REJECTED, 1, w.a)
                     assertTrue(!s.session.closed, "a manifest that fails verification does not close the session")
                     W08Tls.verdictsThroughSession += expect
                     doneServer(w, s)

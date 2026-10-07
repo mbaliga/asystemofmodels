@@ -1636,3 +1636,15 @@ What was built: `integration/` (main): `SessionDriver` (reader and ticker thread
 Reading choices: `lab/ERRATA.md` ERR-PI-1..16.
 NOT DONE / UNVERIFIED (honest): any Windows run (the only OS-aware lines are listed in ERR-PI-16; the tolerance for a Windows hard reset is coded but never executed); the real pairing ceremony over TLS (frames and rows only, ERR-PI-14); a requester-side deadline for an unanswered offer; `local-network-denied` and `firewall-blocked` DIAL outcomes; the hostile frame cases are ported not shared and reduced in two places (ERR-PI-12); the ESTIMATED form is checked against the tap with a measured allowance, it is not exact, and its spec constants (22 bytes, 16,384) disagree with JSSE (ERR-PI-2); the limiter is not wired to any listener loop (the lab has none by rule R5); mutants 13 to 15, 17 to 19 and 23 to 32 were not repeated on JDK 17.
 Result: **PASSED** in the LAB sense above for items 1 to 6 of the assignment on JDK 17.0.12 and JDK 21.0.10 (oracle: self; NOT DEVICE EVIDENCE).
+
+## LAB: integration test timing flakes on hosted CI (oracle: self; NOT DEVICE EVIDENCE)
+
+Scope: `lab/mesh-proto/src/test/kotlin/.../integration/` only; no main code changed. Two hosted-runner failures (HandshakeLimiterTest line 95, `w08FramesAttemptsAndRegistry`)
+were not reproduced locally (12/12 passes of HandshakeLimiterTest under 8 busy loops on 4 cores); one other race was reproduced under load and fixed.
+Races fixed (each by waiting on the condition with the 30 s `Wait.until`, assertions unchanged):
+- `InboundRefusedCounter.refused()` is an unsynchronised `count++`; `acceptOn` called it from up to 8 acceptor threads at once, so a lost increment gives `refused:8`. The harness now serialises the calls (`countRefusal`). Not reproduced locally, so a hypothesis; the assertion text now shows the refusal list.
+- `refused()`/counter reads right after the reply frame (the session thread bumps the counter) now `Wait.refusals(...)`; late-cancel count, engine `cancelled`, INTERRUPTED/close rows, `honest.closed` after a refusal, outcome rows in TimersTest likewise.
+- REPRODUCED under load: `l15OverRunsCutMidStreamByAPeerResetAndMidRecord` "session B: closed with no SESSION close row" (`closed` flag is seen before the close row is logged). `TlsRuns.settle` now waits (5 s, then the oracle reports) for each closed session's close row or failed append.
+Verification (8 busy loops, 4 cores): `./gradlew -p lab :mesh-proto:test --offline --max-workers=2 --rerun-tasks`
+  JDK 17.0.12: 3 consecutive full passes after the last edit (plus 1 earlier pass); JDK 21 (default): 1 pass, all under load.
+  `python3 lab/tools/isolation.py` -> isolation check 4: OK (shipped tree byte-identical to the pinned base)

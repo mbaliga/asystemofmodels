@@ -117,7 +117,7 @@ class RisksTest {
             c.peer.writeRaw(half)
             c.peer.close()
             closed(w, c.honest)
-            assertEquals(1, w.b.counters.of(Refusal.TRUNCATED))
+            assertEquals(1, Wait.refusals(w.b, Refusal.TRUNCATED, 1))
             val close = w.b.rows().last { it.meshKind == MeshKind.SESSION }
             assertEquals(half.size.toLong(), close.bytesIn, "a frame cut in half is residual input on the close row")
             val stats = L15Stats()
@@ -144,6 +144,7 @@ class RisksTest {
             c.peer.writeRaw(Build.stateReq(3))
             val reply = c.peer.awaitFrames(1, "STATE").single()
             assertEquals(0x21, reply.type, "a late cancel gets no reply of its own")
+            Wait.until("the late cancel to be counted") { w.b.node.lateCancels.get() >= 1 }
             assertEquals(1, w.b.node.lateCancels.get())
             assertEquals(0, w.b.counters.of(Refusal.CANCEL_UNKNOWN_ATTEMPT))
             assertTrue(!c.honest.closed)
@@ -152,7 +153,7 @@ class RisksTest {
             val e = c.peer.awaitFrames(1, "ERROR").single()
             assertEquals("PROTOCOL_ERROR", e.code)
             closed(w, c.honest)
-            assertEquals(1, w.b.counters.of(Refusal.CANCEL_UNKNOWN_ATTEMPT))
+            assertEquals(1, Wait.refusals(w.b, Refusal.CANCEL_UNKNOWN_ATTEMPT, 1))
             val close = w.b.rows().last { it.meshKind == MeshKind.SESSION }
             assertEquals(late.size.toLong() + unknown.size, close.bytesIn, "both cancels are uncovered input on the SESSION close row")
             val stats = L15Stats()

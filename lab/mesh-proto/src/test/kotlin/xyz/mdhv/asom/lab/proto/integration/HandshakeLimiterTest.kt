@@ -84,15 +84,15 @@ class HandshakeLimiterTest {
                 }
                 Wait.until("the ninth connection to be refused without a handshake") { results.size == 1 }
                 assertTrue(results.single().let { it.conn == null && it.refusal == null }, "refused by the limiter, before any TLS byte")
-                assertEquals(8, limiter.inFlightNow)
+                assertEquals(8, limiter.inFlightNow, "eight tickets held while the ninth is refused")
                 clients.forEach { runCatching { it.close() } }
                 threads.forEach { it.join(15_000) }
             }
-            assertEquals(9, results.size)
+            assertEquals(9, results.size, "all nine acceptor threads returned")
             assertEquals(0, limiter.inFlightNow, "every ticket was released, whatever its handshake did")
             val row = w.b.node.inboundRefused.flush(force = true)
             assertEquals(MeshKind.INBOUND_REFUSED, row!!.meshKind)
-            assertEquals("refused:9", row.meshCode)
+            assertEquals("refused:9", row.meshCode, "nine refusals counted: one by the limiter, eight by a handshake that ended with its peer closed; results=${results.map { it.refusal?.toString() ?: it.conn?.toString() ?: "limiter" }}")
             val text = String(row.toRowBytes(), Charsets.UTF_8)
             assertTrue(!Regex("[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}").containsMatchIn(text), "a refusal row carries no address")
             assertEquals(1, w.b.rows().count { it.meshKind == MeshKind.INBOUND_REFUSED })

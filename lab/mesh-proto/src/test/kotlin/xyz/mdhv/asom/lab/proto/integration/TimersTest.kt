@@ -2,7 +2,6 @@ package xyz.mdhv.asom.lab.proto.integration
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import org.junit.jupiter.api.Timeout
 import xyz.mdhv.asom.lab.ledger.MeshKind
@@ -155,6 +154,8 @@ class TimersTest {
             assertEquals(0x16, end.type)
             assertTrue(end.text.contains("\"terminal\":\"error\"") && end.text.contains("\"status\":408"), end.text)
             assertTrue(!c.honest.closed, "an expired attempt does not close the session")
+            Wait.until("the outcome row") { w.b.rows().any { it.meshKind == MeshKind.INFER_SERVED } }
+            Wait.stable("the JSONL file of B") { w.b.rows().size }
             val rows = w.b.rows().filter { it.meshKind == MeshKind.INFER_SERVED }
             assertEquals(listOf(Phase.OUTCOME), rows.map { it.phase }, "no body, so no intent row: one outcome row")
             assertEquals(408, rows.single().status)
@@ -201,7 +202,7 @@ class TimersTest {
             assertEquals(0x12, busy.type)
             assertEquals("PEER_BUSY", busy.code)
             assertTrue(busy.text.contains("\"retryAfterMs\":5000"))
-            assertEquals(1, w.b.counters.of(Refusal.PEER_BUSY))
+            assertEquals(1, Wait.refusals(w.b, Refusal.PEER_BUSY, 1))
             assertTrue(!c.honest.closed, "a decline does not close the session")
             assertEquals(4, c.honest.openStreams())
             c.peer.writeRaw(Build.cancel(attemptIdOf(10), 1))
@@ -210,7 +211,7 @@ class TimersTest {
             c.peer.writeRaw(Build.offer(attemptIdOf(21), 11))
             val again = c.peer.awaitFrames(1, "the sixth answer").single()
             assertEquals(0x11, again.type, "a stream that finished did not free its slot")
-            assertNotNull(w.b.rows().firstOrNull { it.meshCode == "PEER_BUSY" })
+            Wait.until("the PEER_BUSY row") { w.b.rows().any { it.meshCode == "PEER_BUSY" } }
         }
     }
 }

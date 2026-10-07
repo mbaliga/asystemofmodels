@@ -68,6 +68,13 @@ import xyz.mdhv.asom.lab.proto.wire.Platform
 
 /** Polling waits for I/O that finishes on other threads. Timers are never waited for: those tests move an injected clock instead. */
 object Wait {
+    /** Waits until the refusal counter of [kit] for [r] reaches [n], then returns its value (the session thread bumps it; a reader that has just seen the reply may be ahead). */
+    fun refusals(kit: TNode, r: xyz.mdhv.asom.lab.proto.session.Refusal, n: Int): Int {
+        until("refusal counter $r to reach $n on ${kit.name}") { kit.counters.of(r) >= n }
+        return kit.counters.of(r)
+    }
+
+
     fun until(what: String, timeoutMs: Long = 30_000, cond: () -> Boolean) {
         val deadline = System.nanoTime() + timeoutMs * 1_000_000L
         while (!cond()) {
@@ -368,6 +375,14 @@ class Loopback : AutoCloseable {
     }
 }
 
+/**
+ * `InboundRefusedCounter` is a plain, unsynchronised `count++` (one writer in the node's design); the harness runs one acceptor thread per connection, so the
+ * calls are serialised here. Without it, concurrent refusals (eight stalled handshakes all failing at once, on a 2-core runner) lose increments.
+ */
+private val refusalLock = Any()
+
+private fun countRefusal(node: TNode) = synchronized(refusalLock) { node.node.inboundRefused.refused() }
+
 /** Accepts one socket on [node]: TLS handshake, then the session engine and its driver. A refused handshake is counted as an inbound refusal. */
 fun acceptOn(node: TNode, ch: SocketChannel, connName: String, log: Log, limiter: HandshakeLimiter? = null, beforeSession: () -> Unit = {}): Accepted {
     val ticket = limiter?.let {
@@ -376,7 +391,7 @@ fun acceptOn(node: TNode, ch: SocketChannel, connName: String, log: Log, limiter
             is Admission.Admitted -> a
             is Admission.Refused -> {
                 runCatching { ch.close() }
-                node.node.inboundRefused.refused()
+                countRefusal(node)
                 return Accepted(null, null, null, null)
             }
         }
@@ -387,7 +402,7 @@ fun acceptOn(node: TNode, ch: SocketChannel, connName: String, log: Log, limiter
         MeshTls.accept(tap, node.identity(), node.env(), observer)
     } catch (e: MeshTlsException) {
         ticket?.release()
-        node.node.inboundRefused.refused()
+        countRefusal(node)
         return Accepted(null, null, null, e)
     }
     ticket?.release()

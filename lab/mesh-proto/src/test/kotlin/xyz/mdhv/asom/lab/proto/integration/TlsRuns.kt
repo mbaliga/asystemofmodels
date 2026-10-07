@@ -8,6 +8,7 @@ import xyz.mdhv.asom.lab.proto.session.Build
 import xyz.mdhv.asom.lab.proto.session.CLOCK_BASE
 import xyz.mdhv.asom.lab.proto.session.Counts
 import xyz.mdhv.asom.lab.proto.session.EngineEvent
+import xyz.mdhv.asom.lab.proto.session.Ev
 import xyz.mdhv.asom.lab.proto.session.FailPlan
 import xyz.mdhv.asom.lab.proto.session.ManifestResult
 import xyz.mdhv.asom.lab.proto.session.ServingView
@@ -134,8 +135,28 @@ object TlsRuns {
     }
 
     /** Waits until neither ledger grows and both streams are done (rows are written asynchronously with respect to the peer's close). */
-    fun settle(w: TlsWorld) {
+    fun settle(w: TlsWorld, vararg extra: Pair<String, Session>) {
+        awaitCloseRows(w, extra.toList())
         Wait.stable("the ledgers of both nodes") { w.a.rows().size to w.b.rows().size }
+    }
+
+    /**
+     * A session's `closed` flag can be seen before its SESSION close row (or the failed append of it) reaches the log. For every session of every link that is
+     * closed, waits (up to 5 s, then lets the oracle report what is really missing) until that row or failure is logged.
+     */
+    private fun awaitCloseRows(w: TlsWorld, extra: List<Pair<String, Session>>) {
+        val deadline = System.nanoTime() + 5_000L * 1_000_000L
+        val all = w.links.flatMap { listOf("A" to it.sessionA, "B" to it.sessionB) } + extra
+        for ((node, session) in all) {
+            if (session == null) continue
+            while (session.closed && System.nanoTime() < deadline) {
+                val ev = w.log.snapshot()
+                val done = ev.filterIsInstance<Ev.Appended>().any { it.node == node && it.row.sessionId == session.sessionId && it.row.meshKind == MeshKind.SESSION && it.row.meshCode!!.startsWith("close") } ||
+                    ev.filterIsInstance<Ev.AppendFailed>().any { it.node == node && it.row.sessionId == session.sessionId && it.row.meshKind == MeshKind.SESSION }
+                if (done) break
+                Thread.sleep(2)
+            }
+        }
     }
 
     /**
