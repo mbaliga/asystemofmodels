@@ -19,6 +19,7 @@ Item {
 
         Label {
             objectName: "peersEmpty"
+            textFormat: Text.PlainText
             visible: page.model.peers.length === 0
             width: parent.width
             wrapMode: Text.WordWrap
@@ -36,6 +37,8 @@ Item {
                     color: Tokens.cyan
                 }
                 Label {
+                    objectName: "peerAlias"
+                    textFormat: Text.PlainText
                     anchors.verticalCenter: parent.verticalCenter
                     color: Tokens.text
                     font.pixelSize: Tokens.fontBody
@@ -44,6 +47,7 @@ Item {
             }
         }
         Label {
+            textFormat: Text.PlainText
             width: parent.width
             wrapMode: Text.WordWrap
             color: Tokens.textMuted

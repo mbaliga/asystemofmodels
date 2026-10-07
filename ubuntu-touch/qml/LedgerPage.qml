@@ -23,6 +23,7 @@ Item {
         }
         Label {
             objectName: "ledgerEmpty"
+            textFormat: Text.PlainText
             visible: page.model.rows.length === 0
             width: parent.width
             wrapMode: Text.WordWrap
@@ -33,6 +34,8 @@ Item {
         Repeater {
             model: page.model.rows
             delegate: Label {
+                objectName: "ledgerRow"
+                textFormat: Text.PlainText
                 width: page.width - 2 * Tokens.gu
                 wrapMode: Text.WordWrap
                 color: Tokens.text

@@ -3,7 +3,7 @@
 whole test task, and restores the file. A mutant is KILLED when the tests fail and SURVIVED when they still pass (a hole in the tests).
 A pattern that does not match exactly once, or a mutant that no longer compiles, is reported as such and never counted as killed.
 
-    mutants.py [--kotlin] [--cpp] [--only NAME] [--jdk-home DIR]
+    mutants.py [--kotlin] [--cpp] [--only NAME] [--tests CLASS_PATTERN] [--jdk-home DIR]
 
 Kotlin mutants run `./gradlew -p ubuntu-touch/jvm :ut-host:test`; C++ mutants rebuild the plugin with THIS machine's Qt and run ctest.
 Run it alone (it edits the tree). The work tree is restored from a copy taken before each edit, also on Ctrl-C. Standard library only."""
@@ -41,6 +41,18 @@ KOTLIN = [
     ("tls-trusts-any-key", KT + "SelfTest.kt", "if (!MessageDigest.isEqual(chain[0].publicKey.encoded, spki)) throw CertificateException(\"public key is not the pinned key\")", "", "the pin check is gone: a wrong key completes the handshake"),
     ("home-outside-allowed", KT + "UtPaths.kt", "if (!base.startsWith(home)) throw HostRefusedException(\"$name is outside HOME\")", "", "an XDG base outside HOME is accepted"),
     ("loose-dir-not-tightened", KT + "UtPaths.kt", "Files.setPosixFilePermissions(dir, PRIVATE_DIR)", "Unit", "a group-readable directory is left open"),
+    ("ledger-tail-kept", KT + "FileLedger.kt", "if (cut < size) {", "if (false) {", "a torn tail stays in front of the next row (HLU-2)"),
+    ("ledger-last-row-unchecked", KT + "FileLedger.kt", "                LedgerFile.checkLastRow(file)\n", "", "a damaged last row does not fail STARTING (HLU-2)"),
+    ("ledger-rollback-skipped", KT + "FileLedger.kt", "                truncate(path, committed)\n", "", "a failed append leaves its bytes in the file (HLU-2)"),
+    ("ledger-poison-skipped", KT + "FileLedger.kt", "                poisoned.set(t)\n", "", "a rollback that failed does not poison the ledger (HLU-2)"),
+    ("ledger-budget-ignored", KT + "FileLedger.kt", "if (budget + size > ROWS_BUDGET) {", "if (false) {", "a rows frame may exceed the frame cap (HLU-2)"),
+    ("ledger-limit-ignored", KT + "FileLedger.kt", "if (out.size >= limit) return out", "", "a query reads past the rows it returns (HLU-2)"),
+    ("ledger-corrupt-uncaught", KT + "NodeSession.kt", "        } catch (e: CorruptRowException) {\n            return ledgerLost()\n", "        } catch (e: java.io.EOFException) {\n            return ledgerLost()\n", "a corrupt row crashes the node (HLU-2)"),
+    ("ledger-toolarge-uncaught", KT + "NodeSession.kt", "        } catch (e: FrameTooLargeException) {\n            ledgerLost()\n", "        } catch (e: java.io.EOFException) {\n            ledgerLost()\n", "an over-size rows frame crashes the node (HLU-2)"),
+    ("ledger-loss-keeps-state", KT + "NodeSession.kt", "        settle(lifecycle.apply(LcEvent.LedgerFailed))\n    }\n\n    private fun borrow", "    }\n\n    private fun borrow", "a lost ledger does not stop borrowing (HLU-2)"),
+    ("selftest-under-lock", KT + "NodeSession.kt", "selfTestWorker.execute {", "run {", "the self-test holds the session lock (HLU-3)"),
+    ("tick-stamped-after-lock", KT + "NodeSession.kt", "lifecycle.apply(LcEvent.Tick, wokeAt)", "lifecycle.apply(LcEvent.Tick)", "the watchdog measures the gap after it got the lock (HLU-3)"),
+    ("selftest-not-awaited", KT + "NodeSession.kt", "if (d.frame == UiFrame.Shutdown) awaitSelfTests()", "", "a shutdown overtakes the self-test it follows (HLU-3)"),
     ("state-before-hello", KT + "NodeSession.kt", "if (!greeted) return\n", "", "a frame is written before hello_ack"),
     ("hello-version-unchecked", KT + "NodeSession.kt", "if ((hello as Decoded.Ok<*>).frame != UiFrame.Hello(CtlProtocol.VERSION)) return violate(BadFrame.BAD_FIELD)", "", "any first frame or version starts a session"),
     ("second-hello-allowed", KT + "NodeSession.kt", "is UiFrame.Hello -> return ExitStatus.PROTOCOL_VIOLATION", "is UiFrame.Hello -> return null", "a second hello is accepted"),
@@ -66,11 +78,15 @@ def write(p, s):
         f.write(s)
 
 
+TEST_FILTERS = []
+
+
 def run_kotlin():
     env = dict(os.environ, GRADLE_OPTS="-Xmx1g")
     env.pop("JAVA_TOOL_OPTIONS", None)
+    only_tests = [x for f in TEST_FILTERS for x in ("--tests", f)]
     p = subprocess.run(
-        ["./gradlew", "-p", "ubuntu-touch/jvm", ":ut-host:test", "--no-daemon", "--max-workers=2", "-Pkotlin.compiler.execution.strategy=in-process", "-q"],
+        ["./gradlew", "-p", "ubuntu-touch/jvm", ":ut-host:test", *only_tests, "--no-daemon", "--max-workers=2", "-Pkotlin.compiler.execution.strategy=in-process", "-q"],
         cwd=REPO, env=env, capture_output=True, text=True, timeout=1500,
     )
     out = p.stdout + p.stderr
@@ -100,6 +116,8 @@ def run_cpp():
 
 def main(argv):
     only = argv[argv.index("--only") + 1] if "--only" in argv else None
+    if "--tests" in argv:
+        TEST_FILTERS.append(argv[argv.index("--tests") + 1])
     groups = []
     if "--kotlin" in argv or "--cpp" not in argv:
         groups.append(("kotlin", KOTLIN, run_kotlin))

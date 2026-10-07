@@ -1,11 +1,11 @@
 package xyz.mdhv.asom.ut
 
 import java.io.IOException
-import java.nio.file.Path
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import xyz.mdhv.asom.lab.json.JObject
 import xyz.mdhv.asom.lab.json.JString
-import xyz.mdhv.asom.lab.ledger.JsonlReader
-import xyz.mdhv.asom.lab.ledger.JsonlSink
+import xyz.mdhv.asom.lab.ledger.CorruptRowException
 
 /** Where node frames go. */
 fun interface FrameSink {
@@ -41,24 +41,6 @@ interface LedgerPort {
     fun close()
 }
 
-class FileLedger private constructor(private val path: Path, private val sink: JsonlSink) : LedgerPort {
-    override fun rows(since: Long, limit: Int): List<JObject> {
-        val read = JsonlReader.read(path)
-        return read.rows.filter { it.ts >= since }.take(limit).map { it.toRow() }
-    }
-
-    override fun close() = sink.close()
-
-    companion object {
-        fun open(file: Path): FileLedger? = try {
-            java.nio.file.Files.createDirectories(file.parent)
-            FileLedger(file, JsonlSink(file))
-        } catch (e: java.io.IOException) {
-            null
-        }
-    }
-}
-
 object ExitStatus {
     const val OK = 0
     const val PROTOCOL_VIOLATION = 65
@@ -69,7 +51,9 @@ object ExitStatus {
  * One UI session on `asom-ut-ctl/1`: `hello`, then any frames of the closed set, until `shutdown` or end of input. Anything
  * outside the set (a bad line, a line over 1 MiB, an unknown type, a second `hello`) ends the session with a fixed code on
  * stderr and no echo of the line (fail closed; ERRATA ERR-UT-CTL-1). Every method that touches state holds one lock, so the
- * watchdog thread and the reader cannot interleave.
+ * watchdog thread and the reader cannot interleave. Nothing may hold that lock for seconds: the watchdog waits for it, and a wait
+ * that long looks like a suspend (ERRATA ERR-FX-UT-3). The self-test therefore runs on its own thread and takes the lock only to
+ * send its result.
  */
 class NodeSession(
     private val reader: LineReader,
@@ -88,6 +72,7 @@ class NodeSession(
     private var ledger: LedgerPort? = null
     private var lastState: Pair<String, Long>? = null
     private var greeted = false
+    private val selfTestWorker = Executors.newSingleThreadExecutor { r -> Thread(r, "asom-ut-selftest").apply { isDaemon = true } }
 
     fun run(): Int {
         try {
@@ -112,11 +97,15 @@ class NodeSession(
             }
             while (true) {
                 when (val line = reader.next()) {
-                    Line.Eof -> return finish(ExitStatus.OK)
+                    Line.Eof -> {
+                        awaitSelfTests()
+                        return finish(ExitStatus.OK)
+                    }
                     Line.TooLong -> return violate(BadFrame.TOO_LONG)
                     is Line.Data -> when (val d = FrameCodec.decodeUi(line.bytes)) {
                         is Decoded.Bad -> return violate(d.reason)
                         is Decoded.Ok -> {
+                            if (d.frame == UiFrame.Shutdown) awaitSelfTests()
                             val exit = synchronized(lock) { handle(d.frame) }
                             if (exit != null) return if (exit == ExitStatus.OK) finish(ExitStatus.OK) else violate(BadFrame.UNKNOWN_TYPE)
                         }
@@ -129,9 +118,28 @@ class NodeSession(
     }
 
     /** One watchdog tick (the plugin's 1 s heartbeat covers the UI side; this covers the node side, UA03). */
-    fun tick() = synchronized(lock) {
-        settle(lifecycle.apply(LcEvent.Tick))
-        emitState()
+    fun tick() {
+        val wokeAt = lifecycle.nowMs()
+        synchronized(lock) {
+            settle(lifecycle.apply(LcEvent.Tick, wokeAt))
+            emitState()
+        }
+    }
+
+    /** A self-test asked for before the end of the session is answered before the session ends, as when it ran on the reader thread. */
+    private fun awaitSelfTests() {
+        selfTestWorker.shutdown()
+        selfTestWorker.awaitTermination(SELFTEST_JOIN_MS, TimeUnit.MILLISECONDS)
+    }
+
+    private fun startSelfTest() {
+        selfTestWorker.execute {
+            val result = selfTest()
+            try {
+                synchronized(lock) { if (!lifecycle.stopped) out.send(NodeFrame.SelfTestResult(result)) }
+            } catch (_: IOException) {
+            }
+        }
     }
 
     private fun violate(reason: BadFrame): Int {
@@ -164,12 +172,8 @@ class NodeSession(
             is UiFrame.Pair -> out.send(NodeFrame.Error(null, UiErrorCode.UNSUPPORTED_BY_DRIVER))
             is UiFrame.Revoke -> out.send(NodeFrame.Error(null, UiErrorCode.UNSUPPORTED_BY_DRIVER))
             is UiFrame.Export -> out.send(NodeFrame.Error(null, UiErrorCode.UNSUPPORTED_BY_DRIVER))
-            is UiFrame.LedgerQuery -> {
-                val l = ledger
-                if (lifecycle.state == NodeState.LEDGER_FAIL || l == null) out.send(NodeFrame.Error(null, UiErrorCode.LEDGER_UNAVAILABLE))
-                else out.send(NodeFrame.Rows(l.rows(frame.since, frame.limit.toInt())))
-            }
-            UiFrame.SelfTest -> out.send(NodeFrame.SelfTestResult(selfTest()))
+            is UiFrame.LedgerQuery -> ledgerQuery(frame)
+            UiFrame.SelfTest -> startSelfTest()
             UiFrame.Shutdown -> {
                 settle(lifecycle.apply(LcEvent.Shutdown))
                 emitState()
@@ -178,6 +182,35 @@ class NodeSession(
         }
         emitState()
         return null
+    }
+
+    /** A ledger that cannot be read is a failed ledger (FC-1): the node says so and stops borrowing; it never ends in a crash. */
+    private fun ledgerQuery(frame: UiFrame.LedgerQuery) {
+        val l = ledger
+        if (lifecycle.state == NodeState.LEDGER_FAIL || l == null) {
+            out.send(NodeFrame.Error(null, UiErrorCode.LEDGER_UNAVAILABLE))
+            return
+        }
+        val rows = try {
+            l.rows(frame.since, frame.limit.toInt())
+        } catch (e: CorruptRowException) {
+            return ledgerLost()
+        } catch (e: FrameTooLargeException) {
+            return ledgerLost()
+        } catch (e: IOException) {
+            return ledgerLost()
+        }
+        try {
+            out.send(NodeFrame.Rows(rows))
+        } catch (e: FrameTooLargeException) {
+            ledgerLost()
+        }
+    }
+
+    private fun ledgerLost() {
+        diag.emit(DiagCode.LEDGER_UNAVAILABLE)
+        out.send(NodeFrame.Error(null, UiErrorCode.LEDGER_UNAVAILABLE))
+        settle(lifecycle.apply(LcEvent.LedgerFailed))
     }
 
     private fun borrow(req: UiFrame.Borrow) {
@@ -230,6 +263,10 @@ class NodeSession(
             is LcEffect.WriteInterruptedRows -> requester.writeInterruptedRows(e.attemptIds)
             LcEffect.HoldDisplay, LcEffect.ReleaseDisplay, LcEffect.ForceLedger, LcEffect.ExitNow -> {}
         }
+    }
+
+    private companion object {
+        const val SELFTEST_JOIN_MS = 60_000L
     }
 
     private fun emitState() {

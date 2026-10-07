@@ -80,9 +80,16 @@ class NodeLifecycle(private val clock: MonotonicClock) {
         NodeState.FREEZING, NodeState.FROZEN, NodeState.RESUMING, NodeState.LEDGER_FAIL -> NodeStates.INTERRUPTED
     }
 
-    fun apply(event: LcEvent): LcStep {
+    /** The clock a caller stamps an event with before it waits for whatever lock serialises [apply] (see [apply]). */
+    fun nowMs(): Long = clock.nowMs()
+
+    /**
+     * [atMs] is when the event happened. The watchdog passes the time its own thread woke, taken before it waited for the session
+     * lock: a gap that is only lock waiting is not a stall of the process (ERRATA ERR-FX-UT-3). Every other caller omits it.
+     */
+    fun apply(event: LcEvent, atMs: Long = clock.nowMs()): LcStep {
         if (stopped) return LcStep(state, emptyList())
-        val now = clock.nowMs()
+        val now = atMs
         if (event is LcEvent.Ui) {
             uiState = event.state
             if (event.state == UiLifecycle.ACTIVE) lastActiveMs = now

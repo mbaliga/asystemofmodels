@@ -44,6 +44,8 @@ say "isolation check 3 positive control (the mapped projects and ut-host are lis
 
 python3 ubuntu-touch/tools/isolation.py || status=1
 python3 ubuntu-touch/tools/check_law.py || status=1
+python3 ubuntu-touch/tools/check_qml_text.py --selftest || status=1
+python3 ubuntu-touch/tools/check_qml_text.py || status=1
 
 if [ "$status" = "0" ]; then say "ISOLATION: all checks passed"; else say "ISOLATION: FAILED"; fi
 exit "$status"

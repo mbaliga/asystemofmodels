@@ -46,6 +46,7 @@ Item {
         }
         Label {
             objectName: "answerText"
+            textFormat: Text.PlainText
             width: parent.width
             wrapMode: Text.WordWrap
             color: Tokens.text
@@ -54,6 +55,7 @@ Item {
         }
         Label {
             objectName: "answerError"
+            textFormat: Text.PlainText
             visible: page.model.answer.error !== ""
             width: parent.width
             wrapMode: Text.WordWrap
@@ -73,6 +75,7 @@ Item {
             }
             Label {
                 objectName: "provenanceLabel"
+                textFormat: Text.PlainText
                 anchors.verticalCenter: parent.verticalCenter
                 color: Tokens.textMuted
                 font.pixelSize: Tokens.fontSmall
@@ -81,6 +84,7 @@ Item {
         }
         Label {
             objectName: "provenanceText"
+            textFormat: Text.PlainText
             visible: page.model.answer.record !== null
             width: parent.width
             wrapMode: Text.WordWrap
