@@ -88,6 +88,11 @@ class Session private constructor(
     private val usedStreams = HashSet<Long>()
     private var failClosedDone = false
     private val startedAt = node.ledger.now()
+    private var establishedAt = 0L
+
+    /** The last moment a stream was open or a frame of a stream (not of stream 0) moved either way: the idle timer runs from here (trust.md 3.3, ERRATA ERR-PI-3). */
+    internal var lastStreamActivity = 0L
+        private set
 
     var listener: SessionListener = SessionListener.NONE
 
@@ -186,8 +191,37 @@ class Session private constructor(
 
     /** The handshake timeout (LAB_SPEC trust.md 5.1: 5 s): a session that has not established by then is closed without a word. */
     fun tick(nowMs: Long) = guarded(Unit) {
-        if (phase == Phase.CLOSED || phase == Phase.ESTABLISHED) return@guarded
-        if (nowMs - startedAt > node.cfg.handshakeTimeoutMs) closeNow()
+        when (phase) {
+            Phase.CLOSED -> Unit
+            Phase.ESTABLISHED -> timers(nowMs)
+            else -> if (nowMs - startedAt > node.cfg.handshakeTimeoutMs) closeNow()
+        }
+    }
+
+    /**
+     * The timers of an established session, on the injected clock: an accepted attempt whose body never came expires (lender), a session with no stream for
+     * [SessionLimits.IDLE_MS] says `GOAWAY idle`, and one older than [SessionLimits.MAX_AGE_MS] says `GOAWAY max-age` at the first moment it has no stream.
+     * An open stream keeps the session alive: it is the attempt's own deadline that ends it, not a timer of the session.
+     */
+    private fun timers(now: Long) {
+        if (role == PeerRole.TLS_SERVER) lender.expireBodies(now)
+        if (phase != Phase.ESTABLISHED) return
+        if (openStreams() > 0) {
+            lastStreamActivity = now
+            return
+        }
+        when {
+            now - establishedAt >= SessionLimits.MAX_AGE_MS -> goAway(GoAwayReason.MAX_AGE)
+            now - lastStreamActivity >= SessionLimits.IDLE_MS -> goAway(GoAwayReason.IDLE)
+        }
+    }
+
+    internal fun openStreams(): Int = lender.openCount() + requester.openCount()
+
+    private fun established() {
+        phase = Phase.ESTABLISHED
+        establishedAt = node.ledger.now()
+        lastStreamActivity = establishedAt
     }
 
     // ------------------------------------------------------------------------------------------------------------ the requester API
@@ -246,6 +280,7 @@ class Session private constructor(
     private fun frame(f: RawFrame) {
         node.observer?.inbound(this, f.type, f.stream, f.payload.size)
         wire.noteReceived(appBytes(f))
+        touch(f.stream)
         val msg = when (val p = MessageCodec.parse(f)) {
             is Parsed.Ok -> p.message
             is Parsed.Reject -> return fail(Refusal.BAD_PAYLOAD, p.error)
@@ -297,7 +332,7 @@ class Session private constructor(
                 val granted = node.registry.granted(peer).mapNotNull { g -> Scope.entries.firstOrNull { it.wire == g.wire } }.toSet()
                 val ack = Handshake.ack(d, c.pin.nodeId, c.endpoints, granted, c.limits, stIfGranted(), node.ledger.now())
                 sendControl(ack, 0)
-                phase = Phase.ESTABLISHED
+                established()
                 listener.onEstablished()
             }
         }
@@ -312,7 +347,7 @@ class Session private constructor(
                 if (abs(ack.ts - node.ledger.now()) > c.clockSkewMs) return fail(Refusal.CLOCK_SKEW)
                 granted = d.granted
                 limits = d.limits
-                phase = Phase.ESTABLISHED
+                established()
                 listener.onEstablished()
             }
         }
@@ -346,6 +381,12 @@ class Session private constructor(
         val shape = checkNotNull(RowTable.of(msg, sent = true)) { "attempt frames do not go through sendControl" }
         rows.control(rows.frameRow(shape.kind, shape.code, out = appBytes(frame), routeDetail = routeDetail))
         wire.write(frame)
+        touch(frame.stream)
+    }
+
+    /** A frame of a stream moved: the idle timer starts again. Connection-level frames (stream 0) do not count, so a flood of extension frames cannot keep a session alive. */
+    private fun touch(stream: Long) {
+        if (stream != 0L) lastStreamActivity = node.ledger.now()
     }
 
     /** The row of a received per-frame class, durable before the caller replies. [verdict] names a received manifest. */
@@ -357,6 +398,7 @@ class Session private constructor(
     /** An attempt frame leaves; its covering attempt row was written by the caller. */
     internal fun writeAttemptFrame(frame: RawFrame) {
         wire.write(frame)
+        touch(frame.stream)
     }
 
     internal fun openIfListener() {

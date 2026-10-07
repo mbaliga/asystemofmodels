@@ -39,7 +39,11 @@ class TlsEngineIo(private val net: NetChannel, val engine: SSLEngine) {
     private var appReady = false
     private val empty = ByteBuffer.allocate(0)
     private val inCount = AtomicLong()
+    private val readCount = AtomicLong()
     private val outCount = AtomicLong()
+
+    @Volatile
+    private var finished = false
     private val closing = AtomicBoolean(false)
     private val inboundLatch = CountDownLatch(1)
 
@@ -49,7 +53,19 @@ class TlsEngineIo(private val net: NetChannel, val engine: SSLEngine) {
     @Volatile
     private var handshaking = true
 
-    val networkBytesIn: Long get() = inCount.get()
+    /**
+     * Network bytes received. While the connection is open this is the sum of `bytesConsumed` (so a record that has arrived but not been unwrapped yet is not
+     * counted, which keeps the handshake snapshot of a session free of the first application record, ERRATA ERR-PI-6). Once the connection is closed it is every
+     * byte the channel delivered: the start of a record that a reset cut in half was received, and the tap at the socket counted it (ERRATA ERR-PI-1).
+     */
+    val networkBytesIn: Long
+        get() {
+            if (!finished) return inCount.get()
+            if (readLock.tryLock(CLOSE_WAIT_FOR_READER_MS, TimeUnit.MILLISECONDS)) readLock.unlock()
+            return readCount.get()
+        }
+
+    /** Network bytes handed to the channel and accepted by it: a record the engine produced but a reset socket refused is not counted. */
     val networkBytesOut: Long get() = outCount.get()
 
     // ------------------------------------------------------------------------------------------------- handshake
@@ -93,6 +109,20 @@ class TlsEngineIo(private val net: NetChannel, val engine: SSLEngine) {
         return bigger
     }
 
+    /**
+     * Writes the flipped [netOut] to the network and counts exactly the bytes the channel took, also when the write fails half way: a record the engine
+     * produced but the socket refused (a reset peer) never crossed the network, and L-L15 compares this count with a tap at the socket (ERRATA ERR-PI-1).
+     */
+    private fun countWritten(timeoutMs: Long) {
+        val produced = netOut.remaining()
+        if (produced == 0) return
+        try {
+            net.write(netOut, timeoutMs)
+        } finally {
+            outCount.addAndGet((produced - netOut.remaining()).toLong())
+        }
+    }
+
     /** Wraps [src] (possibly empty) into network bytes and writes them all. Caller holds no lock; this takes the write lock. */
     private fun wrapAndSend(src: ByteBuffer, timeoutMs: Long): SSLEngineResult {
         writeLock.lock()
@@ -100,13 +130,12 @@ class TlsEngineIo(private val net: NetChannel, val engine: SSLEngine) {
             while (true) {
                 netOut.clear()
                 val res = engine.wrap(src, netOut)
-                outCount.addAndGet(res.bytesProduced().toLong())
                 if (res.status == Status.BUFFER_OVERFLOW) {
                     netOut = ByteBuffer.allocate(maxOf(engine.session.packetBufferSize, netOut.capacity() * 2))
                     continue
                 }
                 netOut.flip()
-                if (netOut.hasRemaining()) net.write(netOut, timeoutMs)
+                countWritten(timeoutMs)
                 return res
             }
         } finally {
@@ -155,6 +184,7 @@ class TlsEngineIo(private val net: NetChannel, val engine: SSLEngine) {
         if (!netIn.hasRemaining()) netIn = grow(netIn, engine.session.packetBufferSize)
         val n = net.read(netIn, if (deadlineNanos == null) 0 else remainingMs(deadlineNanos))
         if (n < 0) throw PeerEof(handshaking)
+        readCount.addAndGet(n.toLong())
     }
 
     private fun markInboundDone() {
@@ -241,11 +271,10 @@ class TlsEngineIo(private val net: NetChannel, val engine: SSLEngine) {
                 } catch (e: SSLException) {
                     return
                 }
-                outCount.addAndGet(res.bytesProduced().toLong())
                 if (res.bytesProduced() == 0) return
                 netOut.flip()
                 try {
-                    net.write(netOut, MeshTlsProfile.CLOSE_WAIT_MS)
+                    countWritten(MeshTlsProfile.CLOSE_WAIT_MS)
                 } catch (e: IOException) {
                     return
                 }
@@ -264,6 +293,7 @@ class TlsEngineIo(private val net: NetChannel, val engine: SSLEngine) {
             awaitInbound(MeshTlsProfile.CLOSE_WAIT_MS)
         } finally {
             net.close()
+            finished = true
         }
     }
 
@@ -319,5 +349,10 @@ class TlsEngineIo(private val net: NetChannel, val engine: SSLEngine) {
         } finally {
             net.close()
         }
+    }
+
+    private companion object {
+        /** After a close, how long a counter read waits for a reader thread that is still inside the engine, so that its last read is in the figure. */
+        const val CLOSE_WAIT_FOR_READER_MS = 500L
     }
 }

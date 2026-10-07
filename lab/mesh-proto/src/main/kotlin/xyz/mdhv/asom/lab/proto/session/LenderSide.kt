@@ -62,6 +62,7 @@ internal class LenderSide(private val s: Session) {
         var done = false
         var servedModel: String = accept.servedModel
         var startTs = 0L
+        var acceptedAt = 0L
     }
 
     private val served = LinkedHashMap<Long, Served>()
@@ -108,7 +109,12 @@ internal class LenderSide(private val s: Session) {
         a.bytesIn += appBytes(f)
         a.startTs = now
         when (val r = decision.reply) {
-            is LenderReply.Accept -> accept(a)
+            is LenderReply.Accept -> if (served.size >= SessionLimits.MAX_STREAMS) {
+                s.node.counters.count(Refusal.PEER_BUSY)
+                decline(a, DeclineWire.PEER_BUSY, LenderDecisionTable.BUSY_RETRY_MS)
+            } else {
+                accept(a)
+            }
             is LenderReply.Decline -> {
                 s.node.counters.count(refusalOf(r.code))
                 decline(a, DeclineWire.entries.first { it.name == r.code.name }, r.retryAfterMs)
@@ -138,6 +144,7 @@ internal class LenderSide(private val s: Session) {
     private fun accept(a: Served) {
         val frame = MessageCodec.frame(InferAccept(a.offer.attemptId, a.accept.fileSha256, a.accept.servedModel, s.stIfGranted()), a.stream)
         a.bytesOut += appBytes(frame)
+        a.acceptedAt = s.node.ledger.now()
         served[a.stream] = a
         s.node.inflight.incrementAndGet()
         s.writeAttemptFrame(frame)
@@ -216,6 +223,20 @@ internal class LenderSide(private val s: Session) {
             a.run = s.node.engine.open(EngineRequest(a.offer.attemptId, a.offer.model, a.offer.op, a.offer.stream, b.bytes))
         } catch (e: Exception) {
             finish(a, EngineEvent.End(Terminal.ERROR, 500, null))
+        }
+    }
+
+    fun openCount(): Int = served.size
+
+    /**
+     * An accepted attempt whose `INFER_BODY` has not arrived by `min(offer.deadlineMs, BODY_WAIT_MS)` after the accept ends as `error` 408: the outcome row is durable
+     * before `INFER_END` and the concurrency slot is released (ERRATA ERR-PI-4). A failed outcome append is FC-5, as for any lender outcome.
+     */
+    fun expireBodies(now: Long) {
+        for (a in served.values.toList()) {
+            if (a.state != Stage.ACCEPTED || s.closed) continue
+            val wait = minOf(a.offer.deadlineMs, SessionLimits.BODY_WAIT_MS)
+            if (now - a.acceptedAt >= wait) finish(a, EngineEvent.End(Terminal.ERROR, 408, null))
         }
     }
 

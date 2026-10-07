@@ -23,10 +23,17 @@ import xyz.mdhv.asom.lab.proto.wire.RawFrame
  * which both sides know (LAB_SPEC 7.5): the listener derives it when it sends `PAIR_HELLO`, the dialer learns it when `PAIR_HELLO` arrives and groups its
  * earlier rows under a local connection id (ERRATA ERR-LL-2).
  */
-class PairingChannel(private val ledger: NodeLedger, conn: MeshConnection, ids: IdSource) {
+class PairingChannel(
+    private val ledger: NodeLedger,
+    conn: MeshConnection,
+    ids: IdSource,
+    /** The dialer's id for this connection (the one its `DIAL` rows carry) and the handshake figure those rows recorded, so that L-L15 counts the handshake once (ERRATA ERR-PI-7). */
+    dialSessionId: String? = null,
+    dialHandshakeRecorded: Long = 0,
+) {
     private val wire = Wire(conn)
     private val role = conn.role
-    private val rows = SessionRows(ledger, ids.b64(16), null, "unknown", null, wire, 0) { failClosedNow() }
+    private val rows = SessionRows(ledger, dialSessionId ?: ids.b64(16), null, "unknown", null, wire, dialHandshakeRecorded) { failClosedNow() }
     private var closed = false
     private val lock = Any()
 
@@ -94,6 +101,23 @@ class PairingChannel(private val ledger: NodeLedger, conn: MeshConnection, ids: 
                     closeNow()
                 }
             }
+        }
+    }
+
+    /** The blocking loop a real transport uses: read until the peer closes or the transport fails, then close the channel. */
+    fun runReadLoop(chunk: Int = 16_384) {
+        val buf = ByteArray(chunk)
+        while (!closed) {
+            val n = try {
+                wire.input.read(buf, 0, buf.size)
+            } catch (e: IOException) {
+                -1
+            }
+            if (n < 0) {
+                close()
+                return
+            }
+            onBytes(buf, 0, n)
         }
     }
 

@@ -64,6 +64,8 @@ internal class RequesterSide(private val s: Session) {
 
     private fun newStream(): Long = nextStream.also { nextStream += 2 }
 
+    fun openCount(): Int = attempts.size + pending.size
+
     // ------------------------------------------------------------------------------------------------------------ offering
 
     fun offer(spec: OfferSpec, body: ByteArray, listener: AttemptListener): String {
