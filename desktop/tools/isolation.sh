@@ -44,7 +44,10 @@ say "isolation check 3 positive control (the mapped root projects and the deskto
 [ "$p3" = "8" ] || status=1
 
 python3 desktop/tools/isolation.py || status=1
+python3 desktop/tools/check_law.py --selftest || status=1
 python3 desktop/tools/check_law.py || status=1
+python3 desktop/tools/check_workflows.py --selftest || status=1
+python3 desktop/tools/check_workflows.py || status=1
 
 if [ "$status" = "0" ]; then say "ISOLATION: all checks passed"; else say "ISOLATION: FAILED"; fi
 exit "$status"

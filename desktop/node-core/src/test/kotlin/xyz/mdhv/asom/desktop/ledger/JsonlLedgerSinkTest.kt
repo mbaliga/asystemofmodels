@@ -131,6 +131,31 @@ class JsonlLedgerSinkTest {
         assertEquals("{\"a\":1}\n", ch.text())
     }
 
+    /**
+     * HLU-5: a tail longer than the old 64 MiB scan cap, with no newline in it, made open() loop for ever. A crash can leave
+     * a file extended with zeros, so this is a real input. The mutation check restores the cap and this test then times out.
+     */
+    @Test
+    fun `a 65 MiB tail with no newline is removed at open and open returns`() {
+        val dir = Files.createTempDirectory("asom-ledger-big-")
+        val f = dir.resolve("ledger.jsonl")
+        val row = "{\"a\":1}\n".toByteArray()
+        try {
+            Files.write(f, row)
+            java.io.RandomAccessFile(f.toFile(), "rw").use { it.setLength(row.size + 65L * 1024 * 1024) }
+            val sink: JsonlLedgerSink = org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(java.time.Duration.ofSeconds(30), org.junit.jupiter.api.function.ThrowingSupplier { JsonlLedgerSink.open(f) })
+            sink.use {
+                assertEquals(65L * 1024 * 1024, it.recoveredTornBytes)
+                assertEquals(row.size.toLong(), Files.size(f))
+                it.appendLine("{\"a\":2}")
+            }
+            assertEquals("{\"a\":1}\n{\"a\":2}\n", String(Files.readAllBytes(f), Charsets.UTF_8))
+        } finally {
+            f.toFile().delete()
+            dir.toFile().delete()
+        }
+    }
+
     @Test
     fun `real file gets mode 0600 in a 0700 directory and round-trips a RouteRecord through the server's LedgerSink seam`() {
         val dir = Files.createTempDirectory("asom-ledger-")

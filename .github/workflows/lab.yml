@@ -31,6 +31,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
@@ -52,8 +53,23 @@ jobs:
           python3 lab/tools/isolation.py --selftest
           lab/tools/isolation.sh
 
+      - name: Negative controls of the static law check (one mutant per forbidden listener, wildcard bind and outbound dial)
+        run: python3 lab/tools/check_law.py --selftest
+
       - name: Python cross-check (self-oracled; never clears the oracle tag)
-        run: python3 lab/tools/xcheck.py lab/conformance
+        run: |
+          python3 lab/tools/xcheck.py lab/conformance
+          # the families xcheck.py can cross-check but does not run by default (HA-09); a family it cannot cover is named, not skipped
+          python3 lab/tools/xcheck.py lab/conformance --families L01,W07,W07p
+
+      - name: Router reference (ref.py) regenerates R01, R02, R03, R05, R06 and M08 byte for byte
+        # gen_vectors.py asserts the spec's worked numbers and cross-checks every hand-typed expectation against the independent
+        # lab/mesh-router/tools/ref.py while it writes; the committed vectors must come out unchanged, so a regression on either
+        # side fails here.
+        run: |
+          python3 lab/mesh-router/tools/gen_vectors.py
+          python3 lab/tools/regen_index.py
+          test -z "$(git status --porcelain -- lab/conformance)" || { git status --porcelain -- lab/conformance; git diff --stat -- lab/conformance; exit 1; }
 
   lab-isolation-with-sdk:
     name: Lab isolation check 2 (Android SDK present)
@@ -63,6 +79,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
@@ -88,6 +105,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:

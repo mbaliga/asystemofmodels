@@ -13,6 +13,7 @@ import xyz.mdhv.asom.desktop.governor.HostSignals
 import xyz.mdhv.asom.desktop.governor.HostSignalsProvider
 import xyz.mdhv.asom.desktop.governor.LenderState
 import xyz.mdhv.asom.desktop.governor.ProviderFsm
+import xyz.mdhv.asom.desktop.governor.SettlesBeforeServing
 import xyz.mdhv.asom.desktop.governor.Readings
 
 /**
@@ -30,7 +31,7 @@ class NodeRuntime(
 ) {
     val rules: HostRules = (platform as? HostRulesProvider)?.hostRules(config, mode) ?: DesktopRules(config)
     val fsm: ProviderFsm = ProviderFsm(FsmConfig(graceMs = rules.graceMs, presenceFirst = mode == HostMode.FOREGROUND, holdDownMs = config.presenceHoldDownMs))
-    private val governor = Governor(config, rules)
+    private val governor = Governor(config, rules, settleBeforeServing = platform is SettlesBeforeServing)
 
     private fun apply(event: FsmEvent): FsmStep {
         val step = fsm.apply(event, clock.nowMs())
@@ -49,9 +50,10 @@ class NodeRuntime(
         val power = platform.power().read()
         val thermal = platform.thermal().read()
         val cpu = runCatching { platform.presence().sample().cpuOtherPermille }.getOrNull()
-        val gpu = runCatching { platform.gpuContention()?.sample()?.otherBusyPermille }.getOrNull()
+        val gpuPort = platform.gpuContention()
+        val gpu = runCatching { gpuPort?.sample()?.otherBusyPermille }.getOrNull()
         val signals = (platform as? HostSignalsProvider)?.hostSignals() ?: HostSignals()
-        val eval = governor.evaluate(now, Readings(power, thermal, signals, cpu, gpu))
+        val eval = governor.evaluate(now, Readings(power, thermal, signals, cpu, gpu, gpuCounterPresent = gpuPort != null))
         return eval.events.map { apply(it) }
     }
 

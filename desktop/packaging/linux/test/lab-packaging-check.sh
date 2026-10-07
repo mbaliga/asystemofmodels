@@ -8,7 +8,9 @@
 # Families (each prints PASS:/FAIL: lines and a count; a family that ran zero checks is a FAILURE, never a pass):
 #   install-tarball   install.sh into a scratch home as an unprivileged user; selftest and probe on the INSTALLED runtime;
 #                     upgrade keeps `previous`; nothing enabled or started
-#   install-refusals  bad checksum, no SHA256SUMS, wrong name, 9 hostile archives: each refused, nothing installed
+#   install-refusals  bad checksum, no SHA256SUMS, wrong name, 14 hostile archives (incl. write-through-symlink, option-like and
+#                     reserved versions, a link re-entering the image by name): each refused, nothing installed, canaries absent
+#   install-signature an unrelated key signs SHA256SUMS: never reported as the owner's; pinned-key accept and refuse paths
 #   uninstall         removes what install.sh made, keeps state, edited unit kept, --purge refuses without a terminal and on
 #                     a wrong phrase, and deletes only on the exact phrase typed on a pty
 #   deb-layout        dpkg-deb listing and control data; the deb extracted into a scratch root; selftest and probe there
@@ -153,20 +155,73 @@ refuse "no SHA256SUMS: refused (the installer always verifies)" "$(newhome)" "no
 mkdir -p "$work/othername"; cp "$tar_gz" "$work/othername/$base"; ( cd "$work/othername" && sha256sum "$base" | sed 's/  .*/  something-else.tar.gz/' > SHA256SUMS ); chmod -R a+rX "$work/othername"
 refuse "the archive is not listed in SHA256SUMS: refused" "$(newhome)" "is not listed" --archive "$work/othername/$base"
 
-mkdir -p "$work/host"
-python3 "$here/make-hostile-archives.py" "$work/host" "$arch" > "$work/host/cases.txt"
+mkdir -p "$work/host" "$work/outside"
+chmod 777 "$work/outside"
+python3 "$here/make-hostile-archives.py" "$work/host" "$arch" "$work/outside" > "$work/host/cases.txt"
 chmod -R a+rX "$work/host"
 n_host=0
 while IFS='|' read -r f rx; do
   n_host=$((n_host + 1))
   refuse "hostile archive $f is refused" "$(newhome)" "$rx" --archive "$work/host/$f"
 done < "$work/host/cases.txt"
-[ "$n_host" -ge 9 ] && ok "$n_host hostile archives exercised (non-vacuous)" || bad "only $n_host hostile archives"
-ls /tmp/asom-pwned-absolute "$work/pwned-dotdot" >/dev/null 2>&1 && bad "a hostile archive wrote a file outside the install" || ok "no hostile archive wrote outside the install"
+[ "$n_host" -ge 14 ] && ok "$n_host hostile archives exercised (non-vacuous)" || bad "only $n_host hostile archives"
+# every canary a hostile member could write is named asom-pwned-* or pwned-dotdot, so one scan of the whole work tree
+# (every scratch home, the prefix, the working directories) finds a write anywhere; the absolute one is checked at its own path
+[ ! -e /tmp/asom-pwned-absolute ] && ok "the absolute-path archive wrote nothing at its absolute target" || bad "a hostile archive wrote /tmp/asom-pwned-absolute"
+[ -z "$(find "$work" \( -name 'asom-pwned-*' -o -name 'pwned-dotdot' \) 2>/dev/null)" ] && ok "no canary file exists anywhere under the scratch tree (dot-dot, through-symlink, outside)" || bad "a hostile archive wrote a canary: $(find "$work" \( -name 'asom-pwned-*' -o -name 'pwned-dotdot' \) 2>/dev/null)"
+[ -z "$(ls -A "$work/outside")" ] && ok "the directory the absolute-symlink archive aimed at is still empty" || bad "something was written through an absolute symlink: $(ls -A "$work/outside")"
+touch "$work/outside/asom-pwned-control"
+[ -n "$(find "$work" -name 'asom-pwned-*' 2>/dev/null)" ] && [ -n "$(ls -A "$work/outside")" ] && ok "positive control: a planted canary IS seen by both scans" || bad "the canary scans cannot see a planted file"
+rm -f "$work/outside/asom-pwned-control"
+mkdir -p "$work/cwd"; chmod 777 "$work/cwd"
+H="$(newhome)"
+( cd "$work/cwd" && runh "$H" bash "$dist/install.sh" --archive "$work/host/hostile-version-option.tar.gz" --home "$H" ) >/dev/null 2>&1
+[ -z "$(ls -A "$work/cwd")" ] && ok "a version that looks like an option left nothing in the caller's working directory" || bad "install.sh wrote into the caller's working directory: $(ls -A "$work/cwd")"
 
 if [ "$(id -u)" = "0" ]; then
   o="$(bash "$dist/install.sh" --archive "$tar_gz" --home "$work" 2>&1)"; r=$?
   [ "$r" = "2" ] && echo "$o" | grep -q "refusing to run as root" && ok "install.sh refuses to run as root" || bad "root install exit $r"
+fi
+
+# =====================================================================================================================
+family install-signature
+# An unrelated key ("Mallory") signs SHA256SUMS. install.sh must never call that the owner's signature. gpg is required
+# here: a runner without it fails this family instead of skipping it into a zero count.
+if ! command -v gpg >/dev/null 2>&1; then
+  bad "gpg is not installed: the signature family cannot run"
+else
+  gh="$work/gnupg"; mkdir -p "$gh"; chmod 700 "$gh"; owner "$gh"
+  gpgu() { runh "$H" env GNUPGHOME="$gh" gpg --batch --pinentry-mode loopback --passphrase '' "$@"; }
+  H="$(newhome)"
+  gpgu --quick-gen-key 'Mallory <mallory@example.invalid>' ed25519 sign never >/dev/null 2>&1
+  mfpr="$(gpgu --with-colons --list-keys mallory 2>/dev/null | awk -F: '$1 == "fpr" { print $10; exit }')"
+  [ "${#mfpr}" = "40" ] && ok "scratch key generated (fingerprint $mfpr)" || bad "could not generate a scratch key (fingerprint '$mfpr')"
+  sd="$work/sigdist"; mkdir -p "$sd"; cp "$tar_gz" "$dist/SHA256SUMS" "$sd/"
+  gpgu --armor --detach-sign -o "$gh/SHA256SUMS.asc" "$sd/SHA256SUMS" >/dev/null 2>&1
+  cp "$gh/SHA256SUMS.asc" "$sd/SHA256SUMS.asc"; cp "$dist/install.sh" "$sd/install.sh"; chmod -R a+rX "$sd"
+  sbase="$(basename "$tar_gz")"
+  sigrun() { # sigrun <install.sh> <extra args...> ; prints output, leaves the exit code in $sig_rc
+    local scr="$1"; shift
+    H="$(newhome)"
+    sig_out="$(runh "$H" env GNUPGHOME="$gh" bash "$scr" --archive "$sd/$sbase" --home "$H" "$@" 2>&1)"; sig_rc=$?
+  }
+  sigrun "$sd/install.sh"
+  [ "$sig_rc" = "0" ] && echo "$sig_out" | grep -q "NOT checked against the owner's key" && ok "a valid signature by an unpinned key is reported as NOT bound to the owner" || bad "unpinned: exit $sig_rc, $sig_out"
+  echo "$sig_out" | grep -q "this proves the owner's key" && bad "the installer claimed the owner signed it, with no pinned key" || ok "the installer does not claim an owner signature while no fingerprint is pinned"
+  echo "$sig_out" | grep -q "key $mfpr" && ok "the output names the signing key's fingerprint" || bad "the signer is not named: $sig_out"
+  sed "s/^OWNER_FPR=.*/OWNER_FPR=\"0123456789ABCDEF0123456789ABCDEF01234567\"/" "$dist/install.sh" > "$sd/install-pinned-other.sh"
+  sed "s/^OWNER_FPR=.*/OWNER_FPR=\"$mfpr\"/" "$dist/install.sh" > "$sd/install-pinned-self.sh"
+  sed "s/^OWNER_FPR=.*/OWNER_FPR=\"not-a-fingerprint\"/" "$dist/install.sh" > "$sd/install-pinned-bad.sh"
+  chmod -R a+rX "$sd"
+  sigrun "$sd/install-pinned-other.sh"
+  [ "$sig_rc" != "0" ] && echo "$sig_out" | grep -q "NOT the owner's pinned key" && [ ! -e "$H/.local/opt/asom/current" ] && ok "a signature by another key than the pinned owner key is refused and nothing is installed" || bad "pinned-other: exit $sig_rc, $sig_out"
+  sigrun "$sd/install-pinned-self.sh"
+  [ "$sig_rc" = "0" ] && echo "$sig_out" | grep -q "made by the owner's pinned key $mfpr" && ok "a signature by the pinned key is accepted and said to be the owner's (positive control)" || bad "pinned-self: exit $sig_rc, $sig_out"
+  sigrun "$sd/install-pinned-bad.sh"
+  [ "$sig_rc" = "2" ] && echo "$sig_out" | grep -q "neither OWNER-FILL nor 40 hex" && ok "a malformed pinned fingerprint is refused, not ignored" || bad "pinned-bad: exit $sig_rc, $sig_out"
+  printf 'not a signature\n' > "$sd/SHA256SUMS.asc"; chmod a+r "$sd/SHA256SUMS.asc"
+  sigrun "$sd/install.sh"
+  [ "$sig_rc" != "0" ] && echo "$sig_out" | grep -q "did not verify" && ok "a signature file that is not a signature is refused" || bad "garbage signature: exit $sig_rc, $sig_out"
 fi
 
 # =====================================================================================================================
@@ -316,7 +371,7 @@ fi
 echo
 echo "== summary (evidence label: LAB; NOT the install-matrix, NOT systemd, NOT a device)"
 zero=0
-for f in install-tarball install-refusals uninstall deb-layout package-scripts; do
+for f in install-tarball install-refusals install-signature uninstall deb-layout package-scripts; do
   c="${fam_n[$f]:-0}"
   echo "  family $f: $c checks"
   if [ "$c" = "0" ]; then

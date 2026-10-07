@@ -16,13 +16,19 @@ data class PowerSupply(
 
 /**
  * Power source and battery (linux.md 3.4). Enumerates by `type`, never by name (`BAT1` on the Deck is not portable).
+ * A tree that cannot be listed, or an own supply whose `type` cannot be read, reads as UNKNOWN (HLU-6), never as "AC, no battery".
  * `Mains` or `USB` with `online=1` is AC; peripheral batteries (`scope=Device`: mice, headsets) are ignored because
  * they say nothing about the machine's own power.
  */
 class PowerProbe(private val fs: FileSource, private val root: String = "/sys/class/power_supply") {
-    fun read(): PowerReading = reduce(supplies())
+    fun read(): PowerReading {
+        val names = fs.listOrNull(root) ?: return UNKNOWN_READING
+        return reduce(supplies(names))
+    }
 
-    fun supplies(): List<PowerSupply> = fs.list(root).map { name ->
+    fun supplies(): List<PowerSupply> = supplies(fs.list(root))
+
+    private fun supplies(names: List<String>): List<PowerSupply> = names.map { name ->
         val d = "$root/$name"
         PowerSupply(
             name = name,
@@ -37,9 +43,18 @@ class PowerProbe(private val fs: FileSource, private val root: String = "/sys/cl
     companion object {
         private val AC_TYPES = setOf("Mains", "USB")
 
-        /** Pure. */
+        /** The power_supply tree could not be read: not "no battery". DesktopRules turns this into the `power-unknown` block. */
+        private val UNKNOWN_READING = PowerReading(
+            source = PowerSource.UNKNOWN, charging = false, hasBattery = false, batteryPercent = null, batteryBand = null, saver = null,
+        )
+
+        /**
+         * Pure. An own (non-peripheral) supply whose `type` could not be read might be the battery, so the whole reading is
+         * unknown; a readable tree with no battery is AC (linux.md 3.4, "Desktop without a battery: ac").
+         */
         fun reduce(all: List<PowerSupply>): PowerReading {
             val own = all.filter { !it.scope.equals("Device", ignoreCase = true) }
+            if (own.any { it.type == null }) return UNKNOWN_READING
             val batteries = own.filter { it.type == "Battery" }
             val acOnline = own.any { it.type in AC_TYPES && it.online == 1 }
             val hasBattery = batteries.isNotEmpty()

@@ -45,6 +45,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
@@ -104,6 +105,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
@@ -128,6 +130,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
@@ -153,6 +156,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
@@ -188,6 +192,8 @@ jobs:
       ASOM_REQUIRE_NODE: "1"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
@@ -224,6 +230,8 @@ jobs:
       ASOM_REQUIRE_UNSHARE: "1"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
@@ -239,7 +247,7 @@ jobs:
 
       - name: shellcheck the packaging scripts
         working-directory: desktop/packaging/linux
-        run: shellcheck -x -S warning build-app-image.sh build-packages.sh check-jlink-modules.sh check-native-deps.sh fetch-nfpm.sh install.sh uninstall.sh modules.sh scripts/*.sh test/distro-matrix.sh test/lab-packaging-check.sh test/build-probe.sh
+        run: shellcheck -x -S warning build-app-image.sh build-packages.sh check-jlink-modules.sh check-native-deps.sh fetch-nfpm.sh install.sh uninstall.sh modules.sh scripts/*.sh test/distro-matrix.sh test/lab-packaging-check.sh test/fetch-nfpm-check.sh test/build-probe.sh
 
       - name: App image (jlink Temurin 21 runtime plus jpackage; prints the app image path)
         run: bash desktop/packaging/linux/build-app-image.sh --arch x86_64
@@ -254,6 +262,9 @@ jobs:
         run: |
           bash desktop/packaging/linux/test/build-probe.sh desktop/packaging/linux/build/probe
           desktop/packaging/linux/build/asom-desktop-*-linux-x86_64/lib/runtime/bin/java -cp desktop/packaging/linux/build/probe/probe.jar RuntimeProbe desktop/packaging/linux/build/probe/probe-ec.p12
+
+      - name: fetch-nfpm never executes an nfpm it has not verified (hermetic; EGR-6)
+        run: desktop/packaging/linux/test/fetch-nfpm-check.sh
 
       - name: nfpm (pinned, checksum-verified), deb, rpm, tarball, SHA256SUMS
         run: |
@@ -303,7 +314,7 @@ jobs:
           retention-days: 3
 
   install-matrix:
-    name: Install matrix (${{ matrix.image }}; containers, no systemd; CI-ONLY)
+    name: Install matrix (${{ matrix.name }}; containers, no systemd; CI-ONLY)
     # PLATFORM_PLAN 3 CI row `install-matrix`. WRITTEN in a container whose Docker daemon is absent and NEVER RUN. It proves
     # install, the packaged runtime's selftest and probe, and uninstall in each userland. It does NOT prove anything about
     # systemd (containers have none; the package-linux job checks `systemctl is-enabled` on the runner VM), and archlinux is a
@@ -314,9 +325,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: ["ubuntu:22.04", "ubuntu:24.04", "ubuntu:26.04", "fedora:latest", "archlinux:latest"]
+        # Pinned by the multi-arch index digest, as ubuntu-touch.yml pins its images. The digests were read on 2026-10-07 from
+        # mirror.gcr.io (a Docker Hub mirror; Docker Hub itself answered 429 and was not consulted); a digest the hub does not
+        # hold fails the pull loudly. fedora:latest and archlinux:latest are rolling tags: the digest freezes the userland of
+        # the day, so bump them deliberately (desktop/ERRATA.md ERR-FX-9).
+        include:
+          - { name: "ubuntu:22.04", image: "ubuntu:22.04@sha256:5ec03bb3441e8b0bf3b4f9cd4629a1ae763010dc3035bb8da3ae6cf026486401" }
+          - { name: "ubuntu:24.04", image: "ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55" }
+          - { name: "ubuntu:26.04", image: "ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7" }
+          - { name: "fedora:latest", image: "fedora:latest@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80" }
+          - { name: "archlinux:latest", image: "archlinux:latest@sha256:4e77cf2ea5f410e6f8be5abf93ccf17ce2436e87a138c167208356711a405dbd" }
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:

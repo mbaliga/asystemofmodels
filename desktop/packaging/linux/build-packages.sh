@@ -6,7 +6,7 @@
 #
 #   --out      default: <image dir>/../dist
 #   --formats  default: tar,deb,rpm
-#   --nfpm     default: nfpm from PATH, else the pinned, checksum-verified download (fetch-nfpm.sh)
+#   --nfpm     default: the pinned, checksum-verified download (fetch-nfpm.sh). An nfpm on PATH is NOT used unless named here.
 #
 # UNSIGNED: nothing is signed, attested or notarised here. SHA256SUMS is not a signature; the owner signs it offline,
 # outside CI (linux.md 8.3). Every output dir gets UNSIGNED-NOT-FOR-RELEASE.txt.
@@ -53,7 +53,10 @@ fi
 
 if want deb || want rpm; then
   if [ -z "$nfpm_bin" ]; then
-    if command -v nfpm >/dev/null 2>&1; then nfpm_bin="$(command -v nfpm)"; else nfpm_bin="$("$here/fetch-nfpm.sh" | tail -1)"; fi
+    nfpm_bin="$("$here/fetch-nfpm.sh" | tail -1)"
+    echo "build-packages: nfpm route: pinned download, checksum-verified by fetch-nfpm.sh"
+  else
+    echo "build-packages: nfpm route: --nfpm given explicitly, NOT verified by this script"
   fi
   [ -x "$nfpm_bin" ] || die "nfpm not found at '$nfpm_bin'" 2
   echo "build-packages: nfpm $("$nfpm_bin" --version | sed -n 's/^GitVersion: *//p') at $nfpm_bin"

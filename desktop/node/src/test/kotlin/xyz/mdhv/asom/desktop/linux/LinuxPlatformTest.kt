@@ -32,12 +32,21 @@ import xyz.mdhv.asom.desktop.governor.HostRulesProvider
 import xyz.mdhv.asom.desktop.governor.HostSignals
 import xyz.mdhv.asom.desktop.governor.HostSignalsProvider
 import xyz.mdhv.asom.desktop.governor.LenderState
+import xyz.mdhv.asom.desktop.governor.SettlesBeforeServing
 import xyz.mdhv.asom.desktop.json.StrictJson
 import xyz.mdhv.asom.desktop.linux.host.DirMeta
+import xyz.mdhv.asom.desktop.linux.probes.FileSource
 import xyz.mdhv.asom.desktop.linux.host.SteamOsPolicy
 
 class LinuxPlatformTest {
     private val vars = mapOf("XDG_RUNTIME_DIR" to "/run/user/1000")
+
+    /** A machine that is idle but not frozen: every read of /proc/stat shows 100 more idle ticks, as a live kernel does. */
+    private class AdvancingStat(private val d: MapFileSource) : FileSource by d {
+        private var n = 0L
+        override fun read(path: String): String? =
+            if (path == "/proc/stat") "cpu  4705 150 3010 ${3_105_200 + 100 * (++n)} 1200 0 300 0 0 0\n" else d.read(path)
+    }
 
     private fun platform(
         host: String, uid: Int = 1000, user: String = "alice", env: Map<String, String> = vars,
@@ -46,11 +55,11 @@ class LinuxPlatformTest {
         val fs = MapFileSource.ofFixture(host)
         fs.files["/proc/self/status"] = "Name:\tjava\nUid:\t$uid\t$uid\t$uid\t$uid\n"
         edit(fs)
-        return LinuxPlatform(fs, LinuxEnv(user, env, Path.of("/home/$user")) { DirMeta(uid, 0b111_000_000) }, clock)
+        return LinuxPlatform(AdvancingStat(fs), LinuxEnv(user, env, Path.of("/home/$user")) { DirMeta(uid, 0b111_000_000) }, clock)
     }
 
     /** The Linux platform with the three signals that have no mechanism yet supplied by the test. */
-    private class WithSignals(val d: LinuxPlatform, var sig: HostSignals) : DesktopPlatform by d, HostRulesProvider by d, HostSignalsProvider {
+    private class WithSignals(val d: LinuxPlatform, var sig: HostSignals) : DesktopPlatform by d, HostRulesProvider by d, HostSignalsProvider, SettlesBeforeServing {
         override fun hostSignals(): HostSignals = sig
     }
 
@@ -133,6 +142,9 @@ class LinuxPlatformTest {
 
     private fun tick(rt: NodeRuntime, clock: FakeClock, seconds: Int = 2) { clock.now += seconds * 1000L; rt.tick() }
 
+    /** A quiet machine for the whole 60 s eligible dwell, plus the blind first CPU sample (HLU-4: a fresh node is not yet eligible). */
+    private fun settle(rt: NodeRuntime, clock: FakeClock) = repeat(33) { tick(rt, clock) }
+
     @Test
     fun `dell on mains becomes SERVING and a hot CPU drains it with no GPU attribution needed`() {
         val clock = FakeClock()
@@ -140,6 +152,8 @@ class LinuxPlatformTest {
         val rt = NodeRuntime(p, HostMode.USER, NodeConfig(), clock)
         rt.enableLending()
         tick(rt, clock)
+        assertEquals(LenderState.ARMED, rt.fsm.state, "HLU-4: the first evaluation is not eligibility")
+        settle(rt, clock)
         assertEquals(LenderState.SERVING, rt.fsm.state)
         val fs = MapFileSource.ofFixture("dell")
         assertNull(platform("dell").gpuContention(), "NVIDIA/Intel: thermal band only")
@@ -147,7 +161,7 @@ class LinuxPlatformTest {
         val hot = platform("dell", clock = clock) { it.files["/sys/class/hwmon/hwmon0/temp1_input"] = "86000\n" }
         val rt2 = NodeRuntime(hot, HostMode.USER, NodeConfig(), clock)
         rt2.enableLending()
-        tick(rt2, clock)
+        settle(rt2, clock)
         assertEquals(LenderState.ARMED, rt2.fsm.state, "band 2 blocks entry")
         assertTrue(fs.files.isNotEmpty())
     }
@@ -164,7 +178,7 @@ class LinuxPlatformTest {
         }
         val rt = NodeRuntime(laptop, HostMode.USER, NodeConfig(), clock)
         rt.enableLending()
-        repeat(5) { tick(rt, clock) }
+        settle(rt, clock)
         assertEquals(LenderState.ARMED, rt.fsm.state)
         // plug in: serves
         val plugged = platform("dell", clock = clock) {
@@ -176,7 +190,7 @@ class LinuxPlatformTest {
         }
         val rt2 = NodeRuntime(plugged, HostMode.USER, NodeConfig(), clock)
         rt2.enableLending()
-        tick(rt2, clock)
+        settle(rt2, clock)
         assertEquals(LenderState.SERVING, rt2.fsm.state)
     }
 
@@ -187,14 +201,14 @@ class LinuxPlatformTest {
         // nothing known: stays ARMED (ERR-DECK-1)
         val rtUnknown = NodeRuntime(p, HostMode.USER, NodeConfig(), clock)
         rtUnknown.enableLending()
-        repeat(4) { tick(rtUnknown, clock) }
+        settle(rtUnknown, clock)
         assertEquals(LenderState.ARMED, rtUnknown.fsm.state)
 
         val sig = WithSignals(p, HostSignals(docked = true, gameRunning = false, gameMode = false))
         val rt = NodeRuntime(sig, HostMode.USER, NodeConfig(), clock)
         rt.enableLending()
         // the unknown-signal runtime above recorded presence ("game-unknown") only in ITS FSM; this one is fresh
-        tick(rt, clock)
+        settle(rt, clock)
         assertEquals(LenderState.SERVING, rt.fsm.state)
 
         sig.sig = sig.sig.copy(gameRunning = true)
@@ -214,7 +228,7 @@ class LinuxPlatformTest {
         val lcd = WithSignals(platform("deck-lcd", clock = clock), HostSignals(docked = true, gameRunning = false, gameMode = false))
         val rtBat = NodeRuntime(lcd, HostMode.USER, NodeConfig(), clock)
         rtBat.enableLending()
-        repeat(5) { tick(rtBat, clock) }
+        settle(rtBat, clock)
         assertEquals(LenderState.ARMED, rtBat.fsm.state)
     }
 
