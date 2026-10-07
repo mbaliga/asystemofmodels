@@ -1,0 +1,862 @@
+{
+ "family": "UTC05",
+ "confVersion": "0.1.0",
+ "specRefs": [
+  "ubuntu-touch.md 3.1 (only frames on stdout)",
+  "ubuntu-touch.md 7.3 (UTC05)",
+  "ASOM_MESH_DESIGN.md H3/T17(c)"
+ ],
+ "vectors": [
+  {
+   "id": "UTC05-001",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a session that touches every UI frame with secrets in the prompt, the QR, the SAS and the peer name (in process)",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "{\"t\":\"hello\",\"v\":1}",
+     "{\"t\":\"lifecycle\",\"state\":\"active\"}",
+     "{\"t\":\"borrow\",\"rid\":\"r-1\",\"model\":\"gpt-x\",\"messages\":[{\"role\":\"user\",\"content\":\"SECRET-PROMPT-7f3a91\"}],\"maxTokens\":16,\"stream\":true}",
+     "{\"t\":\"peers\",\"op\":\"open\"}",
+     "{\"t\":\"pair\",\"op\":\"begin\",\"value\":\"SECRET-QR-payload-91bc44\"}",
+     "{\"t\":\"pair\",\"op\":\"confirm\",\"value\":\"SECRET-SAS-482113\"}",
+     "{\"t\":\"cancel\",\"rid\":\"r-1\"}",
+     "{\"t\":\"ledger\",\"since\":0,\"limit\":10}",
+     "{\"t\":\"export\",\"kind\":\"ledger\"}",
+     "{\"t\":\"revoke\",\"peer\":\"SECRET-PEER-0d5e\"}",
+     "{\"t\":\"peers\",\"op\":\"close\"}",
+     "{\"t\":\"shutdown\"}"
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": false
+   },
+   "expect": {
+    "ok": {
+     "stdout": [
+      "hello_ack",
+      "state",
+      "error",
+      "state",
+      "peers",
+      "error",
+      "error",
+      "rows",
+      "error",
+      "error"
+     ],
+     "stderr": [],
+     "exit": 0
+    }
+   }
+  },
+  {
+   "id": "UTC05-002",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "an unknown frame type ends the session with one fixed line and no echo (in process)",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "{\"t\":\"hello\",\"v\":1}",
+     "{\"t\":\"nope\",\"x\":\"SECRET-PROMPT-7f3a91\"}"
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": false
+   },
+   "expect": {
+    "ok": {
+     "stdout": [
+      "hello_ack",
+      "state"
+     ],
+     "stderr": [
+      "asom-ut: protocol violation UNKNOWN_TYPE"
+     ],
+     "exit": 65
+    }
+   }
+  },
+  {
+   "id": "UTC05-003",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a line over 1 MiB ends the session (in process)",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "{\"t\":\"hello\",\"v\":1}",
+     {
+      "padTo": 1048577
+     }
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": false
+   },
+   "expect": {
+    "ok": {
+     "stdout": [
+      "hello_ack",
+      "state"
+     ],
+     "stderr": [
+      "asom-ut: protocol violation TOO_LONG"
+     ],
+     "exit": 65
+    }
+   }
+  },
+  {
+   "id": "UTC05-004",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a second hello is a violation (in process)",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "{\"t\":\"hello\",\"v\":1}",
+     "{\"t\":\"hello\",\"v\":1}"
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": false
+   },
+   "expect": {
+    "ok": {
+     "stdout": [
+      "hello_ack",
+      "state"
+     ],
+     "stderr": [
+      "asom-ut: protocol violation UNKNOWN_TYPE"
+     ],
+     "exit": 65
+    }
+   }
+  },
+  {
+   "id": "UTC05-005",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a first frame that is not hello ends the session before any frame (in process)",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "{\"t\":\"lifecycle\",\"state\":\"active\"}"
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": false
+   },
+   "expect": {
+    "ok": {
+     "stdout": [],
+     "stderr": [
+      "asom-ut: protocol violation BAD_FIELD"
+     ],
+     "exit": 65
+    }
+   }
+  },
+  {
+   "id": "UTC05-006",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "hello with an unsupported version (in process)",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "{\"t\":\"hello\",\"v\":2}"
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": false
+   },
+   "expect": {
+    "ok": {
+     "stdout": [],
+     "stderr": [
+      "asom-ut: protocol violation BAD_FIELD"
+     ],
+     "exit": 65
+    }
+   }
+  },
+  {
+   "id": "UTC05-007",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "garbage instead of hello, with a secret in it (in process)",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "SECRET-PROMPT-7f3a91 not json"
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": false
+   },
+   "expect": {
+    "ok": {
+     "stdout": [],
+     "stderr": [
+      "asom-ut: protocol violation NOT_JSON"
+     ],
+     "exit": 65
+    }
+   }
+  },
+  {
+   "id": "UTC05-008",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "end of input right after hello is a clean stop (in process)",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "{\"t\":\"hello\",\"v\":1}"
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": false
+   },
+   "expect": {
+    "ok": {
+     "stdout": [
+      "hello_ack",
+      "state"
+     ],
+     "stderr": [],
+     "exit": 0
+    }
+   }
+  },
+  {
+   "id": "UTC05-009",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "empty input is a clean stop with no output (in process)",
+   "input": {
+    "mode": "session",
+    "lines": [],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": false
+   },
+   "expect": {
+    "ok": {
+     "stdout": [],
+     "stderr": [],
+     "exit": 0
+    }
+   }
+  },
+  {
+   "id": "UTC05-010",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "the self-test frame carries the result and nothing else on stderr (in process)",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "{\"t\":\"hello\",\"v\":1}",
+     "{\"t\":\"selftest\"}",
+     "{\"t\":\"shutdown\"}"
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": false
+   },
+   "expect": {
+    "ok": {
+     "stdout": [
+      "hello_ack",
+      "state",
+      "selftest"
+     ],
+     "stderr": [],
+     "exit": 0
+    }
+   }
+  },
+  {
+   "id": "UTC05-011",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a session that touches every UI frame with secrets in the prompt, the QR, the SAS and the peer name (child JVM)",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "{\"t\":\"hello\",\"v\":1}",
+     "{\"t\":\"lifecycle\",\"state\":\"active\"}",
+     "{\"t\":\"borrow\",\"rid\":\"r-1\",\"model\":\"gpt-x\",\"messages\":[{\"role\":\"user\",\"content\":\"SECRET-PROMPT-7f3a91\"}],\"maxTokens\":16,\"stream\":true}",
+     "{\"t\":\"peers\",\"op\":\"open\"}",
+     "{\"t\":\"pair\",\"op\":\"begin\",\"value\":\"SECRET-QR-payload-91bc44\"}",
+     "{\"t\":\"pair\",\"op\":\"confirm\",\"value\":\"SECRET-SAS-482113\"}",
+     "{\"t\":\"cancel\",\"rid\":\"r-1\"}",
+     "{\"t\":\"ledger\",\"since\":0,\"limit\":10}",
+     "{\"t\":\"export\",\"kind\":\"ledger\"}",
+     "{\"t\":\"revoke\",\"peer\":\"SECRET-PEER-0d5e\"}",
+     "{\"t\":\"peers\",\"op\":\"close\"}",
+     "{\"t\":\"shutdown\"}"
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": true
+   },
+   "expect": {
+    "ok": {
+     "stdout": [
+      "hello_ack",
+      "state",
+      "error",
+      "state",
+      "peers",
+      "error",
+      "error",
+      "rows",
+      "error",
+      "error"
+     ],
+     "stderr": [],
+     "exit": 0
+    }
+   }
+  },
+  {
+   "id": "UTC05-012",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "an unknown frame type ends the session with one fixed line and no echo (child JVM)",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "{\"t\":\"hello\",\"v\":1}",
+     "{\"t\":\"nope\",\"x\":\"SECRET-PROMPT-7f3a91\"}"
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": true
+   },
+   "expect": {
+    "ok": {
+     "stdout": [
+      "hello_ack",
+      "state"
+     ],
+     "stderr": [
+      "asom-ut: protocol violation UNKNOWN_TYPE"
+     ],
+     "exit": 65
+    }
+   }
+  },
+  {
+   "id": "UTC05-013",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a line over 1 MiB ends the session (child JVM)",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "{\"t\":\"hello\",\"v\":1}",
+     {
+      "padTo": 1048577
+     }
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": true
+   },
+   "expect": {
+    "ok": {
+     "stdout": [
+      "hello_ack",
+      "state"
+     ],
+     "stderr": [
+      "asom-ut: protocol violation TOO_LONG"
+     ],
+     "exit": 65
+    }
+   }
+  },
+  {
+   "id": "UTC05-014",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a second hello is a violation (child JVM)",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "{\"t\":\"hello\",\"v\":1}",
+     "{\"t\":\"hello\",\"v\":1}"
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": true
+   },
+   "expect": {
+    "ok": {
+     "stdout": [
+      "hello_ack",
+      "state"
+     ],
+     "stderr": [
+      "asom-ut: protocol violation UNKNOWN_TYPE"
+     ],
+     "exit": 65
+    }
+   }
+  },
+  {
+   "id": "UTC05-015",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a first frame that is not hello ends the session before any frame (child JVM)",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "{\"t\":\"lifecycle\",\"state\":\"active\"}"
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": true
+   },
+   "expect": {
+    "ok": {
+     "stdout": [],
+     "stderr": [
+      "asom-ut: protocol violation BAD_FIELD"
+     ],
+     "exit": 65
+    }
+   }
+  },
+  {
+   "id": "UTC05-016",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "hello with an unsupported version (child JVM)",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "{\"t\":\"hello\",\"v\":2}"
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": true
+   },
+   "expect": {
+    "ok": {
+     "stdout": [],
+     "stderr": [
+      "asom-ut: protocol violation BAD_FIELD"
+     ],
+     "exit": 65
+    }
+   }
+  },
+  {
+   "id": "UTC05-017",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "garbage instead of hello, with a secret in it (child JVM)",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "SECRET-PROMPT-7f3a91 not json"
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": true
+   },
+   "expect": {
+    "ok": {
+     "stdout": [],
+     "stderr": [
+      "asom-ut: protocol violation NOT_JSON"
+     ],
+     "exit": 65
+    }
+   }
+  },
+  {
+   "id": "UTC05-018",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "end of input right after hello is a clean stop (child JVM)",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "{\"t\":\"hello\",\"v\":1}"
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": true
+   },
+   "expect": {
+    "ok": {
+     "stdout": [
+      "hello_ack",
+      "state"
+     ],
+     "stderr": [],
+     "exit": 0
+    }
+   }
+  },
+  {
+   "id": "UTC05-019",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "empty input is a clean stop with no output (child JVM)",
+   "input": {
+    "mode": "session",
+    "lines": [],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": true
+   },
+   "expect": {
+    "ok": {
+     "stdout": [],
+     "stderr": [],
+     "exit": 0
+    }
+   }
+  },
+  {
+   "id": "UTC05-020",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "the self-test frame carries the result and nothing else on stderr (child JVM)",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "{\"t\":\"hello\",\"v\":1}",
+     "{\"t\":\"selftest\"}",
+     "{\"t\":\"shutdown\"}"
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": true
+   },
+   "expect": {
+    "ok": {
+     "stdout": [
+      "hello_ack",
+      "state",
+      "selftest"
+     ],
+     "stderr": [],
+     "exit": 0
+    }
+   }
+  },
+  {
+   "id": "UTC05-021",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a ledger that cannot be opened: fixed stderr line, state interrupted, every request answered LEDGER_UNAVAILABLE",
+   "input": {
+    "mode": "session",
+    "lines": [
+     "{\"t\":\"hello\",\"v\":1}",
+     "{\"t\":\"lifecycle\",\"state\":\"active\"}",
+     "{\"t\":\"borrow\",\"rid\":\"r-1\",\"model\":\"gpt-x\",\"messages\":[{\"role\":\"user\",\"content\":\"SECRET-PROMPT-7f3a91\"}],\"maxTokens\":16,\"stream\":true}",
+     "{\"t\":\"shutdown\"}"
+    ],
+    "secrets": [
+     "SECRET-PROMPT-7f3a91",
+     "SECRET-QR-payload-91bc44",
+     "SECRET-SAS-482113",
+     "SECRET-PEER-0d5e"
+    ],
+    "child": false,
+    "ledger": "unavailable"
+   },
+   "expect": {
+    "ok": {
+     "stdout": [
+      "hello_ack",
+      "state",
+      "error"
+     ],
+     "stderr": [
+      "asom-ut: ledger unavailable"
+     ],
+     "exit": 0
+    }
+   }
+  },
+  {
+   "id": "UTC05-022",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "--selftest prints exactly one line, which starts with the selftest member, and nothing on stderr",
+   "input": {
+    "mode": "selftest",
+    "child": true
+   },
+   "expect": {
+    "ok": {
+     "stdout": [
+      "selftest-line"
+     ],
+     "stderr": [],
+     "exit": 0
+    }
+   }
+  },
+  {
+   "id": "UTC05-023",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "an unknown argument",
+   "input": {
+    "mode": "args",
+    "args": [
+     "--bogus"
+    ],
+    "user": "tester",
+    "child": true
+   },
+   "expect": {
+    "ok": {
+     "stdout": [],
+     "stderr": [
+      "asom-ut: bad arguments"
+     ],
+     "exit": 2
+    }
+   }
+  },
+  {
+   "id": "UTC05-024",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "no argument",
+   "input": {
+    "mode": "args",
+    "args": [],
+    "user": "tester",
+    "child": true
+   },
+   "expect": {
+    "ok": {
+     "stdout": [],
+     "stderr": [
+      "asom-ut: bad arguments"
+     ],
+     "exit": 2
+    }
+   }
+  },
+  {
+   "id": "UTC05-025",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "two modes at once",
+   "input": {
+    "mode": "args",
+    "args": [
+     "--profile=ut",
+     "--selftest"
+    ],
+    "user": "tester",
+    "child": true
+   },
+   "expect": {
+    "ok": {
+     "stdout": [],
+     "stderr": [
+      "asom-ut: bad arguments"
+     ],
+     "exit": 2
+    }
+   }
+  },
+  {
+   "id": "UTC05-026",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "refuses to run as root (--profile=ut)",
+   "input": {
+    "mode": "args",
+    "args": [
+     "--profile=ut"
+    ],
+    "user": "root",
+    "child": true
+   },
+   "expect": {
+    "ok": {
+     "stdout": [],
+     "stderr": [
+      "asom-ut: refused to start"
+     ],
+     "exit": 78
+    }
+   }
+  },
+  {
+   "id": "UTC05-027",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "refuses to run as root (--selftest)",
+   "input": {
+    "mode": "args",
+    "args": [
+     "--selftest"
+    ],
+    "user": "root",
+    "child": true
+   },
+   "expect": {
+    "ok": {
+     "stdout": [],
+     "stderr": [
+      "asom-ut: refused to start"
+     ],
+     "exit": 78
+    }
+   }
+  },
+  {
+   "id": "UTC05-028",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "refuses to start when HOME is unusable",
+   "input": {
+    "mode": "args",
+    "args": [
+     "--profile=ut"
+    ],
+    "user": "tester",
+    "home": "relative/path",
+    "child": true
+   },
+   "expect": {
+    "ok": {
+     "stdout": [],
+     "stderr": [
+      "asom-ut: refused to start"
+     ],
+     "exit": 78
+    }
+   }
+  }
+ ]
+}

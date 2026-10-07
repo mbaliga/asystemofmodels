@@ -34,6 +34,7 @@ kotlin {
 
 dependencies {
     implementation(project(":client"))
+    implementation(project(":client-cloud"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

@@ -1,0 +1,138 @@
+{
+  "schema": "asom.bench-public/1",
+  "device": {
+    "class": "phone",
+    "vendor": "ExampleVendor",
+    "model": "Example Phone 1",
+    "socName": "ExampleSoC 8",
+    "ramClassGiB": 16,
+    "osFamily": "android",
+    "osMajor": 16,
+    "cooling": "fan"
+  },
+  "harness": {
+    "version": "1.0.0",
+    "methodologyId": "asom-bench-method/1",
+    "confVersion": "1.0.0"
+  },
+  "engine": {
+    "name": "llama.cpp",
+    "commit": "0123abcd"
+  },
+  "results": [
+    {
+      "modelId": "example-3b-instruct",
+      "quant": "Q4_K_M",
+      "fileSha256": "6bc3e8ccea8ef082f0fcc23f91d3f8d7b5414e6d3e3af010641a8fb71729c810",
+      "backend": "opencl",
+      "measuredMonth": "2026-09",
+      "runsCompleted": 5,
+      "charging": false,
+      "prefillPromptTokens": 512,
+      "prefillMilliTokPerSec": 210000,
+      "ttftMillis": 2500,
+      "decodeContextTokens": 512,
+      "decodeMilliTokPerSec": 18000,
+      "steadyMilliTokPerSec": 11000,
+      "throttleOnsetSec": 190,
+      "curve": [
+        [
+          0,
+          18000
+        ],
+        [
+          60,
+          18000
+        ],
+        [
+          120,
+          18000
+        ],
+        [
+          150,
+          18000
+        ],
+        [
+          210,
+          15000
+        ],
+        [
+          270,
+          13000
+        ],
+        [
+          330,
+          11000
+        ],
+        [
+          390,
+          11000
+        ],
+        [
+          450,
+          11000
+        ],
+        [
+          480,
+          11000
+        ],
+        [
+          540,
+          11000
+        ],
+        [
+          600,
+          11000
+        ]
+      ],
+      "peakProcessMB": 2600,
+      "powerMethod": "battery-current",
+      "powerMilliW": 6100
+    },
+    {
+      "modelId": "example-3b-instruct",
+      "quant": "Q8_0",
+      "fileSha256": "3c7d5df352a994683cff6ed77a911a87741ecaf096b4fed0a23366f6f4cf5bf3",
+      "backend": "cpu",
+      "measuredMonth": "2026-09",
+      "runsCompleted": 3,
+      "charging": true,
+      "prefillPromptTokens": 512,
+      "prefillMilliTokPerSec": 61000,
+      "ttftMillis": 8600,
+      "decodeContextTokens": 512,
+      "decodeMilliTokPerSec": 9800,
+      "steadyMilliTokPerSec": 9100,
+      "throttleOnsetSec": null,
+      "curve": [
+        [
+          0,
+          9800
+        ],
+        [
+          60,
+          9500
+        ],
+        [
+          120,
+          9300
+        ],
+        [
+          180,
+          9200
+        ],
+        [
+          240,
+          9100
+        ],
+        [
+          300,
+          9100
+        ]
+      ],
+      "peakProcessMB": 3900,
+      "powerMethod": "unavailable",
+      "powerMilliW": null
+    }
+  ]
+}

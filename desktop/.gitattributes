@@ -1,0 +1,4 @@
+# Byte-exact test data (LAB_SPEC 2.6 pattern; AW20: JDK 17 on Windows is not UTF-8 by default and git may rewrite line endings).
+**/fixtures/** -text
+**/*.jsonl -text
+**/resources/dbus/** -text

@@ -1,0 +1,3201 @@
+{
+  "family": "L02",
+  "confVersion": "0.2.0",
+  "specRefs": [
+    "LAB_SPEC.md 7.5",
+    "LAB_SPEC.md 7.6",
+    "LAB_SPEC.md 7.7",
+    "docs/design/mesh/REVIEW_ROUND3.md R3-CLOSURE-6",
+    "ASOM_MESH_DESIGN.md 8.4"
+  ],
+  "vectors": [
+    {
+      "id": "L02-001",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a dialed session: DIAL intent before the SYN, DIAL outcome with the handshake overhead, HELLO and HELLO_ACK one CONTROL row per frame on each node, SESSION open on the listener (after HELLO), SESSION close with overhead",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "dial",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1
+            },
+            {
+              "k": "dial",
+              "p": "outcome",
+              "c": "connected",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "measured"
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 309,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 0,
+              "i": 209,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "session",
+              "p": null,
+              "c": "close",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "measured"
+            }
+          ],
+          "B": [
+            {
+              "k": "session",
+              "p": null,
+              "c": "established",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "measured"
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 0,
+              "i": 309,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 209,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "session",
+              "p": null,
+              "c": "close",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "measured"
+            }
+          ],
+          "abort": null,
+          "groups": {
+            "A": 1,
+            "B": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "L02-002",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "STATE_REQ and STATE: one CONTROL row per frame on both nodes",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "STATE_REQ",
+            "payload": 7,
+            "stream": "3"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "STATE",
+            "payload": 250,
+            "stream": "3"
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ],
+        "onlyKinds": [
+          "control"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 309,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 0,
+              "i": 209,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "STATE_REQ",
+              "o": 16,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "STATE",
+              "o": 0,
+              "i": 259,
+              "st": 200,
+              "s": 1
+            }
+          ],
+          "B": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 0,
+              "i": 309,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 209,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "STATE_REQ",
+              "o": 0,
+              "i": 16,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "STATE",
+              "o": 259,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "L02-003",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "MANIFEST_REQ is a CONTROL row; MANIFEST is MANIFEST_SENT on the sender and MANIFEST_RECEIVED (the verdict in meshCode) on the receiver",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "MANIFEST_REQ",
+            "payload": 60,
+            "stream": "5"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "MANIFEST",
+            "payload": 4000,
+            "stream": "5",
+            "code": "verified"
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ],
+        "onlyKinds": [
+          "control",
+          "manifest-sent",
+          "manifest-received"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 309,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 0,
+              "i": 209,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "MANIFEST_REQ",
+              "o": 69,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "manifest-received",
+              "p": null,
+              "c": "verified",
+              "o": 0,
+              "i": 4009,
+              "st": 200,
+              "s": 1
+            }
+          ],
+          "B": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 0,
+              "i": 309,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 209,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "MANIFEST_REQ",
+              "o": 0,
+              "i": 69,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "manifest-sent",
+              "p": null,
+              "c": "MANIFEST",
+              "o": 4009,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "L02-004",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a connection-level ERROR (ERROR:<code>) and GOAWAY (GOAWAY:<reason>) are CONTROL rows on both nodes",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "ERROR",
+            "payload": 30,
+            "stream": "0",
+            "code": "SCOPE_DENIED"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "GOAWAY",
+            "payload": 17,
+            "stream": "0",
+            "code": "idle"
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ],
+        "onlyKinds": [
+          "control"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 309,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 0,
+              "i": 209,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "ERROR:SCOPE_DENIED",
+              "o": 0,
+              "i": 39,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "GOAWAY:idle",
+              "o": 0,
+              "i": 26,
+              "st": 200,
+              "s": 1
+            }
+          ],
+          "B": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 0,
+              "i": 309,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 209,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "ERROR:SCOPE_DENIED",
+              "o": 39,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "GOAWAY:idle",
+              "o": 26,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "L02-005",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "REVOKE_NOTICE is a REVOCATION row on the sender and on the receiver, in both directions",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "REVOKE_NOTICE",
+            "payload": 21,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "REVOKE_NOTICE",
+            "payload": 21,
+            "stream": "0"
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ],
+        "onlyKinds": [
+          "revocation"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "revocation",
+              "p": null,
+              "c": "REVOKE_NOTICE",
+              "o": 30,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "revocation",
+              "p": null,
+              "c": "REVOKE_NOTICE",
+              "o": 0,
+              "i": 30,
+              "st": 200,
+              "s": 1
+            }
+          ],
+          "B": [
+            {
+              "k": "revocation",
+              "p": null,
+              "c": "REVOKE_NOTICE",
+              "o": 0,
+              "i": 30,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "revocation",
+              "p": null,
+              "c": "REVOKE_NOTICE",
+              "o": 30,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "L02-006",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a pairing connection: SESSION open (pairing) on the listener, one PAIRING row per frame (all five kinds) on each node, both nodes group their rows into one session",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial",
+            "mode": "pairing"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "PAIR_HELLO",
+            "payload": 150
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "PAIR_CHALLENGE",
+            "payload": 60
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "PAIR_DECISION",
+            "payload": 40
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "PAIR_DECISION",
+            "payload": 40
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "PAIR_COMMIT",
+            "payload": 200
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "PAIR_COMMIT_ACK",
+            "payload": 30
+          },
+          {
+            "op": "close",
+            "by": "B"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "dial",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1
+            },
+            {
+              "k": "dial",
+              "p": "outcome",
+              "c": "connected",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "measured"
+            },
+            {
+              "k": "pairing",
+              "p": null,
+              "c": "PAIR_HELLO",
+              "o": 0,
+              "i": 159,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "pairing",
+              "p": null,
+              "c": "PAIR_CHALLENGE",
+              "o": 69,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "pairing",
+              "p": null,
+              "c": "PAIR_DECISION",
+              "o": 49,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "pairing",
+              "p": null,
+              "c": "PAIR_DECISION",
+              "o": 0,
+              "i": 49,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "pairing",
+              "p": null,
+              "c": "PAIR_COMMIT",
+              "o": 209,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "pairing",
+              "p": null,
+              "c": "PAIR_COMMIT_ACK",
+              "o": 0,
+              "i": 39,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "session",
+              "p": null,
+              "c": "close",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "measured"
+            }
+          ],
+          "B": [
+            {
+              "k": "session",
+              "p": null,
+              "c": "pairing",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "measured"
+            },
+            {
+              "k": "pairing",
+              "p": null,
+              "c": "PAIR_HELLO",
+              "o": 159,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "pairing",
+              "p": null,
+              "c": "PAIR_CHALLENGE",
+              "o": 0,
+              "i": 69,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "pairing",
+              "p": null,
+              "c": "PAIR_DECISION",
+              "o": 0,
+              "i": 49,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "pairing",
+              "p": null,
+              "c": "PAIR_DECISION",
+              "o": 49,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "pairing",
+              "p": null,
+              "c": "PAIR_COMMIT",
+              "o": 0,
+              "i": 209,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "pairing",
+              "p": null,
+              "c": "PAIR_COMMIT_ACK",
+              "o": 39,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "session",
+              "p": null,
+              "c": "close",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "measured"
+            }
+          ],
+          "abort": null,
+          "groups": {
+            "A": 1,
+            "B": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "L02-007",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an extension frame (type >= 0x80) from a non-conforming peer: CONTROL EXT_IGNORED on the receiver; the sender has no ledger here",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial",
+            "hostile": true,
+            "source": "user"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "EXTENSION",
+            "payload": 40,
+            "stream": "0"
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "dial",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1
+            },
+            {
+              "k": "dial",
+              "p": "outcome",
+              "c": "connected",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "measured"
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "EXT_IGNORED",
+              "o": 0,
+              "i": 49,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "session",
+              "p": null,
+              "c": "close",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "measured"
+            }
+          ],
+          "B": []
+        }
+      }
+    },
+    {
+      "id": "L02-008",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "every failed dial outcome has a DIAL intent (before the SYN) and a DIAL outcome (599); the other node has nothing: nothing was authenticated",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial",
+            "outcome": "refused",
+            "source": "qr"
+          },
+          {
+            "op": "dial",
+            "outcome": "timeout",
+            "source": "hello"
+          },
+          {
+            "op": "dial",
+            "outcome": "pin-mismatch",
+            "source": "user"
+          },
+          {
+            "op": "dial",
+            "outcome": "not-tls",
+            "source": "qr"
+          },
+          {
+            "op": "dial",
+            "outcome": "local-network-denied",
+            "source": "qr"
+          },
+          {
+            "op": "dial",
+            "outcome": "firewall-blocked",
+            "source": "user"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "dial",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1
+            },
+            {
+              "k": "dial",
+              "p": "outcome",
+              "c": "refused",
+              "o": 0,
+              "i": 0,
+              "st": 599,
+              "s": 1
+            },
+            {
+              "k": "dial",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 2
+            },
+            {
+              "k": "dial",
+              "p": "outcome",
+              "c": "timeout",
+              "o": 0,
+              "i": 0,
+              "st": 599,
+              "s": 2
+            },
+            {
+              "k": "dial",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 3
+            },
+            {
+              "k": "dial",
+              "p": "outcome",
+              "c": "pin-mismatch",
+              "o": 0,
+              "i": 0,
+              "st": 599,
+              "s": 3
+            },
+            {
+              "k": "dial",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 4
+            },
+            {
+              "k": "dial",
+              "p": "outcome",
+              "c": "not-tls",
+              "o": 0,
+              "i": 0,
+              "st": 599,
+              "s": 4
+            },
+            {
+              "k": "dial",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 5
+            },
+            {
+              "k": "dial",
+              "p": "outcome",
+              "c": "local-network-denied",
+              "o": 0,
+              "i": 0,
+              "st": 599,
+              "s": 5
+            },
+            {
+              "k": "dial",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 6
+            },
+            {
+              "k": "dial",
+              "p": "outcome",
+              "c": "firewall-blocked",
+              "o": 0,
+              "i": 0,
+              "st": 599,
+              "s": 6
+            }
+          ],
+          "B": [],
+          "abort": null,
+          "groups": {
+            "A": 6,
+            "B": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "L02-009",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "inbound connections refused before authentication: ONE INBOUND_REFUSED row per window, with no address and no session",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "refused",
+            "count": 3
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [],
+          "B": [
+            {
+              "k": "inbound-refused",
+              "p": null,
+              "c": "refused:3",
+              "o": 0,
+              "i": 0,
+              "st": 403,
+              "s": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "L02-010",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an attempt declined at the offer: the requester has intent and outcome (503 + code, offer and decline bytes summed); the lender has an OUTCOME ONLY",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "INFER_OFFER",
+            "payload": 120,
+            "attempt": "a1",
+            "request": "r1"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_DECLINE",
+            "payload": 90,
+            "attempt": "a1",
+            "code": "PEER_BUSY"
+          },
+          {
+            "op": "finish",
+            "attempt": "a1",
+            "status": 503,
+            "meshCode": "PEER_BUSY",
+            "tokensOut": 0
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ],
+        "onlyKinds": [
+          "infer-sent",
+          "infer-served"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "infer-sent",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1,
+              "a": "a1"
+            },
+            {
+              "k": "infer-sent",
+              "p": "outcome",
+              "c": "PEER_BUSY",
+              "o": 129,
+              "i": 99,
+              "st": 503,
+              "s": 1,
+              "a": "a1"
+            }
+          ],
+          "B": [
+            {
+              "k": "infer-served",
+              "p": "outcome",
+              "c": "PEER_BUSY",
+              "o": 99,
+              "i": 129,
+              "st": 503,
+              "s": 1,
+              "a": "a1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "L02-011",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a served, streamed attempt: requester intent before the offer and outcome after the last frame; lender intent after the body arrives and outcome before INFER_END (whose bytes it already counts); bytes summed per direction",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "INFER_OFFER",
+            "payload": 120,
+            "attempt": "a1",
+            "request": "r1"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_ACCEPT",
+            "payload": 100,
+            "attempt": "a1"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "INFER_BODY",
+            "payload": 5000,
+            "attempt": "a1"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_HEAD",
+            "payload": 70,
+            "attempt": "a1"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_CHUNK",
+            "payload": 900,
+            "attempt": "a1"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_CHUNK",
+            "payload": 800,
+            "attempt": "a1"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_END",
+            "payload": 60,
+            "attempt": "a1",
+            "served": {
+              "model": "qwen3-8b",
+              "status": 200,
+              "terminal": "done",
+              "tokensIn": 1300
+            }
+          },
+          {
+            "op": "finish",
+            "attempt": "a1",
+            "status": 200,
+            "meshCode": null,
+            "tokensOut": 400
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ],
+        "onlyKinds": [
+          "infer-sent",
+          "infer-served"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "infer-sent",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1,
+              "a": "a1"
+            },
+            {
+              "k": "infer-sent",
+              "p": "outcome",
+              "c": null,
+              "o": 5138,
+              "i": 1975,
+              "st": 200,
+              "s": 1,
+              "a": "a1"
+            }
+          ],
+          "B": [
+            {
+              "k": "infer-served",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1,
+              "a": "a1"
+            },
+            {
+              "k": "infer-served",
+              "p": "outcome",
+              "c": null,
+              "o": 1975,
+              "i": 5138,
+              "st": 200,
+              "s": 1,
+              "a": "a1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "L02-012",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a cancelled attempt: CANCEL is counted in both outcome rows; the lender's code is CANCELLED",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "INFER_OFFER",
+            "payload": 120,
+            "attempt": "a1",
+            "request": "r1"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_ACCEPT",
+            "payload": 100,
+            "attempt": "a1"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "INFER_BODY",
+            "payload": 3000,
+            "attempt": "a1"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_HEAD",
+            "payload": 70,
+            "attempt": "a1"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "CANCEL",
+            "payload": 58,
+            "attempt": "a1"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_END",
+            "payload": 60,
+            "attempt": "a1",
+            "served": {
+              "model": "qwen3-8b",
+              "status": 499,
+              "terminal": "cancelled",
+              "tokensIn": 0
+            }
+          },
+          {
+            "op": "finish",
+            "attempt": "a1",
+            "status": 499,
+            "meshCode": "CANCELLED",
+            "tokensOut": 0
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ],
+        "onlyKinds": [
+          "infer-sent",
+          "infer-served"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "infer-sent",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1,
+              "a": "a1"
+            },
+            {
+              "k": "infer-sent",
+              "p": "outcome",
+              "c": "CANCELLED",
+              "o": 3205,
+              "i": 257,
+              "st": 499,
+              "s": 1,
+              "a": "a1"
+            }
+          ],
+          "B": [
+            {
+              "k": "infer-served",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1,
+              "a": "a1"
+            },
+            {
+              "k": "infer-served",
+              "p": "outcome",
+              "c": "CANCELLED",
+              "o": 257,
+              "i": 3205,
+              "st": 499,
+              "s": 1,
+              "a": "a1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "L02-013",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R3-CLOSURE-6: one session carrying two attempts: every row of both attempts (and the DIAL and SESSION rows) names the same session, so the rows group per session",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "INFER_OFFER",
+            "payload": 100,
+            "attempt": "a1",
+            "request": "r1"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_DECLINE",
+            "payload": 90,
+            "attempt": "a1",
+            "code": "PEER_BUSY"
+          },
+          {
+            "op": "finish",
+            "attempt": "a1",
+            "status": 503,
+            "meshCode": "PEER_BUSY",
+            "tokensOut": 0
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "INFER_OFFER",
+            "payload": 100,
+            "attempt": "a2",
+            "request": "r2"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_ACCEPT",
+            "payload": 80,
+            "attempt": "a2"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "INFER_BODY",
+            "payload": 1000,
+            "attempt": "a2"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_HEAD",
+            "payload": 50,
+            "attempt": "a2"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_CHUNK",
+            "payload": 300,
+            "attempt": "a2"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_END",
+            "payload": 40,
+            "attempt": "a2",
+            "served": {
+              "model": "qwen3-8b",
+              "status": 200,
+              "terminal": "done",
+              "tokensIn": 40
+            }
+          },
+          {
+            "op": "finish",
+            "attempt": "a2",
+            "status": 200,
+            "meshCode": null,
+            "tokensOut": 60
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B",
+          "groups"
+        ],
+        "onlyKinds": [
+          "infer-sent",
+          "infer-served"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "infer-sent",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1,
+              "a": "a1"
+            },
+            {
+              "k": "infer-sent",
+              "p": "outcome",
+              "c": "PEER_BUSY",
+              "o": 109,
+              "i": 99,
+              "st": 503,
+              "s": 1,
+              "a": "a1"
+            },
+            {
+              "k": "infer-sent",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1,
+              "a": "a2"
+            },
+            {
+              "k": "infer-sent",
+              "p": "outcome",
+              "c": null,
+              "o": 1118,
+              "i": 506,
+              "st": 200,
+              "s": 1,
+              "a": "a2"
+            }
+          ],
+          "B": [
+            {
+              "k": "infer-served",
+              "p": "outcome",
+              "c": "PEER_BUSY",
+              "o": 99,
+              "i": 109,
+              "st": 503,
+              "s": 1,
+              "a": "a1"
+            },
+            {
+              "k": "infer-served",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1,
+              "a": "a2"
+            },
+            {
+              "k": "infer-served",
+              "p": "outcome",
+              "c": null,
+              "o": 506,
+              "i": 1118,
+              "st": 200,
+              "s": 1,
+              "a": "a2"
+            }
+          ],
+          "groups": {
+            "A": 1,
+            "B": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "L02-014",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a stack that cannot measure: every overhead figure is labelled ESTIMATED",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ],
+        "measured": false
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "dial",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1
+            },
+            {
+              "k": "dial",
+              "p": "outcome",
+              "c": "connected",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "estimated"
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 309,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 0,
+              "i": 209,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "session",
+              "p": null,
+              "c": "close",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "estimated"
+            }
+          ],
+          "B": [
+            {
+              "k": "session",
+              "p": null,
+              "c": "established",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "estimated"
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 0,
+              "i": 309,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 209,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "session",
+              "p": null,
+              "c": "close",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "estimated"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "L02-015",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "FC-1: the requester's intent append fails: no byte of the attempt is sent, LEDGER_UNAVAILABLE, no further candidate; the session is closed cleanly afterwards",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "INFER_OFFER",
+            "payload": 120,
+            "attempt": "a1",
+            "request": "r1"
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "fail": {
+          "node": "A",
+          "at": 4,
+          "mode": "BEFORE_WRITE",
+          "sticky": false
+        }
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "dial",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1
+            },
+            {
+              "k": "dial",
+              "p": "outcome",
+              "c": "connected",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "measured"
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 309,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 0,
+              "i": 209,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "session",
+              "p": null,
+              "c": "close",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "measured"
+            }
+          ],
+          "B": [
+            {
+              "k": "session",
+              "p": null,
+              "c": "established",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "measured"
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 0,
+              "i": 309,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 209,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "session",
+              "p": null,
+              "c": "close",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "measured"
+            }
+          ],
+          "abort": "LEDGER_UNAVAILABLE",
+          "groups": {
+            "A": 1,
+            "B": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "L02-016",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "FC-4: the lender's intent append fails: it declines PEER_UNAVAILABLE, its own outcome row is the next write, the engine never starts (no lender intent row)",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "INFER_OFFER",
+            "payload": 120,
+            "attempt": "a1",
+            "request": "r1"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_ACCEPT",
+            "payload": 100,
+            "attempt": "a1"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "INFER_BODY",
+            "payload": 500,
+            "attempt": "a1"
+          },
+          {
+            "op": "finish",
+            "attempt": "a1",
+            "status": 503,
+            "meshCode": "PEER_UNAVAILABLE",
+            "tokensOut": 0
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ],
+        "onlyKinds": [
+          "infer-sent",
+          "infer-served"
+        ],
+        "fail": {
+          "node": "B",
+          "at": 3,
+          "mode": "BEFORE_WRITE",
+          "sticky": false
+        }
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "infer-sent",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1,
+              "a": "a1"
+            },
+            {
+              "k": "infer-sent",
+              "p": "outcome",
+              "c": "PEER_UNAVAILABLE",
+              "o": 638,
+              "i": 183,
+              "st": 503,
+              "s": 1,
+              "a": "a1"
+            }
+          ],
+          "B": [
+            {
+              "k": "infer-served",
+              "p": "outcome",
+              "c": "PEER_UNAVAILABLE",
+              "o": 183,
+              "i": 638,
+              "st": 503,
+              "s": 1,
+              "a": "a1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "L02-017",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "FC-5: the lender's outcome append fails: no INFER_END is sent, the session is closed (close:ledger-failure) and the requester records the loss",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "INFER_OFFER",
+            "payload": 120,
+            "attempt": "a1",
+            "request": "r1"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_ACCEPT",
+            "payload": 100,
+            "attempt": "a1"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "INFER_BODY",
+            "payload": 500,
+            "attempt": "a1"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_HEAD",
+            "payload": 70,
+            "attempt": "a1"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_END",
+            "payload": 60,
+            "attempt": "a1",
+            "served": {
+              "model": "qwen3-8b",
+              "status": 200,
+              "terminal": "done",
+              "tokensIn": 1300
+            }
+          },
+          {
+            "op": "finish",
+            "attempt": "a1",
+            "status": 502,
+            "meshCode": "PEER_LOST",
+            "tokensOut": 0
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B",
+          "abort"
+        ],
+        "fail": {
+          "node": "B",
+          "at": 4,
+          "mode": "BEFORE_WRITE",
+          "sticky": false
+        }
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "dial",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1
+            },
+            {
+              "k": "dial",
+              "p": "outcome",
+              "c": "connected",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "measured"
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 309,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 0,
+              "i": 209,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "infer-sent",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1,
+              "a": "a1"
+            },
+            {
+              "k": "infer-sent",
+              "p": "outcome",
+              "c": "PEER_LOST",
+              "o": 638,
+              "i": 188,
+              "st": 502,
+              "s": 1,
+              "a": "a1"
+            },
+            {
+              "k": "session",
+              "p": null,
+              "c": "close",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "measured"
+            }
+          ],
+          "B": [
+            {
+              "k": "session",
+              "p": null,
+              "c": "established",
+              "o": 0,
+              "i": 0,
+              "st": 200,
+              "s": 1,
+              "ob": "measured"
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 0,
+              "i": 309,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 209,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "infer-served",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1,
+              "a": "a1"
+            },
+            {
+              "k": "session",
+              "p": null,
+              "c": "close:ledger-failure",
+              "o": 0,
+              "i": 0,
+              "st": 503,
+              "s": 1,
+              "ob": "measured"
+            }
+          ],
+          "abort": null
+        }
+      }
+    },
+    {
+      "id": "L02-018",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "W01b-reach, L-L5 and L-L5b: the terminal row's egress is the reach (the furthest class that received CONTENT, local < peer < cloud), servedClass is the serving attempt's class, and the header equals the row; a declined offer does not raise reach",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "request",
+            "id": "r1",
+            "model": "qwen3-8b",
+            "attempts": [
+              "peer-served:interrupted:0:40",
+              "local-ok"
+            ]
+          },
+          {
+            "op": "request",
+            "id": "r2",
+            "model": "qwen3-8b",
+            "attempts": [
+              "peer-decline:PEER_BUSY",
+              "local-ok"
+            ]
+          },
+          {
+            "op": "request",
+            "id": "r3",
+            "model": "qwen3-8b",
+            "attempts": [
+              "cloud-fail",
+              "local-ok"
+            ]
+          },
+          {
+            "op": "request",
+            "id": "r4",
+            "model": "qwen3-8b",
+            "attempts": [
+              "peer-served:done:1:40"
+            ]
+          },
+          {
+            "op": "request",
+            "id": "r5",
+            "model": "qwen3-8b",
+            "attempts": [
+              "cloud-ok"
+            ]
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ],
+        "onlyKinds": [
+          "terminal"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "terminal",
+              "p": null,
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 200,
+              "s": null,
+              "egress": "peer",
+              "servedClass": "local",
+              "header": "peer"
+            },
+            {
+              "k": "terminal",
+              "p": null,
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 200,
+              "s": null,
+              "egress": "local",
+              "servedClass": "local",
+              "header": "local"
+            },
+            {
+              "k": "terminal",
+              "p": null,
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 200,
+              "s": null,
+              "egress": "cloud",
+              "servedClass": "local",
+              "header": "cloud"
+            },
+            {
+              "k": "terminal",
+              "p": null,
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 200,
+              "s": null,
+              "egress": "peer",
+              "servedClass": "peer",
+              "header": "peer"
+            },
+            {
+              "k": "terminal",
+              "p": null,
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 200,
+              "s": null,
+              "egress": "cloud",
+              "servedClass": "cloud",
+              "header": "cloud"
+            }
+          ],
+          "B": []
+        }
+      }
+    },
+    {
+      "id": "L02-019",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "application bytes are 9 + payload: the worked encodings of LAB_SPEC 7.1 (HELLO with 7 payload bytes is 16, GOAWAY idle with 17 is 26, STATE_REQ with 7 is 16)",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 7,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "STATE_REQ",
+            "payload": 7,
+            "stream": "3"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "GOAWAY",
+            "payload": 17,
+            "stream": "0",
+            "code": "idle"
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ],
+        "onlyKinds": [
+          "control"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 16,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 0,
+              "i": 209,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "STATE_REQ",
+              "o": 16,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "GOAWAY:idle",
+              "o": 26,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            }
+          ],
+          "B": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 0,
+              "i": 16,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 209,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "STATE_REQ",
+              "o": 0,
+              "i": 16,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "GOAWAY:idle",
+              "o": 0,
+              "i": 26,
+              "st": 200,
+              "s": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "L02-020",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "two connections one after the other: two sessions, and each node's rows group into two",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "close",
+            "by": "A"
+          },
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B",
+          "groups"
+        ],
+        "onlyKinds": [
+          "control"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 309,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 0,
+              "i": 209,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 309,
+              "i": 0,
+              "st": 200,
+              "s": 2
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 0,
+              "i": 209,
+              "st": 200,
+              "s": 2
+            }
+          ],
+          "B": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 0,
+              "i": 309,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 209,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 0,
+              "i": 309,
+              "st": 200,
+              "s": 2
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 209,
+              "i": 0,
+              "st": 200,
+              "s": 2
+            }
+          ],
+          "groups": {
+            "A": 2,
+            "B": 2
+          }
+        }
+      }
+    },
+    {
+      "id": "L02-021",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an ERROR that carries an attemptId belongs to the attempt (no CONTROL row): the lender's outcome row carries its code, both outcome rows count its bytes",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "INFER_OFFER",
+            "payload": 120,
+            "attempt": "a1",
+            "request": "r1"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "ERROR",
+            "payload": 45,
+            "attempt": "a1",
+            "code": "FRAME_TOO_LARGE"
+          },
+          {
+            "op": "finish",
+            "attempt": "a1",
+            "status": 503,
+            "meshCode": "FRAME_TOO_LARGE",
+            "tokensOut": 0
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ],
+        "onlyKinds": [
+          "control",
+          "infer-sent",
+          "infer-served"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 309,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 0,
+              "i": 209,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "infer-sent",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1,
+              "a": "a1"
+            },
+            {
+              "k": "infer-sent",
+              "p": "outcome",
+              "c": "FRAME_TOO_LARGE",
+              "o": 129,
+              "i": 54,
+              "st": 503,
+              "s": 1,
+              "a": "a1"
+            }
+          ],
+          "B": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 0,
+              "i": 309,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 209,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "infer-served",
+              "p": "outcome",
+              "c": "FRAME_TOO_LARGE",
+              "o": 54,
+              "i": 129,
+              "st": 503,
+              "s": 1,
+              "a": "a1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "L02-022",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a received ERROR code and GOAWAY reason that are free text (an address, prompt text, a device name) are stored as ERROR:UNKNOWN and GOAWAY:unknown on both nodes: peer-authored text never reaches a row (LAB_SPEC 7.2, LTQ-04)",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "ERROR",
+            "payload": 30,
+            "stream": "0",
+            "code": "x 192.168.1.20 my prompt text"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "GOAWAY",
+            "payload": 17,
+            "stream": "0",
+            "code": "see you, Alice's iPad"
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ],
+        "onlyKinds": [
+          "control"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 309,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 0,
+              "i": 209,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "ERROR:UNKNOWN",
+              "o": 0,
+              "i": 39,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "GOAWAY:unknown",
+              "o": 0,
+              "i": 26,
+              "st": 200,
+              "s": 1
+            }
+          ],
+          "B": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 0,
+              "i": 309,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 209,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "ERROR:UNKNOWN",
+              "o": 39,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "GOAWAY:unknown",
+              "o": 26,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "L02-023",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a code that only resembles a member of the closed set (lower case, a trailing space, an embedded newline, a prefix) is not a member: it is stored as UNKNOWN (LTQ-04)",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "ERROR",
+            "payload": 30,
+            "stream": "0",
+            "code": "peer_busy"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "GOAWAY",
+            "payload": 17,
+            "stream": "0",
+            "code": "IDLE\nidle"
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ],
+        "onlyKinds": [
+          "control"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 309,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 0,
+              "i": 209,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "ERROR:UNKNOWN",
+              "o": 0,
+              "i": 39,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "GOAWAY:unknown",
+              "o": 0,
+              "i": 26,
+              "st": 200,
+              "s": 1
+            }
+          ],
+          "B": [
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO",
+              "o": 0,
+              "i": 309,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "HELLO_ACK",
+              "o": 209,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "ERROR:UNKNOWN",
+              "o": 39,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            },
+            {
+              "k": "control",
+              "p": null,
+              "c": "GOAWAY:unknown",
+              "o": 26,
+              "i": 0,
+              "st": 200,
+              "s": 1
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,225 @@
+{
+ "confVersion": "0.0.0",
+ "family": "R02",
+ "specRefs": [
+  "router.md#5.7"
+ ],
+ "vectors": [
+  {
+   "description": "router.md 5.7 worked example candidate: peer Mac (AC, idle, model loaded)",
+   "expect": {
+    "ok": {
+     "estimate": {
+      "batteryCostMs": 0,
+      "batteryUsedPermille": 0,
+      "decodeEffMilliTokPerSec": 45000,
+      "decodeMs": 6645,
+      "energyMilliJ": 315800,
+      "firstTokMs": 5,
+      "heatCostMs": 0,
+      "loadMs": 0,
+      "netMs": 11,
+      "prefillMs": 1250,
+      "queueMs": 0,
+      "totalMs": 7911,
+      "ttftMs": 1266
+     },
+     "score": 10977,
+     "terms": {
+      "S1_timeMs": 9177,
+      "S2_batteryMs": 0,
+      "S3_heatMs": 0,
+      "S4_localityBiasMs": 1000,
+      "S5_qualityMs": 800,
+      "S6_uncertaintyMs": 0
+     },
+     "usable": true
+    }
+   },
+   "id": "R02-901",
+   "input": {
+    "candidate": {
+     "batteryDesignMilliWh": 0,
+     "batteryPermille": 1000,
+     "busyForMs": 0,
+     "charging": false,
+     "decodeMilliTokPerSec": 45000,
+     "deviceClass": "desktop",
+     "fileBytes": 5027784832,
+     "forecastHeadroomPermille": 200,
+     "freshness": "WARM",
+     "kbps": 300000,
+     "loadBytesPerMs": 2000000,
+     "loaded": true,
+     "nodeId": "RWLS-SQQ3-SEZA-5MRW",
+     "onBattery": false,
+     "powerMilliW": 40000,
+     "prefillMilliTokPerSec": 400000,
+     "quant": "Q4_K_M",
+     "queueMs": 0,
+     "rttMs": 10,
+     "sessionWarm": true,
+     "steadyMilliTokPerSec": 45000,
+     "thermalBand": "nominal",
+     "throttleOnsetMs": null,
+     "tier": "PEER",
+     "ttft0Ms": 0,
+     "userActive": false
+    },
+    "query": {
+     "deadlineMs": 120000,
+     "outTokens": 300,
+     "promptBytes": 2000,
+     "promptTokens": 500,
+     "stream": true
+    }
+   },
+   "origin": "generated",
+   "status": "illustrative"
+  },
+  {
+   "description": "router.md 5.7 worked example candidate: peer Deck (AC, busy with one queued job, file not loaded, state STALE)",
+   "expect": {
+    "ok": {
+     "estimate": {
+      "batteryCostMs": 0,
+      "batteryUsedPermille": 0,
+      "decodeEffMilliTokPerSec": 14000,
+      "decodeMs": 21358,
+      "energyMilliJ": 382875,
+      "firstTokMs": 6,
+      "heatCostMs": 0,
+      "loadMs": 5028,
+      "netMs": 77,
+      "prefillMs": 4167,
+      "queueMs": 9000,
+      "totalMs": 39636,
+      "ttftMs": 18278
+     },
+     "score": 69623,
+     "terms": {
+      "S1_timeMs": 57914,
+      "S2_batteryMs": 0,
+      "S3_heatMs": 0,
+      "S4_localityBiasMs": 1000,
+      "S5_qualityMs": 800,
+      "S6_uncertaintyMs": 9909
+     },
+     "usable": true
+    }
+   },
+   "id": "R02-902",
+   "input": {
+    "candidate": {
+     "batteryDesignMilliWh": 40000,
+     "batteryPermille": 800,
+     "busyForMs": 30000,
+     "charging": true,
+     "decodeMilliTokPerSec": 14000,
+     "deviceClass": "handheld",
+     "fileBytes": 5027784832,
+     "forecastHeadroomPermille": 300,
+     "freshness": "STALE",
+     "kbps": 200000,
+     "loadBytesPerMs": 1000000,
+     "loaded": false,
+     "nodeId": "K7QD-2MXA-PL4E-9TNB",
+     "onBattery": false,
+     "powerMilliW": 15000,
+     "prefillMilliTokPerSec": 120000,
+     "quant": "Q4_K_M",
+     "queueMs": 9000,
+     "rttMs": 12,
+     "sessionWarm": false,
+     "steadyMilliTokPerSec": 12000,
+     "thermalBand": "nominal",
+     "throttleOnsetMs": 600000,
+     "tier": "PEER",
+     "ttft0Ms": 0,
+     "userActive": false
+    },
+    "query": {
+     "deadlineMs": 120000,
+     "outTokens": 300,
+     "promptBytes": 2000,
+     "promptTokens": 500,
+     "stream": true
+    }
+   },
+   "origin": "generated",
+   "status": "illustrative"
+  },
+  {
+   "description": "router.md 5.7 worked example candidate: self (phone, battery 60%, light thermal)",
+   "expect": {
+    "ok": {
+     "estimate": {
+      "batteryCostMs": 14000,
+      "batteryUsedPermille": 7,
+      "decodeEffMilliTokPerSec": 5000,
+      "decodeMs": 59800,
+      "energyMilliJ": 382335,
+      "firstTokMs": 0,
+      "heatCostMs": 38233,
+      "loadMs": 0,
+      "netMs": 0,
+      "prefillMs": 16667,
+      "queueMs": 0,
+      "totalMs": 76467,
+      "ttftMs": 16667
+     },
+     "score": 146167,
+     "terms": {
+      "S1_timeMs": 93134,
+      "S2_batteryMs": 14000,
+      "S3_heatMs": 38233,
+      "S4_localityBiasMs": 0,
+      "S5_qualityMs": 800,
+      "S6_uncertaintyMs": 0
+     },
+     "usable": true
+    }
+   },
+   "id": "R02-903",
+   "input": {
+    "candidate": {
+     "batteryDesignMilliWh": 15400,
+     "batteryPermille": 600,
+     "busyForMs": 0,
+     "charging": false,
+     "decodeMilliTokPerSec": 5000,
+     "deviceClass": "phone",
+     "fileBytes": 5027784832,
+     "forecastHeadroomPermille": 600,
+     "freshness": "FRESH",
+     "kbps": 1,
+     "loadBytesPerMs": 500000,
+     "loaded": true,
+     "nodeId": "self",
+     "onBattery": true,
+     "powerMilliW": 5000,
+     "prefillMilliTokPerSec": 30000,
+     "quant": "Q4_K_M",
+     "queueMs": 0,
+     "rttMs": 0,
+     "sessionWarm": true,
+     "steadyMilliTokPerSec": 3300,
+     "thermalBand": "light",
+     "throttleOnsetMs": 195000,
+     "tier": "SELF",
+     "ttft0Ms": 0,
+     "userActive": true
+    },
+    "query": {
+     "deadlineMs": 120000,
+     "outTokens": 300,
+     "promptBytes": 2000,
+     "promptTokens": 500,
+     "stream": true
+    }
+   },
+   "origin": "generated",
+   "status": "illustrative"
+  }
+ ]
+}

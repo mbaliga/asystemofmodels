@@ -1,0 +1,127 @@
+name: lab
+
+# The pure-JVM mesh lab (LAB_SPEC 8.2). A NEW workflow: .github/workflows/ci.yml is untouched.
+# Third-party actions are pinned by commit SHA; the tag each SHA was resolved from is in the comment
+# (resolved with `git ls-remote` on 2026-09-30; gradle/actions v4 is an annotated tag, so the peeled commit is used).
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lab-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lab-tests:
+    name: Lab (pure JVM, JDK ${{ matrix.jdk }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        jdk: ["17", "21"]
+    env:
+      ANDROID_HOME: ""
+      ANDROID_SDK_ROOT: ""
+    steps:
+      # fetch-depth 0: the isolation check compares against the pinned lab/LAB_BASE_SHA, which a shallow clone lacks.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.jdk }}
+
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Lab tests (prints the per-family vector counts)
+        run: ./gradlew -p lab labTest --stacktrace
+
+      - name: Conformance runner, lines mode (the implementation's own verdicts)
+        run: ./gradlew -p lab :conformance-runner:run --args='lines W00,W01,W01b,W02,W03,R04' --quiet | tail -n 3
+
+      - name: Isolation checks 1 to 4 against the pinned base, and the dependency law
+        run: |
+          python3 lab/tools/isolation.py --selftest
+          lab/tools/isolation.sh
+
+      - name: Negative controls of the static law check (one mutant per forbidden listener, wildcard bind and outbound dial)
+        run: python3 lab/tools/check_law.py --selftest
+
+      - name: Python cross-check (self-oracled; never clears the oracle tag)
+        run: |
+          python3 lab/tools/xcheck.py lab/conformance
+          # the families xcheck.py can cross-check but does not run by default (HA-09); a family it cannot cover is named, not skipped
+          python3 lab/tools/xcheck.py lab/conformance --families L01,W07,W07p
+
+      - name: Router reference (ref.py) regenerates R01, R02, R03, R05, R06 and M08 byte for byte
+        # gen_vectors.py asserts the spec's worked numbers and cross-checks every hand-typed expectation against the independent
+        # lab/mesh-router/tools/ref.py while it writes; the committed vectors must come out unchanged, so a regression on either
+        # side fails here.
+        run: |
+          python3 lab/mesh-router/tools/gen_vectors.py
+          python3 lab/tools/regen_index.py
+          test -z "$(git status --porcelain -- lab/conformance)" || { git status --porcelain -- lab/conformance; git diff --stat -- lab/conformance; exit 1; }
+
+  lab-isolation-with-sdk:
+    name: Lab isolation check 2 (Android SDK present)
+    # ANDROID_HOME is set on this image; deliberately NOT cleared here.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: No Android tooling in the lab build
+        run: |
+          test -n "$ANDROID_HOME"
+          out=$(./gradlew -p lab buildEnvironment)
+          echo "com.android occurrences: $(printf '%s\n' "$out" | grep -c com.android)"
+          echo "positive control (kotlin-gradle-plugin occurrences): $(printf '%s\n' "$out" | grep -c kotlin-gradle-plugin)"
+          test "$(printf '%s\n' "$out" | grep -c com.android)" = "0"
+          test "$(printf '%s\n' "$out" | grep -c kotlin-gradle-plugin)" -gt 0
+
+  root-unchanged:
+    name: Root jvmTest unchanged
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: ""
+      ANDROID_SDK_ROOT: ""
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - run: ./gradlew jvmTest --rerun-tasks --stacktrace
+
+      - name: Root test count (must not fall below lab/ROOT_TEST_BASELINE)
+        run: |
+          n=$(find core server -path '*/build/test-results/test/*.xml' -print0 \
+            | xargs -0 grep -ho 'tests="[0-9]*"' | tr -dc '0-9\n' | awk '{s+=$1} END {print s}')
+          base=$(tr -dc '0-9' < lab/ROOT_TEST_BASELINE)
+          echo "root tests: $n   (baseline: $base)"
+          test "$n" -ge "$base"

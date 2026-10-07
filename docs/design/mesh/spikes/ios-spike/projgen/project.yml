@@ -1,0 +1,25 @@
+name: AsomBench
+options:
+  bundleIdPrefix: xyz.mdhv.asom
+  deploymentTarget: { iOS: "26.0" }
+packages:
+  AsomKit: { path: ../AsomKitSpike }
+targets:
+  AsomBench:
+    type: application
+    platform: iOS
+    sources: [AsomBench/Sources]
+    dependencies: [{ package: AsomKit, product: AsomDSSE }]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: xyz.mdhv.asom.bench
+        GENERATE_INFOPLIST_FILE: YES
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: "asom connects only to devices you paired."
+  AsomBenchTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [AsomBench/Tests]
+    dependencies: [{ target: AsomBench }]

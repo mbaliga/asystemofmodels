@@ -1,0 +1,15 @@
+{
+    "name": "xyz.mdhv.asom.ut",
+    "title": "asom",
+    "description": "asom on Ubuntu Touch: borrows models from your own paired devices. UT-0 scaffold, ships nothing.",
+    "version": "0.0.1",
+    "architecture": "@CLICK_ARCH@",
+    "framework": "@CLICK_FRAMEWORK@",
+    "maintainer": "asom maintainers <asom-maintainers@example.invalid>",
+    "hooks": {
+        "asom": {
+            "apparmor": "asom.apparmor",
+            "desktop": "asom.desktop"
+        }
+    }
+}

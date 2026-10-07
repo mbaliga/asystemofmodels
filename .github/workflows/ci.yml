@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
@@ -29,6 +30,8 @@ jobs:
           java-version: "17"
 
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Run pure-JVM tests
         run: ./gradlew jvmTest --stacktrace
@@ -45,9 +48,14 @@ jobs:
           java-version: "17"
 
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Assemble debug APK
-        run: ./gradlew :app:assembleDebug --stacktrace
+      - name: Android-module unit tests
+        run: ./gradlew :app:testDebugUnitTest :vault:testDebugUnitTest :pairing:testDebugUnitTest :ledger:testDebugUnitTest :client:testDebugUnitTest :client-cloud:testDebugUnitTest :storage:testDebugUnitTest --stacktrace
+
+      - name: Assemble debug APKs
+        run: ./gradlew :app:assembleDebug :sample-client:assembleDebug --stacktrace
 
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4

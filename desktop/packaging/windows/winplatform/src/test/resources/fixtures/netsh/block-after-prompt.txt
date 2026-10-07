@@ -1,0 +1,54 @@
+
+Rule Name:                            asom peer listener (overlay)
+----------------------------------------------------------------------
+Enabled:                              Yes
+Direction:                            In
+Profiles:                             Private
+Grouping:                             
+LocalIP:                              Any
+RemoteIP:                             100.64.0.0/10,fd7a:115c:a1e0::/48
+Protocol:                             TCP
+LocalPort:                            11436
+RemotePort:                           Any
+Edge traversal:                       No
+Program:                              C:\Program Files\asom\asom.exe
+InterfaceTypes:                       Any
+Security:                             NotRequired
+Rule source:                          Local Setting
+Action:                               Allow
+
+Rule Name:                            asom.exe
+----------------------------------------------------------------------
+Enabled:                              Yes
+Direction:                            In
+Profiles:                             Public
+Grouping:                             
+LocalIP:                              Any
+RemoteIP:                             Any
+Protocol:                             TCP
+LocalPort:                            Any
+RemotePort:                           Any
+Edge traversal:                       No
+Program:                              C:\Program Files\asom\asom.exe
+InterfaceTypes:                       Any
+Security:                             NotRequired
+Rule source:                          Local Setting
+Action:                               Block
+
+Rule Name:                            asom.exe
+----------------------------------------------------------------------
+Enabled:                              Yes
+Direction:                            In
+Profiles:                             Public
+Grouping:                             
+LocalIP:                              Any
+RemoteIP:                             Any
+Protocol:                             UDP
+LocalPort:                            Any
+RemotePort:                           Any
+Edge traversal:                       No
+Program:                              C:\Program Files\asom\asom.exe
+InterfaceTypes:                       Any
+Security:                             NotRequired
+Rule source:                          Local Setting
+Action:                               Block

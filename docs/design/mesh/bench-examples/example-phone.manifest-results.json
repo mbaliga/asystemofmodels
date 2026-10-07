@@ -1,0 +1,391 @@
+[
+  {
+    "modelId": "qwen3-1.7b",
+    "fileSha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+    "fileBytes": 1834426016,
+    "quant": "Q8_0",
+    "backend": "opencl",
+    "settings": {
+      "threads": 6,
+      "gpuLayers": 99,
+      "ctxTokens": 4096,
+      "batchTokens": 512
+    },
+    "measuredAtMs": 1790668860000,
+    "runs": {
+      "planned": 5,
+      "completed": 5,
+      "discarded": 0
+    },
+    "conditions": {
+      "charging": true,
+      "batteryStartPermille": 740,
+      "thermalStart": "nominal",
+      "socStartMilliC": null,
+      "screenOn": true
+    },
+    "prefill": [
+      {
+        "promptTokens": 512,
+        "milliTokPerSec": {
+          "p10": 257286,
+          "p50": 259634,
+          "p90": 261091
+        },
+        "ttftMicros": {
+          "p10": 1962300,
+          "p50": 1973300,
+          "p90": 1991200
+        }
+      }
+    ],
+    "decode": [
+      {
+        "contextTokens": 0,
+        "genTokens": 128,
+        "milliTokPerSec": {
+          "p10": 20870,
+          "p50": 20980,
+          "p90": 21035
+        }
+      }
+    ],
+    "sustained": null,
+    "memory": {
+      "availableBeforeLoadBytes": 9580000000,
+      "peakProcessBytes": 2310000000,
+      "kvCacheBytes": 469762048
+    },
+    "power": {
+      "method": "unavailable",
+      "avgMilliW": null
+    },
+    "flags": [
+      "charging",
+      "confidence-high"
+    ]
+  },
+  {
+    "modelId": "qwen3-4b",
+    "fileSha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+    "fileBytes": 2497280256,
+    "quant": "Q4_K_M",
+    "backend": "opencl",
+    "settings": {
+      "threads": 6,
+      "gpuLayers": 99,
+      "ctxTokens": 4096,
+      "batchTokens": 512
+    },
+    "measuredAtMs": 1790669010000,
+    "runs": {
+      "planned": 5,
+      "completed": 5,
+      "discarded": 0
+    },
+    "conditions": {
+      "charging": true,
+      "batteryStartPermille": 740,
+      "thermalStart": "nominal",
+      "socStartMilliC": null,
+      "screenOn": true
+    },
+    "prefill": [
+      {
+        "promptTokens": 512,
+        "milliTokPerSec": {
+          "p10": 129587,
+          "p50": 129949,
+          "p90": 130445
+        },
+        "ttftMicros": {
+          "p10": 3926900,
+          "p50": 3941700,
+          "p90": 3952700
+        }
+      }
+    ],
+    "decode": [
+      {
+        "contextTokens": 0,
+        "genTokens": 128,
+        "milliTokPerSec": {
+          "p10": 14445,
+          "p50": 14492,
+          "p90": 14537
+        }
+      }
+    ],
+    "sustained": null,
+    "memory": {
+      "availableBeforeLoadBytes": 9550000000,
+      "peakProcessBytes": 3120000000,
+      "kvCacheBytes": 603979776
+    },
+    "power": {
+      "method": "unavailable",
+      "avgMilliW": null
+    },
+    "flags": [
+      "charging",
+      "confidence-high"
+    ]
+  },
+  {
+    "modelId": "qwen3-8b",
+    "fileSha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+    "fileBytes": 5027783488,
+    "quant": "Q4_K_M",
+    "backend": "opencl",
+    "settings": {
+      "threads": 6,
+      "gpuLayers": 99,
+      "ctxTokens": 4096,
+      "batchTokens": 512
+    },
+    "measuredAtMs": 1790669190000,
+    "runs": {
+      "planned": 5,
+      "completed": 5,
+      "discarded": 1
+    },
+    "conditions": {
+      "charging": true,
+      "batteryStartPermille": 740,
+      "thermalStart": "nominal",
+      "socStartMilliC": null,
+      "screenOn": true
+    },
+    "prefill": [
+      {
+        "promptTokens": 512,
+        "milliTokPerSec": {
+          "p10": 59458,
+          "p50": 59743,
+          "p90": 60249
+        },
+        "ttftMicros": {
+          "p10": 8500200,
+          "p50": 8572100,
+          "p90": 8613000
+        }
+      }
+    ],
+    "decode": [
+      {
+        "contextTokens": 0,
+        "genTokens": 128,
+        "milliTokPerSec": {
+          "p10": 7347,
+          "p50": 7394,
+          "p90": 7413
+        }
+      },
+      {
+        "contextTokens": 2048,
+        "genTokens": 128,
+        "milliTokPerSec": {
+          "p10": 6560,
+          "p50": 6597,
+          "p90": 6607
+        }
+      }
+    ],
+    "sustained": {
+      "durationMs": 435000,
+      "intervalMs": 15000,
+      "steadyMilliTokPerSec": 5033,
+      "throttleOnsetMs": 195000,
+      "curve": [
+        [
+          0,
+          7583,
+          null,
+          null
+        ],
+        [
+          15000,
+          7516,
+          null,
+          null
+        ],
+        [
+          30000,
+          7583,
+          null,
+          null
+        ],
+        [
+          45000,
+          7516,
+          null,
+          null
+        ],
+        [
+          60000,
+          7516,
+          null,
+          null
+        ],
+        [
+          75000,
+          7449,
+          null,
+          null
+        ],
+        [
+          90000,
+          7516,
+          null,
+          null
+        ],
+        [
+          105000,
+          7449,
+          null,
+          null
+        ],
+        [
+          120000,
+          7449,
+          null,
+          null
+        ],
+        [
+          135000,
+          7382,
+          null,
+          null
+        ],
+        [
+          150000,
+          7382,
+          null,
+          null
+        ],
+        [
+          165000,
+          7315,
+          null,
+          null
+        ],
+        [
+          180000,
+          7248,
+          null,
+          null
+        ],
+        [
+          195000,
+          6644,
+          null,
+          null
+        ],
+        [
+          210000,
+          6040,
+          null,
+          null
+        ],
+        [
+          225000,
+          5503,
+          null,
+          null
+        ],
+        [
+          240000,
+          5234,
+          null,
+          null
+        ],
+        [
+          255000,
+          5100,
+          null,
+          null
+        ],
+        [
+          270000,
+          5033,
+          null,
+          null
+        ],
+        [
+          285000,
+          5033,
+          null,
+          null
+        ],
+        [
+          300000,
+          5100,
+          null,
+          null
+        ],
+        [
+          315000,
+          5033,
+          null,
+          null
+        ],
+        [
+          330000,
+          4966,
+          null,
+          null
+        ],
+        [
+          345000,
+          5033,
+          null,
+          null
+        ],
+        [
+          360000,
+          5033,
+          null,
+          null
+        ],
+        [
+          375000,
+          5100,
+          null,
+          null
+        ],
+        [
+          390000,
+          5033,
+          null,
+          null
+        ],
+        [
+          405000,
+          5033,
+          null,
+          null
+        ],
+        [
+          420000,
+          4966,
+          null,
+          null
+        ]
+      ]
+    },
+    "memory": {
+      "availableBeforeLoadBytes": 9510000000,
+      "peakProcessBytes": 5980000000,
+      "kvCacheBytes": 603979776
+    },
+    "power": {
+      "method": "unavailable",
+      "avgMilliW": null
+    },
+    "flags": [
+      "charging",
+      "confidence-high",
+      "thermal-throttled"
+    ]
+  }
+]

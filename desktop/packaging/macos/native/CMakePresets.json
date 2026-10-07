@@ -1,0 +1,11 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "vendor": {
+    "asom": {
+      "status": "NOT-YET-IMPLEMENTED",
+      "note": "PLATFORM_PLAN step MC3 (D-v2). No preset builds anything yet. Planned presets (macos.md 10.1): macos-arm64-metal (the default; GGML_METAL=ON, GGML_METAL_EMBED_LIBRARY=ON, CMAKE_OSX_ARCHITECTURES=arm64, CMAKE_OSX_DEPLOYMENT_TARGET=15.0) and macos-x86_64-cpu (disabled unless the owner rules M-D7(b)). The llama.cpp commit is pinned by desktop/native/llama.cpp.pin (one commit for every backend, C11), which does not exist yet."
+    }
+  },
+  "configurePresets": []
+}

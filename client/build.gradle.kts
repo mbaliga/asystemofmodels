@@ -32,10 +32,14 @@ kotlin {
 
 dependencies {
     api(project(":core:contract"))
-    implementation(libs.okhttp)
-    implementation(libs.okhttp.sse)
-    implementation(libs.kotlinx.coroutines.core)
+    // api: OkHttpClient appears in AsomChat's public constructor (callers may
+    // supply their own client); coroutines Flow appears in AsomStream.
+    api(libs.okhttp)
+    api(libs.kotlinx.coroutines.core)
     testImplementation(libs.kotlin.test)
+    // Test-only (never published in the AAR): the SSE transport is plain JVM,
+    // so its real behavior is exercised against a loopback server.
+    testImplementation(libs.okhttp.mockwebserver)
 }
 
 tasks.withType<Test> {

@@ -1,0 +1,8 @@
+// /usr/share/polkit-1/rules.d/50-asom-inhibit.rules
+// Lets ONLY the dedicated `asom` service user hold a logind sleep BLOCK lock while it lends.
+// Grants nothing else. Remove this file to withdraw it.
+polkit.addRule(function (action, subject) {
+    if (action.id == "org.freedesktop.login1.inhibit-block-sleep" && subject.user == "asom") {
+        return polkit.Result.YES;
+    }
+});

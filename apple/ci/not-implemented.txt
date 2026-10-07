@@ -1,0 +1,37 @@
+# Vectors the Swift lane does not produce, with the reason. apple/ci/lane_diff.py fails on an entry the Swift lane now prints
+# and on an entry the JVM lane does not print; `swift test` fails when this list differs from what the kit leaves out.
+# BLOCKED(trace): the executor-trace vectors need the lab's FakeBenchEngine: its per-tier timing model, its scripted thermal curves,
+# the scenario presets (phone, desktop) and the event-log grammar. benchmark.md 5.4 and 13 give the executor as pseudocode and
+# 1603 only says the fake takes an injectable timing model; no number or line format is specified, so a Swift version would be a
+# transcription of the vectors, not an implementation of the spec (apple/ERRATA.md E-29).
+# BLOCKED(plan): benchmark.md 5.2 gives the JCS form of the standard plan only; quick and ci are prose in the table of 5.1 (E-30).
+# BLOCKED(consent): the sheet wording for a run today (the extra tick) is not in the spec (E-31).
+M04-301 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-302 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-303 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-304 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-305 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-306 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-307 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-308 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-309 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-310 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-311 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-312 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-320 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-321 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-322 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-323 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-324 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-325 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-330 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-331 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-340 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-341 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-342 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-343 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-344 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-345 BLOCKED(trace: FakeBenchEngine model, presets and event grammar are not in the spec)
+M04-401 BLOCKED(plan: quick plan JCS form not in the spec)
+M04-403 BLOCKED(plan: ci plan JCS form not in the spec)
+M04-425 BLOCKED(consent: wording of the run-today sheet not in the spec)

@@ -1,0 +1,2 @@
+module tokens
+singleton Tokens 1.0 Tokens.qml

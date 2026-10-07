@@ -1,0 +1,7 @@
+
+Regelname:                            Kernnetzwerk - DNS (UDP eingehend)
+----------------------------------------------------------------------
+Aktiviert:                            Ja
+Richtung:                             Ein
+Profile:                              Domäne,Privat,Öffentlich
+Aktion:                               Zulassen

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Merged into every consuming app. INTERNET is required even for the
+         loopback call to the daemon: Android gates AF_INET socket creation on
+         this permission, and 127.0.0.1 is not exempt. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Android 11+ package visibility (§10A.4). Without this, BOTH discovery
+         paths fail silently and indistinguishably from "asom is not installed":
+         queryIntentServices returns empty and the discovery/models provider
+         authorities do not resolve. Sibling `<pkg>.asom.inventory` authorities
+         are per-suite config and must be declared by the consuming app itself
+         (see docs/CLIENT_API.md). -->
+    <queries>
+        <package android:name="xyz.mdhv.asom" />
+        <intent>
+            <action android:name="xyz.mdhv.asom.PAIR" />
+        </intent>
+        <provider android:authorities="xyz.mdhv.asom.discovery;xyz.mdhv.asom.models" />
+    </queries>
+
+</manifest>

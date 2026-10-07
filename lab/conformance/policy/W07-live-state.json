@@ -1,0 +1,1501 @@
+{
+  "family": "W07",
+  "confVersion": "0.2.0",
+  "specRefs": [
+    "LAB_SPEC.md 6.5",
+    "LAB_SPEC.md 7.2 (asom.state/1)",
+    "docs/design/mesh/router.md 3.2, 3.5, Appendix A"
+  ],
+  "vectors": [
+    {
+      "id": "W07-001",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "LAB_SPEC 7.2's asom.state/1 example, built from a lender view that carries busy presence inputs: none of them is on the wire",
+      "input": {
+        "kind": "stateBuild",
+        "view": {
+          "fsm": "SERVING",
+          "powerSource": "ac",
+          "charging": false,
+          "batteryBand": null,
+          "batteryPercentExact": 37,
+          "thermalBand": 0,
+          "governor": "RUN",
+          "backend": "vulkan",
+          "commit": "4f1c2ab",
+          "confVersion": "1.0.0",
+          "held": [
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "localQueued": 0,
+          "peerQueued": 0,
+          "loadedModels": [
+            "qwen3-8b-q4"
+          ],
+          "freeMemoryBytes": 21474836480,
+          "manifestSeq": 17,
+          "manifestDigest": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "presence": {
+            "screenInteractive": true,
+            "inputIdleMs": 4242424242,
+            "keyguardDismissed": true,
+            "foregroundApp": "com.sentinel.game",
+            "heavyForegroundProcess": true,
+            "consoleUser": "sentinel-user-4711",
+            "loginState": "locked",
+            "otherProcessContentionPermille": 987
+          }
+        },
+        "seq": 4711,
+        "sampledAgeMs": 800
+      },
+      "expect": {
+        "ok": {
+          "jcs": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+          "st": "{\"fsm\":\"SERVING\",\"gov\":\"RUN\",\"qb\":0,\"seq\":4711,\"tb\":0}"
+        }
+      }
+    },
+    {
+      "id": "W07-002",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "the same view with every presence input different: byte-identical STATE and st (LP-1)",
+      "input": {
+        "kind": "stateBuild",
+        "view": {
+          "fsm": "SERVING",
+          "powerSource": "ac",
+          "charging": false,
+          "batteryBand": null,
+          "batteryPercentExact": 37,
+          "thermalBand": 0,
+          "governor": "RUN",
+          "backend": "vulkan",
+          "commit": "4f1c2ab",
+          "confVersion": "1.0.0",
+          "held": [
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "localQueued": 0,
+          "peerQueued": 0,
+          "loadedModels": [
+            "qwen3-8b-q4"
+          ],
+          "freeMemoryBytes": 21474836480,
+          "manifestSeq": 17,
+          "manifestDigest": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "presence": {
+            "screenInteractive": false,
+            "inputIdleMs": 0,
+            "keyguardDismissed": false,
+            "foregroundApp": null,
+            "heavyForegroundProcess": false,
+            "consoleUser": null,
+            "loginState": null,
+            "otherProcessContentionPermille": 0
+          }
+        },
+        "seq": 4711,
+        "sampledAgeMs": 800
+      },
+      "expect": {
+        "ok": {
+          "jcs": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+          "st": "{\"fsm\":\"SERVING\",\"gov\":\"RUN\",\"qb\":0,\"seq\":4711,\"tb\":0}"
+        }
+      }
+    },
+    {
+      "id": "W07-003",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a battery lender that is draining: band 20-49, queue bucket 1, governor QUEUE, no manifest",
+      "input": {
+        "kind": "stateBuild",
+        "view": {
+          "fsm": "DRAINING",
+          "powerSource": "battery",
+          "charging": false,
+          "batteryBand": "20-49",
+          "batteryPercentExact": 37,
+          "thermalBand": 1,
+          "governor": "QUEUE",
+          "backend": "vulkan",
+          "commit": "4f1c2ab",
+          "confVersion": "1.0.0",
+          "held": [],
+          "localQueued": 1,
+          "peerQueued": 0,
+          "loadedModels": [
+            "qwen3-8b-q4"
+          ],
+          "freeMemoryBytes": 21474836480,
+          "manifestSeq": null,
+          "manifestDigest": null,
+          "presence": {
+            "screenInteractive": true,
+            "inputIdleMs": 4242424242,
+            "keyguardDismissed": true,
+            "foregroundApp": "com.sentinel.game",
+            "heavyForegroundProcess": true,
+            "consoleUser": "sentinel-user-4711",
+            "loginState": "locked",
+            "otherProcessContentionPermille": 987
+          }
+        },
+        "seq": 1,
+        "sampledAgeMs": 0
+      },
+      "expect": {
+        "ok": {
+          "jcs": "{\"availability\":{\"fsm\":\"DRAINING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[]},\"manifest\":null,\"power\":{\"batteryBand\":\"20-49\",\"charging\":false,\"source\":\"battery\"},\"queue\":{\"bucket\":1},\"sampledAgeMs\":0,\"seq\":1,\"thermal\":{\"band\":1,\"governor\":\"QUEUE\"},\"v\":1}",
+          "st": "{\"fsm\":\"DRAINING\",\"gov\":\"QUEUE\",\"qb\":1,\"seq\":1,\"tb\":1}"
+        }
+      }
+    },
+    {
+      "id": "W07-004",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "the queue bucket is min(2, local + peer): 1 + 4 gives 2; the exact battery percentage, loaded models and free memory are absent",
+      "input": {
+        "kind": "stateBuild",
+        "view": {
+          "fsm": "SERVING",
+          "powerSource": "ac",
+          "charging": false,
+          "batteryBand": null,
+          "batteryPercentExact": 37,
+          "thermalBand": 0,
+          "governor": "RUN",
+          "backend": "vulkan",
+          "commit": "4f1c2ab",
+          "confVersion": "1.0.0",
+          "held": [
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "localQueued": 1,
+          "peerQueued": 4,
+          "loadedModels": [
+            "qwen3-8b-q4"
+          ],
+          "freeMemoryBytes": 21474836480,
+          "manifestSeq": 17,
+          "manifestDigest": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "presence": {
+            "screenInteractive": true,
+            "inputIdleMs": 4242424242,
+            "keyguardDismissed": true,
+            "foregroundApp": "com.sentinel.game",
+            "heavyForegroundProcess": true,
+            "consoleUser": "sentinel-user-4711",
+            "loginState": "locked",
+            "otherProcessContentionPermille": 987
+          }
+        },
+        "seq": 9,
+        "sampledAgeMs": 60000
+      },
+      "expect": {
+        "ok": {
+          "jcs": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":2},\"sampledAgeMs\":60000,\"seq\":9,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+          "st": "{\"fsm\":\"SERVING\",\"gov\":\"RUN\",\"qb\":2,\"seq\":9,\"tb\":0}"
+        }
+      }
+    },
+    {
+      "id": "W07-005",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an idle AC lender with thermal band 2 and governor HOLD",
+      "input": {
+        "kind": "stateBuild",
+        "view": {
+          "fsm": "ARMED",
+          "powerSource": "ac",
+          "charging": false,
+          "batteryBand": null,
+          "batteryPercentExact": 37,
+          "thermalBand": 2,
+          "governor": "HOLD",
+          "backend": "vulkan",
+          "commit": "4f1c2ab",
+          "confVersion": "1.0.0",
+          "held": [],
+          "localQueued": 0,
+          "peerQueued": 0,
+          "loadedModels": [
+            "qwen3-8b-q4"
+          ],
+          "freeMemoryBytes": 21474836480,
+          "manifestSeq": null,
+          "manifestDigest": null,
+          "presence": {
+            "screenInteractive": true,
+            "inputIdleMs": 4242424242,
+            "keyguardDismissed": true,
+            "foregroundApp": "com.sentinel.game",
+            "heavyForegroundProcess": true,
+            "consoleUser": "sentinel-user-4711",
+            "loginState": "locked",
+            "otherProcessContentionPermille": 987
+          }
+        },
+        "seq": 12,
+        "sampledAgeMs": 5
+      },
+      "expect": {
+        "ok": {
+          "jcs": "{\"availability\":{\"fsm\":\"ARMED\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[]},\"manifest\":null,\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":5,\"seq\":12,\"thermal\":{\"band\":2,\"governor\":\"HOLD\"},\"v\":1}",
+          "st": "{\"fsm\":\"ARMED\",\"gov\":\"HOLD\",\"qb\":0,\"seq\":12,\"tb\":2}"
+        }
+      }
+    },
+    {
+      "id": "W07-010",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "the spec's example parses and its normal form is itself",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "ok": {
+          "normal": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+        }
+      }
+    },
+    {
+      "id": "W07-011",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a receiver ignores unknown members (user, inflight, loaded, queue.estStartS) and never stores them",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"user\":{\"active\":true},\"inflight\":3,\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0,\"estStartS\":4},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": true
+      },
+      "expect": {
+        "ok": {
+          "normal": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+        }
+      }
+    },
+    {
+      "id": "W07-012",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a fraction is refused by the JSON profile",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711.5,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "NON_INTEGER_NUMBER"
+      }
+    },
+    {
+      "id": "W07-013",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an exponent is refused",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":1e3,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "NON_INTEGER_NUMBER"
+      }
+    },
+    {
+      "id": "W07-014",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "negative zero is refused",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":-0,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "NON_INTEGER_NUMBER"
+      }
+    },
+    {
+      "id": "W07-015",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a duplicate member name is refused",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1,\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "DUPLICATE_KEY"
+      }
+    },
+    {
+      "id": "W07-016",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "truncated JSON",
+      "input": {
+        "kind": "stateParse",
+        "text": "{",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "MALFORMED_JSON"
+      }
+    },
+    {
+      "id": "W07-017",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a top-level array is the wrong type",
+      "input": {
+        "kind": "stateParse",
+        "text": "[]",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "WRONG_TYPE"
+      }
+    },
+    {
+      "id": "W07-018",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "version 2 is not understood",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":2}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "BAD_VERSION"
+      }
+    },
+    {
+      "id": "W07-019",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a missing required member (seq)",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "MISSING_MEMBER"
+      }
+    },
+    {
+      "id": "W07-020",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an fsm outside the closed enum (ERR-LP-3: refused, not mapped to unknown)",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SLEEPING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "UNKNOWN_ENUM"
+      }
+    },
+    {
+      "id": "W07-021",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "thermal band 3 is out of range (0..2)",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":3,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "OUT_OF_RANGE"
+      }
+    },
+    {
+      "id": "W07-022",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "queue bucket 3 is out of range (0..2)",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":3},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "OUT_OF_RANGE"
+      }
+    },
+    {
+      "id": "W07-023",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a negative sampledAgeMs",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":-1,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "OUT_OF_RANGE"
+      }
+    },
+    {
+      "id": "W07-024",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "sampledAgeMs above 60,000 is accepted; the normal form clamps it",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":90000,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "ok": {
+          "normal": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":60000,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+        }
+      }
+    },
+    {
+      "id": "W07-025",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a backend outside the closed enum",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"webgpu\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "UNKNOWN_ENUM"
+      }
+    },
+    {
+      "id": "W07-026",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a power source outside ac|battery|unknown",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"solar\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "UNKNOWN_ENUM"
+      }
+    },
+    {
+      "id": "W07-027",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "charging must be a boolean",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":0,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "WRONG_TYPE"
+      }
+    },
+    {
+      "id": "W07-028",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a battery band outside the closed set",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":\"ge90\",\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "UNKNOWN_ENUM"
+      }
+    },
+    {
+      "id": "W07-029",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "manifest is required (null is allowed, absent is not)",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "MISSING_MEMBER"
+      }
+    },
+    {
+      "id": "W07-030",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "manifest null is allowed",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":null,\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "ok": {
+          "normal": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":null,\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+        }
+      }
+    },
+    {
+      "id": "W07-031",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an integer beyond 2^53 - 1 is refused by the JSON profile",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":9007199254740992,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "NUMBER_RANGE"
+      }
+    },
+    {
+      "id": "W07-032",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a held entry that is not 64 hex characters",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"abc\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "OUT_OF_RANGE"
+      }
+    },
+    {
+      "id": "W07-033",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "held in any order parses; the normal form sorts it",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "ok": {
+          "normal": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+        }
+      }
+    },
+    {
+      "id": "W07-034",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a body digest that is not 43 base64url characters",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"short\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "OUT_OF_RANGE"
+      }
+    },
+    {
+      "id": "W07-035",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seq 0 is out of range (the first state has seq 1)",
+      "input": {
+        "kind": "stateParse",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":0,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}",
+        "hasUnknownMembers": false
+      },
+      "expect": {
+        "reject": "OUT_OF_RANGE"
+      }
+    },
+    {
+      "id": "W07-040",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: the example conforms",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+      },
+      "expect": {
+        "ok": {
+          "conforms": true
+        }
+      }
+    },
+    {
+      "id": "W07-041",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: a top-level `user` member is a presence field",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"user\":{\"active\":false},\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-042",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: `inflight`",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1,\"inflight\":0}"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-043",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: `busyForMs` in thermal",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"busyForMs\":0,\"governor\":\"RUN\"},\"v\":1}"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-044",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: `loaded` in engine",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"loaded\":[],\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-045",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: `estStartS` in queue",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0,\"estStartS\":4},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-046",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: `reason` in availability",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\",\"reason\":\"sleeping\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-047",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: an unknown non-presence member",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1,\"zzz\":1}"
+      },
+      "expect": {
+        "reject": "UNKNOWN_MEMBER"
+      }
+    },
+    {
+      "id": "W07-048",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: an unknown nested member",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"zzz\":true,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+      },
+      "expect": {
+        "reject": "UNKNOWN_MEMBER"
+      }
+    },
+    {
+      "id": "W07-049",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: a float is refused by the JSON profile first",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":47.5,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+      },
+      "expect": {
+        "reject": "NON_INTEGER_NUMBER"
+      }
+    },
+    {
+      "id": "W07-050",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: `queuePos` (removed from INFER_ACCEPT and never a STATE member)",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0,\"queuePos\":1},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-060",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "age 0: FRESH",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 10000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false
+      },
+      "expect": {
+        "ok": {
+          "class": "FRESH",
+          "ageMs": 0,
+          "probeOnly": false
+        }
+      }
+    },
+    {
+      "id": "W07-061",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "age 5,000: still FRESH",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 15000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false
+      },
+      "expect": {
+        "ok": {
+          "class": "FRESH",
+          "ageMs": 5000,
+          "probeOnly": false
+        }
+      }
+    },
+    {
+      "id": "W07-062",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "age 5,001: WARM",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 15001,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false
+      },
+      "expect": {
+        "ok": {
+          "class": "WARM",
+          "ageMs": 5001,
+          "probeOnly": false
+        }
+      }
+    },
+    {
+      "id": "W07-063",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "age 30,000: still WARM",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 40000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false
+      },
+      "expect": {
+        "ok": {
+          "class": "WARM",
+          "ageMs": 30000,
+          "probeOnly": false
+        }
+      }
+    },
+    {
+      "id": "W07-064",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "age 30,001: STALE",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 40001,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false
+      },
+      "expect": {
+        "ok": {
+          "class": "STALE",
+          "ageMs": 30001,
+          "probeOnly": false
+        }
+      }
+    },
+    {
+      "id": "W07-065",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "age 300,000: still STALE",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 310000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false
+      },
+      "expect": {
+        "ok": {
+          "class": "STALE",
+          "ageMs": 300000,
+          "probeOnly": false
+        }
+      }
+    },
+    {
+      "id": "W07-066",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "age 300,001: EXPIRED, probe-only",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 310001,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false
+      },
+      "expect": {
+        "ok": {
+          "class": "EXPIRED",
+          "ageMs": 300001,
+          "probeOnly": true
+        }
+      }
+    },
+    {
+      "id": "W07-067",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "the sender's sampled age adds to the requester's own: 4,000 + 1,000 = 5,000 is FRESH",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 14000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 1000,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false
+      },
+      "expect": {
+        "ok": {
+          "class": "FRESH",
+          "ageMs": 5000,
+          "probeOnly": false
+        }
+      }
+    },
+    {
+      "id": "W07-068",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "4,001 + 1,000 = 5,001 is WARM",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 14001,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 1000,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false
+      },
+      "expect": {
+        "ok": {
+          "class": "WARM",
+          "ageMs": 5001,
+          "probeOnly": false
+        }
+      }
+    },
+    {
+      "id": "W07-069",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "sampled age is capped at 60,000: a huge value alone gives STALE, never EXPIRED",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 10000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 10000000,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false
+      },
+      "expect": {
+        "ok": {
+          "class": "STALE",
+          "ageMs": 60000,
+          "probeOnly": false
+        }
+      }
+    },
+    {
+      "id": "W07-070",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a closed session's state that is exactly 30,000 old is WARM",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 40000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": true,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false
+      },
+      "expect": {
+        "ok": {
+          "class": "WARM",
+          "ageMs": 30000,
+          "probeOnly": false
+        }
+      }
+    },
+    {
+      "id": "W07-071",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a closed session's state older than 30,000 is EXPIRED",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 40001,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": true,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false
+      },
+      "expect": {
+        "ok": {
+          "class": "EXPIRED",
+          "ageMs": 30001,
+          "probeOnly": true
+        }
+      }
+    },
+    {
+      "id": "W07-072",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seq went backwards: EXPIRED",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 10000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 4,
+        "lastSeq": 5,
+        "goaway": false
+      },
+      "expect": {
+        "ok": {
+          "class": "EXPIRED",
+          "ageMs": 0,
+          "probeOnly": true
+        }
+      }
+    },
+    {
+      "id": "W07-073",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an equal seq is a repeat, not a reset (ERR-LP-4)",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 10000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": 5,
+        "goaway": false
+      },
+      "expect": {
+        "ok": {
+          "class": "FRESH",
+          "ageMs": 0,
+          "probeOnly": false
+        }
+      }
+    },
+    {
+      "id": "W07-074",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a GOAWAY since the state: EXPIRED",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 10000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": true
+      },
+      "expect": {
+        "ok": {
+          "class": "EXPIRED",
+          "ageMs": 0,
+          "probeOnly": true
+        }
+      }
+    },
+    {
+      "id": "W07-075",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "STALE: queue min(2, 1 + 1) = 2, battery band one lower (ge80 to 50-79) on battery, thermal band unchanged (ERR-LP-5)",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 50000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false,
+        "state": {
+          "thermalBand": 1,
+          "queueBucket": 1,
+          "batteryBand": "ge80",
+          "powerSource": "battery"
+        }
+      },
+      "expect": {
+        "ok": {
+          "class": "STALE",
+          "ageMs": 40000,
+          "probeOnly": false,
+          "fast": {
+            "thermalBand": 1,
+            "queueBucket": 2,
+            "batteryBand": "50-79"
+          }
+        }
+      }
+    },
+    {
+      "id": "W07-076",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "STALE on AC with quiet fields: nothing changes",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 50000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false,
+        "state": {
+          "thermalBand": 0,
+          "queueBucket": 0,
+          "batteryBand": "ge80",
+          "powerSource": "ac"
+        }
+      },
+      "expect": {
+        "ok": {
+          "class": "STALE",
+          "ageMs": 40000,
+          "probeOnly": false,
+          "fast": {
+            "thermalBand": 0,
+            "queueBucket": 0,
+            "batteryBand": "ge80"
+          }
+        }
+      }
+    },
+    {
+      "id": "W07-077",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "WARM passes the received values",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 20000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false,
+        "state": {
+          "thermalBand": 2,
+          "queueBucket": 1,
+          "batteryBand": "20-49",
+          "powerSource": "battery"
+        }
+      },
+      "expect": {
+        "ok": {
+          "class": "WARM",
+          "ageMs": 10000,
+          "probeOnly": false,
+          "fast": {
+            "thermalBand": 2,
+            "queueBucket": 1,
+            "batteryBand": "20-49"
+          }
+        }
+      }
+    },
+    {
+      "id": "W07-078",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "EXPIRED yields no fast fields: probe-only",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 410000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false,
+        "state": {
+          "thermalBand": 0,
+          "queueBucket": 0,
+          "batteryBand": null,
+          "powerSource": "ac"
+        }
+      },
+      "expect": {
+        "ok": {
+          "class": "EXPIRED",
+          "ageMs": 400000,
+          "probeOnly": true,
+          "fast": null
+        }
+      }
+    },
+    {
+      "id": "W07-079",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "STALE, battery band lt20 stays lt20",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 50000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false,
+        "state": {
+          "thermalBand": 0,
+          "queueBucket": 0,
+          "batteryBand": "lt20",
+          "powerSource": "battery"
+        }
+      },
+      "expect": {
+        "ok": {
+          "class": "STALE",
+          "ageMs": 40000,
+          "probeOnly": false,
+          "fast": {
+            "thermalBand": 0,
+            "queueBucket": 0,
+            "batteryBand": "lt20"
+          }
+        }
+      }
+    },
+    {
+      "id": "W07-080",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "STALE, unknown battery band stays unknown",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 50000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false,
+        "state": {
+          "thermalBand": 0,
+          "queueBucket": 0,
+          "batteryBand": null,
+          "powerSource": "battery"
+        }
+      },
+      "expect": {
+        "ok": {
+          "class": "STALE",
+          "ageMs": 40000,
+          "probeOnly": false,
+          "fast": {
+            "thermalBand": 0,
+            "queueBucket": 0,
+            "batteryBand": null
+          }
+        }
+      }
+    },
+    {
+      "id": "W07-090",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a peer clock that is 10 minutes fast or slow (and 1 ms either way) changes no class: FRESH",
+      "input": {
+        "kind": "skew",
+        "nowMonoMs": 11000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false,
+        "peerSkewMs": [
+          -600000,
+          -1,
+          0,
+          1,
+          600000
+        ]
+      },
+      "expect": {
+        "ok": {
+          "class": "FRESH"
+        }
+      }
+    },
+    {
+      "id": "W07-091",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a peer clock that is 10 minutes fast or slow (and 1 ms either way) changes no class: WARM",
+      "input": {
+        "kind": "skew",
+        "nowMonoMs": 30000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false,
+        "peerSkewMs": [
+          -600000,
+          -1,
+          0,
+          1,
+          600000
+        ]
+      },
+      "expect": {
+        "ok": {
+          "class": "WARM"
+        }
+      }
+    },
+    {
+      "id": "W07-092",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a peer clock that is 10 minutes fast or slow (and 1 ms either way) changes no class: STALE",
+      "input": {
+        "kind": "skew",
+        "nowMonoMs": 110000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false,
+        "peerSkewMs": [
+          -600000,
+          -1,
+          0,
+          1,
+          600000
+        ]
+      },
+      "expect": {
+        "ok": {
+          "class": "STALE"
+        }
+      }
+    },
+    {
+      "id": "W07-093",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a peer clock that is 10 minutes fast or slow (and 1 ms either way) changes no class: EXPIRED",
+      "input": {
+        "kind": "skew",
+        "nowMonoMs": 410000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false,
+        "peerSkewMs": [
+          -600000,
+          -1,
+          0,
+          1,
+          600000
+        ]
+      },
+      "expect": {
+        "ok": {
+          "class": "EXPIRED"
+        }
+      }
+    }
+  ]
+}

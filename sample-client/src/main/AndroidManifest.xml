@@ -1,12 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- The <queries> block for asom itself is merged in from :client. A real
+         suite app additionally declares its siblings' inventory authorities
+         here, matching its own `suitePackages` list (§10A.4):
+         <queries><provider android:authorities="com.example.sibling.asom.inventory" /></queries> -->
+
     <application
+        android:name=".SampleApp"
         android:label="asom sample client"
         android:allowBackup="false"
-        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
-        <!-- usesCleartextTraffic: the sample talks to http://127.0.0.1:11435 only. -->
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- §10A.4 sibling detection: read-only model inventory, no permission
+             (inventory is not sensitive, and this is not a trust gate). -->
+        <provider
+            android:name="xyz.mdhv.asom.client.InventoryProvider"
+            android:authorities="${applicationId}.asom.inventory"
+            android:exported="true" />
+
     </application>
 
 </manifest>

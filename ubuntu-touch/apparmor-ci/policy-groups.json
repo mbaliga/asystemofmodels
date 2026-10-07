@@ -1,0 +1,43 @@
+{
+  "_source": "clickreviews/apparmor.py at click-reviewers-tools commit 9f5abad01775f020e07e41f74eb78d7bac505570 (2026-09-26), policy 2404.1; policy 2404.2 lists the same names. 'common' groups pass the automated OpenStore review, 'reserved' ones need manual review (ubuntu-touch.md UF14, UF22).",
+  "policies": {
+    "2404.1": {
+      "templates": {
+        "common": ["default", "ubuntu-account-plugin", "ubuntu-push-helper", "ubuntu-sdk", "ubuntu-webapp"],
+        "reserved": ["unconfined"]
+      },
+      "policy_groups": {
+        "common": [
+          "accounts", "audio", "camera", "connectivity", "content_exchange", "content_exchange_source", "fm_radio",
+          "keep-display-on", "location", "microphone", "networking", "push-notification-client", "sensors", "usermetrics",
+          "video", "webview", "nfc"
+        ],
+        "reserved": [
+          "bluetooth", "calendar", "contacts", "debug", "history", "music_files", "music_files_read", "picture_files",
+          "picture_files_read", "video_files", "video_files_read"
+        ]
+      }
+    },
+    "2404.2": {
+      "templates": {
+        "common": ["default", "ubuntu-account-plugin", "ubuntu-push-helper", "ubuntu-sdk", "ubuntu-webapp"],
+        "reserved": ["unconfined"]
+      },
+      "policy_groups": {
+        "common": [
+          "accounts", "audio", "camera", "connectivity", "content_exchange", "content_exchange_source", "fm_radio",
+          "keep-display-on", "location", "microphone", "networking", "push-notification-client", "sensors", "usermetrics",
+          "video", "webview", "nfc"
+        ],
+        "reserved": [
+          "bluetooth", "calendar", "contacts", "debug", "history", "music_files", "music_files_read", "picture_files",
+          "picture_files_read", "video_files", "video_files_read"
+        ]
+      }
+    }
+  },
+  "expected": {
+    "template": "ubuntu-sdk",
+    "policy_groups": ["camera", "content_exchange_source", "keep-display-on", "networking"]
+  }
+}

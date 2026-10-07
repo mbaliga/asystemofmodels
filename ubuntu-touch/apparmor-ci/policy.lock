@@ -1,0 +1,16 @@
+# The UBports AppArmor policy the CI approximation and the group checker are pinned to (ubuntu-touch.md UF11, UF14).
+# Authoritative pin: tree_sha256 (tree-hash.sh over the extracted archive). archive_sha256 is what was downloaded on 2026-09-30 and
+# is informational: GitLab may re-compress an archive without changing the tree.
+repo=https://gitlab.com/ubports/development/core/apparmor-easyprof-ubuntu
+commit=d426cf56392f84c05f4979ccdc754abf5e8d93a7
+commit_date=2026-09-01
+archive_url=https://gitlab.com/ubports/development/core/apparmor-easyprof-ubuntu/-/archive/d426cf56392f84c05f4979ccdc754abf5e8d93a7/apparmor-easyprof-ubuntu-d426cf56392f84c05f4979ccdc754abf5e8d93a7.tar.gz
+archive_sha256=055a9f4cbb35b98bd8ce3fd0bb7c117318218ef84a93e5fa8ec15adde2cc30fb
+tree_sha256=0750ce249c35afec1ed9432de1c97225b2a25337e0d992243d22fe3f9d10d783
+# The store-review classes of policy groups and templates (policy-groups.json) were read from:
+review_tools_repo=https://gitlab.com/clickable/click-reviewers-tools
+review_tools_commit=9f5abad01775f020e07e41f74eb78d7bac505570
+review_tools_file=clickreviews/apparmor.py
+review_tools_date=2026-09-26
+# The framework ubuntu-touch-24.04-1.x maps to policy 2404.1 (Clickable constants.py, commit 542a92a599734437c3e174800dffaa9d6191e2c9).
+policy_version=2404.1
