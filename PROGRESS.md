@@ -1996,3 +1996,19 @@ $ python3 lab/tools/isolation.py      -> isolation check 4: OK (shipped tree byt
 ```
 
 Mutation check (17 mutants of ClaimTracker.swift, each run against `swift test --filter AsomRouterCoreTests`; 17 killed, 0 survived): new seq clears `recent` again; inherited clears at 5 (constant); inherited clears at 5 (state); inherited clears at 5 (onObservation); no doubling on repeat; repeat counter does not advance; latch with one DISCREPANT file; `disc` count needs more than two files; penalty still runs at its end instant; a running penalty is extended; base penalty 6 days; repeated `disc` 500; `disc` ignores a running penalty; inherited files not counted; always inherit; best index off by one; overflow saturation dropped. (One first attempt at M06 matched a doc comment and showed "survived"; re-aimed at the code and killed.)
+
+## Hosted CI after wave 3d, fix wave 1 and the Apple repairs (2026-10-07)
+
+Head `384a1cfb14a96d1707b9da03aea29de7185b1602`: `gh api repos/mbaliga/asystemofmodels/commits/384a1cf/check-runs` lists **58 non-cleanup check runs, all `completed/success`** (lab Linux JDK 17 and 21, lab on Windows JDK 17 and 21, desktop Linux/macOS/Windows, apple-swift-lane on macos-latest (CryptoKit) and on swift:6.1-noble, ios-package-sim, jvm-lines, lane-diff, UT host JDK 17 and 21, QML tests against the real Lomiri.Components, click build arm64, AppArmor approximation, install matrix). Evidence label: `CI (hosted VM) evidence`; conclusions were read from GitHub's check runs, not the logs. **NOT DEVICE EVIDENCE.**
+
+Failures seen on the way and what they were (all fixed in later commits on this branch, each with real output in the commit's own gate entry):
+- lab `ProtoIntegrationGateTest`/`HandshakeLimiterTest`/`TimersTest` timing-dependent assertions on 2-core runners (`5b6b435`, `740dc56`): the tests now wait on the condition; the cause of the `HandshakeLimiterTest` failure was not reproduced locally, so that fix is a hypothesis that the hosted run since confirmed passes.
+- `ut-host` expected exactly 4 lab vector files; the fix wave added a fifth (`d110c7c`).
+- `tst_Text.qml` expected a ledger row's keys in insertion order; Qt returns them sorted (`bca0931`).
+- `check_fake_nodes.py`: the JVM self-test frame could overtake a later frame on a slow runner; the script is now sent in two parts (`5e2528f`).
+- Windows lab: the fix wave's torn-tail scan opened a ledger file that was never created where POSIX permissions do not exist (`384a1cf`).
+- One Windows job failed on a transient 403 from repo.maven.apache.org (infrastructure, no code change).
+
+Root `./gradlew jvmTest` is now 140 tests (was 139): the never-run `AnthropicDriverTest` case runs; `ROOT_TEST_BASELINE` and the three base-SHA pins were updated in a later commit with ERRATA re-pin rows.
+
+Open: LF-1 (`thermal-drift` projection flag vs benchmark.md 13.3) needs an owner decision; the second independent review is running.
