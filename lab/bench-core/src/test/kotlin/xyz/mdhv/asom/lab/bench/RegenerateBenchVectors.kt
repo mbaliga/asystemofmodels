@@ -37,6 +37,11 @@ class RegenerateBenchVectors {
         check(got == expected) { "${path.joinToString(".")}: expected $expected got $got" }
     }
 
+    private fun neS(v: JValue, unexpected: String, vararg path: String) {
+        val got = (m(v, *path) as xyz.mdhv.asom.lab.json.JString).value
+        check(got != unexpected) { "${path.joinToString(".")}: must not be $unexpected" }
+    }
+
     private fun eqS(v: JValue, expected: String, vararg path: String) {
         val got = (m(v, *path) as xyz.mdhv.asom.lab.json.JString).value
         check(got == expected) { "${path.joinToString(".")}: expected $expected got $got" }
@@ -50,6 +55,10 @@ class RegenerateBenchVectors {
 
     private fun sustainIn(windows: String, endReason: String, startThermal: String = "cool", capMs: Long = 600_000, headroom: String = "null") =
         parse("""{"kind":"sustain","tier":"T3","windowMs":15000,"capMs":$capMs,"endReason":"$endReason","startThermal":"$startThermal","headroomAtOnsetPermille":$headroom,"windows":$windows}""")
+
+    /** Three windows at the peak then six at [low]; one 1e9 us window makes the rate equal the token count. */
+    private fun boundaryWindows(peak: Long, low: Long): String =
+        (0 until 9).joinToString(",", "[", "]") { "[${it * 15_000L},${if (it < 3) peak else low},1000000000,0]" }
 
     private val examplePlanSha: String get() = RunPlans.STANDARD.sha256B64u()
 
@@ -139,6 +148,15 @@ class RegenerateBenchVectors {
         add("M04-036", "Onset needs three consecutive smoothed windows below 900 permille of the peak: two are not enough.",
             sustainIn(windows(20, { if (it in 10..11) 50 else 100 }), "TIME_CAP")) { o -> check(m(o, "onsetMs") is xyz.mdhv.asom.lab.json.JNull) }
 
+        add("M04-037", "Onset threshold is floor(900 * peak / 1000): peak 7583 gives 6824, and a smoothed 6824 is NOT below it, so there is no onset (ERRATA ERR-FX2-2).",
+            sustainIn(boundaryWindows(7583, 6824), "TIME_CAP")) { o ->
+            eq(o, 7583, "peakMtps"); check(m(o, "onsetMs") is xyz.mdhv.asom.lab.json.JNull) { "onset at the floor boundary" }; eq(o, 6824, "plateauMtps")
+        }
+        add("M04-038", "One below the floor threshold (6823 against 6824) is an onset at the first of the three windows.",
+            sustainIn(boundaryWindows(7583, 6823), "TIME_CAP")) { o -> eq(o, 45_000, "onsetMs"); eq(o, 6823, "plateauMtps") }
+        add("M04-039", "A peak whose 900 permille is a whole number (10000 gives 9000): 9000 is not below it, so there is no onset (the unit test adds 8999).",
+            sustainIn(boundaryWindows(10_000, 9000), "TIME_CAP")) { o -> check(m(o, "onsetMs") is xyz.mdhv.asom.lab.json.JNull) { "onset at 9000" } }
+
         // ------------------------------------------------------------------ whole documents
         val phone = exampleDoc()
         add("M04-040", "The design session's worked example (a synthetic 16 GB phone, T1..T3 and a heat test): the five answers, the projected results and both renderings, all from one document.", docIn(phone)) { o ->
@@ -171,6 +189,27 @@ class RegenerateBenchVectors {
         add("M04-052", "Checked arithmetic: kvBytesPerToken * nCtx overflows 64 bits; the projection fails (INCONSISTENT) instead of wrapping.", docIn(overflow), "INCONSISTENT")
         add("M04-053", "Energy is not measured in the lab (deferred, design B31): a non-null energy is invalid.", jo("kind" to js("doc"), "benchDoc" to replaceMember(BenchCodec.encode(phone), "energy", jo())), "SCHEMA_INVALID")
         add("M04-054", "An unknown member is invalid at schemaMinor 0.", jo("kind" to js("doc"), "benchDoc" to withMember(BenchCodec.encode(phone), listOf("memory"), "extra", ji(1))), "SCHEMA_INVALID")
+
+        val failT3Desktop = desktop.copy(
+            tiers = desktop.tiers.map { t -> t.copy(tests = t.tests.map { x -> x.copy(samples = x.samples.map { it / 4 }, wholeSamples = x.wholeSamples?.map { it / 4 }) }, numerics = if (t.tier == "T3") t.numerics.copy(milliNatsPerToken = 2_300) else t.numerics) },
+            sustain = desktop.sustain!!.copy(tier = "T2", windows = desktop.sustain!!.windows.map { it.copy(tokens = it.tokens * 4) }),
+        )
+        add("M04-055", "A desktop whose T3 numerics fail is not a STRONG PROVIDER whatever its speed: the failed tier's plateau is not estimated from the T2 heat test (ERRATA ERR-FX2-1).", docIn(failT3Desktop)) { o ->
+            neS(o, "strong-provider", "answers", "role", "code"); check(m(o, "answers", "role", "t3PlateauMtps") is xyz.mdhv.asom.lab.json.JNull) { "t3 plateau of a failed tier" }
+        }
+        val soundT3Desktop = failT3Desktop.copy(tiers = failT3Desktop.tiers.map { if (it.tier == "T3") it.copy(numerics = phone.tiers.first { x -> x.tier == "T3" }.numerics) else it })
+        add("M04-056", "Control for M04-055: the same desktop with sound T3 numerics and the heat test on T2 is a STRONG PROVIDER (T3 plateau = its decode rate times the T2 stability).", docIn(soundT3Desktop)) { o -> eqS(o, "strong-provider", "answers", "role", "code") }
+        val tierWarm = phone.copy(tiers = phone.tiers.map { if (it.tier == "T3") it.copy(startThermal = "warm", startThermalCode = 1) else it })
+        add("M04-057", "The run started cool but the sustain tier started warm: the sustained phase is low, and so is the overall confidence (ERRATA ERR-FX2-5, the worse of the run start and the sustain tier's start).", docIn(tierWarm)) { o ->
+            eqS(o, "low", "answers", "sustain", "confidence"); eqS(o, "low", "answers", "overallConfidence")
+        }
+        val runWarm = phone.copy(run = phone.run.copy(startThermal = "warm"))
+        add("M04-058", "The run started warm but every tier started cool: the sustained phase is low (the other lane read only the sustain tier's start).", docIn(runWarm)) { o -> eqS(o, "low", "answers", "sustain", "confidence") }
+        val oneRep = BTest(TestSpec.parse("tg128@d4096")!!, listOf(15_000_000L), null)
+        val insufficient = phone.copy(tiers = phone.tiers.map { if (it.tier == "T2") it.copy(tests = it.tests + oneRep) else it })
+        add("M04-059", "A tier with a test of fewer than 2 kept reps has no value for it: the tier gets no row (ERRATA ERR-FX2-4); the other two tiers are projected.", docIn(insufficient)) { o -> eq(o, 2, "resultCount") }
+        add("M04-060", "Prefill at depth (pp512@d2048) cannot be carried by a manifest (benchmark.md 13.4 R5): the document is invalid.",
+            jo("kind" to js("doc"), "benchDoc" to BJ.remove(BJ.set(BenchCodec.encode(phone), listOf("tiers", 0, "tests", 0, "test"), js("pp512@d2048")), listOf("tiers", 0, "tests", 0, "wholeSamples"))), "SCHEMA_INVALID")
 
         // ------------------------------------------------------------------ executor traces (SIMULATED)
         val t = mutableListOf<Triple<String, String, String>>(

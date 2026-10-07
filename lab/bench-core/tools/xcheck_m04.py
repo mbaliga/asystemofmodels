@@ -121,6 +121,55 @@ REF.stat = stat_b7  # bench_ref.derive_test resolves both names in its module gl
 REF.confidence = confidence_9_4
 
 
+def derive_sustained_6_3(s, run):
+    """bench_ref.derive_sustained with the onset threshold of benchmark.md 6.3 and 9.1 taken literally: a smoothed window is below
+    onset when it is < floor(900 * peak / 1000) (ERRATA ERR-FX2-2); the sketch compares against the real-valued 900 * peak / 1000."""
+    w = s["windows"]
+    rates = [REF.rate_mtps(tok, us) for (_, tok, us, _) in w]
+    n = len(rates)
+    sm = [REF.lower_median(rates[max(0, i - 1):min(n, i + 2)]) for i in range(n)]
+    peak_idx = max((i for i in range(n) if w[i][0] < REF.PEAK_WINDOW_MS), key=lambda i: (sm[i], -i))
+    peak = sm[peak_idx]
+    threshold = REF.SMOOTH_ONSET_PERMILLE * peak // 1000
+    onset_i = None
+    for i in range(peak_idx + 1, n - 2):
+        if all(sm[j] < threshold for j in (i, i + 1, i + 2)):
+            onset_i = i
+            break
+    flags = []
+    if onset_i is None:
+        tail = sm[-REF.PLATEAU_WINDOWS:]
+        onset_ms = None
+    else:
+        onset_ms = w[onset_i][0]
+        settled = [sm[i] for i in range(n) if w[i][0] >= onset_ms + REF.SETTLE_MS]
+        if settled:
+            tail = settled[-REF.PLATEAU_WINDOWS:]
+        else:
+            tail = sm[onset_i:]
+            flags.append("PLATEAU_NOT_REACHED")
+    plateau = REF.lower_median(tail)
+    duration = w[-1][0] + s["windowMs"]
+    stability = REF.fdiv(plateau * 1000, peak)
+    if run["startThermal"] != "cool":
+        conf = "low"
+    elif s["endReason"] == "PLATEAU" or (s["endReason"] == "TIME_CAP" and duration >= 480000):
+        conf = "high"
+    elif duration >= 300000:
+        conf = "medium"
+    else:
+        conf = "low"
+    thermal_at_onset = w[onset_i][3] if onset_i is not None else None
+    return {"test": "sustain", "windowMs": s["windowMs"], "capMs": s["capMs"], "windows": [list(x) for x in w],
+            "peakMtps": peak, "plateauMtps": plateau, "onsetMs": onset_ms, "stabilityPermille": stability, "durationMs": duration,
+            "endReason": s["endReason"], "thermalCodeAtOnset": thermal_at_onset,
+            "headroomAtOnsetPermille": s.get("headroomAtOnsetPermille") if onset_i is not None else None,
+            "confidence": conf, "flags": flags}
+
+
+REF.derive_sustained = derive_sustained_6_3  # REF.derive and sustain_result both resolve it through the module
+
+
 def test_result(spec, samples, whole, ctx):
     toks = REF.test_tokens(spec)
     vals = [REF.rate_mtps(toks, us) for us in samples]
@@ -263,7 +312,45 @@ def raw_from_doc(doc):
 
 
 def answers_of(raw):
-    tiers, sustain, derived = REF.derive(raw)
+    """bench_ref.derive plus two readings the sketch predates: a sustain block on a tier whose numerics failed is ignored by the
+    throttle, the role, every plateau estimate and the overall confidence (benchmark.md 4.4, ERRATA ERR-FX2-1), and a sustained
+    phase starts warm when the run or its tier did (ERRATA ERR-FX2-5)."""
+    run = dict(raw["run"])
+    sus = raw["sustained"]
+    tier_start = raw["tiers"].get(sus["tier"], {}).get("startThermal", run["startThermal"])
+    if run["startThermal"] == "cool" and tier_start != "cool":
+        run["startThermal"] = tier_start
+    tiers, sustain, derived = REF.derive(dict(raw, run=run))
+    ok = [t["tier"] for t in tiers if t["numerics"]["verdict"] != "fail"]
+    by = {t["tier"]: t for t in tiers if t["tier"] in ok}
+    used = sustain["tier"] in ok
+    if not used:
+        derived["throttle"] = None
+    stab = sustain["stabilityPermille"]
+
+    def plateau_of(t):
+        if t not in by or not used:
+            return None
+        if sustain["tier"] == t:
+            return sustain["plateauMtps"]
+        r = REF.res(by[t], "tg128@d0")
+        return REF.fdiv(r["value"] * stab, 1000) if r is not None and r["value"] is not None else None
+
+    plat3, plat2 = plateau_of("T3"), plateau_of("T2")
+    form, plat = raw["device"]["form"], raw["device"]["platform"]
+    if plat in ("ios", "ipados"):
+        role = "requester-foreground-helper"
+    elif form in ("desktop", "server") and plat3 is not None and plat3 >= REF.COMFORT_DECODE_MTPS:
+        role = "strong-provider"
+    elif form in ("desktop", "server", "laptop", "handheld") and plat2 is not None and plat2 >= REF.COMFORT_DECODE_MTPS:
+        role = "small-model-provider"
+    elif form in ("phone", "tablet") and plat2 is not None and plat2 >= 8000:
+        role = "occasional-helper"
+    else:
+        role = "requester"
+    derived["role"] = {"code": role, "t2PlateauMtps": plat2, "t3PlateauMtps": plat3}
+    head = by[max(ok, key=REF.ORDER.index)]
+    derived["overallConfidence"] = REF.min_conf([r["confidence"] for r in head["results"]] + ([sustain["confidence"]] if used else []))
     return tiers, sustain, derived
 
 
@@ -280,7 +367,10 @@ def compare_answers(cnt, vid, ans, derived, tiers):
     cnt.ok(ea["tier"] == a["tier"] and ea["depthRatioPermille"] == a["depthRatioPermille"] and ea["micros"] == a["micros"] and ea["thermalModel"] == a["thermalModel"], f"{vid}: answer2000 {ea} vs {a}")
     t = derived["throttle"]
     et = e["throttle"]
-    cnt.ok(et["tier"] == t["tier"] and et["onsetMs"] == t["onsetMs"] and et["stabilityPermille"] == t["stabilityPermille"] and et["testedMs"] == t["testedMs"], f"{vid}: throttle {et} vs {t}")
+    if et is None or t is None:
+        cnt.ok(et is None and t is None, f"{vid}: throttle {et} vs {t}")
+    else:
+        cnt.ok(et["tier"] == t["tier"] and et["onsetMs"] == t["onsetMs"] and et["stabilityPermille"] == t["stabilityPermille"] and et["testedMs"] == t["testedMs"], f"{vid}: throttle {et} vs {t}")
     r = derived["role"]
     cnt.ok(e["role"] == {"code": r["code"], "t2PlateauMtps": r["t2PlateauMtps"], "t3PlateauMtps": r["t3PlateauMtps"]}, f"{vid}: role {e['role']} vs {r}")
     cnt.ok(e["overallConfidence"] == derived["overallConfidence"], f"{vid}: overall confidence {e['overallConfidence']} vs {derived['overallConfidence']}")
@@ -447,6 +537,10 @@ def check_m05_body(root):
         except Exception as ex:  # a document the sketch cannot handle
             cnt.skipped += 1
             print(f"  note {vid}: skipped, the sketch cannot derive it ({type(ex).__name__})")
+            continue
+        if derived["throttle"] is None:  # the sketch's renderer has no "heat test not used" wording (ERRATA ERR-FX2-1)
+            cnt.skipped += 1
+            print(f"  note {vid}: skipped, the heat test is ignored by the answers (a failed tier)")
             continue
         doc = {"device": raw["device"], "run": dict(raw["run"], dayUtc=v["input"]["benchDoc"]["run"]["dayUtc"]), "harness": raw["harness"], "memory": raw["memory"],
                "tiers": tiers, "sustain": sustain, "derived": derived, "field": [], "energy": None}

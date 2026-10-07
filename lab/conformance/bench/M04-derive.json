@@ -1088,6 +1088,126 @@
       }
     },
     {
+      "id": "M04-037",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Onset threshold is floor(900 * peak / 1000): peak 7583 gives 6824, and a smoothed 6824 is NOT below it, so there is no onset (ERRATA ERR-FX2-2).",
+      "input": {
+        "kind": "sustain",
+        "tier": "T3",
+        "windowMs": 15000,
+        "capMs": 600000,
+        "endReason": "TIME_CAP",
+        "startThermal": "cool",
+        "headroomAtOnsetPermille": null,
+        "windows": [
+          [0, 7583, 1000000000, 0],
+          [15000, 7583, 1000000000, 0],
+          [30000, 7583, 1000000000, 0],
+          [45000, 6824, 1000000000, 0],
+          [60000, 6824, 1000000000, 0],
+          [75000, 6824, 1000000000, 0],
+          [90000, 6824, 1000000000, 0],
+          [105000, 6824, 1000000000, 0],
+          [120000, 6824, 1000000000, 0]
+        ]
+      },
+      "expect": {
+        "ok": {
+          "peakMtps": 7583,
+          "plateauMtps": 6824,
+          "onsetMs": null,
+          "stabilityPermille": 899,
+          "durationMs": 135000,
+          "thermalCodeAtOnset": null,
+          "headroomAtOnsetPermille": null,
+          "confidence": "low",
+          "flags": []
+        }
+      }
+    },
+    {
+      "id": "M04-038",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "One below the floor threshold (6823 against 6824) is an onset at the first of the three windows.",
+      "input": {
+        "kind": "sustain",
+        "tier": "T3",
+        "windowMs": 15000,
+        "capMs": 600000,
+        "endReason": "TIME_CAP",
+        "startThermal": "cool",
+        "headroomAtOnsetPermille": null,
+        "windows": [
+          [0, 7583, 1000000000, 0],
+          [15000, 7583, 1000000000, 0],
+          [30000, 7583, 1000000000, 0],
+          [45000, 6823, 1000000000, 0],
+          [60000, 6823, 1000000000, 0],
+          [75000, 6823, 1000000000, 0],
+          [90000, 6823, 1000000000, 0],
+          [105000, 6823, 1000000000, 0],
+          [120000, 6823, 1000000000, 0]
+        ]
+      },
+      "expect": {
+        "ok": {
+          "peakMtps": 7583,
+          "plateauMtps": 6823,
+          "onsetMs": 45000,
+          "stabilityPermille": 899,
+          "durationMs": 135000,
+          "thermalCodeAtOnset": 0,
+          "headroomAtOnsetPermille": null,
+          "confidence": "low",
+          "flags": []
+        }
+      }
+    },
+    {
+      "id": "M04-039",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A peak whose 900 permille is a whole number (10000 gives 9000): 9000 is not below it, so there is no onset (the unit test adds 8999).",
+      "input": {
+        "kind": "sustain",
+        "tier": "T3",
+        "windowMs": 15000,
+        "capMs": 600000,
+        "endReason": "TIME_CAP",
+        "startThermal": "cool",
+        "headroomAtOnsetPermille": null,
+        "windows": [
+          [0, 10000, 1000000000, 0],
+          [15000, 10000, 1000000000, 0],
+          [30000, 10000, 1000000000, 0],
+          [45000, 9000, 1000000000, 0],
+          [60000, 9000, 1000000000, 0],
+          [75000, 9000, 1000000000, 0],
+          [90000, 9000, 1000000000, 0],
+          [105000, 9000, 1000000000, 0],
+          [120000, 9000, 1000000000, 0]
+        ]
+      },
+      "expect": {
+        "ok": {
+          "peakMtps": 10000,
+          "plateauMtps": 9000,
+          "onsetMs": null,
+          "stabilityPermille": 900,
+          "durationMs": 135000,
+          "thermalCodeAtOnset": null,
+          "headroomAtOnsetPermille": null,
+          "confidence": "low",
+          "flags": []
+        }
+      }
+    },
+    {
       "id": "M04-040",
       "origin": "generated",
       "status": "normative",
@@ -2246,16 +2366,11 @@
               "micros": 141948876,
               "thermalModel": false
             },
-            "throttle": {
-              "tier": "T3",
-              "onsetMs": 195000,
-              "stabilityPermille": 663,
-              "testedMs": 435000
-            },
+            "throttle": null,
             "role": {
-              "code": "occasional-helper",
-              "t2PlateauMtps": 9608,
-              "t3PlateauMtps": 5033
+              "code": "requester",
+              "t2PlateauMtps": null,
+              "t3PlateauMtps": null
             },
             "overallConfidence": "high",
             "tiers": [
@@ -2349,8 +2464,8 @@
           },
           "resultCount": 3,
           "resultsSha256": "7979556e2eb1f3cf2a52e45f52f81147496e52ebca4a7dcc11f0f8e509cd9d4c",
-          "textSha256": "0874b37e696285674364705fae68ea773ddbdad3e2714eb4d223c5c755f43cec",
-          "textSha256Mesh": "d6ee2c2c29752dc626bfcb3d8dea974dd2258dcd588de84455b8e37897dd4ca4"
+          "textSha256": "0aa245f46550505dce7eb40082d5145e1fefb3d6bc5a6adf0125256d3983bf15",
+          "textSha256Mesh": "717d759dc38b9edfae0341c69166c72446bc21fa96dc9b46d197b3c0739e3877"
         }
       }
     },
@@ -5080,6 +5195,1968 @@
                   "test": "pp512@d0",
                   "samples": [1968000, 1975000, 1961000, 1990000, 1972000],
                   "wholeSamples": [1969500, 1976400, 1962300, 1991200, 1973300]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [6090000, 6120000, 6101000, 6085000, 6133000]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 2318,
+                "refMilliNatsPerToken": 2310
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            },
+            {
+              "tier": "T2",
+              "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+              "bytes": 2497280256,
+              "quant": "Q4_K_M",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790669010000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9550000000,
+              "peakFootprintBytes": 3120000000,
+              "kvBytesPerToken": 147456,
+              "loadColdMicros": 4900000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [1210000, 1195000, 1230000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [3930000, 3951000, 3925000, 3947000, 3940000],
+                  "wholeSamples": [3931800, 3952700, 3926900, 3948600, 3941700]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [8810000, 8850000, 8832000, 8805000, 8861000]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 2026,
+                "refMilliNatsPerToken": 2020
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            },
+            {
+              "tier": "T3",
+              "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+              "bytes": 5027783488,
+              "quant": "Q4_K_M",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790669190000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9510000000,
+              "peakFootprintBytes": 5980000000,
+              "kvBytesPerToken": 147456,
+              "loadColdMicros": 9800000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [2380000, 2410000, 2395000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [8533000, 8611000, 8498000, 8570000, 9950000],
+                  "wholeSamples": [8535100, 8613000, 8500200, 8572100, 9952300]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [17280000, 17350000, 17310000, 17265000, 17420000]
+                },
+                {
+                  "test": "tg128@d2048",
+                  "samples": [19380000, 19450000, 19400000, 19372000, 19510000]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 1893,
+                "refMilliNatsPerToken": 1880
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            }
+          ],
+          "sustain": {
+            "tier": "T3",
+            "windowMs": 15000,
+            "capMs": 600000,
+            "endReason": "PLATEAU",
+            "headroomAtOnsetPermille": 830,
+            "windows": [
+              [0, 113, 14900000, 0],
+              [15000, 112, 14900000, 0],
+              [30000, 113, 14900000, 0],
+              [45000, 112, 14900000, 0],
+              [60000, 112, 14900000, 1],
+              [75000, 111, 14900000, 1],
+              [90000, 112, 14900000, 1],
+              [105000, 111, 14900000, 1],
+              [120000, 111, 14900000, 1],
+              [135000, 110, 14900000, 1],
+              [150000, 110, 14900000, 1],
+              [165000, 109, 14900000, 1],
+              [180000, 108, 14900000, 1],
+              [195000, 99, 14900000, 2],
+              [210000, 90, 14900000, 2],
+              [225000, 82, 14900000, 2],
+              [240000, 78, 14900000, 2],
+              [255000, 76, 14900000, 2],
+              [270000, 75, 14900000, 2],
+              [285000, 75, 14900000, 2],
+              [300000, 76, 14900000, 2],
+              [315000, 75, 14900000, 2],
+              [330000, 74, 14900000, 2],
+              [345000, 75, 14900000, 2],
+              [360000, 75, 14900000, 2],
+              [375000, 76, 14900000, 2],
+              [390000, 75, 14900000, 2],
+              [405000, 75, 14900000, 2],
+              [420000, 74, 14900000, 2]
+            ]
+          },
+          "energy": null
+        }
+      },
+      "expect": {
+        "reject": "SCHEMA_INVALID"
+      }
+    },
+    {
+      "id": "M04-055",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A desktop whose T3 numerics fail is not a STRONG PROVIDER whatever its speed: the failed tier's plateau is not estimated from the T2 heat test (ERRATA ERR-FX2-1).",
+      "input": {
+        "kind": "doc",
+        "benchDoc": {
+          "schema": "asom.bench/1",
+          "benchProtocol": 1,
+          "benchSet": "qwen3-dense-1",
+          "harness": {
+            "shell": "android-daemon",
+            "coreImpl": "jvm",
+            "coreVersion": "1.0.0",
+            "confVersion": "1.0.0",
+            "timingSource": "host-monotonic",
+            "planSha256": "U5x4LJS7iliO0QOew1tjsNkJ14-JeCLGuJt6fIUAD9s",
+            "engine": {
+              "name": "llama.cpp",
+              "commit": "0123456789abcdef0123456789abcdef01234567",
+              "backend": "opencl",
+              "buildFlags": [
+                "GGML_OPENCL=ON"
+              ],
+              "threads": 6,
+              "gpuLayers": 99,
+              "kvType": "f16",
+              "flashAttn": "auto"
+            }
+          },
+          "device": {
+            "platform": "linux",
+            "form": "desktop",
+            "maker": "Example",
+            "model": "Phone X1 (synthetic)",
+            "soc": "Example SoC 8",
+            "osVersion": "16",
+            "osBuild": "EXAMPLE.260901.001",
+            "gpu": "Example GPU",
+            "gpuDriver": "example-512.0",
+            "memTotalBytes": 16000000000,
+            "unifiedMemory": false,
+            "virtualized": false
+          },
+          "memory": {
+            "availAtStartBytes": 48000000000,
+            "processLimitBytes": null,
+            "gpuWorkingSetBytes": null,
+            "limitSource": "android-availmem"
+          },
+          "run": {
+            "plan": "standard",
+            "optInTiers": [
+              "T3"
+            ],
+            "startedAtMs": 1790668800000,
+            "endedAtMs": 1790670240000,
+            "dayUtc": "2026-09-29",
+            "powerSource": "ac",
+            "batteryStartPermille": 740,
+            "startThermal": "cool",
+            "screenOn": true,
+            "contentionBeforePermille": 12,
+            "contentionAfterPermille": 18,
+            "abort": null
+          },
+          "tiers": [
+            {
+              "tier": "T1",
+              "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+              "bytes": 1834426016,
+              "quant": "Q8_0",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790668860000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9580000000,
+              "peakFootprintBytes": 2310000000,
+              "kvBytesPerToken": 114688,
+              "loadColdMicros": 2400000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [620000, 640000, 615000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [492000, 493750, 490250, 497500, 493000],
+                  "wholeSamples": [492375, 494100, 490575, 497800, 493325]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [1522500, 1530000, 1525250, 1521250, 1533250]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 2318,
+                "refMilliNatsPerToken": 2310
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            },
+            {
+              "tier": "T2",
+              "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+              "bytes": 2497280256,
+              "quant": "Q4_K_M",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790669010000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9550000000,
+              "peakFootprintBytes": 3120000000,
+              "kvBytesPerToken": 147456,
+              "loadColdMicros": 4900000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [1210000, 1195000, 1230000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [982500, 987750, 981250, 986750, 985000],
+                  "wholeSamples": [982950, 988175, 981725, 987150, 985425]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [2202500, 2212500, 2208000, 2201250, 2215250]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 2026,
+                "refMilliNatsPerToken": 2020
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            },
+            {
+              "tier": "T3",
+              "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+              "bytes": 5027783488,
+              "quant": "Q4_K_M",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790669190000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9510000000,
+              "peakFootprintBytes": 5980000000,
+              "kvBytesPerToken": 147456,
+              "loadColdMicros": 9800000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [2380000, 2410000, 2395000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [2133250, 2152750, 2124500, 2142500, 2487500],
+                  "wholeSamples": [2133775, 2153250, 2125050, 2143025, 2488075]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [4320000, 4337500, 4327500, 4316250, 4355000]
+                },
+                {
+                  "test": "tg128@d2048",
+                  "samples": [4845000, 4862500, 4850000, 4843000, 4877500]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 2300,
+                "refMilliNatsPerToken": 1880
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            }
+          ],
+          "sustain": {
+            "tier": "T2",
+            "windowMs": 15000,
+            "capMs": 600000,
+            "endReason": "PLATEAU",
+            "headroomAtOnsetPermille": 830,
+            "windows": [
+              [0, 452, 14900000, 0],
+              [15000, 448, 14900000, 0],
+              [30000, 452, 14900000, 0],
+              [45000, 448, 14900000, 0],
+              [60000, 448, 14900000, 1],
+              [75000, 444, 14900000, 1],
+              [90000, 448, 14900000, 1],
+              [105000, 444, 14900000, 1],
+              [120000, 444, 14900000, 1],
+              [135000, 440, 14900000, 1],
+              [150000, 440, 14900000, 1],
+              [165000, 436, 14900000, 1],
+              [180000, 432, 14900000, 1],
+              [195000, 396, 14900000, 2],
+              [210000, 360, 14900000, 2],
+              [225000, 328, 14900000, 2],
+              [240000, 312, 14900000, 2],
+              [255000, 304, 14900000, 2],
+              [270000, 300, 14900000, 2],
+              [285000, 300, 14900000, 2],
+              [300000, 304, 14900000, 2],
+              [315000, 300, 14900000, 2],
+              [330000, 296, 14900000, 2],
+              [345000, 300, 14900000, 2],
+              [360000, 300, 14900000, 2],
+              [375000, 304, 14900000, 2],
+              [390000, 300, 14900000, 2],
+              [405000, 300, 14900000, 2],
+              [420000, 296, 14900000, 2]
+            ]
+          },
+          "energy": null
+        },
+        "audience": "own"
+      },
+      "expect": {
+        "ok": {
+          "answers": {
+            "usableMemoryBytes": 43200000000,
+            "safetyPermille": 900,
+            "maxHold": {
+              "weightBytes": 34557153263,
+              "kvRatioPermille": 241,
+              "approxParamsQ4": 56651070922,
+              "largestLoadedTier": "T2"
+            },
+            "q7b": {
+              "basis": "estimated",
+              "decodeMtps": 28793,
+              "ttft512Micros": 1983959,
+              "verdict": "comfortable"
+            },
+            "answer2000": {
+              "tier": "T2",
+              "depthRatioPermille": 1000,
+              "micros": 66915868,
+              "thermalModel": true
+            },
+            "throttle": {
+              "tier": "T2",
+              "onsetMs": 195000,
+              "stabilityPermille": 663,
+              "testedMs": 435000
+            },
+            "role": {
+              "code": "small-model-provider",
+              "t2PlateauMtps": 20134,
+              "t3PlateauMtps": null
+            },
+            "overallConfidence": "high",
+            "tiers": [
+              {
+                "tier": "T1",
+                "numerics": "pass",
+                "loadWarmMicros": 620000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 1038539,
+                    "kept": 4,
+                    "confidence": "high",
+                    "flags": [
+                      "OUTLIER_EXCLUDED"
+                    ]
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 83920,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              },
+              {
+                "tier": "T2",
+                "numerics": "pass",
+                "loadWarmMicros": 1210000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 519796,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 57971,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              },
+              {
+                "tier": "T3",
+                "numerics": "fail",
+                "loadWarmMicros": 2395000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 238973,
+                    "kept": 4,
+                    "confidence": "high",
+                    "flags": [
+                      "OUTLIER_EXCLUDED"
+                    ]
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 29578,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d2048",
+                    "value": 26391,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              }
+            ],
+            "sustain": {
+              "peakMtps": 30335,
+              "plateauMtps": 20134,
+              "onsetMs": 195000,
+              "stabilityPermille": 663,
+              "durationMs": 435000,
+              "thermalCodeAtOnset": 2,
+              "headroomAtOnsetPermille": 830,
+              "confidence": "high",
+              "flags": []
+            }
+          },
+          "resultCount": 3,
+          "resultsSha256": "db5ff3f20678963932e275d6a2b10732ce72a5ab0c2d60e885451e61602e92e8",
+          "textSha256": "9822821d7bda932af1c7210066cd64be89c82df52468307576b6d9c607d59d30",
+          "textSha256Mesh": "9466862fcf0dc873b2459e3640b40963b1e3e96dd1ab37fdd4b3691c73ed5fa5"
+        }
+      }
+    },
+    {
+      "id": "M04-056",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Control for M04-055: the same desktop with sound T3 numerics and the heat test on T2 is a STRONG PROVIDER (T3 plateau = its decode rate times the T2 stability).",
+      "input": {
+        "kind": "doc",
+        "benchDoc": {
+          "schema": "asom.bench/1",
+          "benchProtocol": 1,
+          "benchSet": "qwen3-dense-1",
+          "harness": {
+            "shell": "android-daemon",
+            "coreImpl": "jvm",
+            "coreVersion": "1.0.0",
+            "confVersion": "1.0.0",
+            "timingSource": "host-monotonic",
+            "planSha256": "U5x4LJS7iliO0QOew1tjsNkJ14-JeCLGuJt6fIUAD9s",
+            "engine": {
+              "name": "llama.cpp",
+              "commit": "0123456789abcdef0123456789abcdef01234567",
+              "backend": "opencl",
+              "buildFlags": [
+                "GGML_OPENCL=ON"
+              ],
+              "threads": 6,
+              "gpuLayers": 99,
+              "kvType": "f16",
+              "flashAttn": "auto"
+            }
+          },
+          "device": {
+            "platform": "linux",
+            "form": "desktop",
+            "maker": "Example",
+            "model": "Phone X1 (synthetic)",
+            "soc": "Example SoC 8",
+            "osVersion": "16",
+            "osBuild": "EXAMPLE.260901.001",
+            "gpu": "Example GPU",
+            "gpuDriver": "example-512.0",
+            "memTotalBytes": 16000000000,
+            "unifiedMemory": false,
+            "virtualized": false
+          },
+          "memory": {
+            "availAtStartBytes": 48000000000,
+            "processLimitBytes": null,
+            "gpuWorkingSetBytes": null,
+            "limitSource": "android-availmem"
+          },
+          "run": {
+            "plan": "standard",
+            "optInTiers": [
+              "T3"
+            ],
+            "startedAtMs": 1790668800000,
+            "endedAtMs": 1790670240000,
+            "dayUtc": "2026-09-29",
+            "powerSource": "ac",
+            "batteryStartPermille": 740,
+            "startThermal": "cool",
+            "screenOn": true,
+            "contentionBeforePermille": 12,
+            "contentionAfterPermille": 18,
+            "abort": null
+          },
+          "tiers": [
+            {
+              "tier": "T1",
+              "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+              "bytes": 1834426016,
+              "quant": "Q8_0",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790668860000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9580000000,
+              "peakFootprintBytes": 2310000000,
+              "kvBytesPerToken": 114688,
+              "loadColdMicros": 2400000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [620000, 640000, 615000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [492000, 493750, 490250, 497500, 493000],
+                  "wholeSamples": [492375, 494100, 490575, 497800, 493325]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [1522500, 1530000, 1525250, 1521250, 1533250]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 2318,
+                "refMilliNatsPerToken": 2310
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            },
+            {
+              "tier": "T2",
+              "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+              "bytes": 2497280256,
+              "quant": "Q4_K_M",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790669010000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9550000000,
+              "peakFootprintBytes": 3120000000,
+              "kvBytesPerToken": 147456,
+              "loadColdMicros": 4900000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [1210000, 1195000, 1230000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [982500, 987750, 981250, 986750, 985000],
+                  "wholeSamples": [982950, 988175, 981725, 987150, 985425]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [2202500, 2212500, 2208000, 2201250, 2215250]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 2026,
+                "refMilliNatsPerToken": 2020
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            },
+            {
+              "tier": "T3",
+              "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+              "bytes": 5027783488,
+              "quant": "Q4_K_M",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790669190000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9510000000,
+              "peakFootprintBytes": 5980000000,
+              "kvBytesPerToken": 147456,
+              "loadColdMicros": 9800000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [2380000, 2410000, 2395000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [2133250, 2152750, 2124500, 2142500, 2487500],
+                  "wholeSamples": [2133775, 2153250, 2125050, 2143025, 2488075]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [4320000, 4337500, 4327500, 4316250, 4355000]
+                },
+                {
+                  "test": "tg128@d2048",
+                  "samples": [4845000, 4862500, 4850000, 4843000, 4877500]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 1893,
+                "refMilliNatsPerToken": 1880
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            }
+          ],
+          "sustain": {
+            "tier": "T2",
+            "windowMs": 15000,
+            "capMs": 600000,
+            "endReason": "PLATEAU",
+            "headroomAtOnsetPermille": 830,
+            "windows": [
+              [0, 452, 14900000, 0],
+              [15000, 448, 14900000, 0],
+              [30000, 452, 14900000, 0],
+              [45000, 448, 14900000, 0],
+              [60000, 448, 14900000, 1],
+              [75000, 444, 14900000, 1],
+              [90000, 448, 14900000, 1],
+              [105000, 444, 14900000, 1],
+              [120000, 444, 14900000, 1],
+              [135000, 440, 14900000, 1],
+              [150000, 440, 14900000, 1],
+              [165000, 436, 14900000, 1],
+              [180000, 432, 14900000, 1],
+              [195000, 396, 14900000, 2],
+              [210000, 360, 14900000, 2],
+              [225000, 328, 14900000, 2],
+              [240000, 312, 14900000, 2],
+              [255000, 304, 14900000, 2],
+              [270000, 300, 14900000, 2],
+              [285000, 300, 14900000, 2],
+              [300000, 304, 14900000, 2],
+              [315000, 300, 14900000, 2],
+              [330000, 296, 14900000, 2],
+              [345000, 300, 14900000, 2],
+              [360000, 300, 14900000, 2],
+              [375000, 304, 14900000, 2],
+              [390000, 300, 14900000, 2],
+              [405000, 300, 14900000, 2],
+              [420000, 296, 14900000, 2]
+            ]
+          },
+          "energy": null
+        },
+        "audience": "own"
+      },
+      "expect": {
+        "ok": {
+          "answers": {
+            "usableMemoryBytes": 43200000000,
+            "safetyPermille": 900,
+            "maxHold": {
+              "weightBytes": 38290560000,
+              "kvRatioPermille": 120,
+              "approxParamsQ4": 62771409836,
+              "largestLoadedTier": "T3"
+            },
+            "q7b": {
+              "basis": "measured",
+              "decodeMtps": 29578,
+              "ttft512Micros": 2143025,
+              "verdict": "usable"
+            },
+            "answer2000": {
+              "tier": "T3",
+              "depthRatioPermille": 892,
+              "micros": 77949415,
+              "thermalModel": false
+            },
+            "throttle": {
+              "tier": "T2",
+              "onsetMs": 195000,
+              "stabilityPermille": 663,
+              "testedMs": 435000
+            },
+            "role": {
+              "code": "strong-provider",
+              "t2PlateauMtps": 20134,
+              "t3PlateauMtps": 19610
+            },
+            "overallConfidence": "high",
+            "tiers": [
+              {
+                "tier": "T1",
+                "numerics": "pass",
+                "loadWarmMicros": 620000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 1038539,
+                    "kept": 4,
+                    "confidence": "high",
+                    "flags": [
+                      "OUTLIER_EXCLUDED"
+                    ]
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 83920,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              },
+              {
+                "tier": "T2",
+                "numerics": "pass",
+                "loadWarmMicros": 1210000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 519796,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 57971,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              },
+              {
+                "tier": "T3",
+                "numerics": "pass",
+                "loadWarmMicros": 2395000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 238973,
+                    "kept": 4,
+                    "confidence": "high",
+                    "flags": [
+                      "OUTLIER_EXCLUDED"
+                    ]
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 29578,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d2048",
+                    "value": 26391,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              }
+            ],
+            "sustain": {
+              "peakMtps": 30335,
+              "plateauMtps": 20134,
+              "onsetMs": 195000,
+              "stabilityPermille": 663,
+              "durationMs": 435000,
+              "thermalCodeAtOnset": 2,
+              "headroomAtOnsetPermille": 830,
+              "confidence": "high",
+              "flags": []
+            }
+          },
+          "resultCount": 3,
+          "resultsSha256": "4d4fa5d786039815fc3f9f0fd5b001540ddce4bf64368fd7a4281fef7087fe6f",
+          "textSha256": "39b529c00ff02e5a34567a7abc7c20f5c009a99f7de55639edb055250e34dee3",
+          "textSha256Mesh": "62f85bf1319283aed7e5c51def078a1caad8b7bfb155935323587f6f4e4e8720"
+        }
+      }
+    },
+    {
+      "id": "M04-057",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "The run started cool but the sustain tier started warm: the sustained phase is low, and so is the overall confidence (ERRATA ERR-FX2-5, the worse of the run start and the sustain tier's start).",
+      "input": {
+        "kind": "doc",
+        "benchDoc": {
+          "schema": "asom.bench/1",
+          "benchProtocol": 1,
+          "benchSet": "qwen3-dense-1",
+          "harness": {
+            "shell": "android-daemon",
+            "coreImpl": "jvm",
+            "coreVersion": "1.0.0",
+            "confVersion": "1.0.0",
+            "timingSource": "host-monotonic",
+            "planSha256": "U5x4LJS7iliO0QOew1tjsNkJ14-JeCLGuJt6fIUAD9s",
+            "engine": {
+              "name": "llama.cpp",
+              "commit": "0123456789abcdef0123456789abcdef01234567",
+              "backend": "opencl",
+              "buildFlags": [
+                "GGML_OPENCL=ON"
+              ],
+              "threads": 6,
+              "gpuLayers": 99,
+              "kvType": "f16",
+              "flashAttn": "auto"
+            }
+          },
+          "device": {
+            "platform": "android",
+            "form": "phone",
+            "maker": "Example",
+            "model": "Phone X1 (synthetic)",
+            "soc": "Example SoC 8",
+            "osVersion": "16",
+            "osBuild": "EXAMPLE.260901.001",
+            "gpu": "Example GPU",
+            "gpuDriver": "example-512.0",
+            "memTotalBytes": 16000000000,
+            "unifiedMemory": true,
+            "virtualized": false
+          },
+          "memory": {
+            "availAtStartBytes": 9600000000,
+            "processLimitBytes": null,
+            "gpuWorkingSetBytes": null,
+            "limitSource": "android-availmem"
+          },
+          "run": {
+            "plan": "standard",
+            "optInTiers": [
+              "T3"
+            ],
+            "startedAtMs": 1790668800000,
+            "endedAtMs": 1790670240000,
+            "dayUtc": "2026-09-29",
+            "powerSource": "ac",
+            "batteryStartPermille": 740,
+            "startThermal": "cool",
+            "screenOn": true,
+            "contentionBeforePermille": 12,
+            "contentionAfterPermille": 18,
+            "abort": null
+          },
+          "tiers": [
+            {
+              "tier": "T1",
+              "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+              "bytes": 1834426016,
+              "quant": "Q8_0",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790668860000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9580000000,
+              "peakFootprintBytes": 2310000000,
+              "kvBytesPerToken": 114688,
+              "loadColdMicros": 2400000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [620000, 640000, 615000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [1968000, 1975000, 1961000, 1990000, 1972000],
+                  "wholeSamples": [1969500, 1976400, 1962300, 1991200, 1973300]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [6090000, 6120000, 6101000, 6085000, 6133000]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 2318,
+                "refMilliNatsPerToken": 2310
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            },
+            {
+              "tier": "T2",
+              "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+              "bytes": 2497280256,
+              "quant": "Q4_K_M",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790669010000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9550000000,
+              "peakFootprintBytes": 3120000000,
+              "kvBytesPerToken": 147456,
+              "loadColdMicros": 4900000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [1210000, 1195000, 1230000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [3930000, 3951000, 3925000, 3947000, 3940000],
+                  "wholeSamples": [3931800, 3952700, 3926900, 3948600, 3941700]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [8810000, 8850000, 8832000, 8805000, 8861000]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 2026,
+                "refMilliNatsPerToken": 2020
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            },
+            {
+              "tier": "T3",
+              "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+              "bytes": 5027783488,
+              "quant": "Q4_K_M",
+              "startThermal": "warm",
+              "startThermalCode": 1,
+              "startedAtMs": 1790669190000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9510000000,
+              "peakFootprintBytes": 5980000000,
+              "kvBytesPerToken": 147456,
+              "loadColdMicros": 9800000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [2380000, 2410000, 2395000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [8533000, 8611000, 8498000, 8570000, 9950000],
+                  "wholeSamples": [8535100, 8613000, 8500200, 8572100, 9952300]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [17280000, 17350000, 17310000, 17265000, 17420000]
+                },
+                {
+                  "test": "tg128@d2048",
+                  "samples": [19380000, 19450000, 19400000, 19372000, 19510000]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 1893,
+                "refMilliNatsPerToken": 1880
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            }
+          ],
+          "sustain": {
+            "tier": "T3",
+            "windowMs": 15000,
+            "capMs": 600000,
+            "endReason": "PLATEAU",
+            "headroomAtOnsetPermille": 830,
+            "windows": [
+              [0, 113, 14900000, 0],
+              [15000, 112, 14900000, 0],
+              [30000, 113, 14900000, 0],
+              [45000, 112, 14900000, 0],
+              [60000, 112, 14900000, 1],
+              [75000, 111, 14900000, 1],
+              [90000, 112, 14900000, 1],
+              [105000, 111, 14900000, 1],
+              [120000, 111, 14900000, 1],
+              [135000, 110, 14900000, 1],
+              [150000, 110, 14900000, 1],
+              [165000, 109, 14900000, 1],
+              [180000, 108, 14900000, 1],
+              [195000, 99, 14900000, 2],
+              [210000, 90, 14900000, 2],
+              [225000, 82, 14900000, 2],
+              [240000, 78, 14900000, 2],
+              [255000, 76, 14900000, 2],
+              [270000, 75, 14900000, 2],
+              [285000, 75, 14900000, 2],
+              [300000, 76, 14900000, 2],
+              [315000, 75, 14900000, 2],
+              [330000, 74, 14900000, 2],
+              [345000, 75, 14900000, 2],
+              [360000, 75, 14900000, 2],
+              [375000, 76, 14900000, 2],
+              [390000, 75, 14900000, 2],
+              [405000, 75, 14900000, 2],
+              [420000, 74, 14900000, 2]
+            ]
+          },
+          "energy": null
+        },
+        "audience": "own"
+      },
+      "expect": {
+        "ok": {
+          "answers": {
+            "usableMemoryBytes": 7200000000,
+            "safetyPermille": 750,
+            "maxHold": {
+              "weightBytes": 6147702857,
+              "kvRatioPermille": 120,
+              "approxParamsQ4": 10078201404,
+              "largestLoadedTier": "T3"
+            },
+            "q7b": {
+              "basis": "measured",
+              "decodeMtps": 7394,
+              "ttft512Micros": 8572100,
+              "verdict": "usable"
+            },
+            "answer2000": {
+              "tier": "T3",
+              "depthRatioPermille": 892,
+              "micros": 355499032,
+              "thermalModel": true
+            },
+            "throttle": {
+              "tier": "T3",
+              "onsetMs": 195000,
+              "stabilityPermille": 663,
+              "testedMs": 435000
+            },
+            "role": {
+              "code": "occasional-helper",
+              "t2PlateauMtps": 9608,
+              "t3PlateauMtps": 5033
+            },
+            "overallConfidence": "low",
+            "tiers": [
+              {
+                "tier": "T1",
+                "numerics": "pass",
+                "loadWarmMicros": 620000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 259634,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 20980,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              },
+              {
+                "tier": "T2",
+                "numerics": "pass",
+                "loadWarmMicros": 1210000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 129949,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 14492,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              },
+              {
+                "tier": "T3",
+                "numerics": "pass",
+                "loadWarmMicros": 2395000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 59743,
+                    "kept": 4,
+                    "confidence": "medium",
+                    "flags": [
+                      "OUTLIER_EXCLUDED"
+                    ]
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 7394,
+                    "kept": 5,
+                    "confidence": "medium",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d2048",
+                    "value": 6597,
+                    "kept": 5,
+                    "confidence": "medium",
+                    "flags": []
+                  }
+                ]
+              }
+            ],
+            "sustain": {
+              "peakMtps": 7583,
+              "plateauMtps": 5033,
+              "onsetMs": 195000,
+              "stabilityPermille": 663,
+              "durationMs": 435000,
+              "thermalCodeAtOnset": 2,
+              "headroomAtOnsetPermille": 830,
+              "confidence": "low",
+              "flags": []
+            }
+          },
+          "resultCount": 3,
+          "resultsSha256": "c82ee3970aa4b84c8b8a44321192c09947e91c7d909ec452fc59cc5980727178",
+          "textSha256": "243832ddd5b27dbcfc420fbbe0def4fba7f880b1d4031653b4159437db79e8a3",
+          "textSha256Mesh": "4ba0fdc89a3168d04bd633da9c291328828a3e3fc9588d48d1e3591c4cd637d7"
+        }
+      }
+    },
+    {
+      "id": "M04-058",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "The run started warm but every tier started cool: the sustained phase is low (the other lane read only the sustain tier's start).",
+      "input": {
+        "kind": "doc",
+        "benchDoc": {
+          "schema": "asom.bench/1",
+          "benchProtocol": 1,
+          "benchSet": "qwen3-dense-1",
+          "harness": {
+            "shell": "android-daemon",
+            "coreImpl": "jvm",
+            "coreVersion": "1.0.0",
+            "confVersion": "1.0.0",
+            "timingSource": "host-monotonic",
+            "planSha256": "U5x4LJS7iliO0QOew1tjsNkJ14-JeCLGuJt6fIUAD9s",
+            "engine": {
+              "name": "llama.cpp",
+              "commit": "0123456789abcdef0123456789abcdef01234567",
+              "backend": "opencl",
+              "buildFlags": [
+                "GGML_OPENCL=ON"
+              ],
+              "threads": 6,
+              "gpuLayers": 99,
+              "kvType": "f16",
+              "flashAttn": "auto"
+            }
+          },
+          "device": {
+            "platform": "android",
+            "form": "phone",
+            "maker": "Example",
+            "model": "Phone X1 (synthetic)",
+            "soc": "Example SoC 8",
+            "osVersion": "16",
+            "osBuild": "EXAMPLE.260901.001",
+            "gpu": "Example GPU",
+            "gpuDriver": "example-512.0",
+            "memTotalBytes": 16000000000,
+            "unifiedMemory": true,
+            "virtualized": false
+          },
+          "memory": {
+            "availAtStartBytes": 9600000000,
+            "processLimitBytes": null,
+            "gpuWorkingSetBytes": null,
+            "limitSource": "android-availmem"
+          },
+          "run": {
+            "plan": "standard",
+            "optInTiers": [
+              "T3"
+            ],
+            "startedAtMs": 1790668800000,
+            "endedAtMs": 1790670240000,
+            "dayUtc": "2026-09-29",
+            "powerSource": "ac",
+            "batteryStartPermille": 740,
+            "startThermal": "warm",
+            "screenOn": true,
+            "contentionBeforePermille": 12,
+            "contentionAfterPermille": 18,
+            "abort": null
+          },
+          "tiers": [
+            {
+              "tier": "T1",
+              "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+              "bytes": 1834426016,
+              "quant": "Q8_0",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790668860000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9580000000,
+              "peakFootprintBytes": 2310000000,
+              "kvBytesPerToken": 114688,
+              "loadColdMicros": 2400000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [620000, 640000, 615000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [1968000, 1975000, 1961000, 1990000, 1972000],
+                  "wholeSamples": [1969500, 1976400, 1962300, 1991200, 1973300]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [6090000, 6120000, 6101000, 6085000, 6133000]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 2318,
+                "refMilliNatsPerToken": 2310
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            },
+            {
+              "tier": "T2",
+              "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+              "bytes": 2497280256,
+              "quant": "Q4_K_M",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790669010000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9550000000,
+              "peakFootprintBytes": 3120000000,
+              "kvBytesPerToken": 147456,
+              "loadColdMicros": 4900000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [1210000, 1195000, 1230000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [3930000, 3951000, 3925000, 3947000, 3940000],
+                  "wholeSamples": [3931800, 3952700, 3926900, 3948600, 3941700]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [8810000, 8850000, 8832000, 8805000, 8861000]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 2026,
+                "refMilliNatsPerToken": 2020
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            },
+            {
+              "tier": "T3",
+              "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+              "bytes": 5027783488,
+              "quant": "Q4_K_M",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790669190000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9510000000,
+              "peakFootprintBytes": 5980000000,
+              "kvBytesPerToken": 147456,
+              "loadColdMicros": 9800000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [2380000, 2410000, 2395000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [8533000, 8611000, 8498000, 8570000, 9950000],
+                  "wholeSamples": [8535100, 8613000, 8500200, 8572100, 9952300]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [17280000, 17350000, 17310000, 17265000, 17420000]
+                },
+                {
+                  "test": "tg128@d2048",
+                  "samples": [19380000, 19450000, 19400000, 19372000, 19510000]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 1893,
+                "refMilliNatsPerToken": 1880
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            }
+          ],
+          "sustain": {
+            "tier": "T3",
+            "windowMs": 15000,
+            "capMs": 600000,
+            "endReason": "PLATEAU",
+            "headroomAtOnsetPermille": 830,
+            "windows": [
+              [0, 113, 14900000, 0],
+              [15000, 112, 14900000, 0],
+              [30000, 113, 14900000, 0],
+              [45000, 112, 14900000, 0],
+              [60000, 112, 14900000, 1],
+              [75000, 111, 14900000, 1],
+              [90000, 112, 14900000, 1],
+              [105000, 111, 14900000, 1],
+              [120000, 111, 14900000, 1],
+              [135000, 110, 14900000, 1],
+              [150000, 110, 14900000, 1],
+              [165000, 109, 14900000, 1],
+              [180000, 108, 14900000, 1],
+              [195000, 99, 14900000, 2],
+              [210000, 90, 14900000, 2],
+              [225000, 82, 14900000, 2],
+              [240000, 78, 14900000, 2],
+              [255000, 76, 14900000, 2],
+              [270000, 75, 14900000, 2],
+              [285000, 75, 14900000, 2],
+              [300000, 76, 14900000, 2],
+              [315000, 75, 14900000, 2],
+              [330000, 74, 14900000, 2],
+              [345000, 75, 14900000, 2],
+              [360000, 75, 14900000, 2],
+              [375000, 76, 14900000, 2],
+              [390000, 75, 14900000, 2],
+              [405000, 75, 14900000, 2],
+              [420000, 74, 14900000, 2]
+            ]
+          },
+          "energy": null
+        },
+        "audience": "own"
+      },
+      "expect": {
+        "ok": {
+          "answers": {
+            "usableMemoryBytes": 7200000000,
+            "safetyPermille": 750,
+            "maxHold": {
+              "weightBytes": 6147702857,
+              "kvRatioPermille": 120,
+              "approxParamsQ4": 10078201404,
+              "largestLoadedTier": "T3"
+            },
+            "q7b": {
+              "basis": "measured",
+              "decodeMtps": 7394,
+              "ttft512Micros": 8572100,
+              "verdict": "usable"
+            },
+            "answer2000": {
+              "tier": "T3",
+              "depthRatioPermille": 892,
+              "micros": 355499032,
+              "thermalModel": true
+            },
+            "throttle": {
+              "tier": "T3",
+              "onsetMs": 195000,
+              "stabilityPermille": 663,
+              "testedMs": 435000
+            },
+            "role": {
+              "code": "occasional-helper",
+              "t2PlateauMtps": 9608,
+              "t3PlateauMtps": 5033
+            },
+            "overallConfidence": "low",
+            "tiers": [
+              {
+                "tier": "T1",
+                "numerics": "pass",
+                "loadWarmMicros": 620000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 259634,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 20980,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              },
+              {
+                "tier": "T2",
+                "numerics": "pass",
+                "loadWarmMicros": 1210000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 129949,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 14492,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              },
+              {
+                "tier": "T3",
+                "numerics": "pass",
+                "loadWarmMicros": 2395000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 59743,
+                    "kept": 4,
+                    "confidence": "high",
+                    "flags": [
+                      "OUTLIER_EXCLUDED"
+                    ]
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 7394,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d2048",
+                    "value": 6597,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              }
+            ],
+            "sustain": {
+              "peakMtps": 7583,
+              "plateauMtps": 5033,
+              "onsetMs": 195000,
+              "stabilityPermille": 663,
+              "durationMs": 435000,
+              "thermalCodeAtOnset": 2,
+              "headroomAtOnsetPermille": 830,
+              "confidence": "low",
+              "flags": []
+            }
+          },
+          "resultCount": 3,
+          "resultsSha256": "eea8477c00497ec0964d5481c5c800b4ef406c2ce6a12a94d38ed5facecd7e02",
+          "textSha256": "28ee920f01d81bed723c31ac868ea95e9d4ff6dd36eeab44fc00bb153ca43163",
+          "textSha256Mesh": "b469dd22e8194e251f1b4cfad41f2592fab98f6c0c3ef3d218f62c3d5c8d8f48"
+        }
+      }
+    },
+    {
+      "id": "M04-059",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A tier with a test of fewer than 2 kept reps has no value for it: the tier gets no row (ERRATA ERR-FX2-4); the other two tiers are projected.",
+      "input": {
+        "kind": "doc",
+        "benchDoc": {
+          "schema": "asom.bench/1",
+          "benchProtocol": 1,
+          "benchSet": "qwen3-dense-1",
+          "harness": {
+            "shell": "android-daemon",
+            "coreImpl": "jvm",
+            "coreVersion": "1.0.0",
+            "confVersion": "1.0.0",
+            "timingSource": "host-monotonic",
+            "planSha256": "U5x4LJS7iliO0QOew1tjsNkJ14-JeCLGuJt6fIUAD9s",
+            "engine": {
+              "name": "llama.cpp",
+              "commit": "0123456789abcdef0123456789abcdef01234567",
+              "backend": "opencl",
+              "buildFlags": [
+                "GGML_OPENCL=ON"
+              ],
+              "threads": 6,
+              "gpuLayers": 99,
+              "kvType": "f16",
+              "flashAttn": "auto"
+            }
+          },
+          "device": {
+            "platform": "android",
+            "form": "phone",
+            "maker": "Example",
+            "model": "Phone X1 (synthetic)",
+            "soc": "Example SoC 8",
+            "osVersion": "16",
+            "osBuild": "EXAMPLE.260901.001",
+            "gpu": "Example GPU",
+            "gpuDriver": "example-512.0",
+            "memTotalBytes": 16000000000,
+            "unifiedMemory": true,
+            "virtualized": false
+          },
+          "memory": {
+            "availAtStartBytes": 9600000000,
+            "processLimitBytes": null,
+            "gpuWorkingSetBytes": null,
+            "limitSource": "android-availmem"
+          },
+          "run": {
+            "plan": "standard",
+            "optInTiers": [
+              "T3"
+            ],
+            "startedAtMs": 1790668800000,
+            "endedAtMs": 1790670240000,
+            "dayUtc": "2026-09-29",
+            "powerSource": "ac",
+            "batteryStartPermille": 740,
+            "startThermal": "cool",
+            "screenOn": true,
+            "contentionBeforePermille": 12,
+            "contentionAfterPermille": 18,
+            "abort": null
+          },
+          "tiers": [
+            {
+              "tier": "T1",
+              "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+              "bytes": 1834426016,
+              "quant": "Q8_0",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790668860000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9580000000,
+              "peakFootprintBytes": 2310000000,
+              "kvBytesPerToken": 114688,
+              "loadColdMicros": 2400000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [620000, 640000, 615000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [1968000, 1975000, 1961000, 1990000, 1972000],
+                  "wholeSamples": [1969500, 1976400, 1962300, 1991200, 1973300]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [6090000, 6120000, 6101000, 6085000, 6133000]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 2318,
+                "refMilliNatsPerToken": 2310
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            },
+            {
+              "tier": "T2",
+              "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+              "bytes": 2497280256,
+              "quant": "Q4_K_M",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790669010000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9550000000,
+              "peakFootprintBytes": 3120000000,
+              "kvBytesPerToken": 147456,
+              "loadColdMicros": 4900000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [1210000, 1195000, 1230000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [3930000, 3951000, 3925000, 3947000, 3940000],
+                  "wholeSamples": [3931800, 3952700, 3926900, 3948600, 3941700]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [8810000, 8850000, 8832000, 8805000, 8861000]
+                },
+                {
+                  "test": "tg128@d4096",
+                  "samples": [15000000]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 2026,
+                "refMilliNatsPerToken": 2020
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            },
+            {
+              "tier": "T3",
+              "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+              "bytes": 5027783488,
+              "quant": "Q4_K_M",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790669190000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9510000000,
+              "peakFootprintBytes": 5980000000,
+              "kvBytesPerToken": 147456,
+              "loadColdMicros": 9800000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [2380000, 2410000, 2395000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [8533000, 8611000, 8498000, 8570000, 9950000],
+                  "wholeSamples": [8535100, 8613000, 8500200, 8572100, 9952300]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [17280000, 17350000, 17310000, 17265000, 17420000]
+                },
+                {
+                  "test": "tg128@d2048",
+                  "samples": [19380000, 19450000, 19400000, 19372000, 19510000]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 1893,
+                "refMilliNatsPerToken": 1880
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            }
+          ],
+          "sustain": {
+            "tier": "T3",
+            "windowMs": 15000,
+            "capMs": 600000,
+            "endReason": "PLATEAU",
+            "headroomAtOnsetPermille": 830,
+            "windows": [
+              [0, 113, 14900000, 0],
+              [15000, 112, 14900000, 0],
+              [30000, 113, 14900000, 0],
+              [45000, 112, 14900000, 0],
+              [60000, 112, 14900000, 1],
+              [75000, 111, 14900000, 1],
+              [90000, 112, 14900000, 1],
+              [105000, 111, 14900000, 1],
+              [120000, 111, 14900000, 1],
+              [135000, 110, 14900000, 1],
+              [150000, 110, 14900000, 1],
+              [165000, 109, 14900000, 1],
+              [180000, 108, 14900000, 1],
+              [195000, 99, 14900000, 2],
+              [210000, 90, 14900000, 2],
+              [225000, 82, 14900000, 2],
+              [240000, 78, 14900000, 2],
+              [255000, 76, 14900000, 2],
+              [270000, 75, 14900000, 2],
+              [285000, 75, 14900000, 2],
+              [300000, 76, 14900000, 2],
+              [315000, 75, 14900000, 2],
+              [330000, 74, 14900000, 2],
+              [345000, 75, 14900000, 2],
+              [360000, 75, 14900000, 2],
+              [375000, 76, 14900000, 2],
+              [390000, 75, 14900000, 2],
+              [405000, 75, 14900000, 2],
+              [420000, 74, 14900000, 2]
+            ]
+          },
+          "energy": null
+        },
+        "audience": "own"
+      },
+      "expect": {
+        "ok": {
+          "answers": {
+            "usableMemoryBytes": 7200000000,
+            "safetyPermille": 750,
+            "maxHold": {
+              "weightBytes": 6147702857,
+              "kvRatioPermille": 120,
+              "approxParamsQ4": 10078201404,
+              "largestLoadedTier": "T3"
+            },
+            "q7b": {
+              "basis": "measured",
+              "decodeMtps": 7394,
+              "ttft512Micros": 8572100,
+              "verdict": "usable"
+            },
+            "answer2000": {
+              "tier": "T3",
+              "depthRatioPermille": 892,
+              "micros": 355499032,
+              "thermalModel": true
+            },
+            "throttle": {
+              "tier": "T3",
+              "onsetMs": 195000,
+              "stabilityPermille": 663,
+              "testedMs": 435000
+            },
+            "role": {
+              "code": "occasional-helper",
+              "t2PlateauMtps": 9608,
+              "t3PlateauMtps": 5033
+            },
+            "overallConfidence": "high",
+            "tiers": [
+              {
+                "tier": "T1",
+                "numerics": "pass",
+                "loadWarmMicros": 620000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 259634,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 20980,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              },
+              {
+                "tier": "T2",
+                "numerics": "pass",
+                "loadWarmMicros": 1210000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 129949,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 14492,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d4096",
+                    "value": null,
+                    "kept": 1,
+                    "confidence": "insufficient",
+                    "flags": []
+                  }
+                ]
+              },
+              {
+                "tier": "T3",
+                "numerics": "pass",
+                "loadWarmMicros": 2395000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 59743,
+                    "kept": 4,
+                    "confidence": "high",
+                    "flags": [
+                      "OUTLIER_EXCLUDED"
+                    ]
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 7394,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d2048",
+                    "value": 6597,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              }
+            ],
+            "sustain": {
+              "peakMtps": 7583,
+              "plateauMtps": 5033,
+              "onsetMs": 195000,
+              "stabilityPermille": 663,
+              "durationMs": 435000,
+              "thermalCodeAtOnset": 2,
+              "headroomAtOnsetPermille": 830,
+              "confidence": "high",
+              "flags": []
+            }
+          },
+          "resultCount": 2,
+          "resultsSha256": "8f252ea9992bb21627545f5ca8dbab9f0cb2f224c9bad564cb18a2bdd0da2855",
+          "textSha256": "3711381f6f9345e26cef45b8cd3457232a23dd73b8f2b1a338d6794919f7b39e",
+          "textSha256Mesh": "2ecfdd13527a034ace3ab5f8360804d8bb743c705a96021ddbe134061d1edb52"
+        }
+      }
+    },
+    {
+      "id": "M04-060",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Prefill at depth (pp512@d2048) cannot be carried by a manifest (benchmark.md 13.4 R5): the document is invalid.",
+      "input": {
+        "kind": "doc",
+        "benchDoc": {
+          "schema": "asom.bench/1",
+          "benchProtocol": 1,
+          "benchSet": "qwen3-dense-1",
+          "harness": {
+            "shell": "android-daemon",
+            "coreImpl": "jvm",
+            "coreVersion": "1.0.0",
+            "confVersion": "1.0.0",
+            "timingSource": "host-monotonic",
+            "planSha256": "U5x4LJS7iliO0QOew1tjsNkJ14-JeCLGuJt6fIUAD9s",
+            "engine": {
+              "name": "llama.cpp",
+              "commit": "0123456789abcdef0123456789abcdef01234567",
+              "backend": "opencl",
+              "buildFlags": [
+                "GGML_OPENCL=ON"
+              ],
+              "threads": 6,
+              "gpuLayers": 99,
+              "kvType": "f16",
+              "flashAttn": "auto"
+            }
+          },
+          "device": {
+            "platform": "android",
+            "form": "phone",
+            "maker": "Example",
+            "model": "Phone X1 (synthetic)",
+            "soc": "Example SoC 8",
+            "osVersion": "16",
+            "osBuild": "EXAMPLE.260901.001",
+            "gpu": "Example GPU",
+            "gpuDriver": "example-512.0",
+            "memTotalBytes": 16000000000,
+            "unifiedMemory": true,
+            "virtualized": false
+          },
+          "memory": {
+            "availAtStartBytes": 9600000000,
+            "processLimitBytes": null,
+            "gpuWorkingSetBytes": null,
+            "limitSource": "android-availmem"
+          },
+          "run": {
+            "plan": "standard",
+            "optInTiers": [
+              "T3"
+            ],
+            "startedAtMs": 1790668800000,
+            "endedAtMs": 1790670240000,
+            "dayUtc": "2026-09-29",
+            "powerSource": "ac",
+            "batteryStartPermille": 740,
+            "startThermal": "cool",
+            "screenOn": true,
+            "contentionBeforePermille": 12,
+            "contentionAfterPermille": 18,
+            "abort": null
+          },
+          "tiers": [
+            {
+              "tier": "T1",
+              "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+              "bytes": 1834426016,
+              "quant": "Q8_0",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790668860000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9580000000,
+              "peakFootprintBytes": 2310000000,
+              "kvBytesPerToken": 114688,
+              "loadColdMicros": 2400000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [620000, 640000, 615000],
+              "tests": [
+                {
+                  "test": "pp512@d2048",
+                  "samples": [1968000, 1975000, 1961000, 1990000, 1972000]
                 },
                 {
                   "test": "tg128@d0",

@@ -266,6 +266,7 @@ object BenchCodec {
     private fun decodeTest(r: Rd): BTest = r.scope {
         val name = str("test", StrRule.ANY_SHORT)
         val spec = TestSpec.parse(name) ?: throw SchemaViolation("$path.test", "'$name' is not a supported pp<P>@d<D> or tg<N>@d<D> test")
+        if (spec.isPrefill && spec.depth != 0L) throw SchemaViolation("$path.test", "prefill at depth cannot be carried by a manifest (benchmark.md 13.4 R5)")
         val samples = arrInts("samples", 1, 16, 1, SPAN_MAX)
         val whole = wholeSpans(spec, samples.size)
         BTest(spec, samples, whole)

@@ -20,10 +20,15 @@ object Project {
     private val BATTERY_FORMS = setOf("phone", "tablet", "handheld", "laptop")
     const val BATCH_TOKENS: Long = 512L
 
-    /** Tiers that lack a prefill point (`pp@d0` with a value and a TTFT) or a decode point (`tg` with a value) cannot be projected and are left out. */
+    /**
+     * Tiers that lack a prefill point (`pp@d0` with a value and a TTFT) or a decode point (`tg` with a value) cannot be projected and
+     * are left out, and so is a tier in which any test has no value (fewer than 2 kept reps): a row must not be signed with that test
+     * silently missing from its `low-runs` and `confidence-<class>` (ERRATA ERR-FX2-4).
+     */
     fun projectable(t: TierDerived): Boolean =
-        t.results.any { it.spec.isPrefill && it.spec.depth == 0L && it.value != null && it.ttftMicros != null } &&
-            t.results.any { !it.spec.isPrefill && it.value != null }
+        t.results.all { it.value != null } &&
+            t.results.any { it.spec.isPrefill && it.spec.depth == 0L && it.ttftMicros != null } &&
+            t.results.any { !it.spec.isPrefill }
 
     fun results(d: Derived, audience: Audience): List<JValue> {
         val doc = d.doc

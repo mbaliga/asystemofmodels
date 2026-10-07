@@ -1,13 +1,13 @@
 [
   {
     "path": "bench/M04-derive.json",
-    "sha256": "9ad1f2fb948474683cbcd12b758ddfe08dff7abc57d3d9351ed3df563e54aad1",
+    "sha256": "33196eb5fd1437fcaeace132e537155e60fcdfbebb5dde284a2de7eb4eb51351",
     "family": "M04",
     "status": "normative"
   },
   {
     "path": "bench/M05-body.json",
-    "sha256": "c51908e0bfd25040539a728d86e41fccc1390ca57f54205735290a6a8b11b738",
+    "sha256": "b118f0e03dd4bfa7bd15696116ea7d7f267ae5c5a13f000a39774d5f0629ccab",
     "family": "M05",
     "status": "normative"
   },

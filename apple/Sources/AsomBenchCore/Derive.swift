@@ -130,7 +130,7 @@ public enum Derivation {
 
         var sustain: SustainResult?
         if let s = doc.sustain, let t = doc.tiers.first(where: { $0.tier == s.tier }) {
-            sustain = try SustainDerivation.derive(s, startedCool: t.startThermal == "cool")
+            sustain = try SustainDerivation.derive(s, startedCool: t.startThermal == "cool" && doc.run.startThermal == "cool")
         }
         let answers = try makeAnswers(doc, tiers: tiers, sustain: sustain, pins: pins)
         return Derived(tiers: tiers, sustain: sustain, sustainTier: doc.sustain?.tier, answers: answers)
@@ -144,7 +144,7 @@ public enum Derivation {
         return (dev <= 20 ? "pass" : dev <= 50 ? "warn" : "fail", dev)
     }
 
-    static func makeAnswers(_ doc: BenchDocument, tiers: [TierResult], sustain: SustainResult?, pins: [PinnedTier]) throws -> Answers {
+    static func makeAnswers(_ doc: BenchDocument, tiers: [TierResult], sustain rawSustain: SustainResult?, pins: [PinnedTier]) throws -> Answers {
         var limit = doc.memory.availAtStartBytes
         if let p = doc.memory.processLimitBytes { limit = min(limit, p) }
         if let g = doc.memory.gpuWorkingSetBytes { limit = min(limit, g) }
@@ -153,6 +153,8 @@ public enum Derivation {
 
         let usableTiers = tiers.filter { !$0.numericsFailed }
         let headline = usableTiers.last
+        // A heat test on a tier whose numerics failed feeds no answer (lab ERR-FX2-1).
+        let sustain = usableTiers.contains(where: { $0.tier.tier == doc.sustain?.tier }) ? rawSustain : nil
 
         // Q2
         var maxHold: MaxHold?
@@ -206,7 +208,7 @@ public enum Derivation {
         func plateau(_ id: String) throws -> (Int64, Bool)? {
             guard let s = sustain else { return nil }
             if doc.sustain?.tier == id { return (s.plateauMtps, false) }
-            guard let t = tiers.first(where: { $0.tier.tier == id }), let dec = t.result("tg128@d0")?.stat.value else { return nil }
+            guard let t = usableTiers.first(where: { $0.tier.tier == id }), let dec = t.result("tg128@d0")?.stat.value else { return nil }
             return (try Checked.mulDiv(dec, s.stabilityPermille, 1000), true)
         }
         let p2 = try plateau("T2")

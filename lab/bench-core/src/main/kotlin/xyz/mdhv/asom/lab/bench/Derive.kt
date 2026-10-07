@@ -84,8 +84,9 @@ object SustainMath {
         val peakIdx = early.maxWithOrNull(compareBy<Int> { sm[it] }.thenByDescending { it })!!
         val peak = sm[peakIdx]
         var onsetIdx: Int? = null
+        val threshold = Checked.div(Checked.mul(Derive.ONSET_PERMILLE, peak), 1000L)
         for (i in peakIdx + 1 until n - 2) {
-            if ((i..i + 2).all { Checked.mul(sm[it], 1000L) < Checked.mul(Derive.ONSET_PERMILLE, peak) }) {
+            if ((i..i + 2).all { sm[it] < threshold }) {
                 onsetIdx = i
                 break
             }
@@ -166,7 +167,11 @@ object Derive {
         return NumericsDerived(n.milliNatsPerToken, ref, dev, verdict)
     }
 
-    private fun deriveSustain(s: BSustain, doc: BenchDoc): SustainDerived = deriveSustainCore(s, doc.run.startThermal)
+    /** The sustained phase starts warm when the run did or its tier did: the document records no class of its own for the pre-sustain cool-down (ERRATA ERR-FX2-5). */
+    private fun deriveSustain(s: BSustain, doc: BenchDoc): SustainDerived {
+        val start = if (doc.run.startThermal != "cool") doc.run.startThermal else doc.tier(s.tier)?.startThermal ?: doc.run.startThermal
+        return deriveSustainCore(s, start)
+    }
 
     private fun deriveSustainCore(s: BSustain, startThermal: String): SustainDerived {
         val w = s.windows
@@ -214,13 +219,14 @@ object Derive {
     private fun fits(pin: TierPin, usable: Long): Boolean =
         Checked.add(Checked.add(pin.bytes!!, Checked.mul(pin.kvBytesPerToken!!, KV_CTX)), OVERHEAD_BYTES) <= usable
 
-    private fun answers(doc: BenchDoc, set: BenchSetDef, tiers: List<TierDerived>, sustain: SustainDerived?): Answers {
+    private fun answers(doc: BenchDoc, set: BenchSetDef, tiers: List<TierDerived>, sustainAll: SustainDerived?): Answers {
         val form = doc.device.form
         val safety = SAFETY_PERMILLE.getValue(form)
         val limit = listOfNotNull(doc.memory.availAtStartBytes, doc.memory.processLimitBytes, doc.memory.gpuWorkingSetBytes).min()
         val usable = Checked.div(Checked.mul(limit, safety), 1000L)
         val okTiers = tiers.filter { !it.numericsFail }
-        val by = tiers.associateBy { it.tier }
+        val by = okTiers.associateBy { it.tier }
+        val sustain = sustainAll?.takeIf { s -> s.doc.tier in by }
 
         val loaded = okTiers.maxByOrNull { TIER_ORDER.indexOf(it.tier) }
         val maxHold = loaded?.let { ld ->
