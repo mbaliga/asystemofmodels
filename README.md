@@ -6,7 +6,7 @@ A **sovereign model-routing daemon for Android**. One app owns the model files, 
 
 ## Ethos
 
-Sovereign · local-first · open-source · BYOK · **no telemetry** · no operator backend · one-time/free. The cloud is always a *watched object*: you can always see which model ran, on-device vs cloud, and what left the device.
+Sovereign · local-first · source-available · BYOK · **no telemetry** · no operator backend · one-time/free. The cloud is always a *watched object*: you can always see which model ran, on-device vs cloud, and what left the device.
 
 ## What v1 ships
 
@@ -43,6 +43,6 @@ Model files are served read-only via `content://xyz.mdhv.asom.models/models/{mod
 
 The `:client` SDK (discovery, pairing, streaming chat) is documented in `docs/CLIENT_API.md` (lands in P6).
 
-## License
+## Licence
 
-Apache-2.0. See `LICENSE`.
+Source-available, free for noncommercial use under the [PolyForm Noncommercial License 1.0.0](LICENSE). If you make money with it, you need a commercial licence: see [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).
