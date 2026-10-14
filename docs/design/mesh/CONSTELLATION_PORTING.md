@@ -221,3 +221,36 @@ Owner questions in the program register that concern this repo (status as of 202
 - OQ-37 (answered in part): A second Ubuntu Touch device; the program focal pre-spike is on a 20.04 device that asom excludes
 
 When the owner confirms or changes the line, this repo's original cells above stay as the engineering detail; only the verdicts and re-costs in program section 5A change.
+
+## Update 2026-10-14: the market lens, iPadOS and the owner's latest answers
+
+Status: PLAN. Nothing here is built, run on a device, signed or submitted. This update follows the section "Owner rulings and the proposed line (added 2026-10-07)" above and the program plan's section 5A.12 (Personal-Tracker `PORTING_PROGRAM.md`, [PR #10](https://github.com/mbaliga/Personal-Tracker/pull/10)), which governs where the two differ. It records the owner's market lens and answers of 2026-10-13 and 2026-10-14; the proposed line is still a proposal. Two tests were added to the program's section 5A.1: (d) a real gap, or we are better or cheaper ("better" only where it has been measured; free alone is no gap when free tools exist); (w) mature free alternatives abound and the app adds nothing.
+
+### Where asystemofmodels sits now (program section 5A.12, a proposal)
+
+| Target       | Verdict, weeks and flags |
+| ------------ | ------------------------ |
+| Ubuntu Touch | port 6.5w o              |
+| Linux        | port 7w o                |
+| iPhone       | follows                  |
+| iPad         | port 16.5w o (later)     |
+| macOS        | follows                  |
+| Windows      | follows                  |
+
+The Apple column is now split: iPhone and iPad are judged apart. Where an app ports to both, the weeks are counted once on the lead cell and the other reads follows. The wave (early or later) is for the iPad, and for the iPhone where it leads.
+
+### What changed for this repo
+
+- macOS and Windows are now **follows** (the earlier section had port): local model tools are well served on both (Mac most of all), so asom adds only the lender role; macOS becomes a port when the Mac mini exists, Windows when a Windows machine is a lender. Ubuntu Touch, Linux and iPad stay asom's own program (directive I-9: PLATFORM_PLAN.md governs).
+- No program ruling changes an asom rule or invariant. On iPad asom is a borrowing app first (I1-I3); a lend screen (I4) that lends only while it is in the foreground comes after v3, because iOS gives no daemon; iPad is the later wave.
+
+### Owner answers that apply here
+
+- **TestFlight (PT:D-Z, approved 2026-10-14):** the owner approved an exception to the program's directive I-1 for crash reports that Apple collects on TestFlight and the App Store. PT:D-Z expressly does not amend repo-local restatements such as asom Invariant 1 (asom is governed by directive I-9), so asom Invariant 1 and its no-crash-data rule stand as written. Whether asom adopts the exception is for the owner to rule in asom's own decision register; until then TestFlight is not available to asom's iOS app.
+- **Mac mini timing (OQ-31, 2026-10-14):** this repo is public and its Swift and hosted macOS lanes already run on free hosted runners; when the Apple app work (I1 to I3) starts is set by asom's own order (AD-1, PLATFORM_PLAN), not by this answer. Signing and a TestFlight upload would need the Apple Developer Program, which the owner has not yet joined (owner action).
+- **Apple ids and signing:** the owner wants Apple apps under `com.asoc.<appname>` (OQ-25, in part), but asom's plan names its iOS app `xyz.mdhv.asom` (PLATFORM_PLAN D24(a)) and its CLAUDE.md forbids package renames; OQ-25 leaves open which ids stay, so no asom id changes here and any new id needs a NAMES.md row first (R11). Signing material is to live in GitHub environment secrets behind a required-approval gate (OQ-3, Apple half). The owner will enrol in the Apple Developer Program ("Not yet, I'll enrol").
+- **Apple devices:** the owner has an iPad Pro M4, an Apple Pencil and an iPhone 12 mini; the Mac mini is not yet bought, and nothing is device-verified.
+- **Ubuntu Touch device (OQ-37, 2026-10-14):** "Wait for the OnePlus 6 on a newer image". No second device is bought; the research reads the OnePlus 6 as 20.04-only (the installed image is not stated, OQ-33), so it only takes the S-UT1 (focal) pre-spike, and every Ubuntu Touch device gate stays NDV until it runs 24.04. asom excludes 20.04 (never 20.04), so the focal pre-spike is not asom's S-UT1 / DV-UT01.
+- **Skin contract (OQ-39, 2026-10-14):** proposed conformance level for this app: Level 1 for the Ubuntu Touch QML front end (cost class B: Tokens.qml made settable and its hue lint moved to load time); asom's own invariants stay as written. The owner chose Tier 1 (palette) everywhere first and every app declaring its own level; the assistant chose JSON, not XML, after the owner asked for a check; the draft spec is Personal-Tracker `porting/skin-contract/SPEC-DRAFT.md`. This is a proposal, not decided for this app.
+
+When the owner confirms or changes the line, this repo's original cells above stay as the engineering detail; only the verdicts and re-costs in program section 5A.12 change.
