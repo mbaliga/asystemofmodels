@@ -105,21 +105,36 @@ object TlsOracle {
         estimated(w, dead, peerOfDead, l15)
     }
 
-    /** ESTIMATED form (LAB_SPEC 7.6): 22 x ceilDiv(app, 16384) per frame in either direction plus 4,096 per direction, against the record tap. */
+    /**
+     * The stack constants of the ESTIMATED form are what THIS JVM's JSSE measures under a record tap (R4-L-25: R 38, Lmax 16,367, close_notify 40). They are
+     * pinned by the calibration, which shares no code with `Overhead`, so a wrong constant fails here and not only in the ledger model's own arithmetic tests.
+     */
+    fun pinStackToCalibration(stack: Overhead.Stack) {
+        val m = TlsCalibration.measured
+        if (m.recordOverhead != stack.recordExpansion) fail("${stack.label}: R is ${stack.recordExpansion}, the record tap measured ${m.recordOverhead} bytes per record (${m.cipherSuite})")
+        if (m.maxRecordPlaintext != stack.maxRecordPlaintext) fail("${stack.label}: Lmax is ${stack.maxRecordPlaintext}, the record tap measured ${m.maxRecordPlaintext} (${m.cipherSuite})")
+        if (m.alertRecord != stack.closeNotify) fail("${stack.label}: close_notify is ${stack.closeNotify}, the record tap measured ${m.alertRecord} (${m.cipherSuite})")
+    }
+
+    /**
+     * ESTIMATED form (LAB_SPEC 7.6, r4 R4-L-25): `R x ceilDiv(app, Lmax)` per frame in either direction plus 8,192 for the handshake, with the JSSE stack
+     * (R 38, Lmax 16,367), against the record tap. The recalibrated form carries no allowance for a record excess (r3 allowed (38 - 22) x frames): the only
+     * undercount tolerated is the close_notify record each end may have sent, which the form has no term for.
+     */
     fun estimated(w: TlsWorld, me: Side, peer: Side, into: L15Stats) {
+        val stack = Overhead.JSSE_17_21
+        pinStackToCalibration(stack)
         val events = events(w)
         val out = events.filterIsInstance<Ev.Write>().filter { it.conn == me.conn.name }.flatMap { Frames.parse(it.bytes) }.map { it.app }
         val inn = events.filterIsInstance<Ev.Write>().filter { it.conn == peer.conn.name && peer.conn.failedWrites.none { f -> f === it.bytes } }.flatMap { Frames.parse(it.bytes) }.map { it.app }
-        val estimate = Overhead.estimatedRecords(out + inn) + Overhead.estimatedHandshake()
+        val estimate = Overhead.estimated(out + inn, stack)
         val tap = me.conn.tap
         val real = tap.bytesRead + tap.bytesWritten - (me.conn.plaintextRead + me.conn.plaintextWritten)
-        val frames = out.size + inn.size
-        // the spec's 22 bytes per record undercount JSSE by TlsCalibration.recordOverhead - 22 per record, and each side's close alert; the handshake allowance of 2 x 4,096 overcounts
-        val undercountAllowed = (TlsCalibration.recordOverhead - Overhead.TLS_RECORD_OVERHEAD) * frames + 2 * TlsCalibration.alertRecord
-        if (estimate < real - undercountAllowed) fail("ESTIMATED overhead $estimate undercounts the tap's $real by more than the measured record excess $undercountAllowed (${me.name})")
+        val undercountAllowed = 2 * stack.closeNotify!!
+        if (estimate < real - undercountAllowed) fail("ESTIMATED overhead $estimate undercounts the tap's $real by more than the two close_notify records $undercountAllowed (${me.name})")
         // the one transport artefact tolerated: on a hard reset a Windows peer may lose the last bytes it sent, so this node's tap read less than the peer wrote
         val lost = if (windows) maxOf(0L, peer.conn.tap.bytesWritten - tap.bytesRead) else 0L
-        if (estimate - real > 2 * Overhead.HANDSHAKE_ESTIMATE_PER_DIRECTION + lost) fail("ESTIMATED overhead $estimate overcounts the tap's $real by more than the handshake allowance (${me.name})")
+        if (estimate - real > Overhead.HANDSHAKE_ESTIMATE_PER_SESSION + lost) fail("ESTIMATED overhead $estimate overcounts the tap's $real by more than the handshake allowance (${me.name})")
         into.estimatedSessions++
         into.maxEstimateDeviation = maxOf(into.maxEstimateDeviation, kotlin.math.abs(estimate - real))
         into.estimateLines += "estimate $estimate real $real (${me.name})"
@@ -405,6 +420,14 @@ object TlsOracle {
         if (!Overhead.withinRecordBound(overhead, me.conn.plaintextWritten, me.conn.plaintextRead, flushesOut, flushesIn)) {
             into.mismatches++
             fail("L-L15: $tag: overhead $overhead is outside the RFC 8446 record bound for ${me.conn.plaintextWritten} bytes out in $flushesOut writes and ${me.conn.plaintextRead} bytes in")
+        }
+        val stack = Overhead.JSSE_17_21
+        pinStackToCalibration(stack)
+        val flushes = events(w).filterIsInstance<Ev.Write>().filter { it.conn == me.conn.name || it.conn == peerConn.name }.map { it.bytes.size.toLong() }
+        val formCeiling = Overhead.estimated(flushes, stack) + 2 * stack.closeNotify!!
+        if (overhead > formCeiling) {
+            into.mismatches++
+            fail("L-L15: $tag: the MEASURED overhead $overhead is above the ESTIMATED form $formCeiling (R ${stack.recordExpansion}, Lmax ${stack.maxRecordPlaintext}, 8,192 handshake, two close_notify records)")
         }
         val handshake = (rows.firstOrNull { it.meshKind == MeshKind.SESSION && (it.meshCode == "established" || it.meshCode == "pairing") } ?: rows.first { it.meshKind == MeshKind.DIAL && it.phase == Phase.OUTCOME }).overheadBytes!!
         into.handshakeBytesMin = minOf(into.handshakeBytesMin, handshake)

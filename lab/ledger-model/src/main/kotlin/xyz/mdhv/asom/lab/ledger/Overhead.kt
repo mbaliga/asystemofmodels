@@ -25,13 +25,29 @@ object Overhead {
     /** Largest TLS 1.3 plaintext per record (2^14). */
     const val MAX_PLAINTEXT: Long = 16_384
 
-    /** [A36]: an unmeasured figure, PROVISIONAL, used only for ESTIMATED overhead. */
-    const val HANDSHAKE_ESTIMATE_PER_DIRECTION: Long = 4_096
+    /** [A36]: PROVISIONAL, used only for ESTIMATED overhead (R4-L-25: 8,192 bytes per session, not per direction). */
+    const val HANDSHAKE_ESTIMATE_PER_SESSION: Long = 8_192
 
-    /** The ESTIMATED form: `22 x ceilDiv(appBytesOfFlush, 16384)` per flush, plus 4,096 bytes per direction for the handshake. */
-    fun estimatedRecords(flushAppBytes: List<Long>): Long = flushAppBytes.sumOf { TLS_RECORD_OVERHEAD * ceilDiv(it, MAX_PLAINTEXT) }
+    /**
+     * Per-stack record arithmetic of the ESTIMATED form (R4-L-25): [recordExpansion] bytes added to every record, at most [maxRecordPlaintext] plaintext
+     * bytes in a record written in one go. [closeNotify] is the close_notify record where it was measured, else null.
+     */
+    class Stack(val label: String, val recordExpansion: Long, val maxRecordPlaintext: Long, val closeNotify: Long?)
 
-    fun estimatedHandshake(): Long = 2 * HANDSHAKE_ESTIMATE_PER_DIRECTION
+    /** Nobody has measured this stack: the RFC 8446 minimum (22 bytes per record, 2^14 plaintext), which is a lower bound and says so. */
+    val UNCALIBRATED = Stack("uncalibrated (RFC 8446 minimum)", TLS_RECORD_OVERHEAD, MAX_PLAINTEXT, null)
+
+    /** JSSE 17.0.12 and 21.0.10 with TLS_AES_256_GCM_SHA384, measured under a record tap (LAB, ERR-PI-2). The cause of the 16 extra bytes was not examined. */
+    val JSSE_17_21 = Stack("JSSE 17.0.12 / 21.0.10 TLS_AES_256_GCM_SHA384 (LAB)", 38, 16_367, 40)
+
+    /** The ESTIMATED form per flush: `R x ceilDiv(appBytesOfFlush, Lmax)`. A stack nobody named is [UNCALIBRATED]. */
+    fun estimatedRecords(flushAppBytes: List<Long>, stack: Stack = UNCALIBRATED): Long =
+        flushAppBytes.sumOf { stack.recordExpansion * ceilDiv(it, stack.maxRecordPlaintext) }
+
+    fun estimatedHandshake(): Long = HANDSHAKE_ESTIMATE_PER_SESSION
+
+    /** The whole ESTIMATED figure of a session: the records of every flush in either direction plus the handshake allowance. */
+    fun estimated(flushAppBytes: List<Long>, stack: Stack = UNCALIBRATED): Long = estimatedRecords(flushAppBytes, stack) + estimatedHandshake()
 
     /** Lab tolerance for the handshake and alerts of one direction when checking a MEASURED figure against the RFC 8446 bound. */
     const val HANDSHAKE_TOLERANCE_PER_DIRECTION: Long = 16_384

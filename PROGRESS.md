@@ -2233,3 +2233,19 @@ $ ./gradlew jvmTest --max-workers=2 --offline  -> BUILD SUCCESSFUL (task results
 ```
 Mutation checks (19 mutants, each an exact-string edit of one main file, restored byte for byte; a mutant counts as killed only if the build did not fail to COMPILE and a test failed): max age 24 h; max age 31 min; max age one ms late; GOAWAY written inline on the revoking thread; driver watchdog never closes the transport; `advance()` ignores a posted GOAWAY; `tick()` ignores it; post does nothing; leaf lifetime cap removed; cap exclusive; cap one second generous; cap without the 1 h back-date; inverted validity accepted; over-long leaf reported as CLOCK_SKEW; lifetime judged after the clock; PAIRED admitted by the pairing modes; SUSPENDED admitted by them; EXPECT_PAIRING alone on the old letter; PAIRING_SERVER alone on the old letter. Result: `SUMMARY 19 killed of 19` (all KILLED-BY-TEST, none COMPILE-ERROR). One run was interrupted by the harness mid-mutant and the source was found mutated and restored by hand, then the full 19 were re-run clean.
 Not run: hosted CI, Windows, macOS, any device. Windows parity of the new tests (`RevokeDoesNotBlockTest` uses a real loopback TLS peer with a small receive buffer) is untested here; the assertions are bounds, not OS-specific values.
+## Design revision 4 builder actions 8 and 5 (track build-ledger-thermal), 2026-10-15
+
+Base 2a670033b907. Evidence label: LAB (JSSE on loopback, JDK 17.0.12 and 21 on Linux), CI-APPROX, NOT DEVICE EVIDENCE, not Windows evidence.
+
+- **Action 8 DONE** (LAB_SPEC R4-L-25): `:ledger-model` `Overhead.Stack`, `JSSE_17_21` (38 / 16,367 / close_notify 40), `UNCALIBRATED` (22 / 16,384), `estimatedRecords(flush, stack)`, `estimated(flush, stack)`, handshake 8,192 per session. `TlsOracle` (test) uses the JSSE stack for the ESTIMATED check, pins the stack constants to `TlsCalibration`, and bounds every MEASURED session by the form. Failing before: `EstimatedOverheadTest` did not compile (no stack-aware form); `ProtoIntegrationGateTest.l15OverRunsCutMidStreamByAPeerResetAndMidRecord` with the uncalibrated stack failed with "uncalibrated (RFC 8446 minimum): R is 22, the record tap measured 38 bytes per record (TLS_AES_256_GCM_SHA384)".
+- **Action 5 BLOCKED(write-set)**: the thermal rule, W07-075, `LiveStateTest` and `gen_vectors.py` are in `lab/mesh-policy` and `lab/conformance/policy`, not in the track's write set (lab/ERRATA.md ERR-R4B-LT-1). Built and verified in a scratch copy only; not applied here.
+
+```
+$ ./gradlew --max-workers=2 -p lab :ledger-model:test :mesh-proto:test --rerun   (JDK 21)  -> BUILD SUCCESSFUL; ledger-model 98 tests, mesh-proto 280 tests, 0 failures, 0 skipped
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew --max-workers=2 -p lab :mesh-proto:test :ledger-model:test :mesh-policy:test :mesh-sim:test :conformance-runner:test --rerun --continue  -> BUILD SUCCESSFUL; ledger-model 98, mesh-proto 280, mesh-sim 37, conformance-runner 2111 (7 skipped, as before), 0 failures
+$ ./gradlew --max-workers=2 -p lab test --continue  (JDK 21, all lab modules)  -> BUILD SUCCESSFUL
+$ python3 lab/tools/isolation.py  -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py  -> law: OK
+$ ./gradlew --max-workers=2 jvmTest --rerun-tasks -x :core:routing:jacocoTestReport  -> BUILD SUCCESSFUL; 140 tests, 0 failures
+```
+Mutants killed (each reverted afterwards): `estimatedRecords` ignoring the stack, JSSE R=22, JSSE Lmax=16,384, handshake 4,096, floor instead of ceiling division (all by `:ledger-model:test`); JSSE R=22 (7 `ProtoIntegrationGateTest` tests fail), MEASURED ceiling divided by 4, ESTIMATED figure without the handshake term (by `:mesh-proto:test`). Not run: Windows, the Swift lane (no change), hosted CI.
