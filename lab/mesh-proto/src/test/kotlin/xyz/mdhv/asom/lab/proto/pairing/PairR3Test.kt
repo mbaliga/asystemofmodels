@@ -47,7 +47,7 @@ class PairR3Test {
 
     private fun r3(own: Pin) = PairFsmConfig(own, profile = PairProfile.R3)
 
-    private fun r0(own: Pin) = PairFsmConfig(own)
+    private fun r0(own: Pin) = PairFsmConfig(own, profile = PairProfile.R0_COMPAT)
 
     private class Run<S, E>(var state: S, val step: (S, E) -> Pair<S, List<PairEffect>>) {
         val log = ArrayList<String>()

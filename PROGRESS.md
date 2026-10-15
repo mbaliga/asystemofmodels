@@ -2178,3 +2178,32 @@ Pointer: `docs/design/mesh/REVISION_4.md` (change log: the 39 round-3 findings a
 `gh api repos/mbaliga/asystemofmodels/commits/ee88fc4/check-runs`: **58 non-cleanup check runs, all `completed/success`** (lab Linux and Windows on JDK 17 and 21, desktop, apple-swift-lane on macOS CryptoKit and Linux swift-crypto, lane-diff, UT, QML, click, AppArmor approximation, install matrix). `CI (hosted VM) evidence`, conclusions read from check runs, not logs. NOT DEVICE EVIDENCE. Includes fix wave 2 (review round 2: 40 confirmed findings in seven groups) and the Swift text-renderer repair; PTT-1 is only partly closed (the revoke listener in `integration/Node.kt` still writes GOAWAY on the revoking thread, bounded by the 30 s write-stall budget).
 
 Design revision 4 (docs only, `docs/design/mesh/REVISION_4.md`, `OWNER_DECISIONS.md`) folds the round-3 dispositions and implementation readings into the design and lists 17 builder actions and the owner decisions (including D30 `thermal-drift`, recommended: add to benchmark.md 13.3). Nothing in the code was changed by it.
+
+## Design revision 4, builder action 1: pairing r4 defaults (track `build-pairing`, trust.md R4-T-10), 2026-10-15
+
+Scope: `lab/mesh-proto` packages `pairing` and `session/PairingChannel.kt`, the pairing and session test harness, `lab/conformance/wire/W04-pairing.json` (and the generator that writes it), `lab/ERRATA.md` rows `ERR-R4B-PW-1` to `-10`. Evidence label: LAB (JDK 21 and JDK 17 on this machine), oracle: self, NOT DEVICE EVIDENCE. Base `2a670033b907307a4cb9fe0e982194153e3f71cc` (confirmed after `git fetch` and `git reset --hard`). Nothing committed. Windows and hosted CI not run.
+
+Done: `PairFsmConfig.profile` defaults to `R3`, `QrUri.parse` to `QrExpiry.NONE`, `PairingChannel` to `FROM_TLS_ROLE`; the first-built behaviour is the explicit `R0_COMPAT`, `ENFORCE` and `FROM_HELLO`; the W04 runner reads an absent `profile`/`expiry` as the r4 default; 131 W04 vectors and nine new required laws; `PairWorld`, `TlsPairing` and `PairOracle` re-oriented (S dials and sends the hello, D listens and derives its session id from the hello it receives); cold-frame rule and connection binding in COMMITTING and AWAIT_ACK (readings in ERRATA). Open: `lab/conformance/README.md` still says 312 W04 vectors (outside the write set); the Swift lane does not consume W04 and was not touched.
+
+Failing before (new tests and vectors against the base code, real output):
+```
+$ ./gradlew -p lab :mesh-proto:test --tests '*PairingAndLoopTest' --tests '*PairDirectionTest' --tests '*QrExpiryTest' --tests '*W04R3RunnerTest' --tests '*QrUriAndMessagesTest' --tests '*SessionLawsTest'   (re-oriented harness and default tests, base main code)
+44 tests completed, 15 failed        BUILD FAILED
+$ ./gradlew -p lab :conformance-runner:test --tests '*ConformanceSuiteTest*'   (new W04 file, base main code)
+    family W04: 443 vectors, 338 pass, 105 fail, 0 proposed-skipped, oracle: self=443        2228 tests completed, 105 failed, 6 skipped        BUILD FAILED
+```
+After (same commands, implemented): `family W04: 443 vectors, 443 pass, 0 fail, 0 proposed-skipped, oracle: self=443` on JDK 21 and on JDK 17.
+
+Gates:
+```
+$ ./gradlew -p lab test --offline                                   (JDK 21)  BUILD SUCCESSFUL   mesh-proto 295 tests, conformance-runner 2242 (7 skipped: the proposed-lane assumptions of the suite, not compared with base), 0 failures; json 42, bench-core 54, ledger-model 94, manifest 53, mesh-policy 32, mesh-router 59, mesh-sim 37
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab :mesh-proto:test :conformance-runner:test --offline   (JDK 17.0.12)  BUILD SUCCESSFUL   mesh-proto 295, conformance-runner 2242 (7 skipped, same), 0 failures  (baseline mesh-proto at base: 280, 0 failures)
+$ python3 lab/tools/isolation.py        -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py        -> law: OK
+$ python3 lab/mesh-proto/tools/trust/gen_vectors.py ; python3 lab/tools/regen_index.py   -> W05: 166 vectors, W04: 443 vectors, INDEX.json: 31 entries (W04 and W05 byte-identical on a second run)
+$ python3 lab/tools/xcheck.py           -> xcheck W04: 315 agree, 0 disagree (128 fsm/registry vectors are Kotlin-only); xcheck W05: 195 agree, 0 disagree
+$ ./gradlew jvmTest --rerun-tasks --offline   -> BUILD SUCCESSFUL, 140 tests, 0 failures (no jacoco report requested)
+```
+W04 law counts (non-vacuity, `lab/build/conformance-report.txt`): pairing-typed-code 16, pairing-commit-reveal 37, pairing-connection-binding 5, pairing-window-expired-on-d 2, pairing-r0-compat 41, qr-expiry-none 12, qr-expiry-enforce 7, commit-function 49, pair-decision-reveal 3, qr-reject-EXPIRED 2, qr-reject-EXPIRY_TOO_FAR 2.
+
+Mutation checks (break the implementation, run the pairing and session suites and the conformance suite, restore byte for byte; script kept outside the repository): 22 mutants, 22 killed. Default profile back to R0_COMPAT; default expiry back to ENFORCE; default orientation back to FROM_HELLO; the expiry gate running under NONE; the cold rule removed; S may send PAIR_COMMIT; the listener not naming its session from the hello; the dialler taking the derived id as its session id (also killed by `ProtoIntegrationGateTest.l16OverPairingSessionsOnRealTls`); budget 17; D accepting any opening; D accepting any typed code; the third wrong code not counted; D showing the code instead of prompting; a foreign decision accepted while COMMITTING or AWAIT_ACK; a foreign acknowledgement accepted; a foreign decision accepted while awaiting the decisions; a second valid hello accepted after the window was consumed; S putting the raw nonce in the hello; S approving without the opening; S reading `PAIRING_WINDOW_CLOSED` as a decline; the runner reading an absent profile as R0_COMPAT; the runner reading an absent expiry as ENFORCE. Older trust mutants 7, 8 and 18 re-run with `--runner`: killed. Trust mutant 19's target text has not matched since fix wave 2 (its `RemoteDecision` line changed); its L6 mutation was re-run with repaired text as the 22nd mutant above and is killed.

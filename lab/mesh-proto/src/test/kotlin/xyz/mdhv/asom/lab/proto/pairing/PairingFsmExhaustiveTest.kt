@@ -11,7 +11,8 @@ import xyz.mdhv.asom.lab.proto.trust.Pin
 import xyz.mdhv.asom.lab.proto.trust.StatusLookup
 
 /**
- * The exhaustive transition tests of the two pairing state machines (trust.md 4.6). Every (state, event) pair of the cross product is run and
+ * The exhaustive transition tests of the two pairing state machines (trust.md 4.6) under the explicit R0_COMPAT profile (the machines as first built; the r4 default is
+ * covered by PairingFsmExhaustiveR3Test, R4-T-10). Every (state, event) pair of the cross product is run and
  * compared with an expected-result table typed from the spec; a pair that is not in the table must be a no-op (state kind unchanged, no effects).
  * The test fails if any state or event class of the code has no representative here, and counts the pairs it exercised. Evidence label: LAB, oracle: self.
  */
@@ -136,7 +137,7 @@ class PairingFsmExhaustiveTest {
         val usedEvents = dEvents.map { it.second().javaClass.simpleName }.toSet()
         assertEquals(declaredEvents, usedEvents, "every DEvent class needs a representative")
 
-        val fsm = DFsm(PairFsmConfig(pinD))
+        val fsm = DFsm(PairFsmConfig(pinD, profile = PairProfile.R0_COMPAT))
         val table = dTable()
         val exercised = HashSet<Pair<String, String>>()
         for ((sn, mk) in dStates) for ((en, ev) in dEvents) {
@@ -154,7 +155,7 @@ class PairingFsmExhaustiveTest {
 
     @Test
     fun threeInvalidProofsCloseTheWindowAndTheCountCarries() {
-        val fsm = DFsm(PairFsmConfig(pinD))
+        val fsm = DFsm(PairFsmConfig(pinD, profile = PairProfile.R0_COMPAT))
         var s: DState = DState.Open(secret, 120_000, 0)
         val bad = hello(ByteArray(32), StatusLookup.Absent)
         repeat(2) {
@@ -171,7 +172,7 @@ class PairingFsmExhaustiveTest {
 
     @Test
     fun aWindowAcceptsAtMostOneValidProofAndNeverAdmitsARevokedPin() {
-        val fsm = DFsm(PairFsmConfig(pinD))
+        val fsm = DFsm(PairFsmConfig(pinD, profile = PairProfile.R0_COMPAT))
         val s1 = fsm.step(DState.Open(secret, 120_000, 0), hello(goodProof, StatusLookup.Absent))
         assertTrue(s1.state is DState.Consumed)
         val other = Pin.ofHash(ByteArray(32) { 3 })
@@ -189,7 +190,7 @@ class PairingFsmExhaustiveTest {
 
     @Test
     fun aRowIsWrittenOnlyAfterBothApprovalsInEitherOrder() {
-        val fsm = DFsm(PairFsmConfig(pinD))
+        val fsm = DFsm(PairFsmConfig(pinD, profile = PairProfile.R0_COMPAT))
         val start = DState.AwaitDecisions(pinS, nonceS, nonceD, 125_000, local = false, remote = false)
         val orders = listOf(
             listOf(DEvent.LocalDecision(true), DEvent.RemoteDecision(true)), listOf(DEvent.RemoteDecision(true), DEvent.LocalDecision(true)),
@@ -216,7 +217,7 @@ class PairingFsmExhaustiveTest {
 
     private val qrText = "asom-pair:1?k=${pinD.nodeId}&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower"
     private val now = 1_790_000_000L
-    private val payload = (QrUri.parse(qrText, now) as QrParse.Ok).payload
+    private val payload = (QrUri.parse(qrText, now, expiry = QrExpiry.ENFORCE) as QrParse.Ok).payload
 
     private val sStates: List<Pair<String, () -> SState>> = listOf(
         "IDLE" to { SState.Idle },
@@ -234,8 +235,8 @@ class PairingFsmExhaustiveTest {
     )
 
     private val sEvents: List<Pair<String, () -> SEvent>> = listOf(
-        "ScannedOk" to { SEvent.Scanned(QrUri.parse(qrText, now)) },
-        "ScannedBad" to { SEvent.Scanned(QrUri.parse(qrText, now + 1_000)) },
+        "ScannedOk" to { SEvent.Scanned(QrUri.parse(qrText, now, expiry = QrExpiry.ENFORCE)) },
+        "ScannedBad" to { SEvent.Scanned(QrUri.parse(qrText, now + 1_000, expiry = QrExpiry.ENFORCE)) },
         "ConfirmYes" to { SEvent.UserConfirmConnect(true, 0) },
         "ConfirmNo" to { SEvent.UserConfirmConnect(false, 0) },
         "DialOk" to { SEvent.DialResult(pinD, nonceS, 100) },
@@ -315,7 +316,7 @@ class PairingFsmExhaustiveTest {
         val declaredEvents = SEvent::class.java.declaredClasses.map { it.simpleName }.toSet()
         assertEquals(declaredEvents, sEvents.map { it.second().javaClass.simpleName }.toSet(), "every SEvent class needs a representative")
 
-        val fsm = SFsm(PairFsmConfig(pinS))
+        val fsm = SFsm(PairFsmConfig(pinS, profile = PairProfile.R0_COMPAT))
         val table = sTable()
         val exercised = HashSet<Pair<String, String>>()
         for ((sn, mk) in sStates) for ((en, ev) in sEvents) {

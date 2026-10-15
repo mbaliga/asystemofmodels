@@ -13,7 +13,7 @@ class QrExpiryTest {
 
         @JvmStatic
         @AfterAll
-        fun done() = laws.finish(setOf("enforce-unchanged", "none-accepts-skewed-clock", "none-keeps-syntax-checks", "none-keeps-every-other-check"))
+        fun done() = laws.finish(setOf("enforce-unchanged", "default-is-none", "none-accepts-skewed-clock", "none-keeps-syntax-checks", "none-keeps-every-other-check"))
 
         const val URI = "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower"
     }
@@ -21,11 +21,22 @@ class QrExpiryTest {
     private fun code(r: QrParse): String = if (r is QrParse.Ok) "OK" else (r as QrParse.Reject).code.name
 
     @Test
-    fun theDefaultStillRefusesOnSClockSoTheFrozenVectorsHold() {
-        assertEquals("EXPIRED", code(QrUri.parse(URI, 1_790_000_180)))
-        assertEquals("EXPIRY_TOO_FAR", code(QrUri.parse(URI, 1_789_999_939)))
-        assertEquals("OK", code(QrUri.parse(URI, 1_790_000_000)))
+    fun theEnforceReadingIsStillAvailableAndUnchangedForTheR0CompatVectors() {
+        assertEquals("EXPIRED", code(QrUri.parse(URI, 1_790_000_180, expiry = QrExpiry.ENFORCE)))
+        assertEquals("EXPIRY_TOO_FAR", code(QrUri.parse(URI, 1_789_999_939, expiry = QrExpiry.ENFORCE)))
+        assertEquals("OK", code(QrUri.parse(URI, 1_790_000_000, expiry = QrExpiry.ENFORCE)))
         laws.bump("enforce-unchanged", 3)
+    }
+
+    @Test
+    fun theDefaultDoesNotJudgeTheExpiryOnSClockBecauseDsWindowIsAuthoritative() {
+        assertEquals("OK", code(QrUri.parse(URI, 1_790_000_180)), "a scanner three minutes ahead of the QR still pairs (R4-T-10, design T8)")
+        assertEquals("OK", code(QrUri.parse(URI, 1_789_999_939)), "and one three minutes behind")
+        assertEquals("OK", code(QrUri.parse(URI, 1_790_000_000)))
+        for (now in listOf(1_790_000_180L, 1_789_999_939L, 1_790_900_000L, 1_789_000_000L)) {
+            assertEquals(QrUri.parse(URI, now, expiry = QrExpiry.NONE).let(::code), code(QrUri.parse(URI, now)), "now=$now")
+        }
+        laws.bump("default-is-none", 4)
     }
 
     @Test

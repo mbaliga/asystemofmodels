@@ -23,9 +23,10 @@ import xyz.mdhv.asom.lab.proto.wire.RawFrame
 /**
  * The per-frame ledger side of a pairing-mode connection (LAB_SPEC 7.6: one `PAIRING` row per `PAIR_*` frame on each node, `SESSION` open and close). The
  * bodies of the messages belong to the pairing track: this class carries them as opaque payloads to [onFrame] and writes the rows, with the same
- * durable-before rule and the same FC-2 as an established session. The session id is the unpadded base64url of the first 16 bytes of `PAIR_HELLO.nonceS`,
- * which both sides know (LAB_SPEC 7.5): the listener derives it when it sends `PAIR_HELLO`, the dialer learns it when `PAIR_HELLO` arrives and groups its
- * earlier rows under a local connection id (ERRATA ERR-LL-2).
+ * durable-before rule and the same FC-2 as an established session. The session id is the unpadded base64url of the first 16 bytes of `PAIR_HELLO.nonceS`
+ * (under R4-T-10 the commitment `C`), which both sides know once the hello has crossed (LAB_SPEC 7.5, R4-L-24): the listener, which is D, derives it from the hello
+ * it receives and writes its `SESSION` open row under it (a first frame that is not a valid hello gets a locally minted id), and the dialler, which is S, sends the hello
+ * and keeps its own local connection id, carrying the derived id in `attemptId` from its `PAIR_HELLO` row on (ERRATA ERR-LL-2).
  */
 class PairingChannel(
     private val ledger: NodeLedger,
@@ -34,8 +35,8 @@ class PairingChannel(
     /** The dialer's id for this connection (the one its `DIAL` rows carry) and the handshake figure those rows recorded, so that L-L15 counts the handshake once (ERRATA ERR-PI-7). */
     dialSessionId: String? = null,
     dialHandshakeRecorded: Long = 0,
-    /** Where S is taken from: the first `PAIR_HELLO` by default (the harnesses call either end S), or the TLS role as trust.md 4.3 draws it (ERRATA ERR-FX2-3). */
-    orientation: PairOrientation = PairOrientation.FROM_HELLO,
+    /** Where S is taken from: the TLS role as trust.md 4.3 draws it (the default since R4-T-10; ERRATA ERR-FX2-3), or the first `PAIR_HELLO` for a host that does not know the role. */
+    orientation: PairOrientation = PairOrientation.FROM_TLS_ROLE,
 ) {
     private val wire = Wire(conn)
     private val role = conn.role
@@ -76,17 +77,22 @@ class PairingChannel(
         if (role == PeerRole.TLS_SERVER && !rows.opened) rows.open("pairing")
     }
 
+    /** The hello names the session: the listener's id (until its open row is written) or the dialler's `attemptId`, never the dialler's own connection id. */
+    private fun nameFromHello(payload: ByteArray) {
+        val id = idFrom(payload) ?: return
+        if (role == PeerRole.TLS_SERVER) {
+            if (!rows.opened) rows.sessionId = id
+        } else if (rows.joinId == null) {
+            rows.joinId = id
+        }
+    }
+
     /** Sends one `PAIR_*` frame on stream 1: row first, then the frame. */
     fun send(type: Int, payload: ByteArray) = guarded(Unit) {
         check(!closed && FrameTypes.isPair(type)) { "a PAIR_* frame on an open pairing channel" }
         check(guard.allowOutbound(type)) { "a PAIR_* frame this end's side may send" }
         val frame = RawFrame(type, 1, payload)
-        if (type == FrameTypes.PAIR_HELLO) {
-            idFrom(payload)?.let {
-                rows.sessionId = it
-                rows.joinId = it
-            }
-        }
+        if (type == FrameTypes.PAIR_HELLO) nameFromHello(payload)
         openIfListener()
         rows.control(rows.frameRow(xyz.mdhv.asom.lab.ledger.MeshKind.PAIRING, FrameTypes.nameOf(type), out = appBytes(frame)))
         wire.write(frame)
@@ -152,6 +158,7 @@ class PairingChannel(
     }
 
     private fun inbound(f: RawFrame) {
+        if (role == PeerRole.TLS_SERVER && f.type == FrameTypes.PAIR_HELLO) nameFromHello(f.payload)
         openIfListener()
         when (val p = MessageCodec.parse(f, guard)) {
             is Parsed.Reject -> {
@@ -163,7 +170,7 @@ class PairingChannel(
             }
             is Parsed.Ok -> when (val m = p.message) {
                 is PairMsg -> {
-                    if (f.type == FrameTypes.PAIR_HELLO && rows.joinId == null) idFrom(f.payload)?.let { rows.joinId = it }
+                    if (f.type == FrameTypes.PAIR_HELLO && role == PeerRole.TLS_CLIENT) nameFromHello(f.payload)
                     rows.control(rows.frameRow(xyz.mdhv.asom.lab.ledger.MeshKind.PAIRING, FrameTypes.nameOf(f.type), inn = appBytes(f)))
                     onFrame(f.type, f.payload)
                 }

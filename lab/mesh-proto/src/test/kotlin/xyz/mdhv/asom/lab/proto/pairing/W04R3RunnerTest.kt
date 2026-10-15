@@ -26,7 +26,7 @@ class W04R3RunnerTest {
 
         @JvmStatic
         @AfterAll
-        fun done() = laws.finish(setOf("fsm-D-r3-wrong-code", "fsm-D-r3-missing-code", "fsm-D-r3-happy", "fsm-D-r3-bad-reveal", "fsm-S-r3", "qr-expiry-none", "frozen-reading-unchanged"))
+        fun done() = laws.finish(setOf("fsm-D-r3-wrong-code", "fsm-D-r3-missing-code", "fsm-D-r3-happy", "fsm-D-r3-bad-reveal", "fsm-S-r3", "qr-expiry-none", "frozen-reading-unchanged", "absent-profile-is-r3"))
 
         private fun pin(label: String) = Pin.ofHash(MessageDigest.getInstance("SHA-256").digest(label.toByteArray()))
     }
@@ -46,10 +46,11 @@ class W04R3RunnerTest {
         return ((out.value as JObject)["trace"] as JArray).items.map { (it as JString).value }
     }
 
-    private fun dVector(extra: String, profile: String = "r3"): JObject {
+    private fun dVector(extra: String, profile: String? = "r3"): JObject {
+        val member = if (profile == null) "" else """"profile":"$profile","""
         val proof = Hex.encode(PairCrypto.proof(secret, pinD, pinS, commitment))
         return obj(
-            """{"kind":"fsm","machine":"D","profile":"$profile","pinOwn":"${pinD.nodeId}","script":[
+            """{"kind":"fsm","machine":"D",$member"pinOwn":"${pinD.nodeId}","script":[
               {"e":"UserOpenWindow","secretHex":"${Hex.encode(secret)}","nowMs":1000},
               {"e":"HelloReceived","pinS":"${pinS.nodeId}","nonceSHex":"${Hex.encode(commitment)}","proofHex":"$proof","status":"ABSENT","nonceDHex":"${Hex.encode(nonceD)}","nowMs":2000},
               {"e":"ChallengeSent"}$extra]}""",
@@ -89,10 +90,19 @@ class W04R3RunnerTest {
     }
 
     @Test
-    fun theSameScriptWithoutTheProfileIsTheFrozenReadingAndShowsTheCode() {
+    fun theSameScriptWithTheR0ProfileIsTheFrozenReadingAndShowsTheCode() {
         val t = trace(dVector("", profile = "r0"))
         assertTrue(t.last().startsWith("AWAIT_NONE:ShowConsent("), t.last())
         laws.bump("frozen-reading-unchanged")
+    }
+
+    @Test
+    fun aVectorWithoutAProfileMemberIsTheR4Default() {
+        val named = trace(dVector("", profile = "r3"))
+        val bare = trace(dVector("", profile = null))
+        assertEquals(named, bare)
+        assertEquals("AWAIT_NONE:PromptTypedCode", bare.last())
+        laws.bump("absent-profile-is-r3")
     }
 
     @Test
@@ -114,12 +124,15 @@ class W04R3RunnerTest {
     }
 
     @Test
-    fun aQrVectorCanSelectTheNoExpiryReading() {
+    fun aQrVectorCanSelectTheEnforcingReadingAndTheDefaultIsTheNoExpiryReading() {
         val uri = "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower"
-        val frozen = W04Vectors.evaluate(obj("""{"kind":"qrParse","uri":"$uri","nowSec":1790000180,"policy":"mesh"}"""))
-        assertEquals("EXPIRED", (frozen.outcome as VectorOutcome.Reject).code)
+        val enforced = W04Vectors.evaluate(obj("""{"kind":"qrParse","uri":"$uri","nowSec":1790000180,"policy":"mesh","expiry":"enforce"}"""))
+        assertEquals("EXPIRED", (enforced.outcome as VectorOutcome.Reject).code)
+        val bare = W04Vectors.evaluate(obj("""{"kind":"qrParse","uri":"$uri","nowSec":1790000180,"policy":"mesh"}"""))
+        assertTrue(bare.outcome is VectorOutcome.Ok)
         val none = W04Vectors.evaluate(obj("""{"kind":"qrParse","uri":"$uri","nowSec":1790000180,"policy":"mesh","expiry":"none"}"""))
         assertTrue(none.outcome is VectorOutcome.Ok)
+        assertTrue("qr-expiry-none" in none.laws && "qr-expiry-none" in bare.laws && "qr-expiry-none" !in enforced.laws)
         laws.bump("qr-expiry-none")
     }
 }

@@ -488,16 +488,24 @@ def uri(k=K_B64, a="192.168.1.40:11436", s=S_B64, x=QNOW + 120, n="Dell%20tower"
     return "asom-pair:1?" + "&".join(items)
 
 
-def qr_ok(num, desc, text, now=QNOW, policy="mesh"):
-    r = T.qr_parse(text, now, loopback_ok=(policy == "loopbackForTests"))
+# R4-T-10: a vector without an "expiry" member is the no-expiry reading (the default); the first-built reading is named "enforce".
+def qr_input(text, now, policy, expiry):
+    inp = {"kind": "qrParse", "uri": text, "nowSec": now, "policy": policy}
+    if expiry is not None:
+        inp["expiry"] = expiry
+    return inp
+
+
+def qr_ok(num, desc, text, now=QNOW, policy="mesh", expiry=None):
+    r = T.qr_parse(text, now, loopback_ok=(policy == "loopbackForTests"), expiry=expiry or "none")
     assert r[0] == "ok", (desc, r)
-    w04.add(num, desc, {"kind": "qrParse", "uri": text, "nowSec": now, "policy": policy}, {"ok": r[1]})
+    w04.add(num, desc, qr_input(text, now, policy, expiry), {"ok": r[1]})
 
 
-def qr_bad(num, desc, text, code, now=QNOW, policy="mesh"):
-    r = T.qr_parse(text, now, loopback_ok=(policy == "loopbackForTests"))
+def qr_bad(num, desc, text, code, now=QNOW, policy="mesh", expiry=None):
+    r = T.qr_parse(text, now, loopback_ok=(policy == "loopbackForTests"), expiry=expiry or "none")
     assert r == ("reject", code), (desc, r, code)
-    w04.add(num, desc, {"kind": "qrParse", "uri": text, "nowSec": now, "policy": policy}, {"reject": code})
+    w04.add(num, desc, qr_input(text, now, policy, expiry), {"reject": code})
 
 
 n = 1
@@ -513,10 +521,20 @@ qr_ok(n, "a UTF-8 name with a non-ASCII letter, an apostrophe and a space", uri(
 qr_ok(n, "a name of exactly 32 code points", uri(n=T.pct_encode("A" * 32))); n += 1
 qr_ok(n, "a name of 32 code points that are 4-byte emoji (128 bytes)", uri(n=T.pct_encode("\U0001F600" * 32))); n += 1
 qr_ok(n, "lower-case hex in a percent escape is accepted", uri(n="a%2fb")); n += 1
-qr_ok(n, "now = x + 59 s (inside the 60 s grace)", EX_URI, now=QNOW + 120 + 59); n += 1
-qr_ok(n, "x = now + 180 s (the largest accepted lead)", uri(x=QNOW + 180)); n += 1
+qr_ok(n, "now = x + 59 s (inside the 60 s grace; the enforcing reading, R0_COMPAT)", EX_URI, now=QNOW + 120 + 59, expiry="enforce"); n += 1
+qr_ok(n, "x = now + 180 s (the largest accepted lead; the enforcing reading, R0_COMPAT)", uri(x=QNOW + 180), expiry="enforce"); n += 1
 qr_ok(n, "loopback endpoints are accepted only under the test-only policy", uri(a="127.0.0.1:11436,[::1]:11436"), policy="loopbackForTests"); n += 1
 qr_ok(n, "port 65535 and port 1", uri(a="192.168.1.1:65535,192.168.1.2:1")); n += 1
+
+n = 17
+qr_ok(n, "R4-T-10: now = x + 60 s, the instant the first-built scanner refused as expired, is accepted: D's window is authoritative", EX_URI, now=QNOW + 120 + 60); n += 1
+qr_ok(n, "R4-T-10: a scanner a day ahead of the QR still scans", EX_URI, now=QNOW + 100000); n += 1
+qr_ok(n, "R4-T-10: a scanner a day behind the QR still scans (x far ahead of now)", EX_URI, now=QNOW - 100000); n += 1
+qr_ok(n, "R4-T-10: x = now + 181 s (a phone three minutes behind) is accepted", uri(x=QNOW + 181)); n += 1
+qr_ok(n, "R4-T-10: x of 12 digits is syntax-valid and not judged", uri(x=999999999999)); n += 1
+qr_ok(n, "R4-T-10: x = 0 is plain decimal without a leading zero and is not judged", uri(x=0)); n += 1
+qr_bad(n, "R4-T-10: an expired URI with a public address is refused for the address, not accepted for the missing gate", uri(a="8.8.8.8:1"), "ADDRESS_NOT_ELIGIBLE", now=QNOW + 100000); n += 1
+qr_bad(n, "R4-T-10: an expired URI with a name that uses '+' for a space is refused for the name", uri(n="Dell+tower"), "BAD_NAME", now=QNOW + 100000); n += 1
 
 n = 30
 qr_bad(n, "missing k", uri(drop="k"), "MISSING_FIELD"); n += 1
@@ -534,10 +552,10 @@ qr_bad(n, "wrong version 0", EX_URI.replace("asom-pair:1?", "asom-pair:0?"), "VE
 qr_bad(n, "no version", EX_URI.replace("asom-pair:1?", "asom-pair:?"), "VERSION"); n += 1
 qr_bad(n, "another scheme", EX_URI.replace("asom-pair:", "https:"), "SCHEME"); n += 1
 qr_bad(n, "an upper-case scheme", EX_URI.replace("asom-pair:", "ASOM-PAIR:"), "SCHEME"); n += 1
-qr_bad(n, "expired: now = x + 60 s", EX_URI, "EXPIRED", now=QNOW + 120 + 60); n += 1
-qr_bad(n, "expired long ago", EX_URI, "EXPIRED", now=QNOW + 100000); n += 1
-qr_bad(n, "x beyond now + 180 s", uri(x=QNOW + 181), "EXPIRY_TOO_FAR"); n += 1
-qr_bad(n, "x absurdly far ahead", uri(x=999999999999), "EXPIRY_TOO_FAR"); n += 1
+qr_bad(n, "expired: now = x + 60 s (the enforcing reading, R0_COMPAT)", EX_URI, "EXPIRED", now=QNOW + 120 + 60, expiry="enforce"); n += 1
+qr_bad(n, "expired long ago (the enforcing reading, R0_COMPAT)", EX_URI, "EXPIRED", now=QNOW + 100000, expiry="enforce"); n += 1
+qr_bad(n, "x beyond now + 180 s (the enforcing reading, R0_COMPAT)", uri(x=QNOW + 181), "EXPIRY_TOO_FAR", expiry="enforce"); n += 1
+qr_bad(n, "x absurdly far ahead (the enforcing reading, R0_COMPAT)", uri(x=999999999999), "EXPIRY_TOO_FAR", expiry="enforce"); n += 1
 qr_bad(n, "x with a leading zero", uri(x="01790000120"), "BAD_EXPIRY"); n += 1
 qr_bad(n, "x negative", uri(x="-1"), "BAD_EXPIRY"); n += 1
 qr_bad(n, "x hexadecimal", uri(x="0x6aa4c9f8"), "BAD_EXPIRY"); n += 1
@@ -785,7 +803,8 @@ SEND_COMMIT = "SendCommit(%s)" % T8
 
 
 def fsm(num, desc, machine, script, trace, **extra):
-    inp = {"kind": "fsm", "machine": machine, "pinOwn": T.b64u(PIN_D if machine == "D" else PIN_S), "script": script}
+    # R4-T-10: the machines as first built are the R0_COMPAT profile and are named "r0"; the R3 vectors are in gen_w04_r4.py.
+    inp = {"kind": "fsm", "machine": machine, "pinOwn": T.b64u(PIN_D if machine == "D" else PIN_S), "profile": "r0", "script": script}
     inp.update(extra)
     w04.add(num, desc, inp, {"ok": {"trace": trace}})
 
@@ -858,15 +877,18 @@ QR_PAYLOAD = uri(a="192.168.1.40:11436,100.101.7.9:11436", x=QNOW + 120)
 ENDPOINTS = ["192.168.1.40:11436", "100.101.7.9:11436"]
 
 
-def s_scan(text=QR_PAYLOAD, now=QNOW):
-    return {"e": "Scanned", "uri": text, "nowSec": now, "policy": "mesh"}
+def s_scan(text=QR_PAYLOAD, now=QNOW, expiry=None):
+    e = {"e": "Scanned", "uri": text, "nowSec": now, "policy": "mesh"}
+    if expiry is not None:
+        e["expiry"] = expiry
+    return e
 
 
 S_HELLO = "SendHello(%s)" % T.proof(SECRET, PIN_D, PIN_S, NONCE_S).hex()[:8]
 
 
 def sfsm(num, desc, script, trace):
-    w04.add(num, desc, {"kind": "fsm", "machine": "S", "pinOwn": T.b64u(PIN_S), "script": script}, {"ok": {"trace": trace}})
+    w04.add(num, desc, {"kind": "fsm", "machine": "S", "pinOwn": T.b64u(PIN_S), "profile": "r0", "script": script}, {"ok": {"trace": trace}})
 
 
 def s_dial(pin, t=100, nonce=NONCE_S):
@@ -888,7 +910,7 @@ sfsm(n, "S: the first endpoint presents a different pin (a pin mismatch moves on
      ["CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)", "DIALING:Dial(192.168.1.40:11436)", "DIALING:Dial(100.101.7.9:11436)", "SENT_HELLO:" + S_HELLO]); n += 1
 sfsm(n, "S: every endpoint fails", [s_scan(), {"e": "UserConfirmConnect", "yes": True, "nowMs": 0}, s_dial(None), s_dial(PIN_S)],
      ["CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)", "DIALING:Dial(192.168.1.40:11436)", "DIALING:Dial(100.101.7.9:11436)", "FAILED:Abort(CONNECTION_LOST,-)"]); n += 1
-sfsm(n, "S: an expired URI is rejected at the scan and S stays idle", [s_scan(now=QNOW + 120 + 60)], ["IDLE:ScanRejected(EXPIRED)"]); n += 1
+sfsm(n, "S: an expired URI is rejected at the scan and S stays idle (the enforcing reading, R0_COMPAT)", [s_scan(now=QNOW + 120 + 60, expiry="enforce")], ["IDLE:ScanRejected(EXPIRED)"]); n += 1
 sfsm(n, "S: a public address in the URI is rejected at the scan", [s_scan(uri(a="8.8.8.8:1"))], ["IDLE:ScanRejected(ADDRESS_NOT_ELIGIBLE)"]); n += 1
 sfsm(n, "S: the user declines the connection", [s_scan(), {"e": "UserConfirmConnect", "yes": False, "nowMs": 0}], ["CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)", "IDLE:"]); n += 1
 sfsm(n, "S: D answers PAIRING_WINDOW_CLOSED to the hello", S_BEGIN + [{"e": "ErrorReceived", "code": "PAIRING_WINDOW_CLOSED"}], S_BEGIN_TRACE + ["FAILED:Abort(DECLINED_REMOTE,-)"]); n += 1
@@ -906,6 +928,11 @@ sfsm(n, "S: the row write fails after a matching commit", S_TO_AWAIT + [
     {"e": "RemoteDecision", "approve": True}, {"e": "LocalDecision", "approve": True}, {"e": "CommitReceived", "transcriptHex": TRANSCRIPT.hex()}, {"e": "RowWriteFailed"}],
      S_TO_AWAIT_TRACE + ["AWAIT_REMOTE:", "AWAIT_COMMIT:SendDecision(true)", "WRITING:WritePairedRow", "FAILED:Abort(WRITE_FAILED,-)"]); n += 1
 sfsm(n, "S: the connection is lost while waiting for the decisions", S_TO_AWAIT + [{"e": "ConnectionLost"}], S_TO_AWAIT_TRACE + ["FAILED:Abort(CONNECTION_LOST,-)"]); n += 1
+
+# 450..499, 700..819: the vectors of design revision 4 (R4-T-10): the R3 machines, the commitment, the PAIR_DECISION opening
+import gen_w04_r4  # noqa: E402
+
+gen_w04_r4.add(globals())
 
 # 600..: the peer registry (trust.md 4.7), as traces typed by hand
 n = 600

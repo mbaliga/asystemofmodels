@@ -708,6 +708,15 @@ def transcript(pin_d, pin_s, nonce_s, nonce_d):
     return hashlib.sha256(b"asom-pair-v1/transcript\x00" + pin_d + pin_s + nonce_s + nonce_d).digest()
 
 
+def commit_nonce(nonce_s):
+    """R4-T-10: the commitment S puts in PAIR_HELLO.nonceS and opens with its approval."""
+    return hashlib.sha256(b"asom-pair-v1/commit\x00" + nonce_s).digest()
+
+
+def commit_opens(commitment, revealed):
+    return len(commitment) == 32 and len(revealed) == 32 and hmac.compare_digest(commit_nonce(revealed), commitment)
+
+
 # ------------------------------------------------------------------------------------------------------------------------------------ QR grammar (trust.md 4.2)
 UNRESERVED = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
 
@@ -832,8 +841,8 @@ def eligible(ep, loopback_ok=False):
     return (g[0] & 0xFE00) == 0xFC00 or (g[0] & 0xFFC0) == 0xFE80
 
 
-def qr_parse(text, now, loopback_ok=False):
-    """Returns ('ok', {k, a, s, x, n}) or ('reject', CODE)."""
+def qr_parse(text, now, loopback_ok=False, expiry="none"):
+    """Returns ('ok', {k, a, s, x, n}) or ('reject', CODE). expiry 'none' is the R4-T-10 default (x is only checked for syntax); 'enforce' is the first-built reading."""
     if len(text) > 2048:
         return ("reject", "TOO_LONG")
     if not text.startswith("asom-pair:"):
@@ -867,10 +876,11 @@ def qr_parse(text, now, loopback_ok=False):
     if not re.fullmatch(r"[0-9]{1,12}", xt) or (len(xt) > 1 and xt[0] == "0"):
         return ("reject", "BAD_EXPIRY")
     x = int(xt)
-    if now >= x + 60:
-        return ("reject", "EXPIRED")
-    if x > now + 120 + 60:
-        return ("reject", "EXPIRY_TOO_FAR")
+    if expiry == "enforce":
+        if now >= x + 60:
+            return ("reject", "EXPIRED")
+        if x > now + 120 + 60:
+            return ("reject", "EXPIRY_TOO_FAR")
     if not fields["a"]:
         return ("reject", "ENDPOINT_COUNT")
     items = fields["a"].split(",")

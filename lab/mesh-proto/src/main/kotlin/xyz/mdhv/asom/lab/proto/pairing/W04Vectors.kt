@@ -39,6 +39,9 @@ import xyz.mdhv.asom.lab.proto.trust.jstr
 /**
  * Runs one W04 vector (pairing: QR grammar, proof, SAS, transcript, the four pairing messages, the two state machines and the peer registry;
  * trust.md 4.2 to 4.7; LAB_SPEC 7.3). Evidence label: LAB, oracle: self.
+ *
+ * Since revision 4 (R4-T-10) a vector without a `profile` member runs the R3 machines and one without an `expiry` member runs the no-expiry QR reading; the first-built
+ * readings are selected explicitly, with `"profile": "r0"` and `"expiry": "enforce"`, and each such vector counts under `pairing-r0-compat` or `qr-expiry-enforce`.
  */
 object W04Vectors {
     val requiredLaws: Set<String> =
@@ -46,6 +49,8 @@ object W04Vectors {
             "qr-grammar", "qr-roundtrip", "proof-sas-transcript", "proof-invalid", "pin-swap", "nonce-swap", "pair-message-ok", "pair-message-reject", "commit-no-locseed",
             "pairing-fsm-D", "pairing-fsm-S", "pairing-L1", "registry-L6", "registry-L7", "registry-L1", "registry-L2", "registry-L3", "registry-L4", "registry-L5",
             "registry-goaway", "registry-per-direction", "registry-fail-closed",
+            "pairing-typed-code", "pairing-commit-reveal", "qr-expiry-none", "pairing-connection-binding", "pairing-window-expired-on-d", "pairing-r0-compat",
+            "qr-expiry-enforce", "commit-function", "pair-decision-reveal",
         ) + QrReject.entries.map { "qr-reject-$it" }
 
     fun evaluate(input: JObject): VectorEval = when (val kind = V.str(input, "kind")) {
@@ -53,6 +58,7 @@ object W04Vectors {
         "qrEncode" -> qrEncode(input)
         "proofSas" -> proofSas(input)
         "proofVerify" -> proofVerify(input)
+        "commit" -> commit(input)
         "message" -> message(input)
         "fsm" -> if (V.str(input, "machine") == "D") fsmD(input) else fsmS(input)
         "registry" -> registry(input)
@@ -71,23 +77,47 @@ object W04Vectors {
         else -> throw VectorShapeException("unknown address policy")
     }
 
-    /** An optional `"expiry": "none"` selects design T8 (ERRATA ERR-FX2-4); a vector without it is the frozen r0 reading. */
-    private fun expiryOf(i: JObject): QrExpiry = if (V.strOrNull(i, "expiry") == "none") QrExpiry.NONE else QrExpiry.ENFORCE
+    private val expiryReadings = setOf(QrReject.EXPIRED, QrReject.EXPIRY_TOO_FAR)
 
-    /** An optional `"profile": "r3"` selects the R3 machines (ERRATA ERR-FX2-1, -2, -5); a vector without it is the frozen r0 reading. */
-    private fun profileOf(i: JObject): PairProfile = if (V.strOrNull(i, "profile") == "r3") PairProfile.R3 else PairProfile.R0_COMPAT
+    /** `"expiry"` is `"none"` (design T8, the default since R4-T-10) or `"enforce"` (the first-built reading, R0_COMPAT); any other value is a malformed vector. */
+    private fun expiryOf(i: JObject): QrExpiry = when (val v = V.strOrNull(i, "expiry")) {
+        null, "none" -> QrExpiry.NONE
+        "enforce" -> QrExpiry.ENFORCE
+        else -> throw VectorShapeException("unknown expiry reading '$v'")
+    }
+
+    /** `"profile"` is `"r3"` (the default since R4-T-10) or `"r0"` (R0_COMPAT, the machines as first built); any other value is a malformed vector. */
+    private fun profileOf(i: JObject): PairProfile = when (val v = V.strOrNull(i, "profile")) {
+        null, "r3" -> PairProfile.R3
+        "r0" -> PairProfile.R0_COMPAT
+        else -> throw VectorShapeException("unknown pairing profile '$v'")
+    }
+
+    /**
+     * The laws of a QR parse under [expiry]. Under NONE the verdict must never be an expiry verdict, and the law `qr-expiry-none` counts only a URI the enforcing
+     * reading would refuse for its clock (so the case exercises the difference); under ENFORCE the case counts under `qr-expiry-enforce`.
+     */
+    private fun expiryLaws(text: String, now: Long, policy: AddrPolicy, expiry: QrExpiry, verdict: QrParse): List<String> {
+        if (expiry == QrExpiry.ENFORCE) return listOf("qr-expiry-enforce")
+        if (verdict is QrParse.Reject && verdict.code in expiryReadings) throw VectorLawViolation("a parse without the expiry gate produced the clock verdict ${verdict.code}")
+        val enforced = QrUri.parse(text, now, policy, QrExpiry.ENFORCE)
+        return if (enforced is QrParse.Reject && enforced.code in expiryReadings) listOf("qr-expiry-none") else emptyList()
+    }
 
     private fun qrParse(i: JObject): VectorEval {
         val now = V.long(i, "nowSec")
         val policy = policyOf(i)
         val expiry = expiryOf(i)
-        return when (val r = QrUri.parse(V.str(i, "uri"), now, policy, expiry)) {
+        val text = V.str(i, "uri")
+        val r = QrUri.parse(text, now, policy, expiry)
+        val extra = expiryLaws(text, now, policy, expiry, r)
+        return when (r) {
             is QrParse.Ok -> {
                 val again = QrUri.parse(QrUri.encode(r.payload), now, policy, expiry)
                 if (again !is QrParse.Ok || payloadValue(again.payload) != payloadValue(r.payload)) throw VectorLawViolation("encode(parse(uri)) does not parse back to the same payload")
-                VectorEval(VectorOutcome.Ok(payloadValue(r.payload)), listOf("qr-grammar", "qr-roundtrip"))
+                VectorEval(VectorOutcome.Ok(payloadValue(r.payload)), listOf("qr-grammar", "qr-roundtrip") + extra)
             }
-            is QrParse.Reject -> VectorEval(VectorOutcome.Reject(r.code.name), listOf("qr-grammar", "qr-reject-${r.code}"))
+            is QrParse.Reject -> VectorEval(VectorOutcome.Reject(r.code.name), listOf("qr-grammar", "qr-reject-${r.code}") + extra)
         }
     }
 
@@ -155,6 +185,22 @@ object W04Vectors {
         }
     }
 
+    /**
+     * The commitment function of R4-T-10: `C = SHA-256("asom-pair-v1/commit" || 0x00 || nonce_S)` and whether an opening opens it. `revealed` is base64url of the
+     * bytes D was given, of any length (a short opening is a mismatch, never an error); `commitment` is the value on the wire when it is not the honest one.
+     */
+    private fun commit(i: JObject): VectorEval {
+        val nonce = b64Field(i, "nonceS", 32)
+        val c = PairCrypto.commitNonce(nonce)
+        if (c.size != 32 || c.contentEquals(nonce)) throw VectorLawViolation("the commitment of nonce_S is not a 32-byte digest different from the nonce")
+        val onWire = V.strOrNull(i, "commitment")?.let { b64Field(i, "commitment", 32) } ?: c
+        val revealedText = V.str(i, "revealed")
+        val revealed = (Base64Strict.decodeUrlNoPad(revealedText) as? B64Result.Ok)?.bytes ?: ByteArray(0)
+        val opens = PairCrypto.commitmentOpens(onWire, revealed)
+        val v = jobj("commitment" to jstr(Base64Strict.encodeUrlNoPad(c)), "opens" to JBool(opens))
+        return VectorEval(VectorOutcome.Ok(v), listOf("commit-function"))
+    }
+
     // ---------------------------------------------------------------- messages
 
     private fun message(i: JObject): VectorEval {
@@ -185,6 +231,10 @@ object W04Vectors {
                 if (v is PairCommit) {
                     if (text.contains("locSeed")) throw VectorLawViolation("PAIR_COMMIT still carries locSeed (withdrawn in r3)")
                     if (V.str(i, "payload").contains("locSeed")) laws += "commit-no-locseed"
+                }
+                if (v is PairDecision) {
+                    if ((v.reveal != null) != text.contains("\"reveal\"")) throw VectorLawViolation("PAIR_DECISION re-encodes its reveal member differently from what was parsed")
+                    if (v.reveal != null) laws += "pair-decision-reveal"
                 }
                 VectorEval(VectorOutcome.Ok(jobj("normal" to jstr(text))), laws)
             }
@@ -224,9 +274,109 @@ object W04Vectors {
         else -> throw VectorShapeException("unknown D event '$e'")
     }
 
+    /**
+     * What the R3 machine of D must do, derived here from the script and the pure functions of [PairCrypto] and not from the machine's state: the bound connection,
+     * the commitment of the hello, the opening, the code typed and the wrong codes counted. A row write is expected exactly when an opening that opens the commitment
+     * and a typed code equal to the SAS of that opening have both been seen on the bound connection (R4-T-10).
+     */
+    private class DModel(private val own: Pin, private val maxCodeTries: Int) {
+        private var pinS: Pin? = null
+        private var commitment: ByteArray? = null
+        private var nonceD: ByteArray? = null
+        private var bound = 0L
+        private var opened: ByteArray? = null
+        private var typed: String? = null
+        private var wrong = 0
+
+        private var accepted = false
+
+        fun hello(e: DEvent.HelloReceived) {
+            pinS = e.pinS
+            commitment = e.nonceS.copyOf()
+            nonceD = e.freshNonceD.copyOf()
+            bound = e.connId
+            opened = null
+            typed = null
+            wrong = 0
+            accepted = true
+        }
+
+        /** A decision or an acknowledgement that arrived on a connection other than the hello's. */
+        fun foreign(e: DEvent): Boolean = accepted && ((e is DEvent.RemoteDecision && e.connId != bound) || (e is DEvent.AckReceived && e.connId != bound))
+
+        private fun has(step: DStep, f: (PairEffect) -> Boolean) = step.effects.any(f)
+
+        private fun fail(msg: String): Nothing = throw VectorLawViolation(msg)
+
+        /** Checks one step taken from an AWAIT state and returns the laws it exercised. */
+        fun observe(e: DEvent, step: DStep): List<String> {
+            val laws = ArrayList<String>()
+            var rowExpected = false
+            when (e) {
+                is DEvent.LocalDecision -> if (e.approve) {
+                    val code = e.typedCode
+                    if (code == null) {
+                        if (!has(step) { it is PairEffect.Warn && it.kind == "typed-code-required" } || has(step) { it is PairEffect.WritePairedRow || it is PairEffect.SendDecision }) {
+                            fail("T7: an approval on D without a typed code was not ignored with a warning")
+                        }
+                        laws += "pairing-typed-code"
+                    } else {
+                        typed = code
+                        rowExpected = judge(step, laws)
+                    }
+                }
+                is DEvent.RemoteDecision -> if (e.approve) {
+                    if (opened == null) {
+                        val c = commitment ?: fail("a decision arrived before any hello was accepted")
+                        val reveal = e.reveal
+                        laws += "pairing-commit-reveal"
+                        if (reveal == null || !PairCrypto.commitmentOpens(c, reveal)) {
+                            val aborted = step.state is DState.Closed && has(step) { it is PairEffect.Abort && it.reason == AbortReason.PROTOCOL && it.refusal == Refusal.PROTOCOL_ERROR }
+                            if (!aborted || has(step) { it is PairEffect.WritePairedRow }) fail("T10: an opening that does not open the commitment did not end the ceremony")
+                        } else {
+                            opened = reveal.copyOf()
+                            rowExpected = judge(step, laws)
+                        }
+                    }
+                }
+                else -> Unit
+            }
+            if (has(step) { it is PairEffect.WritePairedRow } != rowExpected) fail("T7/T10: a row write was ${if (rowExpected) "expected" else "requested"} without both the opening and the matching typed code")
+            return laws
+        }
+
+        /** Applies the judgement once both an opening and a code are known. Returns whether it is a match that requires the row write. */
+        private fun judge(step: DStep, laws: MutableList<String>): Boolean {
+            val reveal = opened
+            val code = typed
+            if (reveal == null || code == null) {
+                if (has(step) { it is PairEffect.WritePairedRow || it is PairEffect.Warn }) fail("T7: a verdict was given before both the opening and the code were known")
+                return false
+            }
+            laws += "pairing-typed-code"
+            val sas = PairCrypto.sas(own, pinS ?: fail("no pin"), reveal, nonceD ?: fail("no nonce"))
+            if (PairCrypto.typedCodeMatches(sas, code)) {
+                if (!has(step) { it is PairEffect.SendDecision && it.approve && it.reveal == null }) fail("T7: a matching code did not send D's approval")
+                return true
+            }
+            wrong++
+            typed = null
+            if (wrong >= maxCodeTries) {
+                if (!has(step) { it is PairEffect.Abort && it.reason == AbortReason.TRIES_EXHAUSTED } || !has(step) { it is PairEffect.SendDecision && !it.approve }) {
+                    fail("T7: the last wrong code did not decline and abort")
+                }
+            } else if (!has(step) { it is PairEffect.Warn && it.kind == "wrong-code" }) {
+                fail("T7: a wrong code was not counted with a warning")
+            }
+            return false
+        }
+    }
+
     private fun fsmD(i: JObject): VectorEval {
         val profile = profileOf(i)
-        val fsm = DFsm(PairFsmConfig(pinField(i, "pinOwn"), profile = profile))
+        val cfg = PairFsmConfig(pinField(i, "pinOwn"), profile = profile)
+        val fsm = DFsm(cfg)
+        val model = DModel(cfg.ownPin, cfg.maxCodeTries)
         var state: DState = DState.Closed
         val trace = ArrayList<String>()
         var localApproved = false
@@ -236,6 +386,7 @@ object W04Vectors {
         var revokedValid = false
         var secret: ByteArray? = null
         val laws = linkedSetOf("pairing-fsm-D")
+        if (profile == PairProfile.R0_COMPAT) laws += "pairing-r0-compat"
         for (el in V.arr(i, "script")) {
             val o = el as JObject
             val e = dEvent(o)
@@ -251,6 +402,14 @@ object W04Vectors {
             state = step.state
             trace += step.signature
             if (profile == PairProfile.R3) {
+                if (e is DEvent.HelloReceived && step.effects.any { it is PairEffect.SendChallenge }) model.hello(e)
+                val bound = before is DState.Consumed || before is DState.AwaitDecisions || before is DState.Committing || before is DState.AwaitAck
+                if (bound && model.foreign(e)) {
+                    if (step.effects != listOf(PairEffect.Refuse(Refusal.PROTOCOL_ERROR)) || step.state !== before) throw VectorLawViolation("T10: a decision or acknowledgement from another connection was not refused without a state change")
+                    laws += "pairing-connection-binding"
+                } else if (before is DState.AwaitDecisions) {
+                    laws += model.observe(e, step)
+                }
                 // Under R3 a decision counts only when the machine itself judged it: a checked code, an opened commitment, the bound connection.
                 if (step.effects.any { it is PairEffect.SendDecision && it.approve }) localApproved = true
                 if (e is DEvent.RemoteDecision && e.approve && before is DState.AwaitDecisions && state !is DState.Closed && step.effects.none { it is PairEffect.Refuse }) remoteApproved = true
@@ -288,21 +447,74 @@ object W04Vectors {
     }
 
     private fun fsmS(i: JObject): VectorEval {
-        val fsm = SFsm(PairFsmConfig(ownPin(i), profile = profileOf(i)))
+        val profile = profileOf(i)
+        val cfg = PairFsmConfig(ownPin(i), profile = profile)
+        val fsm = SFsm(cfg)
         var state: SState = SState.Idle
         val trace = ArrayList<String>()
         var localApproved = false
+        var payload: QrPayload? = null
+        var opened = false
         val laws = linkedSetOf("pairing-fsm-S")
+        if (profile == PairProfile.R0_COMPAT) laws += "pairing-r0-compat"
         for (el in V.arr(i, "script")) {
-            val e = sEvent(el as JObject)
+            val o = el as JObject
+            val e = sEvent(o)
             if (e is SEvent.LocalDecision && e.approve) localApproved = true
+            if (e is SEvent.Scanned) {
+                val parsed = e.parse
+                if (parsed is QrParse.Ok) payload = parsed.payload
+                val policy = when (V.str(o, "policy")) { "loopbackForTests" -> AddrPolicy.MESH_PLUS_LOOPBACK_FOR_TESTS; else -> AddrPolicy.MESH }
+                laws += expiryLaws(V.str(o, "uri"), V.long(o, "nowSec"), policy, expiryOf(o), parsed)
+            }
+            val before = state
             val step = fsm.step(state, e)
             state = step.state
             trace += step.signature
             if (step.effects.any { it is PairEffect.WritePairedRow } && !localApproved) throw VectorLawViolation("L1: S requested a row write without the local approval")
+            if (profile == PairProfile.R3) {
+                laws += observeS(cfg.ownPin, e, before, step, payload, opened)
+                if (step.effects.any { it is PairEffect.SendDecision && it.approve }) opened = true
+            }
         }
         if (trace.any { it.contains("Abort(PROTOCOL") } || trace.any { it.contains("WritePairedRow") }) laws += "pairing-L1"
         return VectorEval(VectorOutcome.Ok(jobj("trace" to jlist(trace))), laws.toList())
+    }
+
+    /**
+     * What the R3 machine of S must do (R4-T-10): the hello carries only the commitment of the nonce it drew, and the proof binds that commitment; the nonce itself leaves
+     * with S's own approval and never with a decline; a `PAIRING_WINDOW_CLOSED` from D while S waits for the challenge is D's verdict, not S's clock.
+     */
+    private fun observeS(own: Pin, e: SEvent, before: SState, step: SStep, payload: QrPayload?, alreadyOpened: Boolean): List<String> {
+        val laws = ArrayList<String>()
+        fun fail(msg: String): Nothing = throw VectorLawViolation(msg)
+        if (e is SEvent.DialResult) {
+            val hello = step.effects.filterIsInstance<PairEffect.SendHello>().singleOrNull()
+            if (hello != null) {
+                val p = payload ?: fail("a hello was sent without a scanned QR")
+                if (!hello.nonceS.contentEquals(PairCrypto.commitNonce(e.freshNonceS)) || hello.nonceS.contentEquals(e.freshNonceS)) fail("T10: PAIR_HELLO.nonceS is not the commitment of the nonce S drew")
+                if (!hello.proof.contentEquals(PairCrypto.proof(p.secret, p.pinD, own, hello.nonceS))) fail("T10: the proof does not bind the commitment")
+                laws += "pairing-commit-reveal"
+            }
+        }
+        val decisions = step.effects.filterIsInstance<PairEffect.SendDecision>()
+        for (d in decisions) {
+            if (d.approve) {
+                val awaiting = before as? SState.AwaitDecisions ?: fail("an approval left S outside the decision states")
+                val reveal = d.reveal ?: fail("T10: S approved without opening its commitment")
+                if (!reveal.contentEquals(awaiting.nonceS)) fail("T10: S opened something other than the nonce it drew")
+                if (e !is SEvent.LocalDecision || !e.approve) fail("T10: S opened its nonce without its own approval")
+                laws += "pairing-commit-reveal"
+            } else if (d.reveal != null) {
+                fail("T10: a decline carries an opening")
+            }
+        }
+        if (e is SEvent.ErrorReceived && before is SState.SentHello && e.code == Refusal.PAIRING_WINDOW_CLOSED.name) {
+            if (step.effects.none { it is PairEffect.Abort && it.reason == AbortReason.WINDOW_EXPIRED }) fail("T8: PAIRING_WINDOW_CLOSED from D was not reported as the window expired on the other device")
+            laws += "pairing-window-expired-on-d"
+        }
+        if (alreadyOpened && decisions.any { it.approve }) fail("T10: S opened its nonce twice")
+        return laws
     }
 
     // ---------------------------------------------------------------- registry

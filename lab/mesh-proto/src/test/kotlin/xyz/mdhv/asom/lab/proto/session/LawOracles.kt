@@ -98,14 +98,18 @@ object L14 {
     }
 }
 
-/** The per-frame rows of a pairing channel against LAB_SPEC 7.6 and the session-id rule of 7.5. */
+/**
+ * The per-frame rows of a pairing channel against LAB_SPEC 7.6 and the session-id rule of 7.5, with the ends oriented as trust.md 4.3 draws the ceremony (R4-T-10):
+ * S is the dialler (the TLS client) and D the listener. The listener writes the `SESSION` open row after the first `PAIR_HELLO` and under the id that frame derives
+ * (R4-L-24); the dialler keeps its own connection id and carries the derived id in `attemptId` from its `PAIR_HELLO` row on.
+ */
 object PairOracle {
     private fun fail(msg: String): Nothing = throw AssertionError(msg)
 
     fun check(p: PairWorld, counts: Counts) {
         val events = p.log.snapshot()
         val derived = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(p.nonceS.copyOfRange(0, 16))
-        for ((side, rows, conn, peerConn) in listOf(Quad("S", p.rowsS(), "S<D", "D>S"), Quad("D", p.rowsD(), "D>S", "S<D"))) {
+        for ((side, rows, conn, peerConn) in listOf(Quad("S", p.rowsS(), "S>D", "D<S"), Quad("D", p.rowsD(), "D<S", "S>D"))) {
             val writes = events.filterIsInstance<Ev.Write>().filter { it.conn == conn && !it.raw }
             val sent = writes.map { Frames.one(it.bytes) }
             val read = Frames.parsePrefix(events.filterIsInstance<Ev.Read>().filter { it.conn == conn }.fold(ByteArray(0)) { acc, e -> acc + e.bytes })
@@ -136,17 +140,18 @@ object PairOracle {
             read.forEach { Table76.l16Name(it)?.let(counts::type) }
             val sessionRows = appended.filter { it.row.meshKind == MeshKind.SESSION }
             val ids = (appended.map { it.row } + failed.map { it.row }).filter { it.meshKind != null }
-            if (side == "S") {
-                if (sessionRows.firstOrNull()?.row?.meshCode != "pairing") fail("pairing S: the first SESSION row is not the pairing open row")
-                if (appended.firstOrNull()?.row?.meshKind != MeshKind.SESSION) fail("pairing S: a row precedes the SESSION open row")
-                if (ids.any { it.sessionId != derived }) fail("pairing S: a row carries a session id other than the base64url of the first 16 bytes of nonceS")
+            if (side == "D") {
+                if (sessionRows.firstOrNull()?.row?.meshCode != "pairing") fail("pairing D: the first SESSION row is not the pairing open row")
+                if (appended.firstOrNull()?.row?.meshKind != MeshKind.SESSION) fail("pairing D: a row precedes the SESSION open row")
+                if (ids.any { it.sessionId != derived }) fail("pairing D: a row carries a session id other than the base64url of the first 16 bytes of nonceS")
             } else {
                 val local = ids.first().sessionId
-                if (ids.any { it.sessionId != local }) fail("pairing D: rows do not share one local connection id")
+                if (ids.any { it.sessionId != local }) fail("pairing S: rows do not share one local connection id")
+                if (local == derived) fail("pairing S: the dialler's connection id is the derived pairing id, not its own")
                 val firstHello = appended.indexOfFirst { it.row.meshCode == "PAIR_HELLO" }
                 for ((k, r) in appended.withIndex()) {
                     val want = if (firstHello in 0..k) derived else null
-                    if (r.row.attemptId != want) fail("pairing D: attemptId ${r.row.attemptId} on row $k, expected $want")
+                    if (r.row.attemptId != want) fail("pairing S: attemptId ${r.row.attemptId} on row $k, expected $want")
                 }
             }
             if (sessionRows.count { it.row.meshCode!!.startsWith("close") } > 1) fail("pairing $side: more than one SESSION close row")

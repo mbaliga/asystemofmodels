@@ -64,10 +64,11 @@ fun PairEffect.describe(): String = when (this) {
 }
 
 /**
- * [R0_COMPAT] is the machine of trust.md 4.6 as first built: both devices show the code and both people tap approve, and `PAIR_HELLO.nonceS` is the
- * nonce itself. [R3] is design revision 3 (ERR-FX2-1 to ERR-FX2-5): S commits to `nonce_S` before D chooses `nonce_D`, D's approval is the code typed from
- * S's screen, a decision or acknowledgement from another connection is refused, and a window closed on D is not an S-side clock verdict.
- * R0_COMPAT stays the default only because the frozen W04 vectors and the exhaustive FSM table pin its behaviour.
+ * [R3] is the machine of trust.md 4.3 to 4.6 as amended by revision 4 (R4-T-10; ERR-FX2-PW-1 to -5), and the default: S commits to `nonce_S` before D chooses
+ * `nonce_D` and opens it only with its approval, D's approval is the code typed from S's screen, a decision or acknowledgement from another connection is refused,
+ * and a window closed on D is not an S-side clock verdict. [R0_COMPAT] is the machine as first built: both devices show the code and both people tap approve, and
+ * `PAIR_HELLO.nonceS` is the nonce itself. It is kept only so that the vectors and tests that reproduce the SAS-grinding attack and pin the old table stay runnable;
+ * a host never selects it.
  */
 enum class PairProfile { R0_COMPAT, R3 }
 
@@ -77,7 +78,7 @@ class PairFsmConfig(
     val maxTries: Int = 3,
     val decisionTimeoutMs: Long = 120_000,
     val ackTimeoutMs: Long = 10_000,
-    val profile: PairProfile = PairProfile.R0_COMPAT,
+    val profile: PairProfile = PairProfile.R3,
     val maxCodeTries: Int = 3,
 )
 
@@ -266,7 +267,8 @@ class DFsm(private val cfg: PairFsmConfig) {
             if (foreign(e.connId, s.connId)) same(s, PairEffect.Refuse(Refusal.PROTOCOL_ERROR))
             else abort(AbortReason.PROTOCOL, Refusal.PROTOCOL_ERROR, PairEffect.MarkUnconfirmed("acknowledgement-before-commit"))
         DEvent.SecondUnknownConnection -> same(s, PairEffect.Warn("second-connection"))
-        is DEvent.UserOpenWindow, DEvent.ChallengeSent, is DEvent.LocalDecision, is DEvent.RemoteDecision, is DEvent.Tick, DEvent.UserCancel -> same(s)
+        is DEvent.RemoteDecision -> if (foreign(e.connId, s.connId)) same(s, PairEffect.Refuse(Refusal.PROTOCOL_ERROR)) else same(s)
+        is DEvent.UserOpenWindow, DEvent.ChallengeSent, is DEvent.LocalDecision, is DEvent.Tick, DEvent.UserCancel -> same(s)
     }
 
     private fun awaitAck(s: DState.AwaitAck, e: DEvent): DStep = when (e) {
@@ -279,7 +281,8 @@ class DFsm(private val cfg: PairFsmConfig) {
         DEvent.ConnectionLost -> DStep(DState.Closed, listOf(PairEffect.MarkUnconfirmed("connection-lost"), PairEffect.Warn("may-not-have-finished"), PairEffect.Closed("connection-lost")))
         is DEvent.HelloReceived -> same(s, PairEffect.Refuse(Refusal.PAIRING_WINDOW_CLOSED))
         DEvent.SecondUnknownConnection -> same(s, PairEffect.Warn("second-connection"))
-        is DEvent.UserOpenWindow, DEvent.ChallengeSent, is DEvent.LocalDecision, is DEvent.RemoteDecision, DEvent.UserCancel, is DEvent.RowDurable, DEvent.RowWriteFailed -> same(s)
+        is DEvent.RemoteDecision -> if (foreign(e.connId, s.connId)) same(s, PairEffect.Refuse(Refusal.PROTOCOL_ERROR)) else same(s)
+        is DEvent.UserOpenWindow, DEvent.ChallengeSent, is DEvent.LocalDecision, DEvent.UserCancel, is DEvent.RowDurable, DEvent.RowWriteFailed -> same(s)
     }
 }
 

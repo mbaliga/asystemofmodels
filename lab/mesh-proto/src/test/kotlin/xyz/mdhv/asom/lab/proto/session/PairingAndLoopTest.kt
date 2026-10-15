@@ -7,46 +7,72 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import xyz.mdhv.asom.lab.json.Base64Strict
 import xyz.mdhv.asom.lab.ledger.MeshKind
+import xyz.mdhv.asom.lab.proto.pairing.PairChallenge
 import xyz.mdhv.asom.lab.proto.pairing.PairHello
 import xyz.mdhv.asom.lab.proto.pairing.PairMessages
 import xyz.mdhv.asom.lab.proto.wire.ConnMode
 
 class PairingAndLoopTest {
     @Test
-    fun pairingFramesProduceOnePairingRowPerFramePerNodeAndTheSessionIdIsDerivedFromNonceS() {
+    fun pairingFramesProduceOnePairingRowPerFramePerNodeAndTheListenerDerivesTheSessionIdFromThePairHelloItReceives() {
         val p = PairWorld(1)
         p.run()
         val derived = Base64Strict.encodeUrlNoPad(p.nonceS.copyOfRange(0, 16))
-        val s = p.rowsS()
-        assertEquals(MeshKind.SESSION to "pairing", s[0].meshKind to s[0].meshCode)
-        assertTrue(s.drop(1).filter { it.meshKind == MeshKind.PAIRING }.map { it.meshCode }.containsAll(listOf("PAIR_HELLO", "PAIR_CHALLENGE", "PAIR_DECISION", "PAIR_COMMIT", "PAIR_COMMIT_ACK")))
-        assertTrue(s.all { it.sessionId == derived })
         val d = p.rowsD()
-        assertEquals("PAIR_HELLO" to derived, d.first().meshCode to d.first().attemptId, "the dialer learns the join id from PAIR_HELLO, before it writes its row")
-        assertTrue(d.none { it.meshKind == MeshKind.SESSION && it.meshCode == "pairing" }, "a dialer writes DIAL rows, not a SESSION open")
-        assertTrue(d.last().sessionId != derived && d.last().attemptId == derived)
+        assertEquals(MeshKind.SESSION to "pairing", d[0].meshKind to d[0].meshCode, "the listener's first row is the SESSION open row")
+        assertTrue(d.drop(1).filter { it.meshKind == MeshKind.PAIRING }.map { it.meshCode }.containsAll(listOf("PAIR_HELLO", "PAIR_CHALLENGE", "PAIR_DECISION", "PAIR_COMMIT", "PAIR_COMMIT_ACK")))
+        assertTrue(d.all { it.sessionId == derived }, "the listener's rows, the open row included, carry the id the received PAIR_HELLO names (R4-L-24)")
+        val s = p.rowsS()
+        assertEquals("PAIR_HELLO" to derived, s.first().meshCode to s.first().attemptId, "the dialler sends PAIR_HELLO, so its first row already carries the derived id as attemptId")
+        assertTrue(s.none { it.meshKind == MeshKind.SESSION && it.meshCode == "pairing" }, "a dialler writes DIAL rows, not a SESSION open")
+        assertTrue(s.all { it.sessionId != derived }, "the dialler's rows stay under its own connection id")
+        assertTrue(s.last().attemptId == derived)
         PairOracle.check(p, Counts())
     }
 
     @Test
     fun aNonPairingFrameOnAPairingConnectionIsAProtocolErrorAndCloses() {
         val p = PairWorld(2)
-        p.connD.writeRaw(Frames.encode(0x10, 1, """{"v":1}"""))
+        p.connS.writeRaw(Frames.encode(0x10, 1, """{"v":1}"""))
         p.pump()
-        assertTrue(p.s.isClosed)
-        val written = p.log.all<Ev.Write>().filter { it.conn == "S<D" }.flatMap { Frames.parse(it.bytes) }.single()
+        assertTrue(p.d.isClosed)
+        val written = p.log.all<Ev.Write>().filter { it.conn == "D<S" }.flatMap { Frames.parse(it.bytes) }.single()
         assertEquals("PROTOCOL_ERROR", written.code)
-        assertEquals(listOf("open:pairing", "ERROR:PROTOCOL_ERROR", "close"), p.rowsS().map { if (it.meshKind == MeshKind.SESSION && it.meshCode == "pairing") "open:pairing" else it.meshCode!! })
+        assertEquals(listOf("open:pairing", "ERROR:PROTOCOL_ERROR", "close"), p.rowsD().map { if (it.meshKind == MeshKind.SESSION && it.meshCode == "pairing") "open:pairing" else it.meshCode!! })
     }
 
     @Test
-    fun aPairingRowThatIsNotDurableSendsNothingFurther() {
-        val p = PairWorld(3, FailPlan(setOf(1), sticky = false))
+    fun aListenerThatReceivesAColdFrameFirstOpensItsSessionUnderALocalId() {
+        val p = PairWorld(5)
+        val challenge = Frames.encode(0x31, 1, PairMessages.encodeChallenge(PairChallenge(ByteArray(32) { 5 }, "Phone", "android", "strongbox")))
+        p.connS.writeRaw(challenge)
+        p.pump()
+        assertTrue(p.d.isClosed, "S may not send a challenge, and nothing may precede the hello")
+        val derived = Base64Strict.encodeUrlNoPad(p.nonceS.copyOfRange(0, 16))
+        val d = p.rowsD()
+        assertEquals(listOf("pairing", "ERROR:PROTOCOL_ERROR", "close"), d.map { it.meshCode })
+        assertTrue(d.map { it.sessionId }.distinct().size == 1 && d[0].sessionId != derived)
+    }
+
+    @Test
+    fun aListenerPairHelloRowThatIsNotDurableDeliversAndSendsNothingFurther() {
+        val p = PairWorld(4, failD = FailPlan(setOf(1), sticky = false))
+        p.s.send(0x30, PairMessages.encodeHello(PairHello(p.nonceS, ByteArray(32), "Desk", "linux", "file", emptyList())))
+        p.pump()
+        assertTrue(p.d.isClosed)
+        assertEquals(emptyList(), p.receivedByD.map { it.first }, "the PAIR_HELLO row failed, so the frame was never delivered")
+        assertEquals(0, p.log.all<Ev.Write>().filter { it.conn == "D<S" }.size, "and the listener sent nothing")
+        assertEquals(listOf("pairing", "close:ledger-failure"), p.rowsD().map { it.meshCode })
+    }
+
+    @Test
+    fun aDiallerPairingRowThatIsNotDurableSendsNothingFurther() {
+        val p = PairWorld(3, FailPlan(setOf(0), sticky = false))
         p.s.send(0x30, PairMessages.encodeHello(PairHello(p.nonceS, ByteArray(32), "Desk", "linux", "file", emptyList())))
         p.pump()
         assertTrue(p.s.isClosed)
         assertEquals(0, p.log.all<Ev.Write>().size, "the PAIR_HELLO row failed, so the frame was never sent")
-        assertEquals(listOf("pairing", "close:ledger-failure"), p.rowsS().map { it.meshCode })
+        assertEquals(listOf("close:ledger-failure"), p.rowsS().map { it.meshCode })
     }
 
     @Test

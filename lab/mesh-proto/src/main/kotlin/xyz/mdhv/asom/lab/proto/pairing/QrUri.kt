@@ -23,7 +23,10 @@ sealed interface QrParse {
     class Reject(val code: QrReject, val why: String) : QrParse
 }
 
-/** Whether S judges `x` against its own clock. [NONE] is design T8: D's `PAIRING_WINDOW_CLOSED` is authoritative and `x` is only checked for syntax (ERR-FX2-4). */
+/**
+ * Whether S judges `x` against its own clock. [NONE] is design T8 and the default from revision 4 (R4-T-10): D's `PAIRING_WINDOW_CLOSED` is authoritative and `x`
+ * is only checked for syntax. [ENFORCE] is the first-built reading (`EXPIRED`, `EXPIRY_TOO_FAR`), kept for the R0_COMPAT vectors; a scanner never selects it.
+ */
 enum class QrExpiry { ENFORCE, NONE }
 
 /** Which literal addresses a QR may name. [MESH] is trust.md 6.6 without its interface check (the dialer makes that check after connecting). */
@@ -69,10 +72,11 @@ object QrUri {
     private fun reject(code: QrReject, why: String) = QrParse.Reject(code, why)
 
     /**
-     * [nowSec]: with [QrExpiry.ENFORCE] S accepts a URI while `now < x + 60 s` (trust.md 4.6) and refuses an `x` beyond `now + 120 s + 60 s`. With [QrExpiry.NONE]
-     * (design T8, what a scanner should pass) `x` is only checked for syntax: the window is D's to close, and a phone whose clock is minutes off can still pair.
+     * [nowSec]: with [QrExpiry.NONE] (the default; design T8, R4-T-10) `x` is only checked for syntax: the window is D's to close, and a phone whose clock is
+     * minutes off can still pair. With [QrExpiry.ENFORCE] S accepts a URI while `now < x + 60 s` (trust.md 4.6 as first built) and refuses an `x` beyond
+     * `now + 120 s + 60 s`.
      */
-    fun parse(text: String, nowSec: Long, policy: AddrPolicy = AddrPolicy.MESH, expiry: QrExpiry = QrExpiry.ENFORCE): QrParse {
+    fun parse(text: String, nowSec: Long, policy: AddrPolicy = AddrPolicy.MESH, expiry: QrExpiry = QrExpiry.NONE): QrParse {
         if (text.length > MAX_LENGTH) return reject(QrReject.TOO_LONG, "longer than $MAX_LENGTH characters")
         if (!text.startsWith("asom-pair:")) return reject(QrReject.SCHEME, "not an asom-pair URI")
         if (!text.startsWith(PREFIX)) return reject(QrReject.VERSION, "only version 1 exists")

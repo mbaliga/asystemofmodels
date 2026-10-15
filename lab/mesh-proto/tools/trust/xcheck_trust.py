@@ -259,6 +259,10 @@ def eval_message(typ, text):
         if not isinstance(o.get("approve"), bool):
             return bad
         norm = {"v": 1, "approve": o["approve"]}
+        if "reveal" in o:
+            if _b32(o, "reveal") is None:
+                return bad
+            norm["reveal"] = o["reveal"]
     elif typ in ("PAIR_COMMIT", "PAIR_COMMIT_ACK"):
         if _b32(o, "transcript") is None:
             return bad
@@ -272,8 +276,14 @@ def eval_w04(v):
     i = v["input"]
     k = i["kind"]
     if k == "qrParse":
-        r = T.qr_parse(i["uri"], i["nowSec"], loopback_ok=(i["policy"] == "loopbackForTests"))
+        r = T.qr_parse(i["uri"], i["nowSec"], loopback_ok=(i["policy"] == "loopbackForTests"), expiry=i.get("expiry", "none"))
         return ("ok", json.dumps(r[1], sort_keys=True)) if r[0] == "ok" else ("reject", r[1])
+    if k == "commit":
+        ns = T.unb64u(i["nonceS"])
+        c = T.commit_nonce(ns)
+        wire = T.unb64u(i["commitment"]) if "commitment" in i else c
+        rv = T.unb64u(i["revealed"]) or b""
+        return ("ok", json.dumps({"commitment": T.b64u(c), "opens": T.commit_opens(wire, rv)}, sort_keys=True))
     if k == "qrEncode":
         return ("ok", json.dumps({"uri": T.qr_encode(i["k"], i["a"], i["s"], i["x"], i["n"])}, sort_keys=True))
     if k == "proofSas":

@@ -26,9 +26,10 @@ import xyz.mdhv.asom.lab.proto.trust.ChainMode
 import xyz.mdhv.asom.lab.proto.wire.ConnMode
 
 /**
- * Two pairing-mode channels over a real TLS connection: B has its pairing window open and has never heard of A, A dials B from a QR pin (`EXPECT_PAIRING`), B's
- * verifier chooses `PAIRING_SERVER`, and the `PAIR_*` frames flow with their per-frame `PAIRING` rows. Nothing here implements pairing; the bodies are opaque to the
- * session layer, which only writes the rows (ERRATA ERR-PS-16).
+ * Two pairing-mode channels over a real TLS connection, oriented as trust.md 4.3 draws the ceremony (R4-T-10): B is D, the displayer, with its pairing window open and
+ * no knowledge of A; A is S, the scanner, and dials B from a QR pin (`EXPECT_PAIRING`), so S is the TLS client and sends `PAIR_HELLO`; B's verifier chooses
+ * `PAIRING_SERVER`, and the `PAIR_*` frames flow with their per-frame `PAIRING` rows. Nothing here implements pairing; the bodies are opaque to the session layer,
+ * which only writes the rows (ERRATA ERR-PS-16). [dialSessionId] is the dialler's connection id and [nonceS] the `PAIR_HELLO.nonceS` member that names the listener's session.
  */
 class PairRun(val w: TlsWorld, val s: PairingChannel, val d: PairingChannel, val connS: TappedConn, val connD: TappedConn, val nonceS: ByteArray, val dialSessionId: String) : AutoCloseable {
     override fun close() = w.close()
@@ -40,7 +41,7 @@ object TlsPairing {
         w.b.pairingWindow = true
         val rnd = SplittableRandom(seed)
         Loopback().use { lb ->
-            var acc: PairingChannel? = null
+            var accD: PairingChannel? = null
             var accConn: TappedConn? = null
             var accError: Throwable? = null
             val t = Thread {
@@ -54,7 +55,7 @@ object TlsPairing {
                     w.b.conn = tc
                     check(tc.mode == ConnMode.PAIRING) { "the listener admitted an unknown pin without a pairing connection" }
                     accConn = tc
-                    acc = PairingChannel(w.b.ledger, tc, SeededIds(seed * 3 + 2))
+                    accD = PairingChannel(w.b.ledger, tc, SeededIds(seed * 3 + 2))
                 } catch (e: Throwable) {
                     accError = e
                 }
@@ -63,10 +64,10 @@ object TlsPairing {
             val report = w.a.node.dial(w.b.pin, lb.address, "qr", dialer)
             t.join(15_000)
             accError?.let { throw it }
-            val connD = dialer.conn!!
-            check(connD.mode == ConnMode.PAIRING) { "the dialler's connection is not a pairing connection" }
-            val d = PairingChannel(w.a.ledger, connD, SeededIds(seed * 3 + 1), report.sessionId, report.handshakeRecorded)
-            val s = acc!!
+            val connS = dialer.conn!!
+            check(connS.mode == ConnMode.PAIRING) { "the dialler's connection is not a pairing connection" }
+            val s = PairingChannel(w.a.ledger, connS, SeededIds(seed * 3 + 1), report.sessionId, report.handshakeRecorded)
+            val d = accD!!
             val receivedByS = CopyOnWriteArrayList<Int>()
             val receivedByD = CopyOnWriteArrayList<Int>()
             s.onFrame = { type, _ -> receivedByS += type }
@@ -92,14 +93,14 @@ object TlsPairing {
             waitFor(receivedByD, 3, "PAIR_COMMIT_ACK at D")
             if (rnd.nextInt(3) == 0 && !s.isClosed) {
                 connSSend(accConn!!, Build.ext(0x91, 0, bytes(rnd.nextInt(20))))
-                Wait.until("EXT_IGNORED at D") { w.a.rows().any { it.meshCode == "EXT_IGNORED" } || d.isClosed || s.isClosed }
+                Wait.until("EXT_IGNORED at S") { w.a.rows().any { it.meshCode == "EXT_IGNORED" } || d.isClosed || s.isClosed }
             }
             if (rnd.nextBoolean()) s.close() else d.close()
             Wait.until("both channels to close") { s.isClosed && d.isClosed }
             ts.join(5_000)
             td.join(5_000)
             TlsRuns.settle(w)
-            return PairRun(w, s, d, accConn!!, connD, nonceS, report.sessionId)
+            return PairRun(w, s, d, connS, accConn!!, nonceS, report.sessionId)
         }
     }
 
@@ -109,7 +110,7 @@ object TlsPairing {
     fun check(p: PairRun, counts: Counts, l15: L15Stats) {
         val events = p.w.log.snapshot()
         val derived = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(p.nonceS.copyOfRange(0, 16))
-        for ((side, kit, conn, peerConn) in listOf(Quad("S", p.w.b, p.connS, p.connD), Quad("D", p.w.a, p.connD, p.connS))) {
+        for ((side, kit, conn, peerConn) in listOf(Quad("S", p.w.a, p.connS, p.connD), Quad("D", p.w.b, p.connD, p.connS))) {
             val rows: List<LabRouteRecord> = kit.rows()
             val writes = events.filterIsInstance<Ev.Write>().filter { it.conn == conn.name && !it.raw }
             val sent = writes.map { Frames.one(it.bytes) }
@@ -142,22 +143,22 @@ object TlsPairing {
             read.forEach { Table76.l16Name(it)?.let(counts::type) }
             val session = rows.filter { it.meshKind == MeshKind.SESSION }
             val ids = rows.filter { it.meshKind != null }
-            if (side == "S") {
-                if (session.firstOrNull()?.meshCode != "pairing") throw AssertionError("pairing S: the first SESSION row is not the pairing open row")
-                if (rows.firstOrNull()?.meshKind != MeshKind.SESSION) throw AssertionError("pairing S: a row precedes the SESSION open row")
-                if (ids.any { it.sessionId != derived }) throw AssertionError("pairing S: a row carries a session id other than the base64url of the first 16 bytes of nonceS")
+            if (side == "D") {
+                if (session.firstOrNull()?.meshCode != "pairing") throw AssertionError("pairing D: the first SESSION row is not the pairing open row")
+                if (rows.firstOrNull()?.meshKind != MeshKind.SESSION) throw AssertionError("pairing D: a row precedes the SESSION open row")
+                if (ids.any { it.sessionId != derived }) throw AssertionError("pairing D: a row carries a session id other than the base64url of the first 16 bytes of nonceS")
             } else {
-                if (ids.any { it.sessionId != p.dialSessionId }) throw AssertionError("pairing D: rows do not share the one connection id of the DIAL rows")
+                if (ids.any { it.sessionId != p.dialSessionId }) throw AssertionError("pairing S: rows do not share the one connection id of the DIAL rows")
                 val frameRows = rows.filter { it.meshKind != MeshKind.DIAL }
                 val firstHello = frameRows.indexOfFirst { it.meshCode == "PAIR_HELLO" }
                 for ((k, r) in frameRows.withIndex()) {
                     val want = if (firstHello in 0..k) derived else null
-                    if (r.attemptId != want) throw AssertionError("pairing D: attemptId ${r.attemptId} on row $k, expected $want")
+                    if (r.attemptId != want) throw AssertionError("pairing S: attemptId ${r.attemptId} on row $k, expected $want")
                 }
             }
             if (session.count { it.meshCode!!.startsWith("close") } != 1) throw AssertionError("pairing $side: not exactly one SESSION close row")
             counts.sessions++
-            TlsOracle.l15(p.w, Side(kit, conn, null, if (side == "S") derived else p.dialSessionId), peerConn, l15)
+            TlsOracle.l15(p.w, Side(kit, conn, null, if (side == "D") derived else p.dialSessionId), peerConn, l15)
         }
     }
 

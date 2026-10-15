@@ -32,18 +32,21 @@ class PairDirectionTest {
         fun done() = laws.finish(
             setOf(
                 "tls-role-refuses-wrong-direction", "tls-role-accepts-right-direction", "hello-orientation-refuses-cold-start", "hello-orientation-refuses-reflection", "outbound-refused",
-                "frame-budget-closes", "extension-budget-closes", "legit-ceremony-fits-the-budget",
+                "frame-budget-closes", "extension-budget-closes", "legit-ceremony-fits-the-budget", "default-is-tls-role", "tls-role-refuses-cold-frame",
             ),
         )
     }
 
-    private class Kit(orientation: PairOrientation) {
+    /** [orientation] null leaves the channel's own default in place, which R4-T-10 makes the TLS role. */
+    private class Kit(orientation: PairOrientation? = null) {
         val log = Log()
         val memC = MemorySink()
         val memS = MemorySink()
         val conns = MemConnection.pair(null, null, log, "C>S", "S<C", ConnMode.PAIRING)
-        val client = PairingChannel(NodeLedger("C", SpySink("C", memC, log)) { CLOCK_BASE + log.events.size }, conns.first, SeededIds(1), orientation = orientation)
-        val server = PairingChannel(NodeLedger("S", SpySink("S", memS, log)) { CLOCK_BASE + log.events.size }, conns.second, SeededIds(2), orientation = orientation)
+        private val ledgerC = NodeLedger("C", SpySink("C", memC, log)) { CLOCK_BASE + log.events.size }
+        private val ledgerS = NodeLedger("S", SpySink("S", memS, log)) { CLOCK_BASE + log.events.size }
+        val client = if (orientation == null) PairingChannel(ledgerC, conns.first, SeededIds(1)) else PairingChannel(ledgerC, conns.first, SeededIds(1), orientation = orientation)
+        val server = if (orientation == null) PairingChannel(ledgerS, conns.second, SeededIds(2)) else PairingChannel(ledgerS, conns.second, SeededIds(2), orientation = orientation)
         val atClient = ArrayList<Int>()
         val atServer = ArrayList<Int>()
 
@@ -73,14 +76,21 @@ class PairDirectionTest {
 
     private fun errorsWritten(k: Kit, mem: MemorySink) = mem.all().count { it.meshKind == MeshKind.CONTROL && it.meshCode == "ERROR:PROTOCOL_ERROR" }
 
+    private val sendsToD = listOf(FrameTypes.PAIR_HELLO, FrameTypes.PAIR_DECISION, FrameTypes.PAIR_COMMIT_ACK)
+    private val sendsToS = listOf(FrameTypes.PAIR_CHALLENGE, FrameTypes.PAIR_DECISION, FrameTypes.PAIR_COMMIT)
+
     @Test
-    fun withTheTlsRoleOrientationDAcceptsOnlyWhatSMaySendAndSAcceptsOnlyWhatDMaySend() {
+    fun withTheTlsRoleOrientationDAcceptsOnlyWhatSMaySendAndSAcceptsOnlyWhatDMaySendOnceTheHelloHasCrossed() {
         for (type in allPair) {
             val toD = Kit(PairOrientation.FROM_TLS_ROLE)
+            if (type != FrameTypes.PAIR_HELLO) {
+                toD.client.send(FrameTypes.PAIR_HELLO, payload(FrameTypes.PAIR_HELLO))
+                toD.pump()
+                toD.atServer.clear()
+            }
             toD.conns.first.writeRaw(raw(type))
             toD.pump()
-            val dMayReceive = type in listOf(FrameTypes.PAIR_HELLO, FrameTypes.PAIR_DECISION, FrameTypes.PAIR_COMMIT_ACK)
-            if (dMayReceive) {
+            if (type in sendsToD) {
                 assertEquals(listOf(type), toD.atServer, "D (TLS server) receives ${FrameTypes.nameOf(type)} from S")
                 assertTrue(!toD.server.isClosed)
                 laws.bump("tls-role-accepts-right-direction")
@@ -92,10 +102,11 @@ class PairDirectionTest {
             }
 
             val toS = Kit(PairOrientation.FROM_TLS_ROLE)
+            toS.client.send(FrameTypes.PAIR_HELLO, payload(FrameTypes.PAIR_HELLO))
+            toS.pump()
             toS.conns.second.writeRaw(raw(type))
             toS.pump()
-            val sMayReceive = type in listOf(FrameTypes.PAIR_CHALLENGE, FrameTypes.PAIR_DECISION, FrameTypes.PAIR_COMMIT)
-            if (sMayReceive) {
+            if (type in sendsToS) {
                 assertEquals(listOf(type), toS.atClient, "S (TLS client) receives ${FrameTypes.nameOf(type)} from D")
                 laws.bump("tls-role-accepts-right-direction")
             } else {
@@ -105,6 +116,58 @@ class PairDirectionTest {
                 laws.bump("tls-role-refuses-wrong-direction")
             }
         }
+    }
+
+    @Test
+    fun theDefaultOrientationIsTheTlsRoleSoTheListenerCannotSendTheHelloAndTheDiallerCanNot() {
+        val k = Kit()
+        assertFailsWith<IllegalStateException> { k.server.send(FrameTypes.PAIR_HELLO, payload(FrameTypes.PAIR_HELLO)) }
+        assertFailsWith<IllegalStateException> { k.client.send(FrameTypes.PAIR_CHALLENGE, payload(FrameTypes.PAIR_CHALLENGE)) }
+        assertEquals(0, k.memC.all().size + k.memS.all().size, "a refused send writes no row")
+        k.client.send(FrameTypes.PAIR_HELLO, payload(FrameTypes.PAIR_HELLO))
+        k.pump()
+        assertEquals(listOf(FrameTypes.PAIR_HELLO), k.atServer)
+        laws.bump("default-is-tls-role")
+        val reversed = Kit()
+        reversed.conns.second.writeRaw(raw(FrameTypes.PAIR_HELLO))
+        reversed.pump()
+        assertEquals(emptyList(), reversed.atClient, "a hello from the TLS server is the wrong direction by default")
+        assertTrue(reversed.client.isClosed)
+        laws.bump("default-is-tls-role")
+    }
+
+    @Test
+    fun aColdFrameIsRefusedByEitherEndUnderTheTlsRole() {
+        for (type in sendsToD.filter { it != FrameTypes.PAIR_HELLO }) {
+            val k = Kit(PairOrientation.FROM_TLS_ROLE)
+            k.conns.first.writeRaw(raw(type))
+            k.pump()
+            assertEquals(emptyList(), k.atServer, "${FrameTypes.nameOf(type)} cannot be the first frame D sees")
+            assertTrue(k.server.isClosed)
+            assertEquals(1, errorsWritten(k, k.memS))
+            laws.bump("tls-role-refuses-cold-frame")
+        }
+        for (type in sendsToS) {
+            val k = Kit(PairOrientation.FROM_TLS_ROLE)
+            k.conns.second.writeRaw(raw(type))
+            k.pump()
+            assertEquals(emptyList(), k.atClient, "${FrameTypes.nameOf(type)} cannot reach S before S has sent its hello")
+            assertTrue(k.client.isClosed)
+            assertEquals(1, errorsWritten(k, k.memC))
+            laws.bump("tls-role-refuses-cold-frame")
+        }
+    }
+
+    @Test
+    fun theColdRuleDoesNotRefuseAFurtherHelloBecauseTheMachineAnswersItWithTheWindowClosed() {
+        val k = Kit(PairOrientation.FROM_TLS_ROLE)
+        k.client.send(FrameTypes.PAIR_HELLO, payload(FrameTypes.PAIR_HELLO))
+        k.pump()
+        k.client.send(FrameTypes.PAIR_HELLO, payload(FrameTypes.PAIR_HELLO))
+        k.pump()
+        assertEquals(listOf(FrameTypes.PAIR_HELLO, FrameTypes.PAIR_HELLO), k.atServer)
+        assertTrue(!k.server.isClosed)
+        laws.bump("tls-role-accepts-right-direction")
     }
 
     @Test
@@ -198,12 +261,30 @@ class PairDirectionTest {
     }
 
     @Test
+    fun theBudgetIsTheSixteenFramesOfR4L25AndTheSeventeenthIsAnErrorRowedOnce() {
+        assertEquals(16, PairingChannel.MAX_INBOUND_FRAMES, "LAB_SPEC R4-L-25: a pairing-mode connection admits at most 16 inbound frames")
+        val k = Kit()
+        k.conns.first.writeRaw(raw(FrameTypes.PAIR_HELLO))
+        repeat(15) { k.conns.first.writeRaw(raw(FrameTypes.PAIR_DECISION)) }
+        k.pump()
+        assertEquals(16, k.atServer.size)
+        assertTrue(!k.server.isClosed, "sixteen frames are within the budget")
+        k.conns.first.writeRaw(raw(FrameTypes.PAIR_DECISION))
+        k.pump()
+        assertEquals(16, k.atServer.size, "the seventeenth is not delivered")
+        assertTrue(k.server.isClosed)
+        assertEquals(1, errorsWritten(k, k.memS))
+        laws.bump("frame-budget-closes")
+    }
+
+    @Test
     fun aPeerThatRepeatsPairFramesWithoutEndIsClosedAfterTheBudget() {
         val k = Kit(PairOrientation.FROM_TLS_ROLE)
+        k.conns.first.writeRaw(raw(FrameTypes.PAIR_HELLO))
         repeat(1_000) { k.conns.first.writeRaw(raw(FrameTypes.PAIR_DECISION)) }
         k.pump()
         assertTrue(k.server.isClosed)
-        assertTrue(k.atServer.size <= PairingChannel.MAX_INBOUND_FRAMES, "delivered: ${k.atServer.size}")
+        assertEquals(PairingChannel.MAX_INBOUND_FRAMES, k.atServer.size, "delivered: the hello and then decisions up to the budget")
         assertTrue(k.memS.all().count { it.meshKind == MeshKind.PAIRING } <= PairingChannel.MAX_INBOUND_FRAMES)
         assertEquals(1, errorsWritten(k, k.memS))
         laws.bump("frame-budget-closes")

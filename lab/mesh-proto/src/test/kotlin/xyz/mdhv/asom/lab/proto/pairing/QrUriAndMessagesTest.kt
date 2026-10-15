@@ -45,8 +45,9 @@ class QrUriAndMessagesTest {
                 now + rnd.nextLong(-59, 181), randomName(rnd),
             )
             val text = QrUri.encode(payload)
-            val parsed = QrUri.parse(text, now)
+            val parsed = QrUri.parse(text, now, expiry = QrExpiry.ENFORCE)
             assertTrue(parsed is QrParse.Ok, "parse(encode(p)) refused: ${(parsed as? QrParse.Reject)?.code} for $text")
+            assertTrue(QrUri.parse(text, now) is QrParse.Ok, "the default reading accepts whatever the enforcing one accepts")
             val q = parsed.payload
             assertTrue(q.pinD.equalsConstantTime(payload.pinD))
             assertEquals(payload.endpoints, q.endpoints)

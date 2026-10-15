@@ -311,12 +311,13 @@
       "origin": "hand",
       "status": "normative",
       "oracle": "self",
-      "description": "now = x + 59 s (inside the 60 s grace)",
+      "description": "now = x + 59 s (inside the 60 s grace; the enforcing reading, R0_COMPAT)",
       "input": {
         "kind": "qrParse",
         "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
         "nowSec": 1790000179,
-        "policy": "mesh"
+        "policy": "mesh",
+        "expiry": "enforce"
       },
       "expect": {
         "ok": {
@@ -336,12 +337,13 @@
       "origin": "hand",
       "status": "normative",
       "oracle": "self",
-      "description": "x = now + 180 s (the largest accepted lead)",
+      "description": "x = now + 180 s (the largest accepted lead; the enforcing reading, R0_COMPAT)",
       "input": {
         "kind": "qrParse",
         "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000180&n=Dell%20tower",
         "nowSec": 1790000000,
-        "policy": "mesh"
+        "policy": "mesh",
+        "expiry": "enforce"
       },
       "expect": {
         "ok": {
@@ -403,6 +405,185 @@
           "x": 1790000120,
           "n": "Dell tower"
         }
+      }
+    },
+    {
+      "id": "W04-017",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-T-10: now = x + 60 s, the instant the first-built scanner refused as expired, is accepted: D's window is authoritative",
+      "input": {
+        "kind": "qrParse",
+        "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+        "nowSec": 1790000180,
+        "policy": "mesh"
+      },
+      "expect": {
+        "ok": {
+          "k": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+          "a": [
+            "192.168.1.40:11436",
+            "100.101.7.9:11436"
+          ],
+          "s": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+          "x": 1790000120,
+          "n": "Dell tower"
+        }
+      }
+    },
+    {
+      "id": "W04-018",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-T-10: a scanner a day ahead of the QR still scans",
+      "input": {
+        "kind": "qrParse",
+        "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+        "nowSec": 1790100000,
+        "policy": "mesh"
+      },
+      "expect": {
+        "ok": {
+          "k": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+          "a": [
+            "192.168.1.40:11436",
+            "100.101.7.9:11436"
+          ],
+          "s": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+          "x": 1790000120,
+          "n": "Dell tower"
+        }
+      }
+    },
+    {
+      "id": "W04-019",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-T-10: a scanner a day behind the QR still scans (x far ahead of now)",
+      "input": {
+        "kind": "qrParse",
+        "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+        "nowSec": 1789900000,
+        "policy": "mesh"
+      },
+      "expect": {
+        "ok": {
+          "k": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+          "a": [
+            "192.168.1.40:11436",
+            "100.101.7.9:11436"
+          ],
+          "s": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+          "x": 1790000120,
+          "n": "Dell tower"
+        }
+      }
+    },
+    {
+      "id": "W04-020",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-T-10: x = now + 181 s (a phone three minutes behind) is accepted",
+      "input": {
+        "kind": "qrParse",
+        "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000181&n=Dell%20tower",
+        "nowSec": 1790000000,
+        "policy": "mesh"
+      },
+      "expect": {
+        "ok": {
+          "k": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+          "a": [
+            "192.168.1.40:11436"
+          ],
+          "s": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+          "x": 1790000181,
+          "n": "Dell tower"
+        }
+      }
+    },
+    {
+      "id": "W04-021",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-T-10: x of 12 digits is syntax-valid and not judged",
+      "input": {
+        "kind": "qrParse",
+        "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=999999999999&n=Dell%20tower",
+        "nowSec": 1790000000,
+        "policy": "mesh"
+      },
+      "expect": {
+        "ok": {
+          "k": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+          "a": [
+            "192.168.1.40:11436"
+          ],
+          "s": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+          "x": 999999999999,
+          "n": "Dell tower"
+        }
+      }
+    },
+    {
+      "id": "W04-022",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-T-10: x = 0 is plain decimal without a leading zero and is not judged",
+      "input": {
+        "kind": "qrParse",
+        "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=0&n=Dell%20tower",
+        "nowSec": 1790000000,
+        "policy": "mesh"
+      },
+      "expect": {
+        "ok": {
+          "k": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+          "a": [
+            "192.168.1.40:11436"
+          ],
+          "s": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+          "x": 0,
+          "n": "Dell tower"
+        }
+      }
+    },
+    {
+      "id": "W04-023",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-T-10: an expired URI with a public address is refused for the address, not accepted for the missing gate",
+      "input": {
+        "kind": "qrParse",
+        "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=8.8.8.8:1&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+        "nowSec": 1790100000,
+        "policy": "mesh"
+      },
+      "expect": {
+        "reject": "ADDRESS_NOT_ELIGIBLE"
+      }
+    },
+    {
+      "id": "W04-024",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-T-10: an expired URI with a name that uses '+' for a space is refused for the name",
+      "input": {
+        "kind": "qrParse",
+        "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell+tower",
+        "nowSec": 1790100000,
+        "policy": "mesh"
+      },
+      "expect": {
+        "reject": "BAD_NAME"
       }
     },
     {
@@ -650,12 +831,13 @@
       "origin": "hand",
       "status": "normative",
       "oracle": "self",
-      "description": "expired: now = x + 60 s",
+      "description": "expired: now = x + 60 s (the enforcing reading, R0_COMPAT)",
       "input": {
         "kind": "qrParse",
         "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
         "nowSec": 1790000180,
-        "policy": "mesh"
+        "policy": "mesh",
+        "expiry": "enforce"
       },
       "expect": {
         "reject": "EXPIRED"
@@ -666,12 +848,13 @@
       "origin": "hand",
       "status": "normative",
       "oracle": "self",
-      "description": "expired long ago",
+      "description": "expired long ago (the enforcing reading, R0_COMPAT)",
       "input": {
         "kind": "qrParse",
         "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
         "nowSec": 1790100000,
-        "policy": "mesh"
+        "policy": "mesh",
+        "expiry": "enforce"
       },
       "expect": {
         "reject": "EXPIRED"
@@ -682,12 +865,13 @@
       "origin": "hand",
       "status": "normative",
       "oracle": "self",
-      "description": "x beyond now + 180 s",
+      "description": "x beyond now + 180 s (the enforcing reading, R0_COMPAT)",
       "input": {
         "kind": "qrParse",
         "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000181&n=Dell%20tower",
         "nowSec": 1790000000,
-        "policy": "mesh"
+        "policy": "mesh",
+        "expiry": "enforce"
       },
       "expect": {
         "reject": "EXPIRY_TOO_FAR"
@@ -698,12 +882,13 @@
       "origin": "hand",
       "status": "normative",
       "oracle": "self",
-      "description": "x absurdly far ahead",
+      "description": "x absurdly far ahead (the enforcing reading, R0_COMPAT)",
       "input": {
         "kind": "qrParse",
         "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=999999999999&n=Dell%20tower",
         "nowSec": 1790000000,
-        "policy": "mesh"
+        "policy": "mesh",
+        "expiry": "enforce"
       },
       "expect": {
         "reject": "EXPIRY_TOO_FAR"
@@ -4624,6 +4809,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -4684,6 +4870,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -4739,6 +4926,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -4805,6 +4993,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -4861,6 +5050,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -4917,6 +5107,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -4953,6 +5144,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -4989,6 +5181,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -5025,6 +5218,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -5061,6 +5255,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -5097,6 +5292,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -5133,6 +5329,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -5169,6 +5366,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -5205,6 +5403,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -5235,6 +5434,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -5280,6 +5480,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -5325,6 +5526,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -5374,6 +5576,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -5424,6 +5627,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -5489,6 +5693,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -5549,6 +5754,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -5608,6 +5814,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -5662,6 +5869,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -5706,6 +5914,7 @@
         "kind": "fsm",
         "machine": "D",
         "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "profile": "r0",
         "script": [
           {
             "e": "UserOpenWindow",
@@ -5751,6 +5960,7 @@
         "kind": "fsm",
         "machine": "S",
         "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "profile": "r0",
         "script": [
           {
             "e": "Scanned",
@@ -5816,6 +6026,7 @@
         "kind": "fsm",
         "machine": "S",
         "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "profile": "r0",
         "script": [
           {
             "e": "Scanned",
@@ -5872,6 +6083,7 @@
         "kind": "fsm",
         "machine": "S",
         "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "profile": "r0",
         "script": [
           {
             "e": "Scanned",
@@ -5919,6 +6131,7 @@
         "kind": "fsm",
         "machine": "S",
         "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "profile": "r0",
         "script": [
           {
             "e": "Scanned",
@@ -5966,6 +6179,7 @@
         "kind": "fsm",
         "machine": "S",
         "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "profile": "r0",
         "script": [
           {
             "e": "Scanned",
@@ -6008,17 +6222,19 @@
       "origin": "hand",
       "status": "normative",
       "oracle": "self",
-      "description": "S: an expired URI is rejected at the scan and S stays idle",
+      "description": "S: an expired URI is rejected at the scan and S stays idle (the enforcing reading, R0_COMPAT)",
       "input": {
         "kind": "fsm",
         "machine": "S",
         "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "profile": "r0",
         "script": [
           {
             "e": "Scanned",
             "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
             "nowSec": 1790000180,
-            "policy": "mesh"
+            "policy": "mesh",
+            "expiry": "enforce"
           }
         ]
       },
@@ -6040,6 +6256,7 @@
         "kind": "fsm",
         "machine": "S",
         "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "profile": "r0",
         "script": [
           {
             "e": "Scanned",
@@ -6067,6 +6284,7 @@
         "kind": "fsm",
         "machine": "S",
         "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "profile": "r0",
         "script": [
           {
             "e": "Scanned",
@@ -6100,6 +6318,7 @@
         "kind": "fsm",
         "machine": "S",
         "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "profile": "r0",
         "script": [
           {
             "e": "Scanned",
@@ -6145,6 +6364,7 @@
         "kind": "fsm",
         "machine": "S",
         "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "profile": "r0",
         "script": [
           {
             "e": "Scanned",
@@ -6196,6 +6416,7 @@
         "kind": "fsm",
         "machine": "S",
         "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "profile": "r0",
         "script": [
           {
             "e": "Scanned",
@@ -6247,6 +6468,7 @@
         "kind": "fsm",
         "machine": "S",
         "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "profile": "r0",
         "script": [
           {
             "e": "Scanned",
@@ -6303,6 +6525,7 @@
         "kind": "fsm",
         "machine": "S",
         "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "profile": "r0",
         "script": [
           {
             "e": "Scanned",
@@ -6364,6 +6587,7 @@
         "kind": "fsm",
         "machine": "S",
         "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "profile": "r0",
         "script": [
           {
             "e": "Scanned",
@@ -6415,6 +6639,7 @@
         "kind": "fsm",
         "machine": "S",
         "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "profile": "r0",
         "script": [
           {
             "e": "Scanned",
@@ -6471,6 +6696,7 @@
         "kind": "fsm",
         "machine": "S",
         "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "profile": "r0",
         "script": [
           {
             "e": "Scanned",
@@ -6536,6 +6762,7 @@
         "kind": "fsm",
         "machine": "S",
         "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "profile": "r0",
         "script": [
           {
             "e": "Scanned",
@@ -6573,6 +6800,4227 @@
             "AWAIT_NONE:ShowConsent(865 412)",
             "FAILED:Abort(CONNECTION_LOST,-)"
           ]
+        }
+      }
+    },
+    {
+      "id": "W04-700",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3) happy path: the opening arrives first, then the code typed from S's screen; D shows no code; the row, the commit, the acknowledgement",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": "865 412"
+          },
+          {
+            "e": "RowDurable",
+            "nowMs": 6000
+          },
+          {
+            "e": "AckReceived",
+            "transcriptHex": "a7cfd74766ca9d6eab6393ad20c52a1e103e394678101b503f1e48c6f473ffb1"
+          }
+        ],
+        "profile": "r3"
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_REMOTE:",
+            "COMMITTING:SendDecision(true),WritePairedRow",
+            "AWAIT_ACK:SendCommit(a7cfd747)",
+            "CLOSED:Done,Closed(done)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-701",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): the person types the code before S's opening has arrived; it is kept and judged when the opening comes",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": "865412"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5"
+          },
+          {
+            "e": "RowDurable",
+            "nowMs": 6000
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_NONE:",
+            "COMMITTING:SendDecision(true),WritePairedRow",
+            "AWAIT_ACK:SendCommit(a7cfd747)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-702",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): the typed code may contain a no-break space and spaces (ignored)",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": " 865 412 "
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_REMOTE:",
+            "COMMITTING:SendDecision(true),WritePairedRow"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-703",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): a wrong code is counted and warned, a right one then pairs",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": "000 000"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": "865 412"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_REMOTE:",
+            "AWAIT_REMOTE:Warn(wrong-code)",
+            "COMMITTING:SendDecision(true),WritePairedRow"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-704",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): the third wrong code declines and aborts (TRIES_EXHAUSTED); no row",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": "000 000"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": "111 111"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": "222 222"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_REMOTE:",
+            "AWAIT_REMOTE:Warn(wrong-code)",
+            "AWAIT_REMOTE:Warn(wrong-code)",
+            "CLOSED:SendDecision(false),Abort(TRIES_EXHAUSTED,PAIRING_REFUSED)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-705",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): an approval without a typed code is ignored with a warning",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_REMOTE:",
+            "AWAIT_REMOTE:Warn(typed-code-required)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-706",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): an approval without a typed code before the opening is ignored with a warning too",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_NONE:Warn(typed-code-required)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-707",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): the code predicted from the wire (the SAS over the commitment) is the wrong code, so a relay that grinds nonce_D on what S sent gains nothing",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": "555 468"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_REMOTE:",
+            "AWAIT_REMOTE:Warn(wrong-code)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-708",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): an opening that does not open the commitment ends the ceremony (PROTOCOL_ERROR), also when the right code was typed first",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": "865 412"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "0101010101010101010101010101010101010101010101010101010101010101"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_NONE:",
+            "CLOSED:Abort(PROTOCOL,PROTOCOL_ERROR)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-709",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): an approval that carries no opening ends the ceremony",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "CLOSED:Abort(PROTOCOL,PROTOCOL_ERROR)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-710",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): an opening of 16 bytes ends the ceremony",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "CLOSED:Abort(PROTOCOL,PROTOCOL_ERROR)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-711",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): the commitment itself offered as the opening ends the ceremony",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "CLOSED:Abort(PROTOCOL,PROTOCOL_ERROR)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-712",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): S declines (no opening is sent with a decline)",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": false
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "CLOSED:Abort(DECLINED_REMOTE,PAIRING_REFUSED)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-713",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): the local user declines",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": false
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "CLOSED:SendDecision(false),Abort(DECLINED_LOCAL,PAIRING_REFUSED)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-714",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): the local user cancels",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "UserCancel"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "CLOSED:SendDecision(false),Abort(DECLINED_LOCAL,PAIRING_REFUSED)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-715",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3) (L1): the peer's approval and opening alone never write a row; a lost connection ends the ceremony with no row",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5"
+          },
+          {
+            "e": "ConnectionLost"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_REMOTE:",
+            "CLOSED:Abort(CONNECTION_LOST,-)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-716",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3) (L1): the typed code alone never writes a row",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": "865 412"
+          },
+          {
+            "e": "ConnectionLost"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_NONE:",
+            "CLOSED:Abort(CONNECTION_LOST,-)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-717",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): the decisions time out 120 s after the hello was consumed",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "Tick",
+            "nowMs": 124999
+          },
+          {
+            "e": "Tick",
+            "nowMs": 125000
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_NONE:",
+            "CLOSED:Abort(TIMEOUT,PAIRING_REFUSED)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-718",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): a second opening after the first was accepted changes nothing",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": "865 412"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_REMOTE:",
+            "AWAIT_REMOTE:",
+            "COMMITTING:SendDecision(true),WritePairedRow"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-719",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): a decision from another connection is refused and changes nothing; the bound connection then proceeds to the acknowledgement",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000,
+            "connId": 7
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "connId": 8
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "connId": 7
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": "865 412"
+          },
+          {
+            "e": "RowDurable",
+            "nowMs": 6000
+          },
+          {
+            "e": "AckReceived",
+            "transcriptHex": "a7cfd74766ca9d6eab6393ad20c52a1e103e394678101b503f1e48c6f473ffb1",
+            "connId": 9
+          },
+          {
+            "e": "AckReceived",
+            "transcriptHex": "a7cfd74766ca9d6eab6393ad20c52a1e103e394678101b503f1e48c6f473ffb1",
+            "connId": 7
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_NONE:Refuse(PROTOCOL_ERROR)",
+            "AWAIT_REMOTE:",
+            "COMMITTING:SendDecision(true),WritePairedRow",
+            "AWAIT_ACK:SendCommit(a7cfd747)",
+            "AWAIT_ACK:Refuse(PROTOCOL_ERROR)",
+            "CLOSED:Done,Closed(done)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-720",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): a decline from another connection does not abort the ceremony",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000,
+            "connId": 7
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": false,
+            "connId": 8
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_NONE:Refuse(PROTOCOL_ERROR)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-721",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): a decision from another connection while COMMITTING and while waiting for the acknowledgement is refused",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000,
+            "connId": 7
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "connId": 7
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": "865 412"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "connId": 8
+          },
+          {
+            "e": "RowDurable",
+            "nowMs": 6000
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": false,
+            "connId": 8
+          },
+          {
+            "e": "AckReceived",
+            "transcriptHex": "a7cfd74766ca9d6eab6393ad20c52a1e103e394678101b503f1e48c6f473ffb1",
+            "connId": 7
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_REMOTE:",
+            "COMMITTING:SendDecision(true),WritePairedRow",
+            "COMMITTING:Refuse(PROTOCOL_ERROR)",
+            "AWAIT_ACK:SendCommit(a7cfd747)",
+            "AWAIT_ACK:Refuse(PROTOCOL_ERROR)",
+            "CLOSED:Done,Closed(done)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-722",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): an acknowledgement from another connection before the commit is refused and does not end the ceremony",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000,
+            "connId": 7
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "AckReceived",
+            "transcriptHex": "a7cfd74766ca9d6eab6393ad20c52a1e103e394678101b503f1e48c6f473ffb1",
+            "connId": 8
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "connId": 7
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_NONE:Refuse(PROTOCOL_ERROR)",
+            "AWAIT_REMOTE:"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-723",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): a decision from another connection in the CONSUMED state is refused, one from the bound connection is a protocol error",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 0
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 1,
+            "connId": 7
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "connId": 8
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "connId": 7
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "CONSUMED:Refuse(PROTOCOL_ERROR)",
+            "CLOSED:Abort(PROTOCOL,PROTOCOL_ERROR)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-724",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): the acknowledgement times out after 10 s; the row stays PAIRED but unconfirmed",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": "865 412"
+          },
+          {
+            "e": "RowDurable",
+            "nowMs": 6000
+          },
+          {
+            "e": "Tick",
+            "nowMs": 15999
+          },
+          {
+            "e": "Tick",
+            "nowMs": 16000
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_REMOTE:",
+            "COMMITTING:SendDecision(true),WritePairedRow",
+            "AWAIT_ACK:SendCommit(a7cfd747)",
+            "AWAIT_ACK:",
+            "CLOSED:MarkUnconfirmed(ack-timeout),Warn(may-not-have-finished),Closed(ack-timeout)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-725",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): an acknowledgement with a different transcript leaves the row unconfirmed and warns",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": "865 412"
+          },
+          {
+            "e": "RowDurable",
+            "nowMs": 6000
+          },
+          {
+            "e": "AckReceived",
+            "transcriptHex": "0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_REMOTE:",
+            "COMMITTING:SendDecision(true),WritePairedRow",
+            "AWAIT_ACK:SendCommit(a7cfd747)",
+            "CLOSED:MarkUnconfirmed(transcript-mismatch),Warn(transcript-mismatch),Closed(transcript-mismatch)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-726",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): the connection is lost while waiting for the acknowledgement",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": "865 412"
+          },
+          {
+            "e": "RowDurable",
+            "nowMs": 6000
+          },
+          {
+            "e": "ConnectionLost"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_REMOTE:",
+            "COMMITTING:SendDecision(true),WritePairedRow",
+            "AWAIT_ACK:SendCommit(a7cfd747)",
+            "CLOSED:MarkUnconfirmed(connection-lost),Warn(may-not-have-finished),Closed(connection-lost)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-727",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): a failed row write aborts the ceremony and sends no commit",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": "865 412"
+          },
+          {
+            "e": "RowWriteFailed"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_REMOTE:",
+            "COMMITTING:SendDecision(true),WritePairedRow",
+            "CLOSED:Abort(WRITE_FAILED,PAIRING_REFUSED)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-728",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): an acknowledgement before any commit is a protocol error and leaves the row unconfirmed",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true,
+            "revealHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5"
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true,
+            "typedCode": "865 412"
+          },
+          {
+            "e": "AckReceived",
+            "transcriptHex": "a7cfd74766ca9d6eab6393ad20c52a1e103e394678101b503f1e48c6f473ffb1"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_REMOTE:",
+            "COMMITTING:SendDecision(true),WritePairedRow",
+            "CLOSED:MarkUnconfirmed(acknowledgement-before-commit),Abort(PROTOCOL,PROTOCOL_ERROR)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-729",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): a second unknown connection raises a warning and changes nothing",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "SecondUnknownConnection"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "AWAIT_NONE:Warn(second-connection)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-730",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): an acknowledgement in the challenge state is a protocol error",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 1000
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 5000
+          },
+          {
+            "e": "ChallengeSent"
+          },
+          {
+            "e": "AckReceived",
+            "transcriptHex": "a7cfd74766ca9d6eab6393ad20c52a1e103e394678101b503f1e48c6f473ffb1"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "AWAIT_NONE:PromptTypedCode",
+            "CLOSED:Abort(PROTOCOL,PROTOCOL_ERROR)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-731",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): a hello whose proof binds the raw nonce instead of the commitment is refused",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 0
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "6de710197982093c022cde012b8863d2a6b7016f804fd0e00e2923ed103f6da3",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 1
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "OPEN:Refuse(PAIRING_PROOF_INVALID)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-732",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): three invalid proofs close the window; a fourth hello meets a closed window",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 0
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "0000000000000000000000000000000000000000000000000000000000000000",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 1
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "0000000000000000000000000000000000000000000000000000000000000000",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 2
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "0000000000000000000000000000000000000000000000000000000000000000",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 3
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 4
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "OPEN:Refuse(PAIRING_PROOF_INVALID)",
+            "OPEN:Refuse(PAIRING_PROOF_INVALID)",
+            "CLOSED:Abort(TRIES_EXHAUSTED,PAIRING_PROOF_INVALID)",
+            "CLOSED:Refuse(PAIRING_WINDOW_CLOSED)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-733",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): two invalid proofs then a valid one still pairs",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 0
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "0000000000000000000000000000000000000000000000000000000000000000",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 1
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "0000000000000000000000000000000000000000000000000000000000000000",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 2
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 3
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "OPEN:Refuse(PAIRING_PROOF_INVALID)",
+            "OPEN:Refuse(PAIRING_PROOF_INVALID)",
+            "CONSUMED:SendChallenge"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-734",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3) (L6): a window accepts at most one valid proof; a second valid hello is refused",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 0
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 1
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "NlGEZuygpSdDRnvFWfa2987Czl2l6fm0Cni7UaQisAg",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "069d7e9d35bddf1ad6bc2af5e2b5c17d9e23875ef2b1f7b0d77c3e4d999ec56f",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 2
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 3
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CONSUMED:SendChallenge",
+            "CONSUMED:Refuse(PAIRING_WINDOW_CLOSED)",
+            "CONSUMED:Refuse(PAIRING_WINDOW_CLOSED)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-735",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3) (L7): a REVOKED pin is refused with a valid proof; the window closes and the user is warned",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 0
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "REVOKED",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 1
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CLOSED:Warn(revoked-device-tried-to-pair),Abort(REVOKED_PEER,PAIRING_REFUSED)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-736",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3) (L7): a REVOKED pin with an INVALID proof is refused for the same reason (the status is checked first)",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 0
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "0000000000000000000000000000000000000000000000000000000000000000",
+            "status": "REVOKED",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 1
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CLOSED:Warn(revoked-device-tried-to-pair),Abort(REVOKED_PEER,PAIRING_REFUSED)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-737",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): a PAIRED pin cannot pair again",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 0
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "PAIRED",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 1
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CLOSED:Abort(PEER_EXISTS,PAIRING_REFUSED)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-738",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3) (L4): a SUSPENDED pin cannot be moved to PAIRED by a pairing ceremony",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 0
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "SUSPENDED",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 1
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CLOSED:Abort(PEER_EXISTS,PAIRING_REFUSED)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-739",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3) (L5): a corrupt registry status fails closed",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 0
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "CORRUPT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 1
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CLOSED:Abort(REGISTRY_UNREADABLE,PAIRING_REFUSED)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-740",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): an unreadable registry fails closed",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 0
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "UNREADABLE",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 1
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CLOSED:Abort(REGISTRY_UNREADABLE,PAIRING_REFUSED)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-741",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): the window expires after 120 s",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 0
+          },
+          {
+            "e": "Tick",
+            "nowMs": 119999
+          },
+          {
+            "e": "Tick",
+            "nowMs": 120000
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "OPEN:",
+            "CLOSED:Closed(window-expired)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-742",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): a hello at the expiry instant is refused as a closed window",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 0
+          },
+          {
+            "e": "HelloReceived",
+            "pinS": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "7aeb90fc067d60d0d8d5524a07ad60ad56e46927424cd4890afa4b11c560b4bf",
+            "proofHex": "70f3676523a1af8247d2ff70a7ad880ca3a464b631c6b4861b26e3f0505ef1dc",
+            "status": "ABSENT",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 120000
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CLOSED:Refuse(PAIRING_WINDOW_CLOSED),Closed(window-expired)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-743",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "D (R3): the user cancels the open window",
+      "input": {
+        "kind": "fsm",
+        "machine": "D",
+        "pinOwn": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+        "script": [
+          {
+            "e": "UserOpenWindow",
+            "secretHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            "nowMs": 0
+          },
+          {
+            "e": "UserCancel"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "OPEN:WindowOpened",
+            "CLOSED:Closed(window-cancelled)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-760",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3) happy path: the hello carries the commitment, S opens the nonce with its approval, then the commit, the row and the acknowledgement",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790000000,
+            "policy": "mesh"
+          },
+          {
+            "e": "UserConfirmConnect",
+            "yes": true,
+            "nowMs": 0
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          },
+          {
+            "e": "ChallengeReceived",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 200
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true
+          },
+          {
+            "e": "CommitReceived",
+            "transcriptHex": "a7cfd74766ca9d6eab6393ad20c52a1e103e394678101b503f1e48c6f473ffb1"
+          },
+          {
+            "e": "RowDurable"
+          }
+        ],
+        "profile": "r3"
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)",
+            "DIALING:Dial(192.168.1.40:11436)",
+            "SENT_HELLO:SendHello(70f36765)",
+            "AWAIT_NONE:ShowConsent(865 412)",
+            "AWAIT_REMOTE:",
+            "AWAIT_COMMIT:SendDecision(true,reveal)",
+            "WRITING:WritePairedRow",
+            "DONE:SendAck(a7cfd747),Done"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-761",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): local approval first (the opening leaves with it), then the remote one",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790000000,
+            "policy": "mesh"
+          },
+          {
+            "e": "UserConfirmConnect",
+            "yes": true,
+            "nowMs": 0
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          },
+          {
+            "e": "ChallengeReceived",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 200
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)",
+            "DIALING:Dial(192.168.1.40:11436)",
+            "SENT_HELLO:SendHello(70f36765)",
+            "AWAIT_NONE:ShowConsent(865 412)",
+            "AWAIT_LOCAL:SendDecision(true,reveal)",
+            "AWAIT_COMMIT:"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-762",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): D answers PAIRING_WINDOW_CLOSED to the hello: the window expired on the other device, not a decline",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790000000,
+            "policy": "mesh"
+          },
+          {
+            "e": "UserConfirmConnect",
+            "yes": true,
+            "nowMs": 0
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          },
+          {
+            "e": "ErrorReceived",
+            "code": "PAIRING_WINDOW_CLOSED"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)",
+            "DIALING:Dial(192.168.1.40:11436)",
+            "SENT_HELLO:SendHello(70f36765)",
+            "FAILED:Abort(WINDOW_EXPIRED,-)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-763",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): any other error code in answer to the hello is D declining",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790000000,
+            "policy": "mesh"
+          },
+          {
+            "e": "UserConfirmConnect",
+            "yes": true,
+            "nowMs": 0
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          },
+          {
+            "e": "ErrorReceived",
+            "code": "PAIRING_PROOF_INVALID"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)",
+            "DIALING:Dial(192.168.1.40:11436)",
+            "SENT_HELLO:SendHello(70f36765)",
+            "FAILED:Abort(DECLINED_REMOTE,-)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-764",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): the local user declines and no opening is sent",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790000000,
+            "policy": "mesh"
+          },
+          {
+            "e": "UserConfirmConnect",
+            "yes": true,
+            "nowMs": 0
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          },
+          {
+            "e": "ChallengeReceived",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 200
+          },
+          {
+            "e": "LocalDecision",
+            "approve": false
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)",
+            "DIALING:Dial(192.168.1.40:11436)",
+            "SENT_HELLO:SendHello(70f36765)",
+            "AWAIT_NONE:ShowConsent(865 412)",
+            "FAILED:SendDecision(false),Abort(DECLINED_LOCAL,-)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-765",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): the user cancels while the decisions are open and no opening is sent",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790000000,
+            "policy": "mesh"
+          },
+          {
+            "e": "UserConfirmConnect",
+            "yes": true,
+            "nowMs": 0
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          },
+          {
+            "e": "ChallengeReceived",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 200
+          },
+          {
+            "e": "UserCancel"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)",
+            "DIALING:Dial(192.168.1.40:11436)",
+            "SENT_HELLO:SendHello(70f36765)",
+            "AWAIT_NONE:ShowConsent(865 412)",
+            "FAILED:SendDecision(false),Abort(DECLINED_LOCAL,-)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-766",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): the remote user declines",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790000000,
+            "policy": "mesh"
+          },
+          {
+            "e": "UserConfirmConnect",
+            "yes": true,
+            "nowMs": 0
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          },
+          {
+            "e": "ChallengeReceived",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 200
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": false
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)",
+            "DIALING:Dial(192.168.1.40:11436)",
+            "SENT_HELLO:SendHello(70f36765)",
+            "AWAIT_NONE:ShowConsent(865 412)",
+            "FAILED:Abort(DECLINED_REMOTE,-)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-767",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): no decision within 120 s of the challenge",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790000000,
+            "policy": "mesh"
+          },
+          {
+            "e": "UserConfirmConnect",
+            "yes": true,
+            "nowMs": 0
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          },
+          {
+            "e": "ChallengeReceived",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 200
+          },
+          {
+            "e": "Tick",
+            "nowMs": 120199
+          },
+          {
+            "e": "Tick",
+            "nowMs": 120200
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)",
+            "DIALING:Dial(192.168.1.40:11436)",
+            "SENT_HELLO:SendHello(70f36765)",
+            "AWAIT_NONE:ShowConsent(865 412)",
+            "AWAIT_NONE:",
+            "FAILED:Abort(TIMEOUT,-)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-768",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): there is no timeout while the hello is unanswered beyond the dial budget",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790000000,
+            "policy": "mesh"
+          },
+          {
+            "e": "UserConfirmConnect",
+            "yes": true,
+            "nowMs": 0
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          },
+          {
+            "e": "Tick",
+            "nowMs": 10000000
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)",
+            "DIALING:Dial(192.168.1.40:11436)",
+            "SENT_HELLO:SendHello(70f36765)",
+            "SENT_HELLO:"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-769",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): a commit whose transcript differs from the one S computed from the opened nonce writes no row",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790000000,
+            "policy": "mesh"
+          },
+          {
+            "e": "UserConfirmConnect",
+            "yes": true,
+            "nowMs": 0
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          },
+          {
+            "e": "ChallengeReceived",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 200
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true
+          },
+          {
+            "e": "CommitReceived",
+            "transcriptHex": "0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)",
+            "DIALING:Dial(192.168.1.40:11436)",
+            "SENT_HELLO:SendHello(70f36765)",
+            "AWAIT_NONE:ShowConsent(865 412)",
+            "AWAIT_REMOTE:",
+            "AWAIT_COMMIT:SendDecision(true,reveal)",
+            "FAILED:Abort(TRANSCRIPT_MISMATCH,-)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-770",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3) (L1): a commit before the local approval is a protocol error and writes no row",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790000000,
+            "policy": "mesh"
+          },
+          {
+            "e": "UserConfirmConnect",
+            "yes": true,
+            "nowMs": 0
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          },
+          {
+            "e": "ChallengeReceived",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 200
+          },
+          {
+            "e": "CommitReceived",
+            "transcriptHex": "a7cfd74766ca9d6eab6393ad20c52a1e103e394678101b503f1e48c6f473ffb1"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)",
+            "DIALING:Dial(192.168.1.40:11436)",
+            "SENT_HELLO:SendHello(70f36765)",
+            "AWAIT_NONE:ShowConsent(865 412)",
+            "FAILED:Abort(PROTOCOL,-)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-771",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): the row write fails after a matching commit",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790000000,
+            "policy": "mesh"
+          },
+          {
+            "e": "UserConfirmConnect",
+            "yes": true,
+            "nowMs": 0
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          },
+          {
+            "e": "ChallengeReceived",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 200
+          },
+          {
+            "e": "RemoteDecision",
+            "approve": true
+          },
+          {
+            "e": "LocalDecision",
+            "approve": true
+          },
+          {
+            "e": "CommitReceived",
+            "transcriptHex": "a7cfd74766ca9d6eab6393ad20c52a1e103e394678101b503f1e48c6f473ffb1"
+          },
+          {
+            "e": "RowWriteFailed"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)",
+            "DIALING:Dial(192.168.1.40:11436)",
+            "SENT_HELLO:SendHello(70f36765)",
+            "AWAIT_NONE:ShowConsent(865 412)",
+            "AWAIT_REMOTE:",
+            "AWAIT_COMMIT:SendDecision(true,reveal)",
+            "WRITING:WritePairedRow",
+            "FAILED:Abort(WRITE_FAILED,-)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-772",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): the connection is lost while waiting for the decisions",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790000000,
+            "policy": "mesh"
+          },
+          {
+            "e": "UserConfirmConnect",
+            "yes": true,
+            "nowMs": 0
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          },
+          {
+            "e": "ChallengeReceived",
+            "nonceDHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+            "nowMs": 200
+          },
+          {
+            "e": "ConnectionLost"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)",
+            "DIALING:Dial(192.168.1.40:11436)",
+            "SENT_HELLO:SendHello(70f36765)",
+            "AWAIT_NONE:ShowConsent(865 412)",
+            "FAILED:Abort(CONNECTION_LOST,-)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-773",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): the first endpoint is unreachable, the second answers (the hello is built at the successful dial)",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790000000,
+            "policy": "mesh"
+          },
+          {
+            "e": "UserConfirmConnect",
+            "yes": true,
+            "nowMs": 0
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": null,
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)",
+            "DIALING:Dial(192.168.1.40:11436)",
+            "DIALING:Dial(100.101.7.9:11436)",
+            "SENT_HELLO:SendHello(70f36765)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-774",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): the first endpoint presents a different pin, the second is right",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790000000,
+            "policy": "mesh"
+          },
+          {
+            "e": "UserConfirmConnect",
+            "yes": true,
+            "nowMs": 0
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)",
+            "DIALING:Dial(192.168.1.40:11436)",
+            "DIALING:Dial(100.101.7.9:11436)",
+            "SENT_HELLO:SendHello(70f36765)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-775",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): every endpoint fails",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790000000,
+            "policy": "mesh"
+          },
+          {
+            "e": "UserConfirmConnect",
+            "yes": true,
+            "nowMs": 0
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": null,
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)",
+            "DIALING:Dial(192.168.1.40:11436)",
+            "DIALING:Dial(100.101.7.9:11436)",
+            "FAILED:Abort(CONNECTION_LOST,-)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-776",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): the user declines the connection",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790000000,
+            "policy": "mesh"
+          },
+          {
+            "e": "UserConfirmConnect",
+            "yes": false,
+            "nowMs": 0
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)",
+            "IDLE:"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-777",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): a URI past x + 60 s on the scanner's clock is accepted: D's PAIRING_WINDOW_CLOSED is authoritative",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790000180,
+            "policy": "mesh"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-778",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): a URI whose x is a day ahead of the scanner's clock is accepted",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1789900000,
+            "policy": "mesh"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-779",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): a past-expiry URI with a public address is still refused at the scan",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=8.8.8.8:1&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790100000,
+            "policy": "mesh"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "IDLE:ScanRejected(ADDRESS_NOT_ELIGIBLE)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-780",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S (R3): a past-expiry URI, the window long closed on D, ends at D's answer",
+      "input": {
+        "kind": "fsm",
+        "machine": "S",
+        "pinOwn": "AyXFqjFWNe-eItKRiUlURLOfmG2TQ2Q00gp5wPPnSH0",
+        "script": [
+          {
+            "e": "Scanned",
+            "uri": "asom-pair:1?k=jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs&a=192.168.1.40:11436,100.101.7.9:11436&s=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&x=1790000120&n=Dell%20tower",
+            "nowSec": 1790100000,
+            "policy": "mesh"
+          },
+          {
+            "e": "UserConfirmConnect",
+            "yes": true,
+            "nowMs": 0
+          },
+          {
+            "e": "DialResult",
+            "presentedPin": "jZcpQhuRMg6yNp81ynXIGjfGCcZeStuotMWTOtRFPgs",
+            "nonceSHex": "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+            "nowMs": 100
+          },
+          {
+            "e": "ErrorReceived",
+            "code": "PAIRING_WINDOW_CLOSED"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "trace": [
+            "CONFIRM_CONNECT:ShowConnectConfirm(Dell tower)",
+            "DIALING:Dial(192.168.1.40:11436)",
+            "SENT_HELLO:SendHello(70f36765)",
+            "FAILED:Abort(WINDOW_EXPIRED,-)"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W04-460",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-T-10: C = SHA-256(\"asom-pair-v1/commit\" 0x00 nonce_S) for the worked nonce (0xa5 x 32); its own nonce opens it",
+      "input": {
+        "kind": "commit",
+        "nonceS": "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU",
+        "revealed": "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "euuQ_AZ9YNDY1VJKB61grVbkaSdCTNSJCvpLEcVgtL8",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-461",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU",
+        "revealed": "WlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlo"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "euuQ_AZ9YNDY1VJKB61grVbkaSdCTNSJCvpLEcVgtL8",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-462",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "the commitment offered as its own opening does not open it",
+      "input": {
+        "kind": "commit",
+        "nonceS": "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU",
+        "revealed": "euuQ_AZ9YNDY1VJKB61grVbkaSdCTNSJCvpLEcVgtL8"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "euuQ_AZ9YNDY1VJKB61grVbkaSdCTNSJCvpLEcVgtL8",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-463",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an opening of 31 bytes does not open it",
+      "input": {
+        "kind": "commit",
+        "nonceS": "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU",
+        "revealed": "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpQ"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "euuQ_AZ9YNDY1VJKB61grVbkaSdCTNSJCvpLEcVgtL8",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-464",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an opening of 33 bytes does not open it",
+      "input": {
+        "kind": "commit",
+        "nonceS": "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU",
+        "revealed": "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaUA"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "euuQ_AZ9YNDY1VJKB61grVbkaSdCTNSJCvpLEcVgtL8",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-465",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an empty opening does not open it",
+      "input": {
+        "kind": "commit",
+        "nonceS": "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU",
+        "revealed": ""
+      },
+      "expect": {
+        "ok": {
+          "commitment": "euuQ_AZ9YNDY1VJKB61grVbkaSdCTNSJCvpLEcVgtL8",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-466",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an opening that is not canonical base64url (non-zero trailing bits) does not open it",
+      "input": {
+        "kind": "commit",
+        "nonceS": "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU",
+        "revealed": "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaB"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "euuQ_AZ9YNDY1VJKB61grVbkaSdCTNSJCvpLEcVgtL8",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-467",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an opening with padding does not open it",
+      "input": {
+        "kind": "commit",
+        "nonceS": "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU",
+        "revealed": "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU="
+      },
+      "expect": {
+        "ok": {
+          "commitment": "euuQ_AZ9YNDY1VJKB61grVbkaSdCTNSJCvpLEcVgtL8",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-468",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a commitment of another nonce on the wire is not opened by this nonce",
+      "input": {
+        "kind": "commit",
+        "nonceS": "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU",
+        "revealed": "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU",
+        "commitment": "VTN_dODkFvVvFdEF_b5BRCj33AGq8ZjUvbx5gSIGA7Y"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "euuQ_AZ9YNDY1VJKB61grVbkaSdCTNSJCvpLEcVgtL8",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-480",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 1 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "bk6MUl5HcwsFAu1WL2jyk21zQzl99-Jp-gJAh7FoqeM",
+        "revealed": "bk6MUl5HcwsFAu1WL2jyk21zQzl99-Jp-gJAh7FoqeM"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "OsjS0wt9zWpVsRqrf2ZdFJ8HYCjhaJPoAv5o8hidl2o",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-800",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 1: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "bk6MUl5HcwsFAu1WL2jyk21zQzl99-Jp-gJAh7FoqeM",
+        "revealed": "7bPlDnRqkszbr2aOJL14IYJrH83KxRmT_2x4RzKuiXc"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "OsjS0wt9zWpVsRqrf2ZdFJ8HYCjhaJPoAv5o8hidl2o",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-481",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 2 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "2YURHuGiW7Sh3hhSitRT751lfKg88MbWrTQUXwiUkrE",
+        "revealed": "2YURHuGiW7Sh3hhSitRT751lfKg88MbWrTQUXwiUkrE"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "lankpLLENO5Y4c7H9s12DaPca00ve1KSxgJ1BlQuxaE",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-801",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 2: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "2YURHuGiW7Sh3hhSitRT751lfKg88MbWrTQUXwiUkrE",
+        "revealed": "HTatrtix6SJGRoWpqxUUX1fNmrj7rm8eUIZhWweVujA"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "lankpLLENO5Y4c7H9s12DaPca00ve1KSxgJ1BlQuxaE",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-482",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 3 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "4kIpj-TAbN3iFNqEjkGDBkwBS-XZ55ASw1jSroLmhJQ",
+        "revealed": "4kIpj-TAbN3iFNqEjkGDBkwBS-XZ55ASw1jSroLmhJQ"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "EwI_n9XkWd-PxeL3AcfBZP4SIZg3zYTEAPql4dm0eCA",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-802",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 3: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "4kIpj-TAbN3iFNqEjkGDBkwBS-XZ55ASw1jSroLmhJQ",
+        "revealed": "PbyfqjM17PsfxDxM3PHRcm-0AdAjOXwVQ_Be4jfetQM"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "EwI_n9XkWd-PxeL3AcfBZP4SIZg3zYTEAPql4dm0eCA",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-483",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 4 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "0t6_qIkjXfA8NfYfRHJmsYR6gPTSueV_tM2DFqhamUc",
+        "revealed": "0t6_qIkjXfA8NfYfRHJmsYR6gPTSueV_tM2DFqhamUc"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "dxPoVGTqDSQdtwzdEsQtHpnjKdCyrPDVT7aVDY6D5q8",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-803",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 4: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "0t6_qIkjXfA8NfYfRHJmsYR6gPTSueV_tM2DFqhamUc",
+        "revealed": "xLctY1-hj7L3F2TcK-IIS6PTgSEwmJnw2-9D_WFGHdc"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "dxPoVGTqDSQdtwzdEsQtHpnjKdCyrPDVT7aVDY6D5q8",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-484",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 5 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "-epwJp19IpmaLfsc7YWbPOROS9HkUKExreWiNndWqsw",
+        "revealed": "-epwJp19IpmaLfsc7YWbPOROS9HkUKExreWiNndWqsw"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "eatb-xfs4FKK_0cK_a2v5w3OJMSCZmTT5fOglcib0CE",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-804",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 5: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "-epwJp19IpmaLfsc7YWbPOROS9HkUKExreWiNndWqsw",
+        "revealed": "1erizrtXV1kpdL0TIXxh9cHvwtf1IZKvDF6O74y4pv8"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "eatb-xfs4FKK_0cK_a2v5w3OJMSCZmTT5fOglcib0CE",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-485",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 6 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "OQJAaFnNbIZUKYhGjJLzhEkBrg4T_d8BFBU5ud_NmqI",
+        "revealed": "OQJAaFnNbIZUKYhGjJLzhEkBrg4T_d8BFBU5ud_NmqI"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "qdecN8bDFwDlTgAQw1KU_-F_j43R4eSvw_Fycjc6fP4",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-805",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 6: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "OQJAaFnNbIZUKYhGjJLzhEkBrg4T_d8BFBU5ud_NmqI",
+        "revealed": "BX0R-Or_vR3A89tFkvuBifhga0_Vj9pELO7mT9EccSg"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "qdecN8bDFwDlTgAQw1KU_-F_j43R4eSvw_Fycjc6fP4",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-486",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 7 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "lp1rW5dQ-s82nLoGYwlGZAtirQF7gjsiADwCgXXefoM",
+        "revealed": "lp1rW5dQ-s82nLoGYwlGZAtirQF7gjsiADwCgXXefoM"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "n_HmxNFh0LkpkIc9ToFNNKTeq5qJBQcMxojJHqlahlY",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-806",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 7: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "lp1rW5dQ-s82nLoGYwlGZAtirQF7gjsiADwCgXXefoM",
+        "revealed": "xREK_lKopW3SvME7hXPT1RLJxzqrUEhMcf2zXjgEmIM"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "n_HmxNFh0LkpkIc9ToFNNKTeq5qJBQcMxojJHqlahlY",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-487",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 8 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "qVV8mzl5MIjW0-1e0fG3Q14pr4ikS07Tw2gcofDUZxQ",
+        "revealed": "qVV8mzl5MIjW0-1e0fG3Q14pr4ikS07Tw2gcofDUZxQ"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "zixgYmoLvZpyqYhq4W3Zfo2b3cm7FWOum78-UiIMprY",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-807",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 8: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "qVV8mzl5MIjW0-1e0fG3Q14pr4ikS07Tw2gcofDUZxQ",
+        "revealed": "snD8WbpXtZhnU9kmlEswfs-dWaLDIxtsHCqf-XyqTX0"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "zixgYmoLvZpyqYhq4W3Zfo2b3cm7FWOum78-UiIMprY",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-488",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 9 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "tFtowTaXnEQjtR65V8-iSkD_suBdpj-D6x6hSaksI68",
+        "revealed": "tFtowTaXnEQjtR65V8-iSkD_suBdpj-D6x6hSaksI68"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "THvALsDTVc6XX2ItE4SQW91-al27T4YOgm09dVrAGnU",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-808",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 9: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "tFtowTaXnEQjtR65V8-iSkD_suBdpj-D6x6hSaksI68",
+        "revealed": "jDM8c77cAB_DmFQnOSomNXj9Y_tL--gsC5lFDKiKhzw"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "THvALsDTVc6XX2ItE4SQW91-al27T4YOgm09dVrAGnU",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-489",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 10 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "_66tUPtWcm8nX8XaeuaOsMxZSWTDkpLEKVOR-zxYDLA",
+        "revealed": "_66tUPtWcm8nX8XaeuaOsMxZSWTDkpLEKVOR-zxYDLA"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "SALPpwCe54svZJber4-THnAbuOn6icX0EkPbKKEKsl8",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-809",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 10: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "_66tUPtWcm8nX8XaeuaOsMxZSWTDkpLEKVOR-zxYDLA",
+        "revealed": "OoWcke46rugfFBP20Bu-Q1D2lQHIJceuhqAHaHYQhKI"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "SALPpwCe54svZJber4-THnAbuOn6icX0EkPbKKEKsl8",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-490",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 11 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "cp3K8VlYpc3UsigYF4S3mBSqdvMrmEDZvGJSU0YZTXA",
+        "revealed": "cp3K8VlYpc3UsigYF4S3mBSqdvMrmEDZvGJSU0YZTXA"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "iGEuNLF1Po2zSqyzPP0HILgm70_aRM6T_QwjdvT1lYo",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-810",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 11: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "cp3K8VlYpc3UsigYF4S3mBSqdvMrmEDZvGJSU0YZTXA",
+        "revealed": "rTo7UCprJhOmKRD0vGUzi0vRKhwqc6rNPG4nYj5CBx0"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "iGEuNLF1Po2zSqyzPP0HILgm70_aRM6T_QwjdvT1lYo",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-491",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 12 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "Ek7h87rFG-5iaBRbJ40S2XTWX6evQQY2U2Krlue6YS8",
+        "revealed": "Ek7h87rFG-5iaBRbJ40S2XTWX6evQQY2U2Krlue6YS8"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "fCT7g0GcQFRS65kt0HV_8jydnLA0plqawp0q4-s5HVI",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-811",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 12: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "Ek7h87rFG-5iaBRbJ40S2XTWX6evQQY2U2Krlue6YS8",
+        "revealed": "OJDEMcgt7oX7FRJr66W0BWb5Ntfct8q2kLFzz2T_A9A"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "fCT7g0GcQFRS65kt0HV_8jydnLA0plqawp0q4-s5HVI",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-492",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 13 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "UbzFdtmzIj9xZBv8QKcymR5HL-djusbDBSnXm3xul7U",
+        "revealed": "UbzFdtmzIj9xZBv8QKcymR5HL-djusbDBSnXm3xul7U"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "VyOTLqUC-rj5YD2Jm8GeCQgqQIpKG0VuPFGAyghvz8c",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-812",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 13: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "UbzFdtmzIj9xZBv8QKcymR5HL-djusbDBSnXm3xul7U",
+        "revealed": "MOtJLHsPHPTUMNrO3G1hmm2hSJ14FS8sXUXBGG9WQlQ"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "VyOTLqUC-rj5YD2Jm8GeCQgqQIpKG0VuPFGAyghvz8c",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-493",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 14 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "1M2b-93z5Mh25Z8J9Ene1QPlEuLSit5hxyBdkp7NXxk",
+        "revealed": "1M2b-93z5Mh25Z8J9Ene1QPlEuLSit5hxyBdkp7NXxk"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "pDWP48XKfYEGilXz2Y8UX5W23-OlatnV4DfrftzWKhI",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-813",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 14: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "1M2b-93z5Mh25Z8J9Ene1QPlEuLSit5hxyBdkp7NXxk",
+        "revealed": "_U1JMnvf8APvm58HPaCipKjUe6EVaropRhTTpFSEasU"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "pDWP48XKfYEGilXz2Y8UX5W23-OlatnV4DfrftzWKhI",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-494",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 15 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "aFZTD9LTjw9nTBMydEGMQ83WlqUsAm5L4SxLi5l1gpo",
+        "revealed": "aFZTD9LTjw9nTBMydEGMQ83WlqUsAm5L4SxLi5l1gpo"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "sq5yJuwWITZcAMTg0d1UFP8inrAohFvIWVQe1mjIjyA",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-814",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 15: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "aFZTD9LTjw9nTBMydEGMQ83WlqUsAm5L4SxLi5l1gpo",
+        "revealed": "dUu0Hp_jvw8YWKwIj0nGEHs3xnFgh7a_D80kKGkuJYg"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "sq5yJuwWITZcAMTg0d1UFP8inrAohFvIWVQe1mjIjyA",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-495",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 16 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "t5x0P5gHEOtx4iK99_W6L6NpF51AZSZDr2KdUblCgpc",
+        "revealed": "t5x0P5gHEOtx4iK99_W6L6NpF51AZSZDr2KdUblCgpc"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "s9FYG7soWeB6Fay_4Q3AWQP7OZx2qsklwvndKr0QKgs",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-815",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 16: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "t5x0P5gHEOtx4iK99_W6L6NpF51AZSZDr2KdUblCgpc",
+        "revealed": "Olzeig0F8f6GwuQTJ8PZEiIKUPHaDhaePmQEVv10ZhE"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "s9FYG7soWeB6Fay_4Q3AWQP7OZx2qsklwvndKr0QKgs",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-496",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 17 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "va8oHQudLB9zAS4jgylh7P9XDX_4SQBz5ziK1Gz97LQ",
+        "revealed": "va8oHQudLB9zAS4jgylh7P9XDX_4SQBz5ziK1Gz97LQ"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "drbMgbu8A4VxP7EMN_HUh1fPk_YimQeS2PKy4DVNGCU",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-816",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 17: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "va8oHQudLB9zAS4jgylh7P9XDX_4SQBz5ziK1Gz97LQ",
+        "revealed": "A5g0UFgSS_z6mq4Sinu0Rvu8efAxlbcDBQznHO7lwGY"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "drbMgbu8A4VxP7EMN_HUh1fPk_YimQeS2PKy4DVNGCU",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-497",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 18 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "lS2j77nr0q_wy8F446eZKFu2aqO3WOrIQ7oj4yBB76g",
+        "revealed": "lS2j77nr0q_wy8F446eZKFu2aqO3WOrIQ7oj4yBB76g"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "NR43ZCtMp4iuR7Y9XnGFxlZAwa0lWWP4iJKRftQEHKc",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-817",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 18: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "lS2j77nr0q_wy8F446eZKFu2aqO3WOrIQ7oj4yBB76g",
+        "revealed": "VrgWd4V3OJS7UEzJSBgX6KvKn_uMH_69D2ECfQxj3Gw"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "NR43ZCtMp4iuR7Y9XnGFxlZAwa0lWWP4iJKRftQEHKc",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-498",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 19 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "QVm4Vn1UmddJXZ6itbenJRsG7pgzBc4suIpaJsuBFKI",
+        "revealed": "QVm4Vn1UmddJXZ6itbenJRsG7pgzBc4suIpaJsuBFKI"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "tQDGa29FbBxs_B5cv1oTUV51Pg6rnuZzFjsyKxGLDaQ",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-818",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 19: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "QVm4Vn1UmddJXZ6itbenJRsG7pgzBc4suIpaJsuBFKI",
+        "revealed": "t0Yd6V_43QWwEfXC6STqTJ7XE0vA8w1bLlEgLRD2oKU"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "tQDGa29FbBxs_B5cv1oTUV51Pg6rnuZzFjsyKxGLDaQ",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-499",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 20 (random.Random(7000 + i)): the nonce opens its commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "pmoh2UvoTB0fqVJAu1ZnofIseuhPhAydVuxvV-VeoYM",
+        "revealed": "pmoh2UvoTB0fqVJAu1ZnofIseuhPhAydVuxvV-VeoYM"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "3P4jSWgVLtp0QuirifrcsTmKFF-g6WD3A4UUCihvPVs",
+          "opens": true
+        }
+      }
+    },
+    {
+      "id": "W04-819",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seeded random case 20: another nonce does not open the commitment",
+      "input": {
+        "kind": "commit",
+        "nonceS": "pmoh2UvoTB0fqVJAu1ZnofIseuhPhAydVuxvV-VeoYM",
+        "revealed": "UdhqFjudjDp2ew3GDheucmU70GFgUZNSq0aS2pps4iI"
+      },
+      "expect": {
+        "ok": {
+          "commitment": "3P4jSWgVLtp0QuirifrcsTmKFF-g6WD3A4UUCihvPVs",
+          "opens": false
+        }
+      }
+    },
+    {
+      "id": "W04-450",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "PAIR_DECISION approve true with the 32-byte opening of nonce_S (R4-T-10)",
+      "input": {
+        "kind": "message",
+        "type": "PAIR_DECISION",
+        "payload": "{\"v\": 1, \"approve\": true, \"reveal\": \"paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU\"}"
+      },
+      "expect": {
+        "ok": {
+          "normal": "{\"approve\":true,\"reveal\":\"paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU\",\"v\":1}"
+        }
+      }
+    },
+    {
+      "id": "W04-451",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "PAIR_DECISION approve false carrying an opening is well formed (D aborts on the decline whatever it carries)",
+      "input": {
+        "kind": "message",
+        "type": "PAIR_DECISION",
+        "payload": "{\"v\": 1, \"approve\": false, \"reveal\": \"paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU\"}"
+      },
+      "expect": {
+        "ok": {
+          "normal": "{\"approve\":false,\"reveal\":\"paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU\",\"v\":1}"
+        }
+      }
+    },
+    {
+      "id": "W04-452",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "PAIR_DECISION: an opening of 31 bytes is refused",
+      "input": {
+        "kind": "message",
+        "type": "PAIR_DECISION",
+        "payload": "{\"v\": 1, \"approve\": true, \"reveal\": \"paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpQ\"}"
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      }
+    },
+    {
+      "id": "W04-453",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "PAIR_DECISION: an opening of 33 bytes is refused",
+      "input": {
+        "kind": "message",
+        "type": "PAIR_DECISION",
+        "payload": "{\"v\": 1, \"approve\": true, \"reveal\": \"paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaUB\"}"
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      }
+    },
+    {
+      "id": "W04-454",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "PAIR_DECISION: an opening with padding is refused",
+      "input": {
+        "kind": "message",
+        "type": "PAIR_DECISION",
+        "payload": "{\"v\": 1, \"approve\": true, \"reveal\": \"paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpa=\"}"
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      }
+    },
+    {
+      "id": "W04-455",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "PAIR_DECISION: an opening given as hex is refused",
+      "input": {
+        "kind": "message",
+        "type": "PAIR_DECISION",
+        "payload": "{\"v\": 1, \"approve\": true, \"reveal\": \"a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5\"}"
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      }
+    },
+    {
+      "id": "W04-456",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "PAIR_DECISION: an opening that is a number is refused",
+      "input": {
+        "kind": "message",
+        "type": "PAIR_DECISION",
+        "payload": "{\"v\": 1, \"approve\": true, \"reveal\": 5}"
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      }
+    },
+    {
+      "id": "W04-457",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "PAIR_DECISION: an opening that is null is refused",
+      "input": {
+        "kind": "message",
+        "type": "PAIR_DECISION",
+        "payload": "{\"v\":1,\"approve\":true,\"reveal\":null}"
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      }
+    },
+    {
+      "id": "W04-458",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "PAIR_DECISION: an unknown member next to the opening is ignored and not kept",
+      "input": {
+        "kind": "message",
+        "type": "PAIR_DECISION",
+        "payload": "{\"v\": 1, \"approve\": true, \"reveal\": \"paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU\", \"note\": \"x\"}"
+      },
+      "expect": {
+        "ok": {
+          "normal": "{\"approve\":true,\"reveal\":\"paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU\",\"v\":1}"
         }
       }
     },

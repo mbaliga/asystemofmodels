@@ -97,20 +97,25 @@ object RandomRuns {
     }
 }
 
-/** Two pairing-mode channels exchanging `PAIR_*` frames with their per-frame rows. Each has its own ledger; nothing here implements pairing. */
-class PairWorld(val seed: Long, failS: FailPlan? = null) {
+/**
+ * Two pairing-mode channels exchanging `PAIR_*` frames with their per-frame rows, oriented as trust.md 4.3 draws the ceremony (R4-T-10): S, the scanner, is the TLS
+ * client and sends `PAIR_HELLO`, its `PAIR_DECISION` and `PAIR_COMMIT_ACK`; D, the displayer, is the TLS server (the listener) and sends `PAIR_CHALLENGE`, its
+ * `PAIR_DECISION` and `PAIR_COMMIT`. Each has its own ledger; nothing here implements pairing. [failD] fails a row append of the listener, [failS] of the dialler.
+ */
+class PairWorld(val seed: Long, failS: FailPlan? = null, failD: FailPlan? = null) {
     val log = Log()
     val rnd = SplittableRandom(seed)
     private val memS = MemorySink()
     private val memD = MemorySink()
-    private val crash = failS?.let { xyz.mdhv.asom.lab.ledger.CrashInjectingSink(memS, it.failAt, it.mode, it.sticky) }
-    val ledgerS = NodeLedger("S", SpySink("S", crash ?: memS, log)) { CLOCK_BASE + log.events.size }
-    val ledgerD = NodeLedger("D", SpySink("D", memD, log)) { CLOCK_BASE + log.events.size }
-    private val conns = MemConnection.pair(null, null, log, "D>S", "S<D", ConnMode.PAIRING)
-    val d = PairingChannel(ledgerD, conns.first, SeededIds(seed * 3 + 1))
-    val s = PairingChannel(ledgerS, conns.second, SeededIds(seed * 3 + 2))
-    val connD = conns.first
-    val connS = conns.second
+    private val crashS = failS?.let { xyz.mdhv.asom.lab.ledger.CrashInjectingSink(memS, it.failAt, it.mode, it.sticky) }
+    private val crashD = failD?.let { xyz.mdhv.asom.lab.ledger.CrashInjectingSink(memD, it.failAt, it.mode, it.sticky) }
+    val ledgerS = NodeLedger("S", SpySink("S", crashS ?: memS, log)) { CLOCK_BASE + log.events.size }
+    val ledgerD = NodeLedger("D", SpySink("D", crashD ?: memD, log)) { CLOCK_BASE + log.events.size }
+    private val conns = MemConnection.pair(null, null, log, "S>D", "D<S", ConnMode.PAIRING)
+    val s = PairingChannel(ledgerS, conns.first, SeededIds(seed * 3 + 2))
+    val d = PairingChannel(ledgerD, conns.second, SeededIds(seed * 3 + 1))
+    val connS = conns.first
+    val connD = conns.second
     val nonceS = ByteArray(32) { rnd.nextInt(256).toByte() }
     val receivedByS = ArrayList<Pair<Int, ByteArray>>()
     val receivedByD = ArrayList<Pair<Int, ByteArray>>()
