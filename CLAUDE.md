@@ -61,6 +61,8 @@ modules are untouched until v1 device validation; the root build and `./gradlew 
 (`lab/` and `desktop/` are separate Gradle builds with their own CI jobs); Opus for design/review, Sonnet for
 implementation.
 
+Constellation porting (2026-10-06): `docs/design/mesh/CONSTELLATION_PORTING.md` is a thin delegate to `docs/design/mesh/PLATFORM_PLAN.md` (the authority); it changes no rule above.
+
 ## Discipline (brief §12)
 
 Never mark a gate passed without pasting real command output into `PROGRESS.md`. No fabricated logs. If blocked: `BLOCKED(<reason>)` and stop. Device-only items stay open as `NEEDS-DEVICE-VALIDATION` until the owner confirms. Where `OWNER-FILL` appears (e.g. `CATALOGUE_URL`), use the committed fixture `fixtures/catalogue.v1.json` — never invent values.
