@@ -211,6 +211,72 @@ class ClaimTrackerTest {
         println("M08 no-peer-number iterations: $variants violations: 0")
     }
 
+    private fun outBytesOf(vararg pieces: String): Long {
+        val o = AttemptObserver()
+        o.onBodySent(0)
+        pieces.forEachIndexed { i, c -> o.onChunk(100L + i, sse(c)) }
+        o.onEnd(200, "{\"terminal\":\"done\"}".toByteArray())
+        return o.outBytes()
+    }
+
+    /** LAB_SPEC R4-L-19 (builder action 6): invisible padding is removed before the bytes are counted. Fails on the code that counts raw bytes (3,000 and 3,600, not 1,200). */
+    @Test
+    fun invisiblePaddingDoesNotCountTowardsOutBytes() {
+        val real = "x".repeat(1_200)
+        assertEquals(1_200, outBytesOf(real + "\n".repeat(600) + " ".repeat(600) + "\t".repeat(600)), "trailing whitespace")
+        assertEquals(1_200, outBytesOf("x".repeat(600) + "​".repeat(300) + "﻿".repeat(100) + "x".repeat(600) + "⁠".repeat(200)), "zero-width characters")
+        assertEquals(1_200, outBytesOf("é".repeat(600)), "NFC composes 3-byte decomposed pairs into 2-byte letters")
+        assertEquals(3_000, outBytesOf(real + "y".repeat(1_800)), "visible filler is the stated residual and still counts")
+        val padded = ClaimTracker.evaluate(
+            Observation(key, true, 0, 20_500, outBytesOf(real + "​".repeat(600) + " ".repeat(1_200)), 500, 1_024, 11, false, null, null, null, null), claim, bpt,
+        )
+        assertEquals(973, padded.ratio, "invisible padding in the honest time is the honest ratio")
+    }
+
+    @Test
+    fun theNormalisedLengthDoesNotDependOnHowTheAnswerIsCutIntoChunks() {
+        val alphabet = listOf("x", "y", " ", " ", "\n", "​", "e", "́", "é", " ", " ", " ", "　", "\u0007", "﻿", "क", "़")
+        val r = SplittableRandom(19)
+        var cases = 0
+        var shrank = 0
+        repeat(600) {
+            val text = (0 until r.nextInt(1, 200)).joinToString("") { alphabet[r.nextInt(alphabet.size)] }
+            val cuts = (0 until r.nextInt(0, 8)).map { r.nextInt(0, text.length + 1) }.toSortedSet().toList()
+            val pieces = (listOf(0) + cuts + listOf(text.length)).zipWithNext { a, b -> text.substring(a, b) }
+            val whole = outBytesOf(text)
+            assertEquals(whole, outBytesOf(*pieces.toTypedArray()), "cut at $cuts of ${text.map { it.code.toString(16) }}")
+            assertEquals(AnswerText.normalizedBytes(text), whole)
+            cases++
+            if (whole < text.toByteArray().size) shrank++
+        }
+        assertTrue(cases >= Laws.FLOOR && shrank > 100, "cases $cases, shrunk $shrank")
+    }
+
+    @Test
+    fun theNormaliserFollowsTheSpecsOrder() {
+        assertEquals("", AnswerText.normalize(""))
+        assertEquals("", AnswerText.normalize(" \n\t​ "))
+        assertEquals("a b", AnswerText.normalize("  a      b  "))
+        assertEquals("ab", AnswerText.normalize("a\nb"), "a newline is a control character: removed, not collapsed")
+        assertEquals("a b", AnswerText.normalize("a \u0007 b"), "control characters go first, so the two spaces meet and collapse")
+        assertEquals("a b", AnswerText.normalize("a ​ b"))
+        assertEquals("é", AnswerText.normalize("é"))
+        assertEquals("áb".let { java.text.Normalizer.normalize(it, java.text.Normalizer.Form.NFC) }, AnswerText.normalize("áb"))
+        assertEquals("क़", AnswerText.normalize("क़"), "NFC can expand: U+0958 has a composition exclusion")
+    }
+
+    @Test
+    fun aStreamBeyondAnyHonestAnswerIsSaturatedAndDiscardedAsOverlong() {
+        val o = AttemptObserver()
+        o.onBodySent(0)
+        val piece = "x".repeat(65_536)
+        repeat(70) { o.onChunk(100L + it, sse(piece)) }
+        o.onEnd(200, "{\"terminal\":\"done\"}".toByteArray())
+        assertEquals(Sat.MAX, o.outBytes())
+        val ev = ClaimTracker.evaluate(Observation(key, true, 0, 200, o.outBytes(), 500, 1_024, 11, false, null, null, null, null), claim, bpt)
+        assertEquals(DiscardReason.OVERLONG, ev.discard)
+    }
+
     @Test
     fun burstsSplitsAndMergesOfTheSameAnswerGiveTheSameObservation() {
         val text = "y".repeat(1_200)

@@ -2249,3 +2249,46 @@ $ python3 lab/tools/check_law.py  -> law: OK
 $ ./gradlew --max-workers=2 jvmTest --rerun-tasks -x :core:routing:jacocoTestReport  -> BUILD SUCCESSFUL; 140 tests, 0 failures
 ```
 Mutants killed (each reverted afterwards): `estimatedRecords` ignoring the stack, JSSE R=22, JSSE Lmax=16,384, handshake 4,096, floor instead of ceiling division (all by `:ledger-model:test`); JSSE R=22 (7 `ProtoIntegrationGateTest` tests fail), MEASURED ceiling divided by 4, ESTIMATED figure without the handshake term (by `:mesh-proto:test`). Not run: Windows, the Swift lane (no change), hosted CI.
+## Gate: design revision 4 builder actions 6 and 7 (padding normalisation; tracker inheritance, ASC01 and interpolation vectors), 2026-10-15 (LAB, oracle: self, NOT DEVICE EVIDENCE)
+
+Track build-tracker. Spec: `LAB_SPEC.md` R4-L-18, R4-L-19. Readings and the deviations from the brief are in `lab/ERRATA.md` and `apple/ERRATA.md` (`ERR-R4B-TR-1` to `ERR-R4B-TR-14`). Linux only: JDK 21.0.10 and JDK 17 (`/opt/jdks/jdk-17`), Swift 6.1 on Linux (swift-crypto). The macOS lane and hosted CI were not run. Working tree only, nothing committed.
+
+Fail first (unchanged tracker code, new vectors in place):
+```
+$ ./gradlew --max-workers=2 -p lab :conformance-runner:test --offline
+  2130 tests completed, 11 failed, 7 skipped   (M08-083 084 085 087 088 089 090 091 092 093 and 097; the 7 skipped are the proposed vectors that were already skipped)
+  FAIL M08-083: expected {"outBytes":1200,...,"ratio":973,...} but observed {"outBytes":3000,"outTokEst":750,"predictedMs":42461,...,"ratio":2071,...}
+  FAIL M08-097: expected {"accepted":true,"states":[DISCREPANT x9, CORROBORATED]} but observed {"accepted":true,"states":["UNVERIFIED" x4,"CORROBORATED" x6]}
+$ swift run --skip-build asom-conformance check M08     (Swift lane, before any Swift change)
+  MISMATCH M08-017 and M08-083..093: HARNESS_ERROR: chunk shape;  MISMATCH M08-097: accepted got false want true
+  checked 96, mismatches 13
+```
+M08-086 (visible filler), M08-094..096 (interpolation) and M08-098..101 (ASC01) passed on the unchanged code in both lanes: they are pins, not fixes (`ERR-R4B-TR-8`).
+
+After the change:
+```
+$ python3 lab/mesh-router/tools/gen_vectors.py && python3 lab/tools/regen_index.py   -> M08 96 vectors (77 + 19), every other vector byte-identical (only M08-017 differs); idempotent; the generator asserts every hand-computed expectation against ref.py
+$ ./gradlew --max-workers=2 -p lab test --offline            (JDK 21.0.10) -> BUILD SUCCESSFUL; 2786 tests, 0 failures, 7 skipped (the pre-existing proposed vectors); mesh-router 64, conformance-runner 2130; family M08: 96 vectors, 96 pass, 0 fail
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew --max-workers=2 -p lab test --offline  -> BUILD SUCCESSFUL; 2786 tests, 0 failures (the same counts)
+$ ./gradlew cleanTest jvmTest --no-build-cache --offline     (root) -> BUILD SUCCESSFUL; core + server: 140 tests, 0 failures
+$ swift test --package-path apple                            -> Executed 249 tests, with 0 failures (0 unexpected)   (243 + 6 new)
+$ swift run --skip-build --package-path apple asom-conformance check M01,M02,M03,M04,M05,M06,M08 -> checked 455, mismatches 47  (the same 47 as before: 42 LF-1 vectors of known-disagreements.txt + M04-042, M06-201..M06-204; none in M08)
+$ lines: JVM 484, Swift 455; python3 apple/ci/lane_diff.py ... --known ... --not-implemented ... -> vectors: jvm=484 swift=455 agree=413 disagree=42 (known 42) jvm-only=29 (not implemented 29); exit 0
+$ python3 apple/ci/test_lane_diff.py -> Ran 13 tests ... OK
+$ python3 lab/tools/xcheck.py lab/conformance -> every family 0 disagree (INDEX: 32 agree)
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py -> law: OK
+```
+Mutation checks (each break applied, suite run, restored; the files were verified restored):
+```
+JVM  J1 keep Cf                 -> 5 fail (M08-084, -092, -093, 2 unit tests)       J2 no NFC                -> 4 fail (M08-088, -092, 2 unit tests)
+JVM  J3 newline collapses       -> 2 fail (M08-090, normaliser-order test)           J4 no leading trim       -> 2 fail (M08-091, normaliser-order test)
+JVM  J5 whitespace not collapsed-> 8 fail (M08-083, -085, -087, -089, ...)           J6 raw bytes counted     -> 14 fail (10 vectors, 2 unit tests, the M08 non-vacuity law check)
+JVM  J7 inheritance needs seq   -> 2 fail (M08-097, TrackerFixTest)                  J8 no collection bound   -> 1 fail (aStreamBeyondAnyHonestAnswerIsSaturated...)
+JVM  J9 budget lifts DISCREPANT -> 4 fail (M08-098, M08-101, M08 non-vacuity, NegativeControlsTest.theSuiteExercisedEveryRequiredLaw)
+JVM  J10 interpolation rounds   -> 1 fail (M08-095; M08-094 does not discriminate, the prediction is the same)
+Swift S1 keep Cf  -> M08-084, -092, -093 + 2 unit tests      S2 no NFC -> M08-088, -092 + 1      S3 newline collapses -> M08-090 + 1      S4 no trim -> M08-091 + 1
+Swift S5 raw bytes -> 10 vectors + 2 unit tests              S6 budget lifts DISCREPANT -> M08-098, -101 + 3 unit tests
+Swift S7 no inheritance -> M08-065, -067, -097 + 5 unit tests    S8 interpolation rounds up -> M08-095 + 2 unit tests    S9 adapter ignores initialClaim -> M08-097 (adapter only, no unit test)
+```
+Not run: macOS/CryptoKit lane, Windows, hosted CI, any device. Stale counts in files outside this track: `apple/README.md` (M08 77, kinds 28/26/7/2/3/2/4/5, 465/436 line counts, 243 tests) and `lab/conformance/README.md` (M08 77 vectors); `apple/ci/known-disagreements.txt` header says "42 of 456" (historical).

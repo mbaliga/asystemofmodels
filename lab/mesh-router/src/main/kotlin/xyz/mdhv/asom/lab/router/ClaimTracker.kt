@@ -37,9 +37,10 @@ data class TrackedRates(val prefill: Long, val decodeAtP: Long, val steady: Long
  * The claim tracker (LAB_SPEC 6.6, design 5.7) as pure reducers. Observation only LOWERS a claim: every rate this object returns is at most the claim.
  *
  * R3-OVERCLAIM-1: the padding bound "at most about 2x" of the design is NOT what the mechanism gives. An answer is capped only at
- * `maxTokens x bptCap / 1000` bytes, so filler inflates the apparent ratio by up to `maxTokens x bptCap / trueBytes` (6.8x in bytes and 5.4x in predicted time at the spec's own numbers),
+ * `maxTokens x bptCap / 1000` bytes, so VISIBLE filler inflates the apparent ratio by up to `min(RATIO_CAP / 1000, maxTokens x bptCap / trueBytes)` (6.8x in bytes and 5.4x in predicted time at the spec's own numbers),
  * limited by [RATIO_CAP]. That is the stated worst case and it is tested (`ClaimTrackerTest.paddingToTheCapInflatesTheRatioByFarMoreThanTwo`); what the tracker still guarantees is that placement
- * never exceeds the claim (`effRatio = min(1000, ...)`).
+ * never exceeds the claim (`effRatio = min(1000, ...)`). Invisible padding (whitespace, newlines, zero-width characters) is removed by counting `outBytes` over the answer after
+ * [AnswerText.normalize] (LAB_SPEC R4-L-19).
  */
 object ClaimTracker {
     const val WIN = 20
@@ -254,7 +255,7 @@ object ClaimTracker {
         if (old != null && claimSeq <= old) return book to false
         val at = prev.acceptedAtWallMs
         if (at != null && wallNowMs - at < NEW_CLAIM_INTERVAL_MS) return book to false
-        val wasBad = old != null && (stateOf(prev) == ClaimState.DISCREPANT)
+        val wasBad = stateOf(prev) == ClaimState.DISCREPANT
         val next = prev.copy(
             claimSeq = claimSeq, acceptedAtWallMs = wallNowMs, ratios = emptyList(),
             inheritedDiscrepant = wasBad || prev.inheritedDiscrepant, memoryDiscrepant = false,
@@ -266,10 +267,17 @@ object ClaimTracker {
 /** Parses the answer text the requester itself receives: `choices[0].delta.content` (stream) or `choices[0].message.content` (whole body). */
 class AnswerCollector {
     private val pending = java.io.ByteArrayOutputStream()
-    var outBytes: Long = 0
-        private set
+    private val text = StringBuilder()
+    private var overflowed = false
     var events: Int = 0
         private set
+
+    /**
+     * The normalised UTF-8 length of the answer so far. A stream whose text outgrows [MAX_COLLECT_CHARS] (far above `outTokensMax x bptCap`, so never an honest answer) is
+     * not buffered further and counts as the saturated maximum, which the tracker discards as OVERLONG with a strike (ERR-R4B-TR-3).
+     */
+    val outBytes: Long
+        get() = if (overflowed) Sat.MAX else AnswerText.normalizedBytes(text.toString())
 
     /** Bytes of an SSE stream in any chunking; a partial line waits for its newline. */
     fun feed(bytes: ByteArray) {
@@ -289,26 +297,69 @@ class AnswerCollector {
     }
 
     private fun line(raw: ByteArray) {
-        val text = String(raw, Charsets.UTF_8).trimEnd('\r')
-        if (!text.startsWith("data:")) return
-        val payload = text.removePrefix("data:").trim()
+        val textLine = String(raw, Charsets.UTF_8).trimEnd('\r')
+        if (!textLine.startsWith("data:")) return
+        val payload = textLine.removePrefix("data:").trim()
         if (payload.isEmpty() || payload == "[DONE]") return
-        outBytes = Sat.add(outBytes, contentBytes(payload.toByteArray(Charsets.UTF_8), "delta"))
+        append(content(payload.toByteArray(Charsets.UTF_8), "delta"))
         events++
     }
 
     /** A non-streamed answer body. */
     fun wholeBody(body: ByteArray) {
-        outBytes = Sat.add(outBytes, contentBytes(body, "message"))
+        append(content(body, "message"))
     }
 
-    private fun contentBytes(json: ByteArray, member: String): Long {
-        val root = (StrictJson.parse(json) as? ParseResult.Ok)?.value as? JObject ?: return 0
-        val choice = ((root["choices"] as? JArray)?.items?.firstOrNull() as? JObject) ?: return 0
-        val inner = choice[member] as? JObject ?: return 0
-        val content = (inner["content"] as? JString)?.value ?: return 0
-        return content.toByteArray(Charsets.UTF_8).size.toLong()
+    private fun append(piece: String) {
+        if (overflowed) return
+        if (text.length.toLong() + piece.length > MAX_COLLECT_CHARS) {
+            overflowed = true
+            text.setLength(0)
+            return
+        }
+        text.append(piece)
     }
+
+    private fun content(json: ByteArray, member: String): String {
+        val root = (StrictJson.parse(json) as? ParseResult.Ok)?.value as? JObject ?: return ""
+        val choice = ((root["choices"] as? JArray)?.items?.firstOrNull() as? JObject) ?: return ""
+        val inner = choice[member] as? JObject ?: return ""
+        return (inner["content"] as? JString)?.value ?: ""
+    }
+
+    companion object {
+        const val MAX_COLLECT_CHARS = 4_194_304L
+    }
+}
+
+/**
+ * The answer text as the tracker counts it (LAB_SPEC R4-L-19): NFC; Unicode `Cf` (format) and `Cc` (control) characters removed; every run of space separators
+ * (`Zs`, `Zl`, `Zp`) collapsed to one U+0020; trimmed. The spec's order is kept literally, so a tab or a newline (both `Cc`) is removed and never collapsed
+ * (ERR-R4B-TR-1). The text is the whole answer: a whitespace run, a zero-width character or a combining mark may straddle two chunks.
+ */
+object AnswerText {
+    fun normalize(text: String): String {
+        val composed = java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFC)
+        val out = StringBuilder(composed.length)
+        var pendingSpace = false
+        var i = 0
+        while (i < composed.length) {
+            val cp = composed.codePointAt(i)
+            i += Character.charCount(cp)
+            when (Character.getType(cp)) {
+                Character.CONTROL.toInt(), Character.FORMAT.toInt() -> Unit
+                Character.SPACE_SEPARATOR.toInt(), Character.LINE_SEPARATOR.toInt(), Character.PARAGRAPH_SEPARATOR.toInt() -> pendingSpace = true
+                else -> {
+                    if (pendingSpace && out.isNotEmpty()) out.append(' ')
+                    pendingSpace = false
+                    out.appendCodePoint(cp)
+                }
+            }
+        }
+        return out.toString()
+    }
+
+    fun normalizedBytes(text: String): Long = normalize(text).toByteArray(Charsets.UTF_8).size.toLong()
 }
 
 /**

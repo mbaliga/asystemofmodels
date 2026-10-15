@@ -138,6 +138,29 @@ class TrackerFixTest {
         assertTrue(ClaimTracker.stateOf(book.states.getValue(metal)) != ClaimState.DISCREPANT, "cleared by the tenth")
     }
 
+    /** LAB_SPEC R4-L-18 (builder action 7): DISCREPANT is inherited also when no claim body was recorded before the window. Fails on the code that required a recorded `claimSeq`. */
+    @Test
+    fun aDiscrepantWindowIsInheritedEvenWhenNoClaimBodyWasRecordedBefore() {
+        var book = TrackerBook()
+        repeat(5) { book = ClaimTracker.onObservation(book, obs(elapsed = 39_911), claim, bpt, 1_000) }
+        assertEquals(null, book.states.getValue(metal).claimSeq)
+        val (b1, accepted) = ClaimTracker.onClaimBody(book, metal, 1, 1_000)
+        assertTrue(accepted)
+        assertEquals(ClaimState.DISCREPANT, ClaimTracker.stateOf(b1.states.getValue(metal)), "the restarted window inherits DISCREPANT")
+        book = b1
+        for (n in 1..9) {
+            book = ClaimTracker.onObservation(book, obs(elapsed = 19_000), claim, bpt, 2_000)
+            assertEquals(ClaimState.DISCREPANT, ClaimTracker.stateOf(book.states.getValue(metal)), "still inherited after $n good observations")
+        }
+        book = ClaimTracker.onObservation(book, obs(elapsed = 19_000), claim, bpt, 2_000)
+        assertEquals(ClaimState.CORROBORATED, ClaimTracker.stateOf(book.states.getValue(metal)))
+
+        var honest = TrackerBook()
+        repeat(5) { honest = ClaimTracker.onObservation(honest, obs(), claim, bpt, 1_000) }
+        val (h1, _) = ClaimTracker.onClaimBody(honest, metal, 1, 1_000)
+        assertEquals(ClaimState.UNVERIFIED, ClaimTracker.stateOf(h1.states.getValue(metal)), "a window that was not DISCREPANT is not inherited")
+    }
+
     @Test
     fun theSecondPenaltyOfAPeerLastsFourteenDays() {
         var book = TrackerBook()

@@ -85,7 +85,7 @@
   },
   {
     "path": "router/M08-claim-tracker.json",
-    "sha256": "97909707954f870ff322fa2ae22e2f747fcd1cba0ad7d43fe1cb10294059bbbb",
+    "sha256": "c8715ca75da463a18e3221a585804c86f914dec842cc9de9527ea507fbdd33d6",
     "family": "M08",
     "status": "normative"
   },

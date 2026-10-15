@@ -4,7 +4,8 @@ import AsomJSON
 /// The r3 claim tracker of LAB_SPEC.md section 6.6: what a requester learns about a peer's claimed speed from its own observations.
 /// Written from the spec text and the M08 vector files; the JVM implementation (`lab/mesh-router`) and the runner's M08 adapter were not
 /// opened. It is a second implementation, cross-lane evidence, and NOT independent: the vectors fixed several of its readings (apple/ERRATA.md
-/// E-33, ERR-FX-M08-1, ERR-FX2-ASC10).
+/// E-33, ERR-FX-M08-1, ERR-FX2-ASC10). The r4 additions (`AnswerText`, text chunks) were written by a session that had also read and edited the
+/// JVM tracker (apple/ERRATA.md ERR-R4B-TR-4).
 /// Integers only, floor division unless `ceilDiv`, every multiplication checked.
 public enum TrackerConstants {
     public static let win = 20
@@ -106,12 +107,23 @@ public enum Discard: String, Sendable, CaseIterable {
 
 public struct ContentChunk: Sendable, Equatable {
     public var tMs: Int64
-    /// UTF-8 bytes of the answer text parsed from this chunk (never SSE framing, JSON syntax, role or finish fields).
+    /// UTF-8 bytes of the answer text parsed from this chunk (never SSE framing, JSON syntax, role or finish fields). For a chunk built
+    /// with `init(tMs:bytes:)` they are visible filler that normalisation leaves alone (letters); for a text chunk they are the raw bytes.
     public var bytes: Int64
+    /// The answer text of this chunk. When it is present the stream's `outBytes` is the length of the normalised concatenation of all
+    /// chunk texts (`AnswerText`, LAB_SPEC R4-L-19), not the sum of `bytes`.
+    public var text: String?
 
     public init(tMs: Int64, bytes: Int64) {
         self.tMs = tMs
         self.bytes = bytes
+        self.text = nil
+    }
+
+    public init(tMs: Int64, text: String) {
+        self.tMs = tMs
+        self.bytes = Int64(text.utf8.count)
+        self.text = text
     }
 }
 
@@ -275,6 +287,12 @@ public enum AttemptEvaluator {
         for c in a.chunks {
             outBytes = try Checked.add(outBytes, c.bytes)
             lastChunk = max(lastChunk, c.tMs)
+        }
+        let texts = a.chunks.compactMap(\.text)
+        if !texts.isEmpty {
+            // A stream that mixes the two forms has no single answer text to normalise: refused rather than guessed.
+            guard texts.count == a.chunks.count else { throw BenchArithmeticError(operation: "a stream mixes text chunks and byte-count chunks") }
+            outBytes = AnswerText.normalizedByteCount(texts.joined())
         }
         let tEnd = max(a.end?.tMs ?? a.tBodyMs, lastChunk)
         let elapsed = max(1, try Checked.add(tEnd, -a.tBodyMs))

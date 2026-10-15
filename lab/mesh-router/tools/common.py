@@ -21,13 +21,13 @@ def rej(code):
     return {"reject": code}
 
 
-def write(name, family, refs, vectors):
+def write(name, family, refs, vectors, ascii_only=False):
     path = os.path.join(ROOT, "router", name)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     ids = [v["id"] for v in vectors]
     assert len(ids) == len(set(ids)), "duplicate ids"
     with open(path, "w", encoding="utf-8", newline="\n") as f:
-        json.dump({"family": family, "confVersion": CONF, "specRefs": refs, "vectors": vectors}, f, indent=2, ensure_ascii=False)
+        json.dump({"family": family, "confVersion": CONF, "specRefs": refs, "vectors": vectors}, f, indent=2, ensure_ascii=ascii_only)
         f.write("\n")
     print(f"router/{name}: {len(vectors)} vectors")
 

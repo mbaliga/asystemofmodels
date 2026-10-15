@@ -14,6 +14,7 @@ import xyz.mdhv.asom.lab.json.JString
 import xyz.mdhv.asom.lab.json.JArray
 import xyz.mdhv.asom.lab.policy.Fsm
 import xyz.mdhv.asom.lab.policy.Governor
+import xyz.mdhv.asom.lab.router.AnswerText
 import xyz.mdhv.asom.lab.router.AttemptObserver
 import xyz.mdhv.asom.lab.router.Bpt
 import xyz.mdhv.asom.lab.router.ClaimKey
@@ -58,9 +59,12 @@ class M08Checker : FamilyChecker("M08") {
         "evaluate", "sequence", "state", "claimBody", "chunk-split-invariant", "lying-end-ignored", "peer-state-ignored", "padding-over-cap", "discard-INCOMPLETE", "discard-SHORT",
         "discard-OVERLONG", "discard-CONCURRENT", "discard-SETTINGS", "budget-tripped", "only-lowers", "bpt-matches-bench-core",
         "inherit", "claimBudget", "penalty", "disc",
+        "padding-removed", "normalise-agrees", "interpolation", "budget-keeps-discrepant", "inherit-no-body",
     )
 
     private val key = ClaimKey("peer-x", "a1".repeat(32), "metal")
+
+    private fun partsText(chunk: JsonObject): String = chunk.arr("parts").joinToString("") { p -> val po = p as JsonObject; po.str("text").repeat(po.long("times").toInt()) }
 
     private fun observationFrom(i: JsonObject): Pair<Observation, PerfPrior> {
         val claim = priorOf(i.obj("claim"))
@@ -74,6 +78,8 @@ class M08Checker : FamilyChecker("M08") {
                 val from = o.long("tFrom")
                 val to = o.long("tTo")
                 for (k in 0 until n) obs.onChunk(if (n == 1) to else from + (to - from) * k / (n - 1), sse("x".repeat(o.long("bytesEach").toInt())))
+            } else if (o.containsKey("parts")) {
+                obs.onChunk(o.long("t"), sse(partsText(o)))
             } else {
                 obs.onChunk(o.long("t"), sse("x".repeat(o.long("bytes").toInt())))
             }
@@ -131,6 +137,13 @@ class M08Checker : FamilyChecker("M08") {
                 if (i.arr("chunks").size > 1 || (i.arr("chunks").firstOrNull() as? JsonObject)?.containsKey("count") == true) bump("chunk-split-invariant")
                 if (ev.discard != null) bump("discard-${ev.discard}")
                 if (o.outBytes > 3_000) bump("padding-over-cap")
+                val text = i.arr("chunks").filter { (it as JsonObject).containsKey("parts") }.joinToString("") { partsText(it as JsonObject) }
+                if (text.isNotEmpty() && i.arr("chunks").all { (it as JsonObject).containsKey("parts") }) {
+                    if (AnswerText.normalizedBytes(text) != o.outBytes) throw LawViolation("the collector's outBytes differs from the normalised text length")
+                    bump("normalise-agrees")
+                    if (text.toByteArray(Charsets.UTF_8).size > o.outBytes) bump("padding-removed")
+                }
+                if (claim.decodeAt.size > 1 && i.long("promptTokens") > claim.decodeAt.first().first && i.long("promptTokens") < claim.decodeAt.last().first) bump("interpolation")
                 Observed.Ok(
                     buildJsonObject {
                         put("outBytes", o.outBytes); put("outTokEst", ev.outTokEst); put("predictedMs", ev.predictedMs); put("elapsedMs", ev.elapsedMs); put("ratio", ev.ratio)
@@ -172,6 +185,8 @@ class M08Checker : FamilyChecker("M08") {
                     inheritedDiscrepant = i.reqBool("inheritedDiscrepant"),
                 )
                 if (ClaimTracker.budgetTripped(ts)) bump("budget-tripped")
+                if (ClaimTracker.budgetTripped(ts) && ClaimTracker.stateOf(ts) == ClaimState.DISCREPANT) bump("budget-keeps-discrepant")
+                if (claim.decodeAt.size > 1 && i.long("promptTokens") > claim.decodeAt.first().first && i.long("promptTokens") < claim.decodeAt.last().first) bump("interpolation")
                 bump("only-lowers")
                 Observed.Ok(summary(claim, ts, i.long("promptTokens"), i.long("disc"), null))
             }
@@ -191,7 +206,9 @@ class M08Checker : FamilyChecker("M08") {
                 bump("inherit")
                 val claim = priorOf(i.obj("claim"))
                 val bpt = bptOf(i)
-                var book = ClaimTracker.onClaimBody(TrackerBook(), key, 1, 0).first
+                val noBody = i.containsKey("initialClaim") && !i.reqBool("initialClaim")
+                if (noBody) bump("inherit-no-body")
+                var book = if (noBody) TrackerBook() else ClaimTracker.onClaimBody(TrackerBook(), key, 1, 0).first
                 for (e in i.arr("before")) book = ClaimTracker.onObservation(book, plainObservation(i, e as JsonObject, key), claim, bpt, 1_000)
                 val (changed, accepted) = ClaimTracker.onClaimBody(book, key, 2, i.long("newClaimAtMs"))
                 book = changed
@@ -229,6 +246,7 @@ class M08Checker : FamilyChecker("M08") {
                     val o = e as JsonObject
                     book = ClaimTracker.onObservation(book, plainObservation(i, o, fileKey(o.str("file"))), claim, bpt, o.long("at"))
                 }
+                if (book.states.values.any { ClaimTracker.budgetTripped(it) && ClaimTracker.stateOf(it) == ClaimState.DISCREPANT }) bump("budget-keeps-discrepant")
                 val probes = i.arr("probes").map { (it as JsonPrimitive).content.toLong() }
                 val discs = probes.map { ClaimTracker.disc("peer-x", book.states, book.penalties, it) }
                 val pen = book.penalties["peer-x"]

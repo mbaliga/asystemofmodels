@@ -443,6 +443,137 @@ final class ClaimTrackerTests: XCTestCase {
         XCTAssertGreaterThan(checked, 5)
     }
 
+    // MARK: R4-L-19: the answer is counted after normalisation
+
+    func textAttempt(_ pieces: [String], elapsed: Int64 = 20_500, maxTokens: Int64 = 1024) -> AttemptInput {
+        AttemptInput(
+            tBodyMs: 0, chunks: pieces.enumerated().map { ContentChunk(tMs: 100 + Int64($0.offset), text: $0.element) }, end: InferEnd(tMs: elapsed, payload: Self.done),
+            promptTokens: 500, promptBytes: 5120, maxTokens: maxTokens, link: Self.link, claim: Self.claim, claimFileSha256: Self.sha
+        )
+    }
+
+    func scalars(_ s: String) -> [UInt32] { s.unicodeScalars.map(\.value) }
+
+    func testInvisiblePaddingDoesNotCountTowardsOutBytes() throws {
+        let real = String(repeating: "x", count: 1200)
+        var laws = 0
+        // (a) trailing whitespace: 600 newlines, 600 spaces, 600 tabs
+        let a = try AttemptEvaluator.evaluate(textAttempt([real + String(repeating: "\n", count: 600) + String(repeating: " ", count: 600) + String(repeating: "\t", count: 600)]))
+        XCTAssertEqual(a.outBytes, 1200)
+        XCTAssertEqual(a.ratio, 973, "the honest ratio of M08-002")
+        laws += 1
+        // (b) zero-width characters (Cf, 3 bytes each) interleaved
+        let zw = String(repeating: "x", count: 600) + String(repeating: "\u{200B}", count: 300) + String(repeating: "\u{FEFF}", count: 100) + String(repeating: "x", count: 600) + String(repeating: "\u{2060}", count: 200)
+        XCTAssertEqual(zw.utf8.count, 3000)
+        XCTAssertEqual(try AttemptEvaluator.evaluate(textAttempt([zw])).outBytes, 1200)
+        laws += 1
+        // (c) a short real answer under a large max_tokens: 200 letters then 32,568 spaces (the cap at 4,096) is 200 bytes; visible filler to the cap is the residual
+        let invisible = try AttemptEvaluator.evaluate(textAttempt([String(repeating: "x", count: 200) + String(repeating: " ", count: 32_568)], elapsed: 7_700, maxTokens: 4096))
+        XCTAssertEqual(invisible.outBytes, 200)
+        XCTAssertEqual(invisible.outTokEst, 50)
+        XCTAssertEqual(invisible.predictedMs, 7461, "11 + 5,000 + ceilDiv(49 x 10^6, 20,000)")
+        XCTAssertEqual(invisible.ratio, 968)
+        let visible = try AttemptEvaluator.evaluate(textAttempt([String(repeating: "x", count: 200) + String(repeating: "y", count: 32_568)], elapsed: 7_700, maxTokens: 4096))
+        XCTAssertEqual(visible.outBytes, 32_768)
+        XCTAssertNil(visible.discard, "exactly at the cap")
+        XCTAssertEqual(visible.ratio, 5000, "the residual: RATIO_CAP")
+        laws += 1
+        // padding cannot rescue a short answer
+        let short = try AttemptEvaluator.evaluate(textAttempt([String(repeating: "x", count: 100) + String(repeating: "\n ", count: 1000)], elapsed: 2100))
+        XCTAssertEqual(short.outBytes, 100)
+        XCTAssertEqual(short.discard, .short)
+        laws += 1
+        // OVERLONG is judged on the normalised length
+        let kept = try AttemptEvaluator.evaluate(textAttempt([String(repeating: "x", count: 8192) + String(repeating: "\u{200B}", count: 5000)]))
+        XCTAssertEqual(kept.outBytes, 8192)
+        XCTAssertNil(kept.discard)
+        let over = try AttemptEvaluator.evaluate(textAttempt([String(repeating: "x", count: 8193)]))
+        XCTAssertEqual(over.discard, .overlong)
+        laws += 1
+        XCTAssertEqual(laws, 5, "non-vacuity: every case ran")
+    }
+
+    func testTheNormaliserFollowsTheSpecsOrder() {
+        XCTAssertEqual(scalars(AnswerText.normalize("")), [])
+        XCTAssertEqual(scalars(AnswerText.normalize(" \n\t\u{200B}\u{00A0}")), [])
+        XCTAssertEqual(scalars(AnswerText.normalize("  a \u{00A0}\u{2003}\u{2028}  b\u{2029} ")), scalars("a b"))
+        XCTAssertEqual(scalars(AnswerText.normalize("a\nb")), scalars("ab"), "a newline is a control character: removed, not collapsed")
+        XCTAssertEqual(scalars(AnswerText.normalize("a \u{07} b")), scalars("a b"), "control characters go first, so the two spaces meet and collapse")
+        XCTAssertEqual(scalars(AnswerText.normalize("a \u{200B} b")), scalars("a b"))
+        XCTAssertEqual(scalars(AnswerText.normalize("e\u{0301}")), [0xE9], "NFC composes")
+        XCTAssertEqual(scalars(AnswerText.normalize("\u{0958}")), [0x0915, 0x093C], "NFC can expand: U+0958 has a composition exclusion")
+        XCTAssertEqual(AnswerText.normalizedByteCount("e\u{0301}"), 2)
+    }
+
+    func testTheNormalisedLengthDoesNotDependOnHowTheAnswerIsCutIntoChunks() throws {
+        let alphabet = ["x", "y", " ", " ", "\n", "\u{200B}", "e", "\u{0301}", "\u{00E9}", "\u{00A0}", "\u{2003}", "\u{2028}", "\u{3000}", "\u{07}", "\u{FEFF}", "\u{0915}", "\u{093C}"]
+        var state: UInt64 = 19
+        func next(_ bound: Int) -> Int {
+            state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+            return Int((state >> 33) % UInt64(bound))
+        }
+        var cases = 0, shrank = 0
+        for _ in 0..<600 {
+            let pieces = (0..<(1 + next(199))).map { _ in alphabet[next(alphabet.count)] }
+            let cuts = Set((0..<next(8)).map { _ in next(pieces.count + 1) }).sorted()
+            let bounds = [0] + cuts + [pieces.count]
+            let chunks = zip(bounds, bounds.dropFirst()).map { pair in pieces[pair.0..<pair.1].joined() }
+            let whole = pieces.joined()
+            let one = try AttemptEvaluator.evaluate(textAttempt([whole]))
+            let many = try AttemptEvaluator.evaluate(textAttempt(chunks))
+            XCTAssertEqual(one.outBytes, many.outBytes, "cut at \(cuts) of \(pieces.map { scalars($0) })")
+            XCTAssertEqual(one.outBytes, AnswerText.normalizedByteCount(whole))
+            cases += 1
+            if one.outBytes < Int64(whole.utf8.count) { shrank += 1 }
+        }
+        XCTAssertGreaterThan(cases, 500)
+        XCTAssertGreaterThan(shrank, 100, "non-vacuity: normalisation removed something in most cases")
+    }
+
+    func testAStreamThatMixesTextAndByteCountChunksIsRefused() {
+        var a = textAttempt(["x"])
+        a.chunks.append(ContentChunk(tMs: 200, bytes: 5))
+        XCTAssertThrowsError(try AttemptEvaluator.evaluate(a)) { XCTAssertTrue($0 is BenchArithmeticError) }
+    }
+
+    // MARK: R4-L-18: interpolation and the inherited state without a recorded claim body
+
+    func testTheClaimDecodeIsInterpolatedWithFloorAndTheTrackedRatioScalesThatValue() throws {
+        let curve = ClaimRow(
+            decodeAt: [DecodePoint(contextTokens: 256, milliTokPerSec: 30_000), DecodePoint(contextTokens: 1024, milliTokPerSec: 20_000)],
+            prefillMilliTokPerSec: 100_000, ttft0Ms: 0, steadyMilliTokPerSec: 20_000, throttleOnsetMs: nil
+        )
+        XCTAssertEqual(try curve.decodeRate(atContext: 500), 26_822, "floor((30,000 x 524 + 20,000 x 244) / 768) = floor(20,600,000 / 768)")
+        let r = try AttemptEvaluator.evaluate(AttemptInput(
+            tBodyMs: 0, chunks: [ContentChunk(tMs: 16_500, bytes: 1200)], end: InferEnd(tMs: 16_600, payload: Self.done), promptTokens: 500, promptBytes: 5120,
+            maxTokens: 1024, link: Self.link, claim: curve, claimFileSha256: Self.sha
+        ))
+        XCTAssertEqual(r.predictedMs, 16_159, "11 + 5,000 + ceilDiv(299 x 10^6, 26,822) = 11,148")
+        let v = try tracker(ratios: [900, 900, 900]).view(claim: curve, promptTokens: 500)
+        XCTAssertEqual(v.tracked.decodeAtP, 24_139, "floor(26,822 x 900 / 1000); scaling the points first would give 24,140")
+    }
+
+    func testADiscrepantWindowIsInheritedWhenNoClaimBodyWasRecordedBefore() throws {
+        var gate = ClaimBodyGate()
+        var t = ClaimTracker()
+        let half = try AttemptEvaluator.evaluate(attempt(elapsed: 39_911))
+        for _ in 0..<5 { t.onObservation(half) }
+        XCTAssertEqual(try view(t).state, .discrepant)
+        XCTAssertTrue(gate.accept(seq: 1, atMs: 1000), "the first claim body the gate sees is accepted whatever the time")
+        t.onNewClaimSeq()
+        let good = try AttemptEvaluator.evaluate(attempt(elapsed: 19_000))
+        for n in 1...9 {
+            t.onObservation(good)
+            XCTAssertEqual(try view(t).state, .discrepant, "still inherited after \(n) good observations")
+        }
+        t.onObservation(good)
+        XCTAssertEqual(try view(t).state, .corroborated)
+        var honest = ClaimTracker()
+        for _ in 0..<5 { honest.onObservation(try AttemptEvaluator.evaluate(attempt())) }
+        honest.onNewClaimSeq()
+        XCTAssertEqual(try view(honest).state, .unverified, "a window that was not DISCREPANT is not inherited")
+    }
+
     // MARK: Arithmetic
 
     func testArithmeticIsChecked() {

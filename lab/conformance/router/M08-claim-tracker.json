@@ -4,7 +4,8 @@
   "specRefs": [
     "LAB_SPEC.md 6.6",
     "ASOM_MESH_DESIGN.md 5.7",
-    "docs/design/mesh/REVIEW_ROUND3.md R3-OVERCLAIM-1, R3-CLOSURE-5"
+    "docs/design/mesh/REVIEW_ROUND3.md R3-OVERCLAIM-1, R3-CLOSURE-5",
+    "LAB_SPEC.md R4-L-18, R4-L-19"
   ],
   "vectors": [
     {
@@ -793,7 +794,7 @@
       "origin": "hand",
       "status": "normative",
       "oracle": "self",
-      "description": "padding under the cap: 3,000 bytes (1,200 real + 1,800 filler) in the honest time: outTokEst 750, E7 = 37,450, predicted 42,461, ratio 2,071 (placement still cannot exceed the claim: effRatio = min(1000, ...))",
+      "description": "padding under the cap with visible filler (1,200 real letters + 1,800 filler letters = 3,000 bytes) in the honest time: normalisation keeps it; outTokEst 750, E7 = 37,450, predicted 42,461, ratio 2,071; the inflation (2.07x) is inside the stated residual min(RATIO_CAP / 1000, maxTokens x bptCap / trueOutBytes) = min(5, 6.8) = 5, not the r3 bound of about 2x; placement still cannot exceed the claim (effRatio = min(1000, ...))",
       "input": {
         "kind": "evaluate",
         "claim": {
@@ -831,7 +832,16 @@
         "chunks": [
           {
             "t": 20000,
-            "bytes": 3000
+            "parts": [
+              {
+                "text": "x",
+                "times": 1200
+              },
+              {
+                "text": "y",
+                "times": 1800
+              }
+            ]
           }
         ],
         "head": null,
@@ -5820,6 +5830,1792 @@
             "decodeAtP": 20000,
             "steady": 20000
           }
+        }
+      }
+    },
+    {
+      "id": "M08-083",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-L-19 (a) trailing-whitespace padding: 1,200 letters then 600 newlines, 600 spaces and 600 tabs (3,000 raw bytes) in the honest time: normalised outBytes 1,200, ratio 973, exactly the unpadded answer (M08-002)",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 20000,
+            "parts": [
+              {
+                "text": "x",
+                "times": 1200
+              },
+              {
+                "text": "\n",
+                "times": 600
+              },
+              {
+                "text": " ",
+                "times": 600
+              },
+              {
+                "text": "\t",
+                "times": 600
+              }
+            ]
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 20500,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 1200,
+          "outTokEst": 300,
+          "predictedMs": 19961,
+          "elapsedMs": 20500,
+          "ratio": 973,
+          "discard": null
+        }
+      }
+    },
+    {
+      "id": "M08-084",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-L-19 (b) zero-width padding: 1,200 letters with 300 U+200B, 100 U+FEFF and 200 U+2060 (3 bytes each, 1,800 bytes of padding) interleaved: all Cf, removed: outBytes 1,200, ratio 973",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 20000,
+            "parts": [
+              {
+                "text": "x",
+                "times": 600
+              },
+              {
+                "text": "\u200b",
+                "times": 300
+              },
+              {
+                "text": "\ufeff",
+                "times": 100
+              },
+              {
+                "text": "x",
+                "times": 600
+              },
+              {
+                "text": "\u2060",
+                "times": 200
+              }
+            ]
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 20500,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 1200,
+          "outTokEst": 300,
+          "predictedMs": 19961,
+          "elapsedMs": 20500,
+          "ratio": 973,
+          "discard": null
+        }
+      }
+    },
+    {
+      "id": "M08-085",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-L-19 (c) a short real answer under a large max_tokens: 200 real letters then 32,568 spaces (32,768 raw bytes = the cap at max_tokens 4,096): normalised outBytes 200, outTokEst 50, predicted 7,461, elapsed 7,700: ratio 968, the honest ratio (invisible padding gains nothing)",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 4096,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 7600,
+            "parts": [
+              {
+                "text": "x",
+                "times": 200
+              },
+              {
+                "text": " ",
+                "times": 32568
+              }
+            ]
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 7700,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 200,
+          "outTokEst": 50,
+          "predictedMs": 7461,
+          "elapsedMs": 7700,
+          "ratio": 968,
+          "discard": null
+        }
+      }
+    },
+    {
+      "id": "M08-086",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-L-19 (c) the residual: the same 200 real letters then 32,568 VISIBLE filler letters (32,768 bytes = the cap) in the same time 7,700: outTokEst 8,192, E7 = 409,550, predicted 414,561, ratio capped at RATIO_CAP 5,000; the bound min(RATIO_CAP / 1000, 4,096 x 8 / 200) = min(5, 163.8) = 5 is reached; placement still cannot exceed the claim",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 4096,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 7600,
+            "parts": [
+              {
+                "text": "x",
+                "times": 200
+              },
+              {
+                "text": "y",
+                "times": 32568
+              }
+            ]
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 7700,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 32768,
+          "outTokEst": 8192,
+          "predictedMs": 414561,
+          "elapsedMs": 7700,
+          "ratio": 5000,
+          "discard": null
+        }
+      }
+    },
+    {
+      "id": "M08-087",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-L-19: padding cannot rescue a short answer: 100 real letters then 1,000 newlines and 1,000 spaces: normalised outBytes 100 < SHORT_BYTES: DISCARD_SHORT",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 2000,
+            "parts": [
+              {
+                "text": "x",
+                "times": 100
+              },
+              {
+                "text": "\n",
+                "times": 1000
+              },
+              {
+                "text": " ",
+                "times": 1000
+              }
+            ]
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 2100,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 100,
+          "outTokEst": 25,
+          "predictedMs": 6211,
+          "elapsedMs": 2100,
+          "ratio": 2957,
+          "discard": "SHORT"
+        }
+      }
+    },
+    {
+      "id": "M08-088",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-L-19 NFC: 600 decomposed e + U+0301 (3 bytes each, 1,800 raw bytes) compose to 600 precomposed U+00E9 (2 bytes each): outBytes 1,200, ratio 973",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 20000,
+            "parts": [
+              {
+                "text": "e\u0301",
+                "times": 600
+              }
+            ]
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 20500,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 1200,
+          "outTokEst": 300,
+          "predictedMs": 19961,
+          "elapsedMs": 20500,
+          "ratio": 973,
+          "discard": null
+        }
+      }
+    },
+    {
+      "id": "M08-089",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-L-19 order: control characters are removed BEFORE whitespace runs collapse. 600 letters, a space, U+0007, a space, 599 letters: the two spaces meet and collapse to one: 600 + 1 + 599 = 1,200",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 20000,
+            "parts": [
+              {
+                "text": "x",
+                "times": 600
+              },
+              {
+                "text": " \u0007 ",
+                "times": 1
+              },
+              {
+                "text": "x",
+                "times": 599
+              }
+            ]
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 20500,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 1200,
+          "outTokEst": 300,
+          "predictedMs": 19961,
+          "elapsedMs": 20500,
+          "ratio": 973,
+          "discard": null
+        }
+      }
+    },
+    {
+      "id": "M08-090",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-L-19 (ERR-R4B-TR-1): a newline is a control character and is removed, not collapsed to a space: 600 letters, a newline, 600 letters: outBytes 1,200 (not 1,201)",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 20000,
+            "parts": [
+              {
+                "text": "x",
+                "times": 600
+              },
+              {
+                "text": "\n",
+                "times": 1
+              },
+              {
+                "text": "x",
+                "times": 600
+              }
+            ]
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 20500,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 1200,
+          "outTokEst": 300,
+          "predictedMs": 19961,
+          "elapsedMs": 20500,
+          "ratio": 973,
+          "discard": null
+        }
+      }
+    },
+    {
+      "id": "M08-091",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-L-19 whitespace: a run of mixed space separators (U+00A0, U+2003, U+2028, U+0020, U+3000) between two 600-letter halves collapses to ONE U+0020 (1 byte), a leading run and a trailing run (U+2029) are trimmed: outBytes 1,201",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 20000,
+            "parts": [
+              {
+                "text": "\u00a0 ",
+                "times": 3
+              },
+              {
+                "text": "x",
+                "times": 600
+              },
+              {
+                "text": "\u00a0\u2003\u2028 \u3000",
+                "times": 4
+              },
+              {
+                "text": "x",
+                "times": 600
+              },
+              {
+                "text": "\u2029",
+                "times": 2
+              }
+            ]
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 20500,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 1201,
+          "outTokEst": 301,
+          "predictedMs": 20011,
+          "elapsedMs": 20500,
+          "ratio": 976,
+          "discard": null
+        }
+      }
+    },
+    {
+      "id": "M08-092",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-L-19 chunk-split invariance: a whitespace run split across chunks, a zero-width character at a chunk edge and a decomposed e + U+0301 split across chunks give the same outBytes as one chunk: 400 letters + 1 + 400 letters + U+00E9 (2) + 397 letters = 1,200",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 5000,
+            "parts": [
+              {
+                "text": "x",
+                "times": 400
+              },
+              {
+                "text": " ",
+                "times": 1
+              }
+            ]
+          },
+          {
+            "t": 10000,
+            "parts": [
+              {
+                "text": " ",
+                "times": 1
+              },
+              {
+                "text": "x",
+                "times": 400
+              },
+              {
+                "text": "e",
+                "times": 1
+              }
+            ]
+          },
+          {
+            "t": 15000,
+            "parts": [
+              {
+                "text": "\u0301",
+                "times": 1
+              },
+              {
+                "text": "x",
+                "times": 397
+              },
+              {
+                "text": "\u200b",
+                "times": 1
+              }
+            ]
+          },
+          {
+            "t": 20000,
+            "parts": [
+              {
+                "text": " ",
+                "times": 1
+              }
+            ]
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 20500,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 1200,
+          "outTokEst": 300,
+          "predictedMs": 19961,
+          "elapsedMs": 20500,
+          "ratio": 973,
+          "discard": null
+        }
+      }
+    },
+    {
+      "id": "M08-093",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-L-19 OVERLONG is judged on the normalised length: 8,192 letters (the cap at max_tokens 1,024) plus 5,000 U+200B (15,000 bytes of padding) are kept, outBytes 8,192",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 20000,
+            "parts": [
+              {
+                "text": "x",
+                "times": 8192
+              },
+              {
+                "text": "\u200b",
+                "times": 5000
+              }
+            ]
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 20500,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 8192,
+          "outTokEst": 2048,
+          "predictedMs": 107361,
+          "elapsedMs": 20500,
+          "ratio": 5000,
+          "discard": null
+        }
+      }
+    },
+    {
+      "id": "M08-094",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-L-18 interpolation: claim decode curve (256, 30000)-(1024, 20000) at P = 500: floor((30000 x 524 + 20000 x 244) / 768) = floor(20,600,000 / 768) = 26,822; E7 = ceilDiv(299 x 10^6, 26,822) = 11,148; predicted = 11 + 5,000 + 11,148 = 16,159; elapsed 16,600: ratio 973",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              256,
+              30000
+            ],
+            [
+              1024,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 16500,
+            "bytes": 1200
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 16600,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 1200,
+          "outTokEst": 300,
+          "predictedMs": 16159,
+          "elapsedMs": 16600,
+          "ratio": 973,
+          "discard": null
+        }
+      }
+    },
+    {
+      "id": "M08-095",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-L-18: one tracked ratio scales the claim decode AT P; it does not rescale the curve points first: ratios {900, 900, 900}, claim decode at P = 26,822: tracked decodeAtP = floor(26,822 x 900 / 1000) = 24,139 (scaling the points first would give 24,140); prefill 90,000, steady 18,000",
+      "input": {
+        "kind": "state",
+        "claim": {
+          "decodeAt": [
+            [
+              256,
+              30000
+            ],
+            [
+              1024,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "promptTokens": 500,
+        "ratios": [
+          900,
+          900,
+          900
+        ],
+        "recent": [],
+        "inheritedDiscrepant": false,
+        "disc": 700,
+        "ceiling": null
+      },
+      "expect": {
+        "ok": {
+          "n": 3,
+          "ratios": [
+            900,
+            900,
+            900
+          ],
+          "best": 900,
+          "state": "UNVERIFIED",
+          "strikes": 0,
+          "budgetTripped": false,
+          "minRatio": 0,
+          "tracked": {
+            "prefill": 90000,
+            "decodeAtP": 24139,
+            "steady": 18000
+          }
+        }
+      }
+    },
+    {
+      "id": "M08-096",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-L-18: clamped below the curve: at P = 500 a curve whose first point is at 600 ((600, 30000)-(1024, 20000)) gives the first point, 30,000; n = 0: prior' = min(30,000, no capRef) x 700 / 1000 = 21,000",
+      "input": {
+        "kind": "state",
+        "claim": {
+          "decodeAt": [
+            [
+              600,
+              30000
+            ],
+            [
+              1024,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "promptTokens": 500,
+        "ratios": [],
+        "recent": [],
+        "inheritedDiscrepant": false,
+        "disc": 700,
+        "ceiling": null
+      },
+      "expect": {
+        "ok": {
+          "n": 0,
+          "ratios": [],
+          "best": null,
+          "state": "UNVERIFIED",
+          "strikes": 0,
+          "budgetTripped": false,
+          "minRatio": 0,
+          "tracked": {
+            "prefill": 70000,
+            "decodeAtP": 21000,
+            "steady": 14000
+          }
+        }
+      }
+    },
+    {
+      "id": "M08-097",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-L-18: a DISCREPANT window with NO claim body recorded before it (no earlier seq, no earlier acceptance), then the first claim body at 1,000 ms: it is accepted (nothing to wait 24 h for) and DISCREPANT is inherited until 10 good observations: 9 DISCREPANT then CORROBORATED",
+      "input": {
+        "kind": "inherit",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "before": [
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 39911
+          }
+        ],
+        "newClaimAtMs": 1000,
+        "after": [
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          },
+          {
+            "bytes": 1200,
+            "elapsed": 19000
+          }
+        ],
+        "initialClaim": false
+      },
+      "expect": {
+        "ok": {
+          "accepted": true,
+          "states": [
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "DISCREPANT",
+            "CORROBORATED"
+          ]
+        }
+      }
+    },
+    {
+      "id": "M08-098",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX2-ASC01: five kept ratios of 500 (best 500 < 600: DISCREPANT) and six truncated answers (6 of 11 discarded: budget tripped): the budget never lifts DISCREPANT to WEAK; the clamp still applies: minRatio 5, tracked prefill 100,000 x 5 / 1000 = 500, decode 100, steady 100",
+      "input": {
+        "kind": "state",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "promptTokens": 500,
+        "ratios": [
+          500,
+          500,
+          500,
+          500,
+          500
+        ],
+        "recent": [
+          {
+            "kept": true,
+            "ratio": 500,
+            "outBytes": 1200
+          },
+          {
+            "kept": true,
+            "ratio": 500,
+            "outBytes": 1200
+          },
+          {
+            "kept": true,
+            "ratio": 500,
+            "outBytes": 1200
+          },
+          {
+            "kept": true,
+            "ratio": 500,
+            "outBytes": 1200
+          },
+          {
+            "kept": true,
+            "ratio": 500,
+            "outBytes": 1200
+          },
+          {
+            "kept": false,
+            "ratio": 5,
+            "outBytes": 50
+          },
+          {
+            "kept": false,
+            "ratio": 5,
+            "outBytes": 50
+          },
+          {
+            "kept": false,
+            "ratio": 5,
+            "outBytes": 50
+          },
+          {
+            "kept": false,
+            "ratio": 5,
+            "outBytes": 50
+          },
+          {
+            "kept": false,
+            "ratio": 5,
+            "outBytes": 50
+          },
+          {
+            "kept": false,
+            "ratio": 5,
+            "outBytes": 50
+          }
+        ],
+        "inheritedDiscrepant": false,
+        "disc": 700,
+        "ceiling": null
+      },
+      "expect": {
+        "ok": {
+          "n": 5,
+          "ratios": [
+            500,
+            500,
+            500,
+            500,
+            500
+          ],
+          "best": 500,
+          "state": "DISCREPANT",
+          "strikes": 0,
+          "budgetTripped": true,
+          "minRatio": 5,
+          "tracked": {
+            "prefill": 500,
+            "decodeAtP": 100,
+            "steady": 100
+          }
+        }
+      }
+    },
+    {
+      "id": "M08-099",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX2-ASC01 control: a tripped budget on a CORROBORATED window (best 900) turns it WEAK (the budget demotes)",
+      "input": {
+        "kind": "state",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "promptTokens": 500,
+        "ratios": [
+          900,
+          900,
+          900,
+          900,
+          900
+        ],
+        "recent": [
+          {
+            "kept": true,
+            "ratio": 900,
+            "outBytes": 1200
+          },
+          {
+            "kept": true,
+            "ratio": 900,
+            "outBytes": 1200
+          },
+          {
+            "kept": true,
+            "ratio": 900,
+            "outBytes": 1200
+          },
+          {
+            "kept": true,
+            "ratio": 900,
+            "outBytes": 1200
+          },
+          {
+            "kept": true,
+            "ratio": 900,
+            "outBytes": 1200
+          },
+          {
+            "kept": false,
+            "ratio": 5,
+            "outBytes": 50
+          },
+          {
+            "kept": false,
+            "ratio": 5,
+            "outBytes": 50
+          },
+          {
+            "kept": false,
+            "ratio": 5,
+            "outBytes": 50
+          },
+          {
+            "kept": false,
+            "ratio": 5,
+            "outBytes": 50
+          },
+          {
+            "kept": false,
+            "ratio": 5,
+            "outBytes": 50
+          },
+          {
+            "kept": false,
+            "ratio": 5,
+            "outBytes": 50
+          }
+        ],
+        "inheritedDiscrepant": false,
+        "disc": 700,
+        "ceiling": null
+      },
+      "expect": {
+        "ok": {
+          "n": 5,
+          "ratios": [
+            900,
+            900,
+            900,
+            900,
+            900
+          ],
+          "best": 900,
+          "state": "WEAK",
+          "strikes": 0,
+          "budgetTripped": true,
+          "minRatio": 5,
+          "tracked": {
+            "prefill": 500,
+            "decodeAtP": 100,
+            "steady": 100
+          }
+        }
+      }
+    },
+    {
+      "id": "M08-100",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX2-ASC01 control: a tripped budget on an UNVERIFIED window (n = 4) is WEAK",
+      "input": {
+        "kind": "state",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "promptTokens": 500,
+        "ratios": [
+          900,
+          900,
+          900,
+          900
+        ],
+        "recent": [
+          {
+            "kept": true,
+            "ratio": 900,
+            "outBytes": 1200
+          },
+          {
+            "kept": true,
+            "ratio": 900,
+            "outBytes": 1200
+          },
+          {
+            "kept": true,
+            "ratio": 900,
+            "outBytes": 1200
+          },
+          {
+            "kept": true,
+            "ratio": 900,
+            "outBytes": 1200
+          },
+          {
+            "kept": false,
+            "ratio": 5,
+            "outBytes": 50
+          },
+          {
+            "kept": false,
+            "ratio": 5,
+            "outBytes": 50
+          },
+          {
+            "kept": false,
+            "ratio": 5,
+            "outBytes": 50
+          },
+          {
+            "kept": false,
+            "ratio": 5,
+            "outBytes": 50
+          },
+          {
+            "kept": false,
+            "ratio": 5,
+            "outBytes": 50
+          },
+          {
+            "kept": false,
+            "ratio": 5,
+            "outBytes": 50
+          }
+        ],
+        "inheritedDiscrepant": false,
+        "disc": 700,
+        "ceiling": null
+      },
+      "expect": {
+        "ok": {
+          "n": 4,
+          "ratios": [
+            900,
+            900,
+            900,
+            900
+          ],
+          "best": 900,
+          "state": "WEAK",
+          "strikes": 0,
+          "budgetTripped": true,
+          "minRatio": 5,
+          "tracked": {
+            "prefill": 500,
+            "decodeAtP": 100,
+            "steady": 100
+          }
+        }
+      }
+    },
+    {
+      "id": "M08-101",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX2-ASC01: two files of one peer are each DISCREPANT (five ratios of 500) and then each truncates six answers (budget tripped): DISCREPANT is not lifted, so the penalty latches at the 5th kept observation of the second file (7 days from 2,000), is not extended by the later discards, and disc is 400 before, during and after it (both files are still DISCREPANT)",
+      "input": {
+        "kind": "penalty",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "events": [
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 20,
+            "elapsed": 1000000,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 20,
+            "elapsed": 1000000,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 20,
+            "elapsed": 1000000,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 20,
+            "elapsed": 1000000,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 20,
+            "elapsed": 1000000,
+            "at": 1000
+          },
+          {
+            "file": "A",
+            "bytes": 20,
+            "elapsed": 1000000,
+            "at": 1000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 1200,
+            "elapsed": 39911,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 20,
+            "elapsed": 1000000,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 20,
+            "elapsed": 1000000,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 20,
+            "elapsed": 1000000,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 20,
+            "elapsed": 1000000,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 20,
+            "elapsed": 1000000,
+            "at": 2000
+          },
+          {
+            "file": "B",
+            "bytes": 20,
+            "elapsed": 1000000,
+            "at": 2000
+          }
+        ],
+        "probes": [
+          2000,
+          604801999,
+          604802000,
+          2592002000
+        ]
+      },
+      "expect": {
+        "ok": {
+          "penalty": {
+            "untilWallMs": 604802000,
+            "repeats": 1
+          },
+          "disc": [
+            400,
+            400,
+            400,
+            400
+          ]
         }
       }
     }

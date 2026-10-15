@@ -36,6 +36,14 @@ extension R3 {
         for c in v?.elements ?? [] {
             if let t = c.member("t")?.intValue, let bytes = c.member("bytes")?.intValue {
                 out.append(ContentChunk(tMs: t, bytes: bytes))
+            } else if let t = c.member("t")?.intValue, let parts = c.member("parts")?.elements {
+                // `parts` is the chunk's answer text as (text, times) pairs; the text is normalised over the whole stream (LAB_SPEC R4-L-19).
+                var text = ""
+                for part in parts {
+                    guard let piece = part.member("text")?.stringValue, let times = part.member("times")?.intValue, times >= 0 else { throw ConformanceError("chunk parts") }
+                    text += String(repeating: piece, count: Int(times))
+                }
+                out.append(ContentChunk(tMs: t, text: text))
             } else if let from = c.member("tFrom")?.intValue, let to = c.member("tTo")?.intValue, let count = c.member("count")?.intValue,
                       let each = c.member("bytesEach")?.intValue, count > 0 {
                 // `count` chunks of `bytesEach` bytes, the first at tFrom and the last at tTo, evenly spaced (floor).
@@ -80,6 +88,8 @@ extension R3 {
     static func newClaimAccepted(_ i: JValue) throws -> Bool {
         guard let at = i.member("newClaimAtMs")?.intValue else { throw ConformanceError("newClaimAtMs") }
         var gate = ClaimBodyGate()
+        // `initialClaim: false` is a window with no claim body recorded before it (LAB_SPEC R4-L-18): the new body is the first the gate sees.
+        if case .bool(false)? = i.member("initialClaim") { return gate.accept(seq: 2, atMs: at) }
         guard gate.accept(seq: 1, atMs: 0) else { throw ConformanceError("first claim body") }
         return gate.accept(seq: 2, atMs: at)
     }
