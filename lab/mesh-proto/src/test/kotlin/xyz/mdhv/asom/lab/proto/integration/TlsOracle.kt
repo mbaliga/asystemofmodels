@@ -11,6 +11,7 @@ import xyz.mdhv.asom.lab.proto.session.Ev
 import xyz.mdhv.asom.lab.proto.session.Fr
 import xyz.mdhv.asom.lab.proto.session.Frames
 import xyz.mdhv.asom.lab.proto.session.Session
+import xyz.mdhv.asom.lab.proto.session.overheadStackOf
 import xyz.mdhv.asom.lab.proto.session.Table76
 import xyz.mdhv.asom.lab.proto.trust.Scope
 
@@ -117,27 +118,55 @@ object TlsOracle {
     }
 
     /**
-     * ESTIMATED form (LAB_SPEC 7.6, r4 R4-L-25): `R x ceilDiv(app, Lmax)` per frame in either direction plus 8,192 for the handshake, with the JSSE stack
-     * (R 38, Lmax 16,367), against the record tap. The recalibrated form carries no allowance for a record excess (r3 allowed (38 - 22) x frames): the only
-     * undercount tolerated is the close_notify record each end may have sent, which the form has no term for.
+     * The record arithmetic of the stack under [conn], decided here and not read from the session layer: every connection of this harness is an SSLEngine
+     * transport, so it is JSSE. The session layer's own choice for the SSLEngine connection under the wrapper (`overheadStackOf`) must agree, which is asserted,
+     * so a session that estimates a real TLS connection with the uncalibrated form fails here.
      */
-    fun estimated(w: TlsWorld, me: Side, peer: Side, into: L15Stats) {
+    fun stackOf(conn: TappedConn): Overhead.Stack {
         val stack = Overhead.JSSE_17_21
-        pinStackToCalibration(stack)
+        val sessions = overheadStackOf(conn.inner)
+        if (sessions !== stack) fail("the session layer estimates ${conn.name} with '${sessions.label}', the transport is an SSLEngine: '${stack.label}'")
+        return stack
+    }
+
+    /** What the ESTIMATED form says about one end of a link, and what the record tap saw there. */
+    class EstimateReading(val estimate: Long, val real: Long, val flushes: Int, val lost: Long)
+
+    fun estimateReading(w: TlsWorld, me: Side, peer: Side, stack: Overhead.Stack): EstimateReading {
         val events = events(w)
         val out = events.filterIsInstance<Ev.Write>().filter { it.conn == me.conn.name }.flatMap { Frames.parse(it.bytes) }.map { it.app }
         val inn = events.filterIsInstance<Ev.Write>().filter { it.conn == peer.conn.name && peer.conn.failedWrites.none { f -> f === it.bytes } }.flatMap { Frames.parse(it.bytes) }.map { it.app }
-        val estimate = Overhead.estimated(out + inn, stack)
         val tap = me.conn.tap
         val real = tap.bytesRead + tap.bytesWritten - (me.conn.plaintextRead + me.conn.plaintextWritten)
-        val undercountAllowed = 2 * stack.closeNotify!!
-        if (estimate < real - undercountAllowed) fail("ESTIMATED overhead $estimate undercounts the tap's $real by more than the two close_notify records $undercountAllowed (${me.name})")
         // the one transport artefact tolerated: on a hard reset a Windows peer may lose the last bytes it sent, so this node's tap read less than the peer wrote
         val lost = if (windows) maxOf(0L, peer.conn.tap.bytesWritten - tap.bytesRead) else 0L
-        if (estimate - real > Overhead.HANDSHAKE_ESTIMATE_PER_SESSION + lost) fail("ESTIMATED overhead $estimate overcounts the tap's $real by more than the handshake allowance (${me.name})")
+        return EstimateReading(Overhead.estimated(out + inn, stack), real, out.size + inn.size, lost)
+    }
+
+    /**
+     * Null when the estimate fits the tap, otherwise why not. The undercount tolerated is the close_notify record each end may have sent, which the form has no term
+     * for; it is a property of the transport (JSSE, pinned by the calibration), not of the stack being tried.
+     */
+    fun estimateVerdict(r: EstimateReading, tried: Overhead.Stack, who: String): String? {
+        val undercountAllowed = 2 * Overhead.JSSE_17_21.closeNotify!!
+        if (r.estimate < r.real - undercountAllowed) return "ESTIMATED overhead ${r.estimate} undercounts the tap's ${r.real} by more than the two close_notify records $undercountAllowed ($who, ${tried.label})"
+        if (r.estimate - r.real > Overhead.HANDSHAKE_ESTIMATE_PER_SESSION + r.lost) return "ESTIMATED overhead ${r.estimate} overcounts the tap's ${r.real} by more than the handshake allowance ($who, ${tried.label})"
+        return null
+    }
+
+    /**
+     * ESTIMATED form (LAB_SPEC 7.6, r4 R4-L-25): `R x ceilDiv(app, Lmax)` per frame in either direction plus 8,192 for the handshake, with the stack of the transport
+     * (JSSE: R 38, Lmax 16,367), against the record tap. The recalibrated form carries no allowance for a record excess (r3 allowed (38 - 22) x frames). In a short
+     * run this cannot tell R 22 from R 38, because the handshake allowance is larger than the difference (ERR-R4B-LT-5); [EstimatedLongRunTest] can.
+     */
+    fun estimated(w: TlsWorld, me: Side, peer: Side, into: L15Stats) {
+        val stack = stackOf(me.conn)
+        pinStackToCalibration(stack)
+        val r = estimateReading(w, me, peer, stack)
+        estimateVerdict(r, stack, me.name)?.let { fail(it) }
         into.estimatedSessions++
-        into.maxEstimateDeviation = maxOf(into.maxEstimateDeviation, kotlin.math.abs(estimate - real))
-        into.estimateLines += "estimate $estimate real $real (${me.name})"
+        into.maxEstimateDeviation = maxOf(into.maxEstimateDeviation, kotlin.math.abs(r.estimate - r.real))
+        into.estimateLines += "estimate ${r.estimate} real ${r.real} (${me.name})"
     }
 
     // ------------------------------------------------------------------------------------------------------------ structural laws
@@ -421,7 +450,7 @@ object TlsOracle {
             into.mismatches++
             fail("L-L15: $tag: overhead $overhead is outside the RFC 8446 record bound for ${me.conn.plaintextWritten} bytes out in $flushesOut writes and ${me.conn.plaintextRead} bytes in")
         }
-        val stack = Overhead.JSSE_17_21
+        val stack = stackOf(me.conn)
         pinStackToCalibration(stack)
         val flushes = events(w).filterIsInstance<Ev.Write>().filter { it.conn == me.conn.name || it.conn == peerConn.name }.map { it.bytes.size.toLong() }
         val formCeiling = Overhead.estimated(flushes, stack) + 2 * stack.closeNotify!!

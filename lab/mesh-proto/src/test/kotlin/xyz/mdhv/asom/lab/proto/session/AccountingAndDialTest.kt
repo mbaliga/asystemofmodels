@@ -8,9 +8,18 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import xyz.mdhv.asom.lab.ledger.LedgerUnavailableException
 import xyz.mdhv.asom.lab.ledger.MeshKind
+import xyz.mdhv.asom.lab.ledger.Overhead
 import xyz.mdhv.asom.lab.ledger.OverheadBasis
 import xyz.mdhv.asom.lab.ledger.Phase
+import xyz.mdhv.asom.lab.proto.tls.HonestNode
+import xyz.mdhv.asom.lab.proto.tls.Loop
+import xyz.mdhv.asom.lab.proto.tls.TlsMeshConnection
+import xyz.mdhv.asom.lab.proto.tls.both
+import xyz.mdhv.asom.lab.proto.tls.value
+import xyz.mdhv.asom.lab.proto.transport.MeshConnection
+import xyz.mdhv.asom.lab.proto.wire.FrameTypes
 import xyz.mdhv.asom.lab.proto.wire.GoAwayReason
+import xyz.mdhv.asom.lab.proto.wire.RawFrame
 
 /** Transport accounting (L-L15 as far as it can be proven without TLS), the DIAL rows (L-L14), and the honest-honest registry paths. */
 class AccountingAndDialTest {
@@ -77,6 +86,86 @@ class AccountingAndDialTest {
         assertEquals(records, close[1].overheadBytes)
         val counts = RunOracle(w.log, w, strict = true).checkAll()
         assertEquals(0, counts.measuredSessions, "ESTIMATED sessions are excluded from the L-L15 equality, never counted as MEASURED")
+    }
+
+    /**
+     * R4-L-25 / ERR-R4B-LT-3: the ESTIMATED figure of the session layer is the form of the stack the connection runs on. Over a real JSSE pair (38 bytes per record,
+     * 16,367 plaintext bytes per record) the wire's figure is 38 x ceilDiv(app, 16367) per frame in either direction; the hard-coded literals below are the
+     * expectation and the record tap of the socket is the independent instrument. The payload sizes straddle both limits: 16,360 is one record at 16,384 and two at 16,367.
+     */
+    @Test
+    fun aWireOverRealTlsEstimatesWithTheJsseStackAndTheRecordTapAgrees() {
+        val payloads = listOf(0, 1, 100, 16_000, 16_350, 16_360, 16_400, 40_000, 70_000)
+        val frames = payloads.mapIndexed { i, n -> RawFrame(FrameTypes.INFER_BODY, 1L + 2 * i, ByteArray(n) { (it + i).toByte() }) }
+        val appSizes = frames.map { 9L + it.payload.size }
+        val jsseRecords = listOf(1, 1, 1, 1, 1, 2, 2, 3, 5)
+        assertEquals(jsseRecords, appSizes.map { ((it + 16_366L) / 16_367L).toInt() }, "the literal record counts follow ceilDiv(app, 16367)")
+        val total = appSizes.sum()
+        val (a, b) = HonestNode.pairedPair()
+        val (cc, sc) = Loop.pair()
+        var clientWire: Wire? = null
+        var serverWire: Wire? = null
+        var clientRecordBytes = -1L
+        var serverRecordBytes = -1L
+        val (ca, sa) = both(
+            {
+                val at = a.dialPaired(cc, b.pin)
+                val conn: TlsMeshConnection = at.end.value
+                val wire = Wire(conn)
+                clientWire = wire
+                val before = at.tap.bytesWritten
+                try {
+                    frames.forEach { wire.write(it) }
+                } catch (t: Throwable) {
+                    conn.close()
+                    throw t
+                }
+                clientRecordBytes = at.tap.bytesWritten - before - wire.output.count
+                at
+            },
+            {
+                val at = b.accept(sc)
+                val conn: TlsMeshConnection = at.end.value
+                val wire = Wire(conn)
+                serverWire = wire
+                val before = at.tap.bytesRead
+                val buf = ByteArray(65_536)
+                var got = 0L
+                while (got < total) {
+                    val n = wire.input.read(buf, 0, buf.size)
+                    check(n > 0) { "stream ended after $got of $total bytes" }
+                    got += n
+                }
+                appSizes.forEach { wire.noteReceived(it) }
+                serverRecordBytes = at.tap.bytesRead - before - wire.input.count
+                at
+            },
+        )
+        ca.value.end.value.close()
+        sa.value.end.value.close()
+        assertEquals(total, clientWire!!.output.count)
+        assertEquals(38L * jsseRecords.sum(), clientWire!!.estimatedRecordBytes, "writer side: 38 x ceilDiv(app, 16367) per frame")
+        assertEquals(38L * jsseRecords.sum(), serverWire!!.estimatedRecordBytes, "reader side counts the same frames through noteReceived")
+        assertEquals(clientRecordBytes, clientWire!!.estimatedRecordBytes, "the record tap saw exactly the records the form counted (writer)")
+        assertEquals(serverRecordBytes, serverWire!!.estimatedRecordBytes, "the record tap saw exactly the records the form counted (reader)")
+    }
+
+    private class ReportingConn(val inner: MemConnection, override val overheadStack: Overhead.Stack) : MeshConnection by inner, ReportsOverheadStack
+
+    /** The in-memory connection is an unknown stack and stays on the RFC 8446 floor (22 / 16,384); a connection that reports a stack is estimated with it. */
+    @Test
+    fun theStackOfTheEstimatedFormFollowsTheConnection() {
+        val w = World(11)
+        val frame = RawFrame(FrameTypes.INFER_BODY, 1, ByteArray(16_360))
+        fun figure(conn: MeshConnection): Long = Wire(conn).also { it.write(frame) }.estimatedRecordBytes
+        fun mem() = MemConnection.pair(w.b.pin, w.a.pin, null, "x", "y", measured = false).first
+
+        assertEquals(Overhead.UNCALIBRATED, overheadStackOf(mem()))
+        assertEquals(22L, figure(mem()), "16,369 application bytes are one record at 16,384")
+        assertEquals(22L, figure(ReportingConn(mem(), Overhead.UNCALIBRATED)))
+        assertEquals(76L, figure(ReportingConn(mem(), Overhead.JSSE_17_21)), "two records at 38 bytes, because a JSSE record carries at most 16,367")
+        val received = Wire(ReportingConn(mem(), Overhead.JSSE_17_21)).also { it.noteReceived(16_369) }.estimatedRecordBytes
+        assertEquals(76L, received, "the inbound frames of the session are counted with the same stack")
     }
 
     // ------------------------------------------------------------------------------------------------------------ DIAL

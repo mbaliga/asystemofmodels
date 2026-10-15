@@ -3,7 +3,7 @@ package xyz.mdhv.asom.lab.proto.session
 import java.io.InputStream
 import java.io.OutputStream
 import xyz.mdhv.asom.lab.ledger.Overhead
-import xyz.mdhv.asom.lab.ledger.ceilDiv
+import xyz.mdhv.asom.lab.proto.tls.TlsMeshConnection
 import xyz.mdhv.asom.lab.proto.transport.MeshConnection
 import xyz.mdhv.asom.lab.proto.wire.FrameDecoder
 import xyz.mdhv.asom.lab.proto.wire.FrameEncoder
@@ -12,6 +12,21 @@ import xyz.mdhv.asom.lab.proto.wire.WireLimits
 
 /** Application bytes of one frame: the 9-byte header plus the payload (LAB_SPEC 7.1). Every row counts through this function. */
 internal fun appBytes(f: RawFrame): Long = WireLimits.HEADER_BYTES.toLong() + f.payload.size
+
+/**
+ * A connection that knows the record arithmetic of the stack under it (R4-L-25, ERR-R4B-LT-3). A wrapper that is not itself a [TlsMeshConnection] but runs over
+ * one reports it here; a transport that reports nothing is an unknown stack.
+ */
+internal interface ReportsOverheadStack {
+    val overheadStack: Overhead.Stack
+}
+
+/** The stack of the ESTIMATED form for [conn]: what it reports, JSSE for the SSLEngine transport, else the RFC 8446 floor ([Overhead.UNCALIBRATED]). */
+internal fun overheadStackOf(conn: MeshConnection): Overhead.Stack = when (conn) {
+    is ReportsOverheadStack -> conn.overheadStack
+    is TlsMeshConnection -> Overhead.JSSE_17_21
+    else -> Overhead.UNCALIBRATED
+}
 
 /** Counts the plaintext bytes that cross the stream boundary. It sits between the session and the transport and reads nothing the row writer produces. */
 internal class CountingIn(private val inner: InputStream) : InputStream() {
@@ -59,6 +74,7 @@ internal class Wire(val conn: MeshConnection) {
     val input = CountingIn(conn.input)
     val output = CountingOut(conn.output)
     val decoder = FrameDecoder(conn.role, conn.mode)
+    val stack: Overhead.Stack = overheadStackOf(conn)
     private val firstCounters = conn.counters()
     val measured: Boolean = firstCounters.measured
     val handshakeNetwork: Long = firstCounters.networkBytesIn + firstCounters.networkBytesOut
@@ -77,11 +93,11 @@ internal class Wire(val conn: MeshConnection) {
         val bytes = FrameEncoder.encode(frame)
         output.write(bytes, 0, bytes.size)
         output.flush()
-        estimatedRecordBytes += Overhead.TLS_RECORD_OVERHEAD * ceilDiv(appBytes(frame), Overhead.MAX_PLAINTEXT)
+        estimatedRecordBytes += Overhead.estimatedRecords(listOf(appBytes(frame)), stack)
     }
 
     fun noteReceived(frameAppBytes: Long) {
-        estimatedRecordBytes += Overhead.TLS_RECORD_OVERHEAD * ceilDiv(frameAppBytes, Overhead.MAX_PLAINTEXT)
+        estimatedRecordBytes += Overhead.estimatedRecords(listOf(frameAppBytes), stack)
     }
 
     fun kill() {
