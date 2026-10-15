@@ -119,16 +119,25 @@ class LiveStateTest {
     fun theStaleSubstitutionAppliedLiterally() {
         val stale = Freshness.STALE
         assertEquals(Staleness.Fast(0, 0, BatteryBand.GE80), Staleness.fastFields(stale, doc(0, 0, BatteryBand.GE80, "ac")))
-        assertEquals(Staleness.Fast(1, 2, BatteryBand.GE80), Staleness.fastFields(stale, doc(1, 1, BatteryBand.GE80, "ac")), "queue: min(2, last + 1)")
+        assertEquals(Staleness.Fast(2, 2, BatteryBand.GE80), Staleness.fastFields(stale, doc(1, 1, BatteryBand.GE80, "ac")), "thermal and queue: min(2, last + 1)")
         assertEquals(Staleness.Fast(2, 2, BatteryBand.GE80), Staleness.fastFields(stale, doc(2, 2, BatteryBand.GE80, "ac")))
-        assertEquals(Staleness.Fast(1, 0, BatteryBand.B50_79), Staleness.fastFields(stale, doc(1, 0, BatteryBand.GE80, "battery")), "on battery: one band lower")
+        assertEquals(Staleness.Fast(2, 0, BatteryBand.B50_79), Staleness.fastFields(stale, doc(1, 0, BatteryBand.GE80, "battery")), "on battery: one band lower")
         assertEquals(Staleness.Fast(0, 0, BatteryBand.LT20), Staleness.fastFields(stale, doc(0, 0, BatteryBand.LT20, "battery")), "saturates at lt20")
         assertEquals(Staleness.Fast(0, 0, null), Staleness.fastFields(stale, doc(0, 0, null, "battery")))
         assertEquals(Staleness.Fast(2, 1, BatteryBand.B20_49), Staleness.fastFields(Freshness.WARM, doc(2, 1, BatteryBand.B20_49, "battery")), "WARM passes the received values")
         assertNull(Staleness.fastFields(Freshness.EXPIRED, doc(0, 0, null, "ac")))
         assertTrue(Staleness.probeOnly(Freshness.EXPIRED) && !Staleness.probeOnly(Freshness.STALE))
-        // ERR-LP-5: for the thermal band, max(last, 1) if last >= 1 changes nothing.
-        for (tb in 0..2) assertEquals(tb, Staleness.fastFields(stale, doc(tb, 0, null, "ac"))!!.thermalBand)
+    }
+
+    @Test
+    fun theStaleSubstitutionRaisesThermalAndQueueByOneBandCappedAtTwo() {
+        // R4-L-17 (ERR-LP-5 corrected): thermalBand = min(2, last + 1) if last >= 1, the same rule as queueBucket; 0 stays 0.
+        val stale = Freshness.STALE
+        for ((last, expected) in listOf(0 to 0, 1 to 2, 2 to 2)) {
+            assertEquals(expected, Staleness.fastFields(stale, doc(last, 0, null, "ac"))!!.thermalBand, "thermal $last")
+            assertEquals(expected, Staleness.fastFields(stale, doc(0, last, null, "ac"))!!.queueBucket, "queue $last")
+        }
+        for (f in listOf(Freshness.FRESH, Freshness.WARM)) for (tb in 0..2) assertEquals(tb, Staleness.fastFields(f, doc(tb, 0, null, "ac"))!!.thermalBand, "$f passes thermal through")
     }
 
     @Test

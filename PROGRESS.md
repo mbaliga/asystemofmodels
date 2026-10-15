@@ -2338,3 +2338,20 @@ node tests 129 skipped 0 failed 0 ; node-core tests 76 skipped 0 failed 0   (sum
 BUILD SUCCESSFUL
 ```
 Baselines were winplatform 153 tests, macplatform 150. Also: `python3 lab/tools/isolation.py` check 4 `OK (shipped tree byte-identical to the pinned base)`; `python3 lab/tools/check_law.py` `law: OK`; `desktop/tools/isolation.sh` `ISOLATION: all checks passed` (includes `workflow-law: OK` over 4 files and its selftest); `check_eol.py` `OK`; `check_paths.py` `0 problems`; root `./gradlew jvmTest` `BUILD SUCCESSFUL`, 140 tests, 0 failed, 0 skipped (results came from the build cache, counted from the XML). Not run: any hosted workflow, a real Windows or macOS machine, the lab and Swift suites (untouched).
+
+## Design revision 4 builder action 5 (track build-thermal)
+
+Thermal substitution `min(2, last + 1)` for STALE (LAB_SPEC R4-L-17; readings in `lab/ERRATA.md` ERR-R4B-TH-1, closing ERR-R4B-LT-1). Changed: `lab/mesh-policy` `Staleness.fastFields` and `LiveStateTest`; `gen_vectors.py`, `xcheck_policy.py`; `lab/conformance/policy/W07-live-state.json` (W07-075 regenerated, W07-081 and W07-082 added, 67 to 69 vectors); `INDEX.json` (W07 digest only). Swift lane: no staleness code, unchanged.
+
+Failing before (JDK 21, `./gradlew -p lab --max-workers=2 :mesh-policy:test :conformance-runner:test --continue`, new tests and vectors, unchanged `Staleness.kt`): `LiveStateTest > theStaleSubstitutionRaisesThermalAndQueueByOneBandCappedAtTwo() FAILED ... thermal 1 ==> expected: <2> but was: <1>`; `FAIL W07-075` and `FAIL W07-081` (`thermalBand` 2 expected, 1 observed); `33 tests completed, 2 failed`; `2309 tests completed, 2 failed, 7 skipped`.
+
+Real output after (LAB / CI-APPROX, NOT DEVICE EVIDENCE):
+```
+$ ./gradlew -p lab --max-workers=2 :mesh-policy:test :mesh-router:test :conformance-runner:test --continue   (JDK 21)  -> BUILD SUCCESSFUL
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab ... --rerun-tasks   (JDK 17)  -> BUILD SUCCESSFUL; summed XML of the three modules: 2406 tests, 0 failures, 7 skipped (the existing W00 PROPOSED skips and RegenerateVectors)
+$ python3 lab/tools/xcheck.py -> xcheck W07: 69 agree, 0 disagree ; xcheck L01: 56 agree ; xcheck W07p: 97 agree
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py -> law: OK
+$ ./gradlew jvmTest --max-workers=2 --offline -> BUILD SUCCESSFUL; 140 tests, 0 failures (core/* and server XML)
+```
+Mutation checks (break `Staleness.fastFields`, run `:mesh-policy:test :conformance-runner:test`, see red, restore): no cap (`d.thermalBand + 1`): both LiveStateTest tests and W07-082 fail; no `>= 1` guard: both LiveStateTest tests and W07-076, -079, -080 fail; the r3 `max(last, 1)` no-op: both LiveStateTest tests and W07-075, -081 fail. The restored tree is the one measured above.

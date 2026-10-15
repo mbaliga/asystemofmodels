@@ -1180,7 +1180,7 @@
       "origin": "hand",
       "status": "normative",
       "oracle": "self",
-      "description": "STALE: queue min(2, 1 + 1) = 2, battery band one lower (ge80 to 50-79) on battery, thermal band unchanged (ERR-LP-5)",
+      "description": "STALE: thermal and queue min(2, 1 + 1) = 2 (R4-L-17), battery band one lower (ge80 to 50-79) on battery",
       "input": {
         "kind": "staleness",
         "nowMonoMs": 50000,
@@ -1203,7 +1203,7 @@
           "ageMs": 40000,
           "probeOnly": false,
           "fast": {
-            "thermalBand": 1,
+            "thermalBand": 2,
             "queueBucket": 2,
             "batteryBand": "50-79"
           }
@@ -1377,6 +1377,76 @@
             "thermalBand": 0,
             "queueBucket": 0,
             "batteryBand": null
+          }
+        }
+      }
+    },
+    {
+      "id": "W07-081",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "STALE, thermal band 1 with a quiet queue: thermal min(2, 1 + 1) = 2 alone, queue 0 stays 0 (R4-L-17)",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 50000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false,
+        "state": {
+          "thermalBand": 1,
+          "queueBucket": 0,
+          "batteryBand": "ge80",
+          "powerSource": "ac"
+        }
+      },
+      "expect": {
+        "ok": {
+          "class": "STALE",
+          "ageMs": 40000,
+          "probeOnly": false,
+          "fast": {
+            "thermalBand": 2,
+            "queueBucket": 0,
+            "batteryBand": "ge80"
+          }
+        }
+      }
+    },
+    {
+      "id": "W07-082",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "STALE, thermal band 2 and queue 2 are capped at 2 (R4-L-17)",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 50000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false,
+        "state": {
+          "thermalBand": 2,
+          "queueBucket": 2,
+          "batteryBand": "ge80",
+          "powerSource": "ac"
+        }
+      },
+      "expect": {
+        "ok": {
+          "class": "STALE",
+          "ageMs": 40000,
+          "probeOnly": false,
+          "fast": {
+            "thermalBand": 2,
+            "queueBucket": 2,
+            "batteryBand": "ge80"
           }
         }
       }

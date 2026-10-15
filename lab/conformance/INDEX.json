@@ -73,7 +73,7 @@
   },
   {
     "path": "policy/W07-live-state.json",
-    "sha256": "3a709ed14f45d5b5703eeb8fae0ddfd6ac9df4c15d463cf86cc315fa76bfa3a1",
+    "sha256": "29be00a8e92044a2de038253979a13c9259420e0cafa7205796f703d319a0607",
     "family": "W07",
     "status": "normative"
   },

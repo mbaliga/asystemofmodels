@@ -50,14 +50,14 @@ object Staleness {
     data class Fast(val thermalBand: Int, val queueBucket: Int, val batteryBand: BatteryBand?)
 
     /**
-     * LAB_SPEC 6.5, literally: for STALE, `thermalBand = max(last, 1) if last >= 1` (which leaves it unchanged, ERRATA ERR-LP-5: the rule as written is a no-op),
-     * `queueBucket = min(2, last + 1) if last >= 1`, `batteryBand` one band lower if on battery. FRESH and WARM pass the received values; EXPIRED returns null.
+     * LAB_SPEC 6.5 as amended by R4-L-17: for STALE, `thermalBand = min(2, last + 1) if last >= 1` (r3's `max(last, 1)` was a no-op, ERRATA ERR-LP-5) and the same
+     * rule for `queueBucket`, `batteryBand` one band lower if on battery. FRESH and WARM pass the received values; EXPIRED returns null.
      */
     fun fastFields(f: Freshness, d: StateDoc): Fast? = when (f) {
         Freshness.FRESH, Freshness.WARM -> Fast(d.thermalBand, d.queueBucket, d.batteryBand)
         Freshness.EXPIRED -> null
         Freshness.STALE -> Fast(
-            thermalBand = if (d.thermalBand >= 1) maxOf(d.thermalBand, 1) else d.thermalBand,
+            thermalBand = if (d.thermalBand >= 1) minOf(2, d.thermalBand + 1) else d.thermalBand,
             queueBucket = if (d.queueBucket >= 1) minOf(2, d.queueBucket + 1) else d.queueBucket,
             batteryBand = if (d.powerSource == "battery") d.batteryBand?.lower() else d.batteryBand,
         )

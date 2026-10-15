@@ -333,9 +333,9 @@ W07 += [
     vec("W07-073", "an equal seq is a repeat, not a reset (ERR-LP-4)", stale(R, R, 0, seq=5, last=5), cls("FRESH", 0)),
     vec("W07-074", "a GOAWAY since the state: EXPIRED", stale(R, R, 0, goaway=True), cls("EXPIRED", 0, True)),
     vec(
-        "W07-075", "STALE: queue min(2, 1 + 1) = 2, battery band one lower (ge80 to 50-79) on battery, thermal band unchanged (ERR-LP-5)",
+        "W07-075", "STALE: thermal and queue min(2, 1 + 1) = 2 (R4-L-17), battery band one lower (ge80 to 50-79) on battery",
         stale(R + 40_000, R, 0, state={"thermalBand": 1, "queueBucket": 1, "batteryBand": "ge80", "powerSource": "battery"}),
-        cls("STALE", 40_000, False, {"thermalBand": 1, "queueBucket": 2, "batteryBand": "50-79"}),
+        cls("STALE", 40_000, False, {"thermalBand": 2, "queueBucket": 2, "batteryBand": "50-79"}),
     ),
     vec(
         "W07-076", "STALE on AC with quiet fields: nothing changes", stale(R + 40_000, R, 0, state={"thermalBand": 0, "queueBucket": 0, "batteryBand": "ge80", "powerSource": "ac"}),
@@ -356,6 +356,16 @@ W07 += [
     vec(
         "W07-080", "STALE, unknown battery band stays unknown", stale(R + 40_000, R, 0, state={"thermalBand": 0, "queueBucket": 0, "batteryBand": None, "powerSource": "battery"}),
         cls("STALE", 40_000, False, {"thermalBand": 0, "queueBucket": 0, "batteryBand": None}),
+    ),
+    vec(
+        "W07-081", "STALE, thermal band 1 with a quiet queue: thermal min(2, 1 + 1) = 2 alone, queue 0 stays 0 (R4-L-17)",
+        stale(R + 40_000, R, 0, state={"thermalBand": 1, "queueBucket": 0, "batteryBand": "ge80", "powerSource": "ac"}),
+        cls("STALE", 40_000, False, {"thermalBand": 2, "queueBucket": 0, "batteryBand": "ge80"}),
+    ),
+    vec(
+        "W07-082", "STALE, thermal band 2 and queue 2 are capped at 2 (R4-L-17)",
+        stale(R + 40_000, R, 0, state={"thermalBand": 2, "queueBucket": 2, "batteryBand": "ge80", "powerSource": "ac"}),
+        cls("STALE", 40_000, False, {"thermalBand": 2, "queueBucket": 2, "batteryBand": "ge80"}),
     ),
 ]
 
