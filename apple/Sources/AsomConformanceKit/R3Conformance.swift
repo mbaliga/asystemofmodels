@@ -434,7 +434,12 @@ public enum R3 {
                 batteryTempDeciC: thermal?.member("batteryTempDeciC")?.intValue, powerSource: power?.member("source")?.stringValue ?? "",
                 batteryLevelPermille: power?.member("level")?.intValue, lowPowerMode: lowPower, gpuBusyHeldMs: i.member("gpuBusyHeldMs")?.intValue ?? 0
             )
-            return .ok(.object(["ceiling": .string(try Ceilings.evaluate(inputs).text)]))
+            do {
+                return .ok(.object(["ceiling": .string(try Ceilings.evaluate(inputs).text)]))
+            } catch is UnknownCeilingPlatform {
+                // R4-B-02: a platform with no 11.3 row is refused; the lab's code for it is NO_CEILING_ROW.
+                return .reject(RejectCode("NO_CEILING_ROW"))
+            }
         case "consent":
             return try observeConsent(v.input, id: v.id)
         default:
@@ -456,14 +461,30 @@ public enum R3 {
         )
         let text = ConsentSheet.text(inputs)
         let shown: [UInt8] = confirm == "match" ? ConsentSheet.textSha256(text) : [UInt8](repeating: 0, count: 32)
+        // R4-B-07: the ticks travel with the vector; without a `ticks` member the caller reports none.
+        var ticks: ConsentTicks?
+        if let t = i.member("ticks") {
+            var rerun = false
+            if case let .bool(b)? = t.member("rerunHeatToday") { rerun = b }
+            ticks = ConsentTicks(optIns: Set((t.member("optIns")?.elements ?? []).compactMap { $0.stringValue }), rerunHeatToday: rerun)
+        }
+        var reportText = true
+        if case let .bool(b)? = i.member("reportText") { reportText = b }
         var gate = ConsentGate()
-        guard case let .success(token) = gate.confirm(sheetFor: inputs, shownSha256: shown, nowMs: mint) else { return .reject(RejectCode("CONSENT_REFUSED")) }
+        guard case let .success(token) = gate.confirm(sheetFor: inputs, shownSha256: shown, nowMs: mint, ticks: ticks) else { return .reject(RejectCode("CONSENT_REFUSED")) }
         let spend = i.member("consumePlan")?.stringValue ?? plan
         var outcome = gate.consume(token, plan: spend, nowMs: consume)
         if twice, case .success = outcome { outcome = gate.consume(token, plan: spend, nowMs: consume) }
         guard case .success = outcome else { return .reject(RejectCode("CONSENT_REFUSED")) }
-        guard ConsentSheet.wordingIsSpecified(inputs) else { return .notImplemented("consent-text-unspecified") }
-        return .ok(.object(["textSha256": .string(NodeIdentity.sha256Hex(Array(text.utf8))), "outcome": .string("consumed")]))
+        // Only the standard sheet's wording is the spec's (R4-B-07): its hash is reported when asked for and is comparable; for any other sheet the
+        // vector must leave the hash out (`reportText: false`) or this lane does not produce it.
+        guard !reportText || ConsentSheet.wordingIsSpecified(inputs) else { return .notImplemented("consent-text-unspecified") }
+        var members: [JMember] = []
+        if reportText { members.append(JMember(name: "textSha256", value: .string(NodeIdentity.sha256Hex(Array(text.utf8))))) }
+        members.append(JMember(name: "outcome", value: .string("consumed")))
+        members.append(JMember(name: "optIns", value: .strings(token.optIns.sorted())))
+        members.append(JMember(name: "heatTestPermitted", value: .bool(token.heatTestPermitted)))
+        return .ok(.object(members))
     }
 
     static func sustainJSON(_ s: SustainResult) -> JValue {

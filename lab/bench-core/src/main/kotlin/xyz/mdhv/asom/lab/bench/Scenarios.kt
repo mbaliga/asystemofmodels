@@ -64,7 +64,7 @@ object Scenarios {
     /** Builds the fake host and the session options from a scenario description. Unknown members are errors: a typo must not silently pass. */
     fun parse(v: JValue): Pair<FakeConfig, Pair<RunPlan, SessionOptions>> {
         val o = v as JObject
-        val known = setOf("preset", "plan", "optIn", "injections", "heat", "daemon", "power", "virtualized", "memAvail", "thermalAvailable", "spins", "oomTiers", "modelsPresent", "shell", "allowVirtual", "sustainedToday", "startCode", "jitterPermille", "seed", "handheld", "batterySaver", "epochStartMs")
+        val known = setOf("preset", "plan", "optIn", "injections", "heat", "daemon", "power", "virtualized", "memAvail", "thermalAvailable", "spins", "oomTiers", "modelsPresent", "shell", "allowVirtual", "sustainedToday", "startCode", "jitterPermille", "seed", "handheld", "batterySaver", "epochStartMs", "platform", "rerunHeatToday")
         val extra = o.members.map { it.first }.filter { it !in known }
         require(extra.isEmpty()) { "unknown scenario member(s) $extra" }
         val planId = v.member("plan")!!.str()
@@ -91,9 +91,21 @@ object Scenarios {
         v.member("injections")?.let { arr ->
             cfg = cfg.copy(injections = cfg.injections + (arr as JArray).items.map { i -> Injection(i.member("atMs")!!.long(), i.member("kind")!!.str(), i.member("value")?.long() ?: 0L) })
         }
-        val optIn = (v.member("optIn") as? JArray)?.items?.map { it.str() } ?: emptyList()
-        val opts = SessionOptions(optIn, (v.member("allowVirtual") as? JBool)?.value ?: false, (v.member("sustainedToday") as? JBool)?.value ?: false)
+        v.member("platform")?.let { cfg = cfg.copy(device = cfg.device.copy(platform = it.str())) }
+        val opts = SessionOptions((v.member("allowVirtual") as? JBool)?.value ?: false)
         return cfg to (plan to opts)
+    }
+
+    /**
+     * The sheet a scenario's user was shown and what they ticked on it. `optIn` names are ticked on a sheet that offers the 8B tier;
+     * `sustainedToday` makes the sheet carry the rerun tick, which is ticked only when `rerunHeatToday` is true (R4-B-07).
+     */
+    fun consentFor(v: JValue, plan: RunPlan, nowMs: Long): ConsentToken {
+        val optIn = (v.member("optIn") as? JArray)?.items?.map { it.str() }?.toSet() ?: emptySet()
+        val today = (v.member("sustainedToday") as? JBool)?.value ?: false
+        val rerun = (v.member("rerunHeatToday") as? JBool)?.value ?: false
+        val sheet = ConsentSheet.forPlan(plan, 0L, emptyList(), optIn.isNotEmpty(), today)
+        return sheet.confirm(sheet.textSha256, nowMs, ConsentTicks(optIn, rerun))
     }
 
     /** What a trace vector pins: the ordered event log, the outcome and the SHA-256 of the produced document's JCS bytes. */
@@ -104,8 +116,7 @@ object Scenarios {
         val (plan, opts) = pack
         val host = FakeHost(cfg)
         val set = BenchSets.Q1
-        val sheet = ConsentSheet.forPlan(plan, 0L, emptyList(), false, false)
-        val token = sheet.confirm(sheet.textSha256, host.epochMillis())
+        val token = consentFor(v, plan, host.epochMillis())
         val session = BenchSession(host, plan, set, token, opts)
         host.onStop = { session.stop() }
         val out = session.run()

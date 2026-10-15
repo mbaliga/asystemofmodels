@@ -55,21 +55,22 @@ public enum Ceilings {
     public static let hardBatteryLevelPermille: Int64 = 200
     public static let gpuBusyHardMs: Int64 = 10_000
 
-    /// The strongest ceiling that applies: hard before soft; among hard ones, thermal first, then battery, then the rest (the spec
-    /// does not order simultaneous ceilings, ERRATA E-32). A platform that 11.3 has no row for (windows, ubuntu-touch) is refused, not mapped
-    /// to another row (ERR-FX2-ASC05).
+    /// The strongest ceiling that applies: hard before soft; among hard ones, thermal first, then battery (temperature, then level), then the
+    /// rest (R4-B-02). A level under 200 permille is `BATTERY_LOW` and Low Power Mode is `POWER_SAVER` (R4-B-01). A platform that 11.3 has no
+    /// row for (windows, ubuntu-touch) is refused, not mapped to another row (R4-B-02, ERR-FX2-ASC05).
     public static func evaluate(_ i: CeilingInputs) throws -> Ceiling {
         switch i.platform {
         case "android":
             if i.thermalCode >= 3 { return .hard("THERMAL_HARD") }
             if let t = i.batteryTempDeciC, t >= androidHardBatteryDeciC { return .hard("BATTERY_TEMP") }
-            if let level = i.batteryLevelPermille, level < hardBatteryLevelPermille { return .hard("BATTERY_TEMP") }
+            if let level = i.batteryLevelPermille, level < hardBatteryLevelPermille { return .hard("BATTERY_LOW") }
             if let h = i.headroomPermille, h >= androidSoftHeadroomPermille { return .soft("THERMAL_SOFT") }
             if let t = i.batteryTempDeciC, t >= androidSoftBatteryDeciC { return .soft("THERMAL_SOFT") }
             return .none
         case "ios", "ipados":
-            if i.thermalCode >= 3 || i.lowPowerMode { return .hard("THERMAL_HARD") }
-            if let level = i.batteryLevelPermille, level < hardBatteryLevelPermille { return .hard("BATTERY_TEMP") }
+            if i.thermalCode >= 3 { return .hard("THERMAL_HARD") }
+            if let level = i.batteryLevelPermille, level < hardBatteryLevelPermille { return .hard("BATTERY_LOW") }
+            if i.lowPowerMode { return .hard("POWER_SAVER") }
             return .none
         case "macos":
             if i.thermalCode >= 4 { return .hard("THERMAL_HARD") }

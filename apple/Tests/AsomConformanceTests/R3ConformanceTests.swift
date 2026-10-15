@@ -118,16 +118,16 @@ final class R3ConformanceTests: XCTestCase {
                      "M04/test", "M04/sustain", "M04/percentile", "M04/doc", "M04/plan", "M04/consent", "M04/fsm", "M04/ceilings", "M04/pins", "M08/evaluate", "M08/sequence", "M08/state", "M08/claimBody", "M08/inherit", "M08/claimBudget", "M08/penalty", "M08/disc", "M05/manifest", "M05/export", "M05/body", "M05/mlperf", "M06/q2", "M06/public", "M06/fileProjection"] {
             XCTAssertGreaterThan(perKind[kind] ?? 0, 0, "kind \(kind) exercised no vector")
         }
-        XCTAssertEqual(Set(skipped.keys), ["M04/trace", "M04/plan", "M04/consent"],
-                       "the only vectors this lane does not run: the executor traces, the plans the spec gives no data for, and the consent sheet whose wording it does not give; the four M08 tracker kinds the JVM router fix group added (ERR-FX-RT-3/4/8) are run (apple/ERRATA.md ERR-FX-M08-1)")
+        XCTAssertEqual(Set(skipped.keys), ["M04/trace", "M04/consent"],
+                       "the only vectors this lane does not run: the executor traces and the consent sheet whose wording it does not give (the quick and ci plans are run since r4, R4-B-06); the four M08 tracker kinds the JVM router fix group added (ERR-FX-RT-3/4/8) are run (apple/ERRATA.md ERR-FX-M08-1)")
         for kind in ["M08/inherit", "M08/claimBudget", "M08/penalty", "M08/disc"] { XCTAssertNil(skipped[kind], "\(kind) is run now") }
-        XCTAssertEqual(skipped["M04/trace"], 26)
-        XCTAssertEqual(skipped["M04/plan"], 2)
+        XCTAssertEqual(skipped["M04/trace"], 32, "26 before r4 plus the six r4 traces (M04-313..315, M04-326..328)")
+        XCTAssertNil(skipped["M04/plan"], "quick and ci are run now (R4-B-06)")
         XCTAssertEqual(skipped["M04/consent"], 1)
-        XCTAssertEqual(perKind["M04/plan"], 1)
-        XCTAssertEqual(perKind["M04/consent"], 5)
+        XCTAssertEqual(perKind["M04/plan"], 3)
+        XCTAssertEqual(perKind["M04/consent"], 10, "5 before r4 plus M04-419 and M04-426..429 (R4-B-07)")
         XCTAssertEqual(perKind["M04/fsm"], 1)
-        XCTAssertEqual(perKind["M04/ceilings"], 9)
+        XCTAssertEqual(perKind["M04/ceilings"], 19, "9 before r4 plus M04-449..458 (R4-B-01, R4-B-02)")
         XCTAssertEqual(perKind["M04/pins"], 1)
         XCTAssertEqual(perKind["M08/evaluate"], 40)
         XCTAssertEqual(perKind["M08/sequence"], 26)

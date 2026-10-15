@@ -181,14 +181,24 @@ object M04Vectors {
     private fun consent(input: JValue): M04Observation {
         val plan = RunPlans.byId(input.req("plan").s()) ?: throw VectorShapeError("unknown plan")
         val sheet = ConsentSheet.forPlan(plan, input.req("downloadBytes").l(), input.req("tiers").strs(), input.req("t3OptInOffered").b(), input.req("sustainedToday").b())
+        val ticks = input.m("ticks")?.let { t -> ConsentTicks(t.m("optIns")?.strs()?.toSet() ?: emptySet(), t.m("rerunHeatToday")?.b() ?: false) }
+        val laws = mutableListOf("consent")
+        if (ticks != null) laws += "consent-ticks"
         return try {
             val shown = if (input.req("confirm").s() == "match") sheet.textSha256 else sheet.textSha256.copyOf().also { it[0] = (it[0].toInt() xor 1).toByte() }
-            val token = sheet.confirm(shown, input.req("mintNowMs").l())
+            val token = sheet.confirm(shown, input.req("mintNowMs").l(), ticks)
             token.consume(input.m("consumePlan")?.s() ?: plan.plan, input.req("consumeNowMs").l())
             if (input.m("consumeTwice")?.b() == true) token.consume(plan.plan, input.req("consumeNowMs").l())
-            M04Observation.Ok(jo("textSha256" to js(sheet.textSha256.joinToString("") { "%02x".format(it) }), "outcome" to js("consumed")), listOf("consent"))
+            if (!token.heatTestPermitted) laws += "consent-heat-withheld"
+            val members = buildList {
+                if (input.m("reportText")?.b() != false) add("textSha256" to js(sheet.textSha256.joinToString("") { "%02x".format(it) }))
+                add("outcome" to js("consumed"))
+                add("optIns" to strList(token.optIns.sorted()))
+                add("heatTestPermitted" to jb(token.heatTestPermitted))
+            }
+            M04Observation.Ok(jo(members), laws)
         } catch (e: ConsentError) {
-            M04Observation.Reject("CONSENT_REFUSED", jo("why" to js(e.message ?: "")), listOf("consent"))
+            M04Observation.Reject("CONSENT_REFUSED", jo("why" to js(e.message ?: "")), laws)
         }
     }
 
@@ -203,12 +213,16 @@ object M04Vectors {
         val t = input.req("thermal")
         val p = input.req("power")
         val pr = input.req("presence")
-        val c = Ceilings.evaluate(
-            input.req("platform").s(), input.req("form").s(),
-            ThermalReading(true, t.req("code").l().toInt(), t.m("headroom")?.lOrNull()?.toInt(), t.m("batteryTempDeciC")?.lOrNull()?.toInt()),
-            PowerReading(p.req("source").s(), p.m("level")?.lOrNull()?.toInt(), true),
-            Presence(pr.req("foreground").b(), pr.req("screenOn").b(), pr.req("batterySaver").b(), pr.req("lowPowerMode").b()), input.req("gpuBusyHeldMs").l(),
-        )
+        val c = try {
+            Ceilings.evaluate(
+                input.req("platform").s(), input.req("form").s(),
+                ThermalReading(true, t.req("code").l().toInt(), t.m("headroom")?.lOrNull()?.toInt(), t.m("batteryTempDeciC")?.lOrNull()?.toInt()),
+                PowerReading(p.req("source").s(), p.m("level")?.lOrNull()?.toInt(), true),
+                Presence(pr.req("foreground").b(), pr.req("screenOn").b(), pr.req("batterySaver").b(), pr.req("lowPowerMode").b()), input.req("gpuBusyHeldMs").l(),
+            )
+        } catch (e: NoCeilingRow) {
+            return M04Observation.Reject("NO_CEILING_ROW", jo("platform" to js(e.platform)), listOf("ceilings", "ceilings-refused"))
+        }
         val text = when (c) {
             is Ceiling.Hard -> "hard ${c.reason}"
             is Ceiling.Soft -> "soft ${c.reason}"

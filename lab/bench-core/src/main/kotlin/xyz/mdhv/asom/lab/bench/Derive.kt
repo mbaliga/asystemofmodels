@@ -99,6 +99,9 @@ object SustainMath {
 object Derive {
     const val SWAP_LIMIT_BYTES: Long = 268_435_456L
     const val KV_CTX: Long = 4096L
+
+    /** End reasons that are hard ceilings (R4-B-01): the sustain block carries `HARD_CEILING` and its confidence is capped at medium. `DEVICE_BUSY` is not one. */
+    val HARD_CEILING_REASONS: Set<String> = setOf("THERMAL_HARD", "BATTERY_TEMP", "BATTERY_LOW", "POWER_SAVER")
     const val OVERHEAD_BYTES: Long = 314_572_800L
     const val Q4_MILLIBYTES_PER_PARAM: Long = 610L
     const val Q_PROMPT: Long = 512L
@@ -206,7 +209,7 @@ object Derive {
             duration >= 300_000L -> Confidence.MEDIUM
             else -> Confidence.LOW
         }
-        if (s.endReason == "THERMAL_HARD" || s.endReason == "BATTERY_TEMP") {
+        if (s.endReason in HARD_CEILING_REASONS) {
             flags += "HARD_CEILING"
             conf = Confidence.min(conf, Confidence.MEDIUM)
         }

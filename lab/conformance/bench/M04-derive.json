@@ -7287,6 +7287,998 @@
       }
     },
     {
+      "id": "M04-061",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-01: a sustained phase ended by a low battery level (BATTERY_LOW) is a hard ceiling: the windows are kept, HARD_CEILING is set and confidence is capped at medium.",
+      "input": {
+        "kind": "sustain",
+        "tier": "T3",
+        "windowMs": 15000,
+        "capMs": 600000,
+        "endReason": "BATTERY_LOW",
+        "startThermal": "cool",
+        "headroomAtOnsetPermille": null,
+        "windows": [
+          [0, 100, 15000000, 0],
+          [15000, 100, 15000000, 0],
+          [30000, 100, 15000000, 0],
+          [45000, 100, 15000000, 0],
+          [60000, 100, 15000000, 0],
+          [75000, 100, 15000000, 0],
+          [90000, 100, 15000000, 0],
+          [105000, 100, 15000000, 0],
+          [120000, 100, 15000000, 0],
+          [135000, 100, 15000000, 0],
+          [150000, 100, 15000000, 0],
+          [165000, 100, 15000000, 0],
+          [180000, 100, 15000000, 0],
+          [195000, 100, 15000000, 0],
+          [210000, 100, 15000000, 0],
+          [225000, 100, 15000000, 0],
+          [240000, 100, 15000000, 0],
+          [255000, 100, 15000000, 0],
+          [270000, 100, 15000000, 0],
+          [285000, 100, 15000000, 0],
+          [300000, 100, 15000000, 0],
+          [315000, 100, 15000000, 0],
+          [330000, 100, 15000000, 0],
+          [345000, 100, 15000000, 0],
+          [360000, 100, 15000000, 0],
+          [375000, 100, 15000000, 0],
+          [390000, 100, 15000000, 0],
+          [405000, 100, 15000000, 0],
+          [420000, 100, 15000000, 0],
+          [435000, 100, 15000000, 0],
+          [450000, 100, 15000000, 0],
+          [465000, 100, 15000000, 0],
+          [480000, 100, 15000000, 0],
+          [495000, 100, 15000000, 0],
+          [510000, 100, 15000000, 0],
+          [525000, 100, 15000000, 0],
+          [540000, 100, 15000000, 0],
+          [555000, 100, 15000000, 0],
+          [570000, 100, 15000000, 0],
+          [585000, 100, 15000000, 0]
+        ]
+      },
+      "expect": {
+        "ok": {
+          "peakMtps": 6666,
+          "plateauMtps": 6666,
+          "onsetMs": null,
+          "stabilityPermille": 1000,
+          "durationMs": 600000,
+          "thermalCodeAtOnset": null,
+          "headroomAtOnsetPermille": null,
+          "confidence": "medium",
+          "flags": [
+            "HARD_CEILING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "M04-062",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-01: a sustained phase ended by Low Power Mode or a battery-saver switch (POWER_SAVER) is a hard ceiling exactly as BATTERY_LOW is.",
+      "input": {
+        "kind": "sustain",
+        "tier": "T3",
+        "windowMs": 15000,
+        "capMs": 600000,
+        "endReason": "POWER_SAVER",
+        "startThermal": "cool",
+        "headroomAtOnsetPermille": null,
+        "windows": [
+          [0, 100, 15000000, 0],
+          [15000, 100, 15000000, 0],
+          [30000, 100, 15000000, 0],
+          [45000, 100, 15000000, 0],
+          [60000, 100, 15000000, 0],
+          [75000, 100, 15000000, 0],
+          [90000, 100, 15000000, 0],
+          [105000, 100, 15000000, 0],
+          [120000, 100, 15000000, 0],
+          [135000, 100, 15000000, 0],
+          [150000, 100, 15000000, 0],
+          [165000, 100, 15000000, 0],
+          [180000, 100, 15000000, 0],
+          [195000, 100, 15000000, 0],
+          [210000, 100, 15000000, 0],
+          [225000, 100, 15000000, 0],
+          [240000, 100, 15000000, 0],
+          [255000, 100, 15000000, 0],
+          [270000, 100, 15000000, 0],
+          [285000, 100, 15000000, 0],
+          [300000, 100, 15000000, 0],
+          [315000, 100, 15000000, 0],
+          [330000, 100, 15000000, 0],
+          [345000, 100, 15000000, 0],
+          [360000, 100, 15000000, 0],
+          [375000, 100, 15000000, 0],
+          [390000, 100, 15000000, 0],
+          [405000, 100, 15000000, 0],
+          [420000, 100, 15000000, 0],
+          [435000, 100, 15000000, 0],
+          [450000, 100, 15000000, 0],
+          [465000, 100, 15000000, 0],
+          [480000, 100, 15000000, 0],
+          [495000, 100, 15000000, 0],
+          [510000, 100, 15000000, 0],
+          [525000, 100, 15000000, 0],
+          [540000, 100, 15000000, 0],
+          [555000, 100, 15000000, 0],
+          [570000, 100, 15000000, 0],
+          [585000, 100, 15000000, 0]
+        ]
+      },
+      "expect": {
+        "ok": {
+          "peakMtps": 6666,
+          "plateauMtps": 6666,
+          "onsetMs": null,
+          "stabilityPermille": 1000,
+          "durationMs": 600000,
+          "thermalCodeAtOnset": null,
+          "headroomAtOnsetPermille": null,
+          "confidence": "medium",
+          "flags": [
+            "HARD_CEILING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "M04-063",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-01: DEVICE_BUSY keeps its current treatment: it does not set HARD_CEILING.",
+      "input": {
+        "kind": "sustain",
+        "tier": "T3",
+        "windowMs": 15000,
+        "capMs": 600000,
+        "endReason": "DEVICE_BUSY",
+        "startThermal": "cool",
+        "headroomAtOnsetPermille": null,
+        "windows": [
+          [0, 100, 15000000, 0],
+          [15000, 100, 15000000, 0],
+          [30000, 100, 15000000, 0],
+          [45000, 100, 15000000, 0],
+          [60000, 100, 15000000, 0],
+          [75000, 100, 15000000, 0],
+          [90000, 100, 15000000, 0],
+          [105000, 100, 15000000, 0],
+          [120000, 100, 15000000, 0],
+          [135000, 100, 15000000, 0],
+          [150000, 100, 15000000, 0],
+          [165000, 100, 15000000, 0],
+          [180000, 100, 15000000, 0],
+          [195000, 100, 15000000, 0],
+          [210000, 100, 15000000, 0],
+          [225000, 100, 15000000, 0],
+          [240000, 100, 15000000, 0],
+          [255000, 100, 15000000, 0],
+          [270000, 100, 15000000, 0],
+          [285000, 100, 15000000, 0],
+          [300000, 100, 15000000, 0],
+          [315000, 100, 15000000, 0],
+          [330000, 100, 15000000, 0],
+          [345000, 100, 15000000, 0],
+          [360000, 100, 15000000, 0],
+          [375000, 100, 15000000, 0],
+          [390000, 100, 15000000, 0],
+          [405000, 100, 15000000, 0],
+          [420000, 100, 15000000, 0],
+          [435000, 100, 15000000, 0],
+          [450000, 100, 15000000, 0],
+          [465000, 100, 15000000, 0],
+          [480000, 100, 15000000, 0],
+          [495000, 100, 15000000, 0],
+          [510000, 100, 15000000, 0],
+          [525000, 100, 15000000, 0],
+          [540000, 100, 15000000, 0],
+          [555000, 100, 15000000, 0],
+          [570000, 100, 15000000, 0],
+          [585000, 100, 15000000, 0]
+        ]
+      },
+      "expect": {
+        "ok": {
+          "peakMtps": 6666,
+          "plateauMtps": 6666,
+          "onsetMs": null,
+          "stabilityPermille": 1000,
+          "durationMs": 600000,
+          "thermalCodeAtOnset": null,
+          "headroomAtOnsetPermille": null,
+          "confidence": "medium",
+          "flags": []
+        }
+      }
+    },
+    {
+      "id": "M04-064",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-01: a hard ceiling of the older names still sets HARD_CEILING (BATTERY_TEMP, the battery temperature).",
+      "input": {
+        "kind": "sustain",
+        "tier": "T3",
+        "windowMs": 15000,
+        "capMs": 600000,
+        "endReason": "BATTERY_TEMP",
+        "startThermal": "cool",
+        "headroomAtOnsetPermille": null,
+        "windows": [
+          [0, 100, 15000000, 0],
+          [15000, 100, 15000000, 0],
+          [30000, 100, 15000000, 0],
+          [45000, 100, 15000000, 0],
+          [60000, 100, 15000000, 0],
+          [75000, 100, 15000000, 0],
+          [90000, 100, 15000000, 0],
+          [105000, 100, 15000000, 0],
+          [120000, 100, 15000000, 0],
+          [135000, 100, 15000000, 0],
+          [150000, 100, 15000000, 0],
+          [165000, 100, 15000000, 0],
+          [180000, 100, 15000000, 0],
+          [195000, 100, 15000000, 0],
+          [210000, 100, 15000000, 0],
+          [225000, 100, 15000000, 0],
+          [240000, 100, 15000000, 0],
+          [255000, 100, 15000000, 0],
+          [270000, 100, 15000000, 0],
+          [285000, 100, 15000000, 0],
+          [300000, 100, 15000000, 0],
+          [315000, 100, 15000000, 0],
+          [330000, 100, 15000000, 0],
+          [345000, 100, 15000000, 0],
+          [360000, 100, 15000000, 0],
+          [375000, 100, 15000000, 0],
+          [390000, 100, 15000000, 0],
+          [405000, 100, 15000000, 0],
+          [420000, 100, 15000000, 0],
+          [435000, 100, 15000000, 0],
+          [450000, 100, 15000000, 0],
+          [465000, 100, 15000000, 0],
+          [480000, 100, 15000000, 0],
+          [495000, 100, 15000000, 0],
+          [510000, 100, 15000000, 0],
+          [525000, 100, 15000000, 0],
+          [540000, 100, 15000000, 0],
+          [555000, 100, 15000000, 0],
+          [570000, 100, 15000000, 0],
+          [585000, 100, 15000000, 0]
+        ]
+      },
+      "expect": {
+        "ok": {
+          "peakMtps": 6666,
+          "plateauMtps": 6666,
+          "onsetMs": null,
+          "stabilityPermille": 1000,
+          "durationMs": 600000,
+          "thermalCodeAtOnset": null,
+          "headroomAtOnsetPermille": null,
+          "confidence": "medium",
+          "flags": [
+            "HARD_CEILING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "M04-065",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-01: a whole document whose run was aborted by POWER_SAVER: the heat test is flagged and capped at medium, and the report names the reason.",
+      "input": {
+        "kind": "doc",
+        "benchDoc": {
+          "schema": "asom.bench/1",
+          "benchProtocol": 1,
+          "benchSet": "qwen3-dense-1",
+          "harness": {
+            "shell": "android-daemon",
+            "coreImpl": "jvm",
+            "coreVersion": "1.0.0",
+            "confVersion": "1.0.0",
+            "timingSource": "host-monotonic",
+            "planSha256": "U5x4LJS7iliO0QOew1tjsNkJ14-JeCLGuJt6fIUAD9s",
+            "engine": {
+              "name": "llama.cpp",
+              "commit": "0123456789abcdef0123456789abcdef01234567",
+              "backend": "opencl",
+              "buildFlags": [
+                "GGML_OPENCL=ON"
+              ],
+              "threads": 6,
+              "gpuLayers": 99,
+              "kvType": "f16",
+              "flashAttn": "auto"
+            }
+          },
+          "device": {
+            "platform": "android",
+            "form": "phone",
+            "maker": "Example",
+            "model": "Phone X1 (synthetic)",
+            "soc": "Example SoC 8",
+            "osVersion": "16",
+            "osBuild": "EXAMPLE.260901.001",
+            "gpu": "Example GPU",
+            "gpuDriver": "example-512.0",
+            "memTotalBytes": 16000000000,
+            "unifiedMemory": true,
+            "virtualized": false
+          },
+          "memory": {
+            "availAtStartBytes": 9600000000,
+            "processLimitBytes": null,
+            "gpuWorkingSetBytes": null,
+            "limitSource": "android-availmem"
+          },
+          "run": {
+            "plan": "standard",
+            "optInTiers": [
+              "T3"
+            ],
+            "startedAtMs": 1790668800000,
+            "endedAtMs": 1790670240000,
+            "dayUtc": "2026-09-29",
+            "powerSource": "ac",
+            "batteryStartPermille": 740,
+            "startThermal": "cool",
+            "screenOn": true,
+            "contentionBeforePermille": 12,
+            "contentionAfterPermille": 18,
+            "abort": {
+              "reason": "POWER_SAVER",
+              "atMs": 400000
+            }
+          },
+          "tiers": [
+            {
+              "tier": "T1",
+              "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+              "bytes": 1834426016,
+              "quant": "Q8_0",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790668860000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9580000000,
+              "peakFootprintBytes": 2310000000,
+              "kvBytesPerToken": 114688,
+              "loadColdMicros": 2400000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [620000, 640000, 615000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [1968000, 1975000, 1961000, 1990000, 1972000],
+                  "wholeSamples": [1969500, 1976400, 1962300, 1991200, 1973300]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [6090000, 6120000, 6101000, 6085000, 6133000]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 2318,
+                "refMilliNatsPerToken": 2310
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            },
+            {
+              "tier": "T2",
+              "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+              "bytes": 2497280256,
+              "quant": "Q4_K_M",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790669010000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9550000000,
+              "peakFootprintBytes": 3120000000,
+              "kvBytesPerToken": 147456,
+              "loadColdMicros": 4900000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [1210000, 1195000, 1230000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [3930000, 3951000, 3925000, 3947000, 3940000],
+                  "wholeSamples": [3931800, 3952700, 3926900, 3948600, 3941700]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [8810000, 8850000, 8832000, 8805000, 8861000]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 2026,
+                "refMilliNatsPerToken": 2020
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            },
+            {
+              "tier": "T3",
+              "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+              "bytes": 5027783488,
+              "quant": "Q4_K_M",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790669190000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9510000000,
+              "peakFootprintBytes": 5980000000,
+              "kvBytesPerToken": 147456,
+              "loadColdMicros": 9800000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [2380000, 2410000, 2395000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [8533000, 8611000, 8498000, 8570000, 9950000],
+                  "wholeSamples": [8535100, 8613000, 8500200, 8572100, 9952300]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [17280000, 17350000, 17310000, 17265000, 17420000]
+                },
+                {
+                  "test": "tg128@d2048",
+                  "samples": [19380000, 19450000, 19400000, 19372000, 19510000]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 1893,
+                "refMilliNatsPerToken": 1880
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            }
+          ],
+          "sustain": {
+            "tier": "T3",
+            "windowMs": 15000,
+            "capMs": 600000,
+            "endReason": "POWER_SAVER",
+            "headroomAtOnsetPermille": 830,
+            "windows": [
+              [0, 113, 14900000, 0],
+              [15000, 112, 14900000, 0],
+              [30000, 113, 14900000, 0],
+              [45000, 112, 14900000, 0],
+              [60000, 112, 14900000, 1],
+              [75000, 111, 14900000, 1],
+              [90000, 112, 14900000, 1],
+              [105000, 111, 14900000, 1],
+              [120000, 111, 14900000, 1],
+              [135000, 110, 14900000, 1],
+              [150000, 110, 14900000, 1],
+              [165000, 109, 14900000, 1],
+              [180000, 108, 14900000, 1],
+              [195000, 99, 14900000, 2],
+              [210000, 90, 14900000, 2],
+              [225000, 82, 14900000, 2],
+              [240000, 78, 14900000, 2],
+              [255000, 76, 14900000, 2],
+              [270000, 75, 14900000, 2],
+              [285000, 75, 14900000, 2],
+              [300000, 76, 14900000, 2],
+              [315000, 75, 14900000, 2],
+              [330000, 74, 14900000, 2],
+              [345000, 75, 14900000, 2],
+              [360000, 75, 14900000, 2],
+              [375000, 76, 14900000, 2],
+              [390000, 75, 14900000, 2],
+              [405000, 75, 14900000, 2],
+              [420000, 74, 14900000, 2]
+            ]
+          },
+          "energy": null
+        },
+        "audience": "own"
+      },
+      "expect": {
+        "ok": {
+          "answers": {
+            "usableMemoryBytes": 7200000000,
+            "safetyPermille": 750,
+            "maxHold": {
+              "weightBytes": 6147702857,
+              "kvRatioPermille": 120,
+              "approxParamsQ4": 10078201404,
+              "largestLoadedTier": "T3"
+            },
+            "q7b": {
+              "basis": "measured",
+              "decodeMtps": 7394,
+              "ttft512Micros": 8572100,
+              "verdict": "usable"
+            },
+            "answer2000": {
+              "tier": "T3",
+              "depthRatioPermille": 892,
+              "micros": 355499032,
+              "thermalModel": true
+            },
+            "throttle": {
+              "tier": "T3",
+              "onsetMs": 195000,
+              "stabilityPermille": 663,
+              "testedMs": 435000
+            },
+            "role": {
+              "code": "occasional-helper",
+              "t2PlateauMtps": 9608,
+              "t3PlateauMtps": 5033
+            },
+            "overallConfidence": "medium",
+            "tiers": [
+              {
+                "tier": "T1",
+                "numerics": "pass",
+                "loadWarmMicros": 620000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 259634,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 20980,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              },
+              {
+                "tier": "T2",
+                "numerics": "pass",
+                "loadWarmMicros": 1210000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 129949,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 14492,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              },
+              {
+                "tier": "T3",
+                "numerics": "pass",
+                "loadWarmMicros": 2395000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 59743,
+                    "kept": 4,
+                    "confidence": "high",
+                    "flags": [
+                      "OUTLIER_EXCLUDED"
+                    ]
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 7394,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d2048",
+                    "value": 6597,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              }
+            ],
+            "sustain": {
+              "peakMtps": 7583,
+              "plateauMtps": 5033,
+              "onsetMs": 195000,
+              "stabilityPermille": 663,
+              "durationMs": 435000,
+              "thermalCodeAtOnset": 2,
+              "headroomAtOnsetPermille": 830,
+              "confidence": "medium",
+              "flags": [
+                "HARD_CEILING"
+              ]
+            }
+          },
+          "resultCount": 3,
+          "resultsSha256": "61e5bf96c91c442741c47353d7de8bf725aea5045e980565ecdf580b3bca44f7",
+          "textSha256": "98b4a44e6a75f14d52af627b74022fe8272f2ba37f28968929cae29d3e51dc8d",
+          "textSha256Mesh": "2f29b0b067d58af283e2d882daabb1278050358bf7cd7191f9e60c9e2deb2cb5"
+        }
+      }
+    },
+    {
+      "id": "M04-066",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-01: a whole document whose run was aborted by BATTERY_LOW.",
+      "input": {
+        "kind": "doc",
+        "benchDoc": {
+          "schema": "asom.bench/1",
+          "benchProtocol": 1,
+          "benchSet": "qwen3-dense-1",
+          "harness": {
+            "shell": "android-daemon",
+            "coreImpl": "jvm",
+            "coreVersion": "1.0.0",
+            "confVersion": "1.0.0",
+            "timingSource": "host-monotonic",
+            "planSha256": "U5x4LJS7iliO0QOew1tjsNkJ14-JeCLGuJt6fIUAD9s",
+            "engine": {
+              "name": "llama.cpp",
+              "commit": "0123456789abcdef0123456789abcdef01234567",
+              "backend": "opencl",
+              "buildFlags": [
+                "GGML_OPENCL=ON"
+              ],
+              "threads": 6,
+              "gpuLayers": 99,
+              "kvType": "f16",
+              "flashAttn": "auto"
+            }
+          },
+          "device": {
+            "platform": "android",
+            "form": "phone",
+            "maker": "Example",
+            "model": "Phone X1 (synthetic)",
+            "soc": "Example SoC 8",
+            "osVersion": "16",
+            "osBuild": "EXAMPLE.260901.001",
+            "gpu": "Example GPU",
+            "gpuDriver": "example-512.0",
+            "memTotalBytes": 16000000000,
+            "unifiedMemory": true,
+            "virtualized": false
+          },
+          "memory": {
+            "availAtStartBytes": 9600000000,
+            "processLimitBytes": null,
+            "gpuWorkingSetBytes": null,
+            "limitSource": "android-availmem"
+          },
+          "run": {
+            "plan": "standard",
+            "optInTiers": [
+              "T3"
+            ],
+            "startedAtMs": 1790668800000,
+            "endedAtMs": 1790670240000,
+            "dayUtc": "2026-09-29",
+            "powerSource": "ac",
+            "batteryStartPermille": 740,
+            "startThermal": "cool",
+            "screenOn": true,
+            "contentionBeforePermille": 12,
+            "contentionAfterPermille": 18,
+            "abort": {
+              "reason": "BATTERY_LOW",
+              "atMs": 400000
+            }
+          },
+          "tiers": [
+            {
+              "tier": "T1",
+              "sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
+              "bytes": 1834426016,
+              "quant": "Q8_0",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790668860000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9580000000,
+              "peakFootprintBytes": 2310000000,
+              "kvBytesPerToken": 114688,
+              "loadColdMicros": 2400000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [620000, 640000, 615000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [1968000, 1975000, 1961000, 1990000, 1972000],
+                  "wholeSamples": [1969500, 1976400, 1962300, 1991200, 1973300]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [6090000, 6120000, 6101000, 6085000, 6133000]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 2318,
+                "refMilliNatsPerToken": 2310
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            },
+            {
+              "tier": "T2",
+              "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+              "bytes": 2497280256,
+              "quant": "Q4_K_M",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790669010000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9550000000,
+              "peakFootprintBytes": 3120000000,
+              "kvBytesPerToken": 147456,
+              "loadColdMicros": 4900000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [1210000, 1195000, 1230000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [3930000, 3951000, 3925000, 3947000, 3940000],
+                  "wholeSamples": [3931800, 3952700, 3926900, 3948600, 3941700]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [8810000, 8850000, 8832000, 8805000, 8861000]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 2026,
+                "refMilliNatsPerToken": 2020
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            },
+            {
+              "tier": "T3",
+              "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+              "bytes": 5027783488,
+              "quant": "Q4_K_M",
+              "startThermal": "cool",
+              "startThermalCode": 0,
+              "startedAtMs": 1790669190000,
+              "nCtx": 4096,
+              "availBeforeLoadBytes": 9510000000,
+              "peakFootprintBytes": 5980000000,
+              "kvBytesPerToken": 147456,
+              "loadColdMicros": 9800000,
+              "loadColdness": "best-effort",
+              "loadWarmMicros": [2380000, 2410000, 2395000],
+              "tests": [
+                {
+                  "test": "pp512@d0",
+                  "samples": [8533000, 8611000, 8498000, 8570000, 9950000],
+                  "wholeSamples": [8535100, 8613000, 8500200, 8572100, 9952300]
+                },
+                {
+                  "test": "tg128@d0",
+                  "samples": [17280000, 17350000, 17310000, 17265000, 17420000]
+                },
+                {
+                  "test": "tg128@d2048",
+                  "samples": [19380000, 19450000, 19400000, 19372000, 19510000]
+                }
+              ],
+              "numerics": {
+                "milliNatsPerToken": 1893,
+                "refMilliNatsPerToken": 1880
+              },
+              "restarts": 0,
+              "swapDeltaBytes": null
+            }
+          ],
+          "sustain": {
+            "tier": "T3",
+            "windowMs": 15000,
+            "capMs": 600000,
+            "endReason": "BATTERY_LOW",
+            "headroomAtOnsetPermille": 830,
+            "windows": [
+              [0, 113, 14900000, 0],
+              [15000, 112, 14900000, 0],
+              [30000, 113, 14900000, 0],
+              [45000, 112, 14900000, 0],
+              [60000, 112, 14900000, 1],
+              [75000, 111, 14900000, 1],
+              [90000, 112, 14900000, 1],
+              [105000, 111, 14900000, 1],
+              [120000, 111, 14900000, 1],
+              [135000, 110, 14900000, 1],
+              [150000, 110, 14900000, 1],
+              [165000, 109, 14900000, 1],
+              [180000, 108, 14900000, 1],
+              [195000, 99, 14900000, 2],
+              [210000, 90, 14900000, 2],
+              [225000, 82, 14900000, 2],
+              [240000, 78, 14900000, 2],
+              [255000, 76, 14900000, 2],
+              [270000, 75, 14900000, 2],
+              [285000, 75, 14900000, 2],
+              [300000, 76, 14900000, 2],
+              [315000, 75, 14900000, 2],
+              [330000, 74, 14900000, 2],
+              [345000, 75, 14900000, 2],
+              [360000, 75, 14900000, 2],
+              [375000, 76, 14900000, 2],
+              [390000, 75, 14900000, 2],
+              [405000, 75, 14900000, 2],
+              [420000, 74, 14900000, 2]
+            ]
+          },
+          "energy": null
+        },
+        "audience": "own"
+      },
+      "expect": {
+        "ok": {
+          "answers": {
+            "usableMemoryBytes": 7200000000,
+            "safetyPermille": 750,
+            "maxHold": {
+              "weightBytes": 6147702857,
+              "kvRatioPermille": 120,
+              "approxParamsQ4": 10078201404,
+              "largestLoadedTier": "T3"
+            },
+            "q7b": {
+              "basis": "measured",
+              "decodeMtps": 7394,
+              "ttft512Micros": 8572100,
+              "verdict": "usable"
+            },
+            "answer2000": {
+              "tier": "T3",
+              "depthRatioPermille": 892,
+              "micros": 355499032,
+              "thermalModel": true
+            },
+            "throttle": {
+              "tier": "T3",
+              "onsetMs": 195000,
+              "stabilityPermille": 663,
+              "testedMs": 435000
+            },
+            "role": {
+              "code": "occasional-helper",
+              "t2PlateauMtps": 9608,
+              "t3PlateauMtps": 5033
+            },
+            "overallConfidence": "medium",
+            "tiers": [
+              {
+                "tier": "T1",
+                "numerics": "pass",
+                "loadWarmMicros": 620000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 259634,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 20980,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              },
+              {
+                "tier": "T2",
+                "numerics": "pass",
+                "loadWarmMicros": 1210000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 129949,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 14492,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              },
+              {
+                "tier": "T3",
+                "numerics": "pass",
+                "loadWarmMicros": 2395000,
+                "flags": [],
+                "tests": [
+                  {
+                    "test": "pp512@d0",
+                    "value": 59743,
+                    "kept": 4,
+                    "confidence": "high",
+                    "flags": [
+                      "OUTLIER_EXCLUDED"
+                    ]
+                  },
+                  {
+                    "test": "tg128@d0",
+                    "value": 7394,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  },
+                  {
+                    "test": "tg128@d2048",
+                    "value": 6597,
+                    "kept": 5,
+                    "confidence": "high",
+                    "flags": []
+                  }
+                ]
+              }
+            ],
+            "sustain": {
+              "peakMtps": 7583,
+              "plateauMtps": 5033,
+              "onsetMs": 195000,
+              "stabilityPermille": 663,
+              "durationMs": 435000,
+              "thermalCodeAtOnset": 2,
+              "headroomAtOnsetPermille": 830,
+              "confidence": "medium",
+              "flags": [
+                "HARD_CEILING"
+              ]
+            }
+          },
+          "resultCount": 3,
+          "resultsSha256": "61e5bf96c91c442741c47353d7de8bf725aea5045e980565ecdf580b3bca44f7",
+          "textSha256": "d515e5d9d03656cfda98eb89564b21534603ba243f4078749b590344ee1e2ec5",
+          "textSha256Mesh": "3ab195abf2b89306b634b80d1667534335d9a11f9a9666f652dee9d3a81e8e06"
+        }
+      }
+    },
+    {
       "id": "M04-301",
       "origin": "generated",
       "status": "normative",
@@ -7704,6 +8696,143 @@
       }
     },
     {
+      "id": "M04-313",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-02: a platform with no ceiling row (windows) is refused before anything runs (the lab's reason code is NO_CEILINGS); nothing is loaded.",
+      "input": {
+        "kind": "trace",
+        "scenario": {
+          "preset": "desktop",
+          "plan": "standard",
+          "platform": "windows"
+        }
+      },
+      "expect": {
+        "ok": {
+          "outcome": "refused NO_CEILINGS",
+          "docSha256": null,
+          "events": [
+            "STATE IDLE->PREFLIGHT",
+            "SPIN baseline=200000 contentionBeforePermille=0",
+            "PREFLIGHT refused NO_CEILINGS",
+            "STATE PREFLIGHT->IDLE"
+          ]
+        }
+      }
+    },
+    {
+      "id": "M04-314",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-07: the heat test already ran today and the rerun tick was not ticked: the token's heat test is not permitted, so the tiers run and the sustained phase is skipped.",
+      "input": {
+        "kind": "trace",
+        "scenario": {
+          "preset": "phone",
+          "plan": "standard",
+          "sustainedToday": true
+        }
+      },
+      "expect": {
+        "ok": {
+          "outcome": "completed",
+          "docSha256": "ac330468c0c3e3db620bb00a27ae0c44cd9a61ee0692c5d486bbea166c220b8a",
+          "events": [
+            "STATE IDLE->PREFLIGHT",
+            "SPIN baseline=200000 contentionBeforePermille=0",
+            "PREFLIGHT ok start=cool tiers=T1,T2",
+            "STATE PREFLIGHT->AWAIT_CONSENT",
+            "CONSENT confirmed",
+            "STATE AWAIT_CONSENT->PREPARING",
+            "STATE PREPARING->COOLING",
+            "COOLDOWN T1 class=cool waitedMs=0",
+            "STATE COOLING->RUNNING(tier T1)",
+            "LOAD T1 coldUs=2388000 warmUs=618760/617520/622480",
+            "WARMUP T1",
+            "TEST T1 pp512@d0 reps=5",
+            "TEST T1 tg128@d0 reps=5",
+            "NLL T1 milliNatsPerToken=2318",
+            "UNLOAD T1",
+            "STATE RUNNING->COOLING",
+            "COOLDOWN T2 class=cool waitedMs=0",
+            "STATE COOLING->RUNNING(tier T2)",
+            "LOAD T2 coldUs=4900000 warmUs=1202740/1202740/1210000",
+            "WARMUP T2",
+            "TEST T2 pp512@d0 reps=5",
+            "TEST T2 tg128@d0 reps=5",
+            "NLL T2 milliNatsPerToken=2026",
+            "TEST T2 tg128@d2048 reps=3",
+            "UNLOAD T2",
+            "SUSTAIN skipped (heat test not permitted: the rerun tick was not ticked)",
+            "STATE RUNNING->FINALIZING",
+            "SPIN after=200000 contentionAfterPermille=0",
+            "STATE FINALIZING->DONE"
+          ]
+        }
+      }
+    },
+    {
+      "id": "M04-315",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-07: the same sheet with the rerun tick ticked: the heat test runs.",
+      "input": {
+        "kind": "trace",
+        "scenario": {
+          "preset": "phone",
+          "plan": "standard",
+          "sustainedToday": true,
+          "rerunHeatToday": true
+        }
+      },
+      "expect": {
+        "ok": {
+          "outcome": "completed",
+          "docSha256": "865317006977d3ef3393ace81b152d6645c3867b2d6640b6d7e42d8ea267cf71",
+          "events": [
+            "STATE IDLE->PREFLIGHT",
+            "SPIN baseline=200000 contentionBeforePermille=0",
+            "PREFLIGHT ok start=cool tiers=T1,T2",
+            "STATE PREFLIGHT->AWAIT_CONSENT",
+            "CONSENT confirmed",
+            "STATE AWAIT_CONSENT->PREPARING",
+            "STATE PREPARING->COOLING",
+            "COOLDOWN T1 class=cool waitedMs=0",
+            "STATE COOLING->RUNNING(tier T1)",
+            "LOAD T1 coldUs=2388000 warmUs=618760/617520/622480",
+            "WARMUP T1",
+            "TEST T1 pp512@d0 reps=5",
+            "TEST T1 tg128@d0 reps=5",
+            "NLL T1 milliNatsPerToken=2318",
+            "UNLOAD T1",
+            "STATE RUNNING->COOLING",
+            "COOLDOWN T2 class=cool waitedMs=0",
+            "STATE COOLING->RUNNING(tier T2)",
+            "LOAD T2 coldUs=4900000 warmUs=1202740/1202740/1210000",
+            "WARMUP T2",
+            "TEST T2 pp512@d0 reps=5",
+            "TEST T2 tg128@d0 reps=5",
+            "NLL T2 milliNatsPerToken=2026",
+            "TEST T2 tg128@d2048 reps=3",
+            "UNLOAD T2",
+            "STATE RUNNING->COOLING",
+            "COOLDOWN sustain class=cool waitedMs=55000",
+            "STATE COOLING->RUNNING(sustain T2)",
+            "LOAD T2 sustain",
+            "UNLOAD T2",
+            "SUSTAIN end reason=PLATEAU windows=25",
+            "STATE RUNNING->FINALIZING",
+            "SPIN after=200000 contentionAfterPermille=0",
+            "STATE FINALIZING->DONE"
+          ]
+        }
+      }
+    },
+    {
       "id": "M04-320",
       "origin": "generated",
       "status": "normative",
@@ -8031,6 +9160,184 @@
             "ABORT PROBE_LOST at 122925 ms",
             "STATE RUNNING->ABORTING",
             "UNLOAD T2",
+            "STATE ABORTING->FINALIZING",
+            "SPIN after=200000 contentionAfterPermille=0",
+            "STATE FINALIZING->DONE"
+          ]
+        }
+      }
+    },
+    {
+      "id": "M04-326",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-01: a battery level that falls under 200 permille aborts with BATTERY_LOW (it was BATTERY_TEMP before r4).",
+      "input": {
+        "kind": "trace",
+        "scenario": {
+          "preset": "phone",
+          "plan": "standard",
+          "injections": [
+            {
+              "atMs": 100000,
+              "kind": "BATTERY_LEVEL",
+              "value": 150
+            }
+          ]
+        }
+      },
+      "expect": {
+        "ok": {
+          "outcome": "aborted BATTERY_LOW",
+          "docSha256": "b7bf11283c841ec7878ca4de1fdcf5b90ed54e065309b5c3a1d3d15b828880e9",
+          "events": [
+            "STATE IDLE->PREFLIGHT",
+            "SPIN baseline=200000 contentionBeforePermille=0",
+            "PREFLIGHT ok start=cool tiers=T1,T2",
+            "STATE PREFLIGHT->AWAIT_CONSENT",
+            "CONSENT confirmed",
+            "STATE AWAIT_CONSENT->PREPARING",
+            "STATE PREPARING->COOLING",
+            "COOLDOWN T1 class=cool waitedMs=0",
+            "STATE COOLING->RUNNING(tier T1)",
+            "LOAD T1 coldUs=2388000 warmUs=618760/617520/622480",
+            "WARMUP T1",
+            "TEST T1 pp512@d0 reps=5",
+            "TEST T1 tg128@d0 reps=5",
+            "NLL T1 milliNatsPerToken=2318",
+            "UNLOAD T1",
+            "STATE RUNNING->COOLING",
+            "COOLDOWN T2 class=cool waitedMs=0",
+            "STATE COOLING->RUNNING(tier T2)",
+            "LOAD T2 coldUs=4900000 warmUs=1202740/1202740/1210000",
+            "WARMUP T2",
+            "TEST T2 pp512@d0 reps=5",
+            "ABORT BATTERY_LOW at 104261 ms",
+            "STATE RUNNING->ABORTING",
+            "UNLOAD T2",
+            "STATE ABORTING->FINALIZING",
+            "SPIN after=200000 contentionAfterPermille=0",
+            "STATE FINALIZING->DONE"
+          ]
+        }
+      }
+    },
+    {
+      "id": "M04-327",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-01: Low Power Mode switched on during an iOS run aborts with POWER_SAVER (it was THERMAL_HARD before r4).",
+      "input": {
+        "kind": "trace",
+        "scenario": {
+          "preset": "phone",
+          "plan": "standard",
+          "platform": "ios",
+          "shell": "ios-standalone",
+          "daemon": false,
+          "injections": [
+            {
+              "atMs": 100000,
+              "kind": "POWER_SAVER"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "ok": {
+          "outcome": "aborted POWER_SAVER",
+          "docSha256": "f28859d81f24f6d80462922fbafc80b8814d5af49869696eca061c950ef58560",
+          "events": [
+            "STATE IDLE->PREFLIGHT",
+            "SPIN baseline=200000 contentionBeforePermille=0",
+            "PREFLIGHT ok start=cool tiers=T1,T2",
+            "STATE PREFLIGHT->AWAIT_CONSENT",
+            "CONSENT confirmed",
+            "STATE AWAIT_CONSENT->PREPARING",
+            "STATE PREPARING->COOLING",
+            "COOLDOWN T1 class=cool waitedMs=0",
+            "STATE COOLING->RUNNING(tier T1)",
+            "LOAD T1 coldUs=2388000 warmUs=618760/617520/622480",
+            "WARMUP T1",
+            "TEST T1 pp512@d0 reps=5",
+            "TEST T1 tg128@d0 reps=5",
+            "NLL T1 milliNatsPerToken=2318",
+            "UNLOAD T1",
+            "STATE RUNNING->COOLING",
+            "COOLDOWN T2 class=cool waitedMs=0",
+            "STATE COOLING->RUNNING(tier T2)",
+            "LOAD T2 coldUs=4900000 warmUs=1202740/1202740/1210000",
+            "WARMUP T2",
+            "TEST T2 pp512@d0 reps=5",
+            "ABORT POWER_SAVER at 104261 ms",
+            "STATE RUNNING->ABORTING",
+            "UNLOAD T2",
+            "STATE ABORTING->FINALIZING",
+            "SPIN after=200000 contentionAfterPermille=0",
+            "STATE FINALIZING->DONE"
+          ]
+        }
+      }
+    },
+    {
+      "id": "M04-328",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-01: a battery level that falls during the heat test aborts with BATTERY_LOW; the windows are kept and the sustain block carries the reason.",
+      "input": {
+        "kind": "trace",
+        "scenario": {
+          "preset": "phone",
+          "plan": "standard",
+          "injections": [
+            {
+              "atMs": 330000,
+              "kind": "BATTERY_LEVEL",
+              "value": 150
+            }
+          ]
+        }
+      },
+      "expect": {
+        "ok": {
+          "outcome": "aborted BATTERY_LOW",
+          "docSha256": "374aedb77d19ceedff7a264017096b74055d313423a924bae04e7018e1fc14ae",
+          "events": [
+            "STATE IDLE->PREFLIGHT",
+            "SPIN baseline=200000 contentionBeforePermille=0",
+            "PREFLIGHT ok start=cool tiers=T1,T2",
+            "STATE PREFLIGHT->AWAIT_CONSENT",
+            "CONSENT confirmed",
+            "STATE AWAIT_CONSENT->PREPARING",
+            "STATE PREPARING->COOLING",
+            "COOLDOWN T1 class=cool waitedMs=0",
+            "STATE COOLING->RUNNING(tier T1)",
+            "LOAD T1 coldUs=2388000 warmUs=618760/617520/622480",
+            "WARMUP T1",
+            "TEST T1 pp512@d0 reps=5",
+            "TEST T1 tg128@d0 reps=5",
+            "NLL T1 milliNatsPerToken=2318",
+            "UNLOAD T1",
+            "STATE RUNNING->COOLING",
+            "COOLDOWN T2 class=cool waitedMs=0",
+            "STATE COOLING->RUNNING(tier T2)",
+            "LOAD T2 coldUs=4900000 warmUs=1202740/1202740/1210000",
+            "WARMUP T2",
+            "TEST T2 pp512@d0 reps=5",
+            "TEST T2 tg128@d0 reps=5",
+            "NLL T2 milliNatsPerToken=2026",
+            "TEST T2 tg128@d2048 reps=3",
+            "UNLOAD T2",
+            "STATE RUNNING->COOLING",
+            "COOLDOWN sustain class=cool waitedMs=55000",
+            "STATE COOLING->RUNNING(sustain T2)",
+            "LOAD T2 sustain",
+            "UNLOAD T2",
+            "ABORT BATTERY_LOW at 330733 ms",
+            "STATE RUNNING->ABORTING",
             "STATE ABORTING->FINALIZING",
             "SPIN after=200000 contentionAfterPermille=0",
             "STATE FINALIZING->DONE"
@@ -8647,7 +9954,9 @@
       "expect": {
         "ok": {
           "textSha256": "29b4829edc7754a2d727cdd12fa863f4b3944f738bdf317c4d2230183a1b1a8d",
-          "outcome": "consumed"
+          "outcome": "consumed",
+          "optIns": [],
+          "heatTestPermitted": true
         }
       }
     },
@@ -8757,8 +10066,163 @@
       "expect": {
         "ok": {
           "textSha256": "5232bbd664f60a48c26eea2da746f7da0ffef13ac5d41b2da4c41be738a0836e",
-          "outcome": "consumed"
+          "outcome": "consumed",
+          "optIns": [],
+          "heatTestPermitted": false
         }
+      }
+    },
+    {
+      "id": "M04-426",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-07: the token carries what was ticked: the 8B opt-in on a sheet that offered it (the standard sheet with a download, whose wording is the spec's).",
+      "input": {
+        "kind": "consent",
+        "plan": "standard",
+        "downloadBytes": 4300000000,
+        "tiers": [
+          "T1",
+          "T2"
+        ],
+        "t3OptInOffered": true,
+        "sustainedToday": false,
+        "confirm": "match",
+        "mintNowMs": 1000,
+        "consumeNowMs": 2000,
+        "ticks": {
+          "optIns": [
+            "T3"
+          ],
+          "rerunHeatToday": false
+        }
+      },
+      "expect": {
+        "ok": {
+          "textSha256": "29b4829edc7754a2d727cdd12fa863f4b3944f738bdf317c4d2230183a1b1a8d",
+          "outcome": "consumed",
+          "optIns": [
+            "T3"
+          ],
+          "heatTestPermitted": true
+        }
+      }
+    },
+    {
+      "id": "M04-427",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-07: an opt-in that the sheet shown did not offer mints nothing.",
+      "input": {
+        "kind": "consent",
+        "plan": "standard",
+        "downloadBytes": 4300000000,
+        "tiers": [
+          "T1",
+          "T2"
+        ],
+        "t3OptInOffered": false,
+        "sustainedToday": false,
+        "confirm": "match",
+        "mintNowMs": 1000,
+        "consumeNowMs": 2000,
+        "ticks": {
+          "optIns": [
+            "T3"
+          ],
+          "rerunHeatToday": false
+        }
+      },
+      "expect": {
+        "reject": "CONSENT_REFUSED"
+      }
+    },
+    {
+      "id": "M04-428",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-07: a sheet that needs the rerun tick and does not get it mints a token whose heat test is not permitted.",
+      "input": {
+        "kind": "consent",
+        "plan": "standard",
+        "downloadBytes": 0,
+        "tiers": [],
+        "t3OptInOffered": false,
+        "sustainedToday": true,
+        "confirm": "match",
+        "mintNowMs": 1000,
+        "consumeNowMs": 2000,
+        "reportText": false,
+        "ticks": {
+          "optIns": [],
+          "rerunHeatToday": false
+        }
+      },
+      "expect": {
+        "ok": {
+          "outcome": "consumed",
+          "optIns": [],
+          "heatTestPermitted": false
+        }
+      }
+    },
+    {
+      "id": "M04-429",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-07: the same sheet with the rerun tick ticked: the heat test is permitted.",
+      "input": {
+        "kind": "consent",
+        "plan": "standard",
+        "downloadBytes": 0,
+        "tiers": [],
+        "t3OptInOffered": false,
+        "sustainedToday": true,
+        "confirm": "match",
+        "mintNowMs": 1000,
+        "consumeNowMs": 2000,
+        "reportText": false,
+        "ticks": {
+          "optIns": [],
+          "rerunHeatToday": true
+        }
+      },
+      "expect": {
+        "ok": {
+          "outcome": "consumed",
+          "optIns": [],
+          "heatTestPermitted": true
+        }
+      }
+    },
+    {
+      "id": "M04-419",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-07: a rerun tick on a sheet that has no such tick mints nothing.",
+      "input": {
+        "kind": "consent",
+        "plan": "standard",
+        "downloadBytes": 0,
+        "tiers": [],
+        "t3OptInOffered": false,
+        "sustainedToday": false,
+        "confirm": "match",
+        "mintNowMs": 1000,
+        "consumeNowMs": 2000,
+        "reportText": false,
+        "ticks": {
+          "optIns": [],
+          "rerunHeatToday": true
+        }
+      },
+      "expect": {
+        "reject": "CONSENT_REFUSED"
       }
     },
     {
@@ -8902,7 +10366,7 @@
       "origin": "generated",
       "status": "normative",
       "oracle": "self",
-      "description": "Android: a battery level under 200 permille is a hard ceiling.",
+      "description": "Android: a battery level under 200 permille is a hard ceiling named BATTERY_LOW (R4-B-01; BATTERY_TEMP before r4).",
       "input": {
         "kind": "ceilings",
         "platform": "android",
@@ -8926,7 +10390,7 @@
       },
       "expect": {
         "ok": {
-          "ceiling": "hard BATTERY_TEMP"
+          "ceiling": "hard BATTERY_LOW"
         }
       }
     },
@@ -8935,7 +10399,7 @@
       "origin": "generated",
       "status": "normative",
       "oracle": "self",
-      "description": "iOS: no soft ceiling; thermal state serious is hard; Low Power Mode is hard.",
+      "description": "iOS: no soft ceiling; Low Power Mode is a hard ceiling named POWER_SAVER (R4-B-01; THERMAL_HARD before r4), with a nominal thermal state.",
       "input": {
         "kind": "ceilings",
         "platform": "ios",
@@ -8959,7 +10423,7 @@
       },
       "expect": {
         "ok": {
-          "ceiling": "hard THERMAL_HARD"
+          "ceiling": "hard POWER_SAVER"
         }
       }
     },
@@ -9093,6 +10557,332 @@
         "ok": {
           "ceiling": "none"
         }
+      }
+    },
+    {
+      "id": "M04-451",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-02: iPadOS uses the iOS row: Low Power Mode is a hard ceiling named POWER_SAVER.",
+      "input": {
+        "kind": "ceilings",
+        "platform": "ipados",
+        "form": "tablet",
+        "thermal": {
+          "code": 1,
+          "headroom": null,
+          "batteryTempDeciC": null
+        },
+        "power": {
+          "source": "ac",
+          "level": 700
+        },
+        "presence": {
+          "foreground": true,
+          "screenOn": true,
+          "batterySaver": false,
+          "lowPowerMode": true
+        },
+        "gpuBusyHeldMs": 0
+      },
+      "expect": {
+        "ok": {
+          "ceiling": "hard POWER_SAVER"
+        }
+      }
+    },
+    {
+      "id": "M04-452",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-01: iOS, a battery level under 200 permille (20 percent) is a hard ceiling named BATTERY_LOW.",
+      "input": {
+        "kind": "ceilings",
+        "platform": "ios",
+        "form": "phone",
+        "thermal": {
+          "code": 0,
+          "headroom": null,
+          "batteryTempDeciC": null
+        },
+        "power": {
+          "source": "ac",
+          "level": 150
+        },
+        "presence": {
+          "foreground": true,
+          "screenOn": true,
+          "batterySaver": false,
+          "lowPowerMode": false
+        },
+        "gpuBusyHeldMs": 0
+      },
+      "expect": {
+        "ok": {
+          "ceiling": "hard BATTERY_LOW"
+        }
+      }
+    },
+    {
+      "id": "M04-453",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-02: iPadOS, a battery level under 200 permille is a hard ceiling named BATTERY_LOW.",
+      "input": {
+        "kind": "ceilings",
+        "platform": "ipados",
+        "form": "tablet",
+        "thermal": {
+          "code": 0,
+          "headroom": null,
+          "batteryTempDeciC": null
+        },
+        "power": {
+          "source": "ac",
+          "level": 199
+        },
+        "presence": {
+          "foreground": true,
+          "screenOn": true,
+          "batterySaver": false,
+          "lowPowerMode": false
+        },
+        "gpuBusyHeldMs": 0
+      },
+      "expect": {
+        "ok": {
+          "ceiling": "hard BATTERY_LOW"
+        }
+      }
+    },
+    {
+      "id": "M04-454",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-02: iPadOS, a level of exactly 200 permille is no ceiling, and neither is thermal state fair.",
+      "input": {
+        "kind": "ceilings",
+        "platform": "ipados",
+        "form": "tablet",
+        "thermal": {
+          "code": 1,
+          "headroom": null,
+          "batteryTempDeciC": null
+        },
+        "power": {
+          "source": "ac",
+          "level": 200
+        },
+        "presence": {
+          "foreground": true,
+          "screenOn": true,
+          "batterySaver": false,
+          "lowPowerMode": false
+        },
+        "gpuBusyHeldMs": 0
+      },
+      "expect": {
+        "ok": {
+          "ceiling": "none"
+        }
+      }
+    },
+    {
+      "id": "M04-455",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-02: iPadOS, thermal state serious is hard, THERMAL_HARD, ahead of a low battery level.",
+      "input": {
+        "kind": "ceilings",
+        "platform": "ipados",
+        "form": "tablet",
+        "thermal": {
+          "code": 3,
+          "headroom": null,
+          "batteryTempDeciC": null
+        },
+        "power": {
+          "source": "ac",
+          "level": 150
+        },
+        "presence": {
+          "foreground": true,
+          "screenOn": true,
+          "batterySaver": false,
+          "lowPowerMode": false
+        },
+        "gpuBusyHeldMs": 0
+      },
+      "expect": {
+        "ok": {
+          "ceiling": "hard THERMAL_HARD"
+        }
+      }
+    },
+    {
+      "id": "M04-456",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-02: among several hard ceilings thermal comes first (Android: severe thermal status and a low battery level).",
+      "input": {
+        "kind": "ceilings",
+        "platform": "android",
+        "form": "phone",
+        "thermal": {
+          "code": 3,
+          "headroom": 500,
+          "batteryTempDeciC": 300
+        },
+        "power": {
+          "source": "ac",
+          "level": 150
+        },
+        "presence": {
+          "foreground": true,
+          "screenOn": true,
+          "batterySaver": false,
+          "lowPowerMode": false
+        },
+        "gpuBusyHeldMs": 0
+      },
+      "expect": {
+        "ok": {
+          "ceiling": "hard THERMAL_HARD"
+        }
+      }
+    },
+    {
+      "id": "M04-457",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-02: hard before soft (Android: headroom 960 permille is soft, a battery level of 150 is hard).",
+      "input": {
+        "kind": "ceilings",
+        "platform": "android",
+        "form": "phone",
+        "thermal": {
+          "code": 2,
+          "headroom": 960,
+          "batteryTempDeciC": 300
+        },
+        "power": {
+          "source": "ac",
+          "level": 150
+        },
+        "presence": {
+          "foreground": true,
+          "screenOn": true,
+          "batterySaver": false,
+          "lowPowerMode": false
+        },
+        "gpuBusyHeldMs": 0
+      },
+      "expect": {
+        "ok": {
+          "ceiling": "hard BATTERY_LOW"
+        }
+      }
+    },
+    {
+      "id": "M04-458",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-02: among hard ceilings the battery temperature comes before the battery level (Android: 44.5 C and a level of 150).",
+      "input": {
+        "kind": "ceilings",
+        "platform": "android",
+        "form": "phone",
+        "thermal": {
+          "code": 0,
+          "headroom": 300,
+          "batteryTempDeciC": 445
+        },
+        "power": {
+          "source": "ac",
+          "level": 150
+        },
+        "presence": {
+          "foreground": true,
+          "screenOn": true,
+          "batterySaver": false,
+          "lowPowerMode": false
+        },
+        "gpuBusyHeldMs": 0
+      },
+      "expect": {
+        "ok": {
+          "ceiling": "hard BATTERY_TEMP"
+        }
+      }
+    },
+    {
+      "id": "M04-449",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-02: windows has no row in 11.3: the run is refused, never mapped to the Linux row.",
+      "input": {
+        "kind": "ceilings",
+        "platform": "windows",
+        "form": "desktop",
+        "thermal": {
+          "code": 0,
+          "headroom": null,
+          "batteryTempDeciC": null
+        },
+        "power": {
+          "source": "ac",
+          "level": null
+        },
+        "presence": {
+          "foreground": true,
+          "screenOn": true,
+          "batterySaver": false,
+          "lowPowerMode": false
+        },
+        "gpuBusyHeldMs": 0
+      },
+      "expect": {
+        "reject": "NO_CEILING_ROW"
+      }
+    },
+    {
+      "id": "M04-450",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4-B-02: ubuntu-touch has no row in 11.3: the run is refused, never mapped to the Linux row.",
+      "input": {
+        "kind": "ceilings",
+        "platform": "ubuntu-touch",
+        "form": "phone",
+        "thermal": {
+          "code": 0,
+          "headroom": null,
+          "batteryTempDeciC": null
+        },
+        "power": {
+          "source": "ac",
+          "level": 700
+        },
+        "presence": {
+          "foreground": true,
+          "screenOn": true,
+          "batterySaver": false,
+          "lowPowerMode": false
+        },
+        "gpuBusyHeldMs": 0
+      },
+      "expect": {
+        "reject": "NO_CEILING_ROW"
       }
     }
   ]

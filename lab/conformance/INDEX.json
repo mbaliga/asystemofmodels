@@ -1,7 +1,7 @@
 [
   {
     "path": "bench/M04-derive.json",
-    "sha256": "33196eb5fd1437fcaeace132e537155e60fcdfbebb5dde284a2de7eb4eb51351",
+    "sha256": "5cb51c10ec9bf6f712650b87861335978a8b06305a6786fef8bbd3c1082398d0",
     "family": "M04",
     "status": "normative"
   },

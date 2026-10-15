@@ -211,6 +211,22 @@ class RegenerateBenchVectors {
         add("M04-060", "Prefill at depth (pp512@d2048) cannot be carried by a manifest (benchmark.md 13.4 R5): the document is invalid.",
             jo("kind" to js("doc"), "benchDoc" to BJ.remove(BJ.set(BenchCodec.encode(phone), listOf("tiers", 0, "tests", 0, "test"), js("pp512@d2048")), listOf("tiers", 0, "tests", 0, "wholeSamples"))), "SCHEMA_INVALID")
 
+        // ------------------------------------------------------------------ r4 end reasons (benchmark.md R4-B-01)
+        add("M04-061", "R4-B-01: a sustained phase ended by a low battery level (BATTERY_LOW) is a hard ceiling: the windows are kept, HARD_CEILING is set and confidence is capped at medium.",
+            sustainIn(windows(40, { 100 }), "BATTERY_LOW")) { o -> check(String(Jcs.serialize(m(o, "flags"))).contains("HARD_CEILING")); eqS(o, "medium", "confidence") }
+        add("M04-062", "R4-B-01: a sustained phase ended by Low Power Mode or a battery-saver switch (POWER_SAVER) is a hard ceiling exactly as BATTERY_LOW is.",
+            sustainIn(windows(40, { 100 }), "POWER_SAVER")) { o -> check(String(Jcs.serialize(m(o, "flags"))).contains("HARD_CEILING")); eqS(o, "medium", "confidence") }
+        add("M04-063", "R4-B-01: DEVICE_BUSY keeps its current treatment: it does not set HARD_CEILING.",
+            sustainIn(windows(40, { 100 }), "DEVICE_BUSY")) { o -> check(!String(Jcs.serialize(m(o, "flags"))).contains("HARD_CEILING")) }
+        add("M04-064", "R4-B-01: a hard ceiling of the older names still sets HARD_CEILING (BATTERY_TEMP, the battery temperature).",
+            sustainIn(windows(40, { 100 }), "BATTERY_TEMP")) { o -> check(String(Jcs.serialize(m(o, "flags"))).contains("HARD_CEILING")); eqS(o, "medium", "confidence") }
+        val powerSaverDoc = phone.copy(run = phone.run.copy(abort = BAbort("POWER_SAVER", 400_000L)), sustain = phone.sustain!!.copy(endReason = "POWER_SAVER"))
+        add("M04-065", "R4-B-01: a whole document whose run was aborted by POWER_SAVER: the heat test is flagged and capped at medium, and the report names the reason.", docIn(powerSaverDoc)) { o ->
+            eqS(o, "medium", "answers", "sustain", "confidence")
+        }
+        val batteryLowDoc = phone.copy(run = phone.run.copy(abort = BAbort("BATTERY_LOW", 400_000L)), sustain = phone.sustain!!.copy(endReason = "BATTERY_LOW"))
+        add("M04-066", "R4-B-01: a whole document whose run was aborted by BATTERY_LOW.", docIn(batteryLowDoc)) { o -> eqS(o, "medium", "answers", "sustain", "confidence") }
+
         // ------------------------------------------------------------------ executor traces (SIMULATED)
         val t = mutableListOf<Triple<String, String, String>>(
             Triple("M04-301", "Quick plan on a phone: one tier that fits, no heat test; the whole event log and the document hash are pinned.", """{"preset":"phone","plan":"quick"}"""),
@@ -225,12 +241,18 @@ class RegenerateBenchVectors {
             Triple("M04-310", "Preflight refuses when not even the smallest tier fits.", """{"preset":"phone","plan":"standard","memAvail":200000000}"""),
             Triple("M04-311", "Preflight refuses when the contention spin is 2500 permille over the device's best.", """{"preset":"phone","plan":"standard","spins":[700000,700000,700000,700000,700000]}"""),
             Triple("M04-312", "Preflight refuses while the daemon has a request in flight.", """{"preset":"phone","plan":"standard","injections":[{"atMs":0,"kind":"REAL_REQUEST"}]}"""),
+            Triple("M04-313", "R4-B-02: a platform with no ceiling row (windows) is refused before anything runs (the lab's reason code is NO_CEILINGS); nothing is loaded.", """{"preset":"desktop","plan":"standard","platform":"windows"}"""),
+            Triple("M04-314", "R4-B-07: the heat test already ran today and the rerun tick was not ticked: the token's heat test is not permitted, so the tiers run and the sustained phase is skipped.", """{"preset":"phone","plan":"standard","sustainedToday":true}"""),
+            Triple("M04-315", "R4-B-07: the same sheet with the rerun tick ticked: the heat test runs.", """{"preset":"phone","plan":"standard","sustainedToday":true,"rerunHeatToday":true}"""),
             Triple("M04-320", "The charger is removed mid-run: ABORTING, then FINALIZING with the finished tests; the document records run.abort.", """{"preset":"phone","plan":"standard","injections":[{"atMs":150000,"kind":"CHARGER_REMOVED"}]}"""),
             Triple("M04-321", "User Stop: the same path as a hard ceiling.", """{"preset":"phone","plan":"standard","injections":[{"atMs":100000,"kind":"STOP"}]}"""),
             Triple("M04-322", "A standalone shell sent to the background aborts at the next check.", """{"preset":"phone","plan":"standard","shell":"android-standalone","daemon":false,"injections":[{"atMs":100000,"kind":"BACKGROUND"}]}"""),
             Triple("M04-323", "A memory-pressure signal aborts.", """{"preset":"phone","plan":"standard","injections":[{"atMs":100000,"kind":"MEMORY_PRESSURE"}]}"""),
             Triple("M04-324", "A battery temperature at the hard ceiling (44.5 C) aborts.", """{"preset":"phone","plan":"standard","injections":[{"atMs":100000,"kind":"BATTERY_TEMP","value":445}]}"""),
             Triple("M04-325", "The thermal source disappears: three failed polls abort (PROBE_LOST).", """{"preset":"phone","plan":"standard","injections":[{"atMs":100000,"kind":"THERMAL_LOST"}]}"""),
+            Triple("M04-326", "R4-B-01: a battery level that falls under 200 permille aborts with BATTERY_LOW (it was BATTERY_TEMP before r4).", """{"preset":"phone","plan":"standard","injections":[{"atMs":100000,"kind":"BATTERY_LEVEL","value":150}]}"""),
+            Triple("M04-327", "R4-B-01: Low Power Mode switched on during an iOS run aborts with POWER_SAVER (it was THERMAL_HARD before r4).", """{"preset":"phone","plan":"standard","platform":"ios","shell":"ios-standalone","daemon":false,"injections":[{"atMs":100000,"kind":"POWER_SAVER"}]}"""),
+            Triple("M04-328", "R4-B-01: a battery level that falls during the heat test aborts with BATTERY_LOW; the windows are kept and the sustain block carries the reason.", """{"preset":"phone","plan":"standard","injections":[{"atMs":330000,"kind":"BATTERY_LEVEL","value":150}]}"""),
             Triple("M04-330", "A real request arrives during a tier (daemon): YIELDED, 30 s idle, COOLING, and the tier restarts; its confidence is capped.", """{"preset":"phone","plan":"standard","injections":[{"atMs":60000,"kind":"REAL_REQUEST"}]}"""),
             Triple("M04-331", "The third yield finishes the run early with DEVICE_BUSY.", """{"preset":"phone","plan":"standard","injections":[{"atMs":60000,"kind":"REAL_REQUEST"},{"atMs":150000,"kind":"REAL_REQUEST"},{"atMs":260000,"kind":"REAL_REQUEST"}]}"""),
             Triple("M04-340", "A hard thermal ceiling in the sustained phase ends the phase (the windows are kept, endReason THERMAL_HARD) and the run completes.", """{"preset":"phone","plan":"standard","heat":"hot"}"""),
@@ -242,17 +264,20 @@ class RegenerateBenchVectors {
         )
         for ((id, d, s) in t) {
             val expectOutcome = when {
-                id in setOf("M04-301", "M04-302", "M04-303", "M04-340", "M04-341", "M04-342", "M04-343", "M04-344", "M04-345", "M04-330") -> "completed"
-                id in setOf("M04-304", "M04-305", "M04-306", "M04-307", "M04-308", "M04-309", "M04-310", "M04-311", "M04-312") -> "refused"
+                id in setOf("M04-301", "M04-302", "M04-303", "M04-340", "M04-341", "M04-342", "M04-343", "M04-344", "M04-345", "M04-330", "M04-314", "M04-315") -> "completed"
+                id in setOf("M04-304", "M04-305", "M04-306", "M04-307", "M04-308", "M04-309", "M04-310", "M04-311", "M04-312", "M04-313") -> "refused"
                 else -> "aborted"
             }
             add(id, d, traceIn(s)) { o -> check(m(o, "outcome").let { (it as xyz.mdhv.asom.lab.json.JString).value }.startsWith(expectOutcome)) { "$id: outcome was ${String(Jcs.serialize(m(o, "outcome")))} expected $expectOutcome" } }
         }
         val refusals = mapOf(
             "M04-304" to "TOO_WARM", "M04-305" to "NEEDS_CHARGER", "M04-306" to "POWER_SAVER", "M04-307" to "NO_THERMAL_SIGNAL", "M04-308" to "VIRTUALIZED",
-            "M04-309" to "MODELS_MISSING", "M04-310" to "NOT_ENOUGH_MEMORY", "M04-311" to "DEVICE_BUSY", "M04-312" to "SERVING",
+            "M04-309" to "MODELS_MISSING", "M04-310" to "NOT_ENOUGH_MEMORY", "M04-311" to "DEVICE_BUSY", "M04-312" to "SERVING", "M04-313" to "NO_CEILINGS",
         )
-        val aborts = mapOf("M04-320" to "CHARGER_REMOVED", "M04-321" to "USER_STOP", "M04-322" to "BACKGROUNDED", "M04-323" to "MEMORY_PRESSURE", "M04-324" to "BATTERY_TEMP", "M04-325" to "PROBE_LOST", "M04-331" to "DEVICE_BUSY")
+        val aborts = mapOf(
+            "M04-320" to "CHARGER_REMOVED", "M04-321" to "USER_STOP", "M04-322" to "BACKGROUNDED", "M04-323" to "MEMORY_PRESSURE", "M04-324" to "BATTERY_TEMP", "M04-325" to "PROBE_LOST",
+            "M04-326" to "BATTERY_LOW", "M04-327" to "POWER_SAVER", "M04-328" to "BATTERY_LOW", "M04-331" to "DEVICE_BUSY",
+        )
         for (i in vectors.indices) {
             val v = vectors[i]
             val want = refusals[v.id]?.let { "refused $it" } ?: aborts[v.id]?.let { "aborted $it" }
@@ -270,21 +295,55 @@ class RegenerateBenchVectors {
         add("M04-423", "Consent: a token is single-use.", parse("""{"kind":"consent","plan":"quick","downloadBytes":0,"tiers":[],"t3OptInOffered":false,"sustainedToday":false,"confirm":"match","mintNowMs":1000,"consumeNowMs":2000,"consumeTwice":true}"""), "CONSENT_REFUSED")
         add("M04-424", "Consent: a token covers exactly the plan whose sheet was shown.", parse("""{"kind":"consent","plan":"quick","downloadBytes":0,"tiers":[],"t3OptInOffered":false,"sustainedToday":false,"confirm":"match","mintNowMs":1000,"consumeNowMs":2000,"consumePlan":"standard"}"""), "CONSENT_REFUSED")
         add("M04-425", "Consent: a sheet that has been run today asks for an extra tick before the heat test.", parse("""{"kind":"consent","plan":"standard","downloadBytes":0,"tiers":[],"t3OptInOffered":false,"sustainedToday":true,"confirm":"match","mintNowMs":1000,"consumeNowMs":2000}"""))
+        // R4-B-07: the ticks. `reportText: false` leaves the sheet text hash out of the observation, because the wording of every sheet but the standard one is lab-defined (R4-L-15); the token semantics are then comparable across lanes.
+        add("M04-426", "R4-B-07: the token carries what was ticked: the 8B opt-in on a sheet that offered it (the standard sheet with a download, whose wording is the spec's).",
+            parse("""{"kind":"consent","plan":"standard","downloadBytes":4300000000,"tiers":["T1","T2"],"t3OptInOffered":true,"sustainedToday":false,"confirm":"match","mintNowMs":1000,"consumeNowMs":2000,"ticks":{"optIns":["T3"],"rerunHeatToday":false}}""")) { o ->
+            check(String(Jcs.serialize(m(o, "optIns"))) == "[\"T3\"]"); check((m(o, "heatTestPermitted") as xyz.mdhv.asom.lab.json.JBool).value)
+        }
+        add("M04-427", "R4-B-07: an opt-in that the sheet shown did not offer mints nothing.",
+            parse("""{"kind":"consent","plan":"standard","downloadBytes":4300000000,"tiers":["T1","T2"],"t3OptInOffered":false,"sustainedToday":false,"confirm":"match","mintNowMs":1000,"consumeNowMs":2000,"ticks":{"optIns":["T3"],"rerunHeatToday":false}}"""), "CONSENT_REFUSED")
+        add("M04-428", "R4-B-07: a sheet that needs the rerun tick and does not get it mints a token whose heat test is not permitted.",
+            parse("""{"kind":"consent","plan":"standard","downloadBytes":0,"tiers":[],"t3OptInOffered":false,"sustainedToday":true,"confirm":"match","mintNowMs":1000,"consumeNowMs":2000,"reportText":false,"ticks":{"optIns":[],"rerunHeatToday":false}}""")) { o ->
+            check(!(m(o, "heatTestPermitted") as xyz.mdhv.asom.lab.json.JBool).value)
+        }
+        add("M04-429", "R4-B-07: the same sheet with the rerun tick ticked: the heat test is permitted.",
+            parse("""{"kind":"consent","plan":"standard","downloadBytes":0,"tiers":[],"t3OptInOffered":false,"sustainedToday":true,"confirm":"match","mintNowMs":1000,"consumeNowMs":2000,"reportText":false,"ticks":{"optIns":[],"rerunHeatToday":true}}""")) { o ->
+            check((m(o, "heatTestPermitted") as xyz.mdhv.asom.lab.json.JBool).value)
+        }
+        add("M04-419", "R4-B-07: a rerun tick on a sheet that has no such tick mints nothing.",
+            parse("""{"kind":"consent","plan":"standard","downloadBytes":0,"tiers":[],"t3OptInOffered":false,"sustainedToday":false,"confirm":"match","mintNowMs":1000,"consumeNowMs":2000,"reportText":false,"ticks":{"optIns":[],"rerunHeatToday":true}}"""), "CONSENT_REFUSED")
         add("M04-430", "The governor state machine: every allowed edge (benchmark.md 11.4 with B9); every other pair is refused by `Governor.to`.", parse("""{"kind":"fsm"}"""))
         val ceil = listOf(
             Triple("M04-440", "Android: thermal status severe is a hard ceiling.", """{"kind":"ceilings","platform":"android","form":"phone","thermal":{"code":3,"headroom":500,"batteryTempDeciC":300},"power":{"source":"ac","level":700},"presence":{"foreground":true,"screenOn":true,"batterySaver":false,"lowPowerMode":false},"gpuBusyHeldMs":0}"""),
             Triple("M04-441", "Android: headroom 950 permille is a soft ceiling.", """{"kind":"ceilings","platform":"android","form":"phone","thermal":{"code":2,"headroom":950,"batteryTempDeciC":300},"power":{"source":"ac","level":700},"presence":{"foreground":true,"screenOn":true,"batterySaver":false,"lowPowerMode":false},"gpuBusyHeldMs":0}"""),
             Triple("M04-442", "Android: battery 44.0 C is a hard ceiling; 43.9 C only a soft one.", """{"kind":"ceilings","platform":"android","form":"phone","thermal":{"code":1,"headroom":500,"batteryTempDeciC":440},"power":{"source":"ac","level":700},"presence":{"foreground":true,"screenOn":true,"batterySaver":false,"lowPowerMode":false},"gpuBusyHeldMs":0}"""),
-            Triple("M04-443", "Android: a battery level under 200 permille is a hard ceiling.", """{"kind":"ceilings","platform":"android","form":"phone","thermal":{"code":0,"headroom":300,"batteryTempDeciC":300},"power":{"source":"ac","level":150},"presence":{"foreground":true,"screenOn":true,"batterySaver":false,"lowPowerMode":false},"gpuBusyHeldMs":0}"""),
-            Triple("M04-444", "iOS: no soft ceiling; thermal state serious is hard; Low Power Mode is hard.", """{"kind":"ceilings","platform":"ios","form":"phone","thermal":{"code":1,"headroom":null,"batteryTempDeciC":null},"power":{"source":"ac","level":700},"presence":{"foreground":true,"screenOn":true,"batterySaver":false,"lowPowerMode":true},"gpuBusyHeldMs":0}"""),
+            Triple("M04-443", "Android: a battery level under 200 permille is a hard ceiling named BATTERY_LOW (R4-B-01; BATTERY_TEMP before r4).","""{"kind":"ceilings","platform":"android","form":"phone","thermal":{"code":0,"headroom":300,"batteryTempDeciC":300},"power":{"source":"ac","level":150},"presence":{"foreground":true,"screenOn":true,"batterySaver":false,"lowPowerMode":false},"gpuBusyHeldMs":0}"""),
+            Triple("M04-444", "iOS: no soft ceiling; Low Power Mode is a hard ceiling named POWER_SAVER (R4-B-01; THERMAL_HARD before r4), with a nominal thermal state.","""{"kind":"ceilings","platform":"ios","form":"phone","thermal":{"code":1,"headroom":null,"batteryTempDeciC":null},"power":{"source":"ac","level":700},"presence":{"foreground":true,"screenOn":true,"batterySaver":false,"lowPowerMode":true},"gpuBusyHeldMs":0}"""),
             Triple("M04-445", "macOS: serious is soft, critical is hard, a laptop losing AC is hard.", """{"kind":"ceilings","platform":"macos","form":"laptop","thermal":{"code":3,"headroom":null,"batteryTempDeciC":null},"power":{"source":"ac","level":700},"presence":{"foreground":true,"screenOn":true,"batterySaver":false,"lowPowerMode":false},"gpuBusyHeldMs":0}"""),
             Triple("M04-446", "Linux: code 3 (at the passive trip) is soft, code 4 is hard.", """{"kind":"ceilings","platform":"linux","form":"desktop","thermal":{"code":4,"headroom":null,"batteryTempDeciC":null},"power":{"source":"ac","level":null},"presence":{"foreground":true,"screenOn":true,"batterySaver":false,"lowPowerMode":false},"gpuBusyHeldMs":0}"""),
             Triple("M04-447", "Steam Deck: other processes' GPU load held for 10 s is a hard ceiling (a game started).", """{"kind":"ceilings","platform":"linux","form":"handheld","thermal":{"code":0,"headroom":null,"batteryTempDeciC":null},"power":{"source":"ac","level":700},"presence":{"foreground":true,"screenOn":true,"batterySaver":false,"lowPowerMode":false},"gpuBusyHeldMs":10000}"""),
             Triple("M04-448", "Nothing applies: no ceiling.", """{"kind":"ceilings","platform":"android","form":"phone","thermal":{"code":1,"headroom":600,"batteryTempDeciC":330},"power":{"source":"ac","level":700},"presence":{"foreground":true,"screenOn":true,"batterySaver":false,"lowPowerMode":false},"gpuBusyHeldMs":0}"""),
         )
-        val expectCeil = mapOf("M04-440" to "hard THERMAL_HARD", "M04-441" to "soft THERMAL_SOFT", "M04-442" to "hard BATTERY_TEMP", "M04-443" to "hard BATTERY_TEMP", "M04-444" to "hard THERMAL_HARD", "M04-445" to "soft THERMAL_SOFT",
+        val expectCeil = mapOf("M04-440" to "hard THERMAL_HARD", "M04-441" to "soft THERMAL_SOFT", "M04-442" to "hard BATTERY_TEMP", "M04-443" to "hard BATTERY_LOW", "M04-444" to "hard POWER_SAVER", "M04-445" to "soft THERMAL_SOFT",
             "M04-446" to "hard THERMAL_HARD", "M04-447" to "hard DEVICE_BUSY", "M04-448" to "none")
         for ((id, d, s) in ceil) add(id, d, parse(s)) { o -> eqS(o, expectCeil.getValue(id), "ceiling") }
+
+        // R4-B-01, R4-B-02: iPadOS takes the iOS row; a low level and Low Power Mode have their own names; a platform without a row is refused; the order among several ceilings.
+        fun ceilingIn(platform: String, form: String, code: Int, headroom: String, batt: String, level: String, lpm: Boolean) =
+            parse("""{"kind":"ceilings","platform":"$platform","form":"$form","thermal":{"code":$code,"headroom":$headroom,"batteryTempDeciC":$batt},"power":{"source":"ac","level":$level},"presence":{"foreground":true,"screenOn":true,"batterySaver":false,"lowPowerMode":$lpm},"gpuBusyHeldMs":0}""")
+        val more = listOf(
+            Triple("M04-451", "R4-B-02: iPadOS uses the iOS row: Low Power Mode is a hard ceiling named POWER_SAVER.", ceilingIn("ipados", "tablet", 1, "null", "null", "700", true)) to "hard POWER_SAVER",
+            Triple("M04-452", "R4-B-01: iOS, a battery level under 200 permille (20 percent) is a hard ceiling named BATTERY_LOW.", ceilingIn("ios", "phone", 0, "null", "null", "150", false)) to "hard BATTERY_LOW",
+            Triple("M04-453", "R4-B-02: iPadOS, a battery level under 200 permille is a hard ceiling named BATTERY_LOW.", ceilingIn("ipados", "tablet", 0, "null", "null", "199", false)) to "hard BATTERY_LOW",
+            Triple("M04-454", "R4-B-02: iPadOS, a level of exactly 200 permille is no ceiling, and neither is thermal state fair.", ceilingIn("ipados", "tablet", 1, "null", "null", "200", false)) to "none",
+            Triple("M04-455", "R4-B-02: iPadOS, thermal state serious is hard, THERMAL_HARD, ahead of a low battery level.", ceilingIn("ipados", "tablet", 3, "null", "null", "150", false)) to "hard THERMAL_HARD",
+            Triple("M04-456", "R4-B-02: among several hard ceilings thermal comes first (Android: severe thermal status and a low battery level).", ceilingIn("android", "phone", 3, "500", "300", "150", false)) to "hard THERMAL_HARD",
+            Triple("M04-457", "R4-B-02: hard before soft (Android: headroom 960 permille is soft, a battery level of 150 is hard).", ceilingIn("android", "phone", 2, "960", "300", "150", false)) to "hard BATTERY_LOW",
+            Triple("M04-458", "R4-B-02: among hard ceilings the battery temperature comes before the battery level (Android: 44.5 C and a level of 150).", ceilingIn("android", "phone", 0, "300", "445", "150", false)) to "hard BATTERY_TEMP",
+        )
+        for ((tr, want) in more) add(tr.first, tr.second, tr.third) { o -> eqS(o, want, "ceiling") }
+        add("M04-449", "R4-B-02: windows has no row in 11.3: the run is refused, never mapped to the Linux row.", ceilingIn("windows", "desktop", 0, "null", "null", "null", false), "NO_CEILING_ROW")
+        add("M04-450", "R4-B-02: ubuntu-touch has no row in 11.3: the run is refused, never mapped to the Linux row.", ceilingIn("ubuntu-touch", "phone", 0, "null", "null", "700", false), "NO_CEILING_ROW")
     }
 
     private fun withMember(v: JValue, path: List<String>, name: String, value: JValue): JValue {

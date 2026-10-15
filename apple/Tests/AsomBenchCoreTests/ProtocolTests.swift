@@ -19,12 +19,12 @@ final class ProtocolTests: XCTestCase {
 
     func testPlansTheSpecDoesNotGiveInFullAreNotInvented() {
         var checked = 0
-        for id in ["quick", "ci", "sustained", "battery", "extended", "", "Standard"] {
+        for id in ["sustained", "battery", "extended", "", "Standard", "Quick", "CI"] {
             XCTAssertNil(RunPlan.jcsValue(id), id)
             XCTAssertNil(try RunPlan.jcsBytes(id), id)
             checked += 1
         }
-        XCTAssertEqual(RunPlan.compiled, ["standard"])
+        XCTAssertEqual(RunPlan.compiled, ["standard", "quick", "ci"])
         XCTAssertGreaterThan(checked, 5, "non-vacuity: plans without data were asked for")
     }
 
@@ -197,7 +197,9 @@ final class ProtocolTests: XCTestCase {
         XCTAssertTrue(ConsentSheet.rerunTickRequired(today))
         XCTAssertFalse(ConsentSheet.rerunTickRequired(standard()))
         XCTAssertFalse(ConsentSheet.rerunTickRequired(ConsentInputs(plan: "quick", downloadBytes: 0, tiers: [], t3OptInOffered: false, sustainedToday: true)))
-        XCTAssertThrowsError(try mint(today, ConsentTicks()).get(), "no tick, no token"); cases += 1
+        // r4 (R4-B-07): a sheet that needs the rerun tick and does not get it mints a token whose heat test is not permitted (it used to mint nothing).
+        let unticked = try XCTUnwrap(try? mint(today, ConsentTicks()).get())
+        XCTAssertFalse(unticked.heatTestPermitted); XCTAssertFalse(unticked.rerunHeatToday); cases += 1
         let ticked = try XCTUnwrap(try? mint(today, ConsentTicks(rerunHeatToday: true)).get())
         XCTAssertTrue(ticked.rerunHeatToday); XCTAssertTrue(ticked.heatTestPermitted); cases += 1
         XCTAssertThrowsError(try mint(standard(), ConsentTicks(rerunHeatToday: true)).get(), "a tick the sheet did not have"); cases += 1
@@ -315,7 +317,7 @@ final class ProtocolTests: XCTestCase {
         try check(inputs("android", batteryDeciC: 439), .soft("THERMAL_SOFT"))
         try check(inputs("android", batteryDeciC: 440), .hard("BATTERY_TEMP"))
         try check(inputs("android", level: 200), .none)
-        try check(inputs("android", level: 199), .hard("BATTERY_TEMP"))
+        try check(inputs("android", level: 199), .hard("BATTERY_LOW"))
         try check(inputs("android", level: nil), .none)
         try check(inputs("android", code: 2, headroom: 999, batteryDeciC: 439), .soft("THERMAL_SOFT"))
         try check(inputs("android", code: 3, headroom: 999, batteryDeciC: 450, level: 100), .hard("THERMAL_HARD"))
@@ -323,8 +325,8 @@ final class ProtocolTests: XCTestCase {
         try check(inputs("ios", code: 1), .none)
         try check(inputs("ios", code: 1, headroom: 999, batteryDeciC: 500), .none)
         try check(inputs("ios", code: 3), .hard("THERMAL_HARD"))
-        try check(inputs("ios", code: 1, lowPower: true), .hard("THERMAL_HARD"))
-        try check(inputs("ios", level: 199), .hard("BATTERY_TEMP"))
+        try check(inputs("ios", code: 1, lowPower: true), .hard("POWER_SAVER"))
+        try check(inputs("ios", level: 199), .hard("BATTERY_LOW"))
         try check(inputs("ios", level: 200), .none)
         // macOS: serious soft, critical hard, a laptop off AC hard.
         try check(inputs("macos", form: "laptop", code: 2), .none)
@@ -356,8 +358,8 @@ final class ProtocolTests: XCTestCase {
                 (inputs(platform, form: "tablet", code: 1, headroom: 999, batteryDeciC: 500), Ceiling.none),
                 (inputs(platform, form: "tablet", code: 3), Ceiling.hard("THERMAL_HARD")),
                 (inputs(platform, form: "tablet", code: 4), Ceiling.hard("THERMAL_HARD")),
-                (inputs(platform, form: "tablet", code: 1, lowPower: true), Ceiling.hard("THERMAL_HARD")),
-                (inputs(platform, form: "tablet", level: 199), Ceiling.hard("BATTERY_TEMP")),
+                (inputs(platform, form: "tablet", code: 1, lowPower: true), Ceiling.hard("POWER_SAVER")),
+                (inputs(platform, form: "tablet", level: 199), Ceiling.hard("BATTERY_LOW")),
                 (inputs(platform, form: "tablet", level: 200), Ceiling.none),
             ] {
                 XCTAssertEqual(try Ceilings.evaluate(i), want, "\(platform) \(i)")

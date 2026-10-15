@@ -470,6 +470,51 @@ Plans are data compiled into the core. A document records the plan id and the sh
 }
 ```
 
+**`quick` and `ci` (r4, R4-B-06; PROVISIONAL).** The two documents below are the §5.1 table rows with the `standard` value wherever the table is silent. Their JCS bytes are the ones the plan vectors M04-401 (`quick`, 558 bytes, plan hash `39Jq5InzqMUCbHKyI4XqqvL2ddj0UCIXeFhRHaw5f-E`) and M04-403 (`ci`, 514 bytes, plan hash `ervAvYozEUXI8dn9t0fu9sJXOC16z4LpTyt6E7ZnZXo`) pin. A plan without a sustained phase has `"sustain": null`, a plan with no required charger has `"charger": {}`, and a plan with no wall cap has `"wallCapMs": {}`. `fallback` names the tier a phone or tablet runs when `auto[0]` does not fit (§4.4: "T1 if it fits, else T0"). `sustained`, `battery` and `extended` are not built.
+
+```json
+{
+  "plan": "quick", "planVersion": 1,
+  "reps": 3, "depthReps": 3, "warmupReps": 1, "interRepMs": 500,
+  "tiers": {
+    "phone":   { "auto": ["T1"], "fallback": "T0" },
+    "tablet":  { "auto": ["T1"], "fallback": "T0" },
+    "handheld":{ "auto": ["T1"] }, "laptop": { "auto": ["T1"] },
+    "desktop": { "auto": ["T1"] }, "server": { "auto": ["T1"] }
+  },
+  "headlineTests": ["load", "pp512@d0", "tg128@d0", "nll1024"],
+  "headlineTestsDesktop": [],
+  "otherTests": [],
+  "sustain": null,
+  "coolDown": { "pollMs": 5000, "maxWaitMsMobile": 180000, "maxWaitMsDesktop": 120000,
+                "maxWaitMsBeforeSustain": 600000 },
+  "charger": {},
+  "minBatteryPermille": 300,
+  "wallCapMs": {}
+}
+```
+
+```json
+{
+  "plan": "ci", "planVersion": 1,
+  "reps": 3, "depthReps": 3, "warmupReps": 1, "interRepMs": 500,
+  "tiers": {
+    "phone":   { "auto": ["T0"] }, "tablet": { "auto": ["T0"] },
+    "handheld":{ "auto": ["T0"] }, "laptop": { "auto": ["T0"] },
+    "desktop": { "auto": ["T0"] }, "server": { "auto": ["T0"] }
+  },
+  "headlineTests": ["pp512@d0", "tg128@d0", "nll1024"],
+  "headlineTestsDesktop": [],
+  "otherTests": [],
+  "sustain": null,
+  "coolDown": { "pollMs": 5000, "maxWaitMsMobile": 180000, "maxWaitMsDesktop": 120000,
+                "maxWaitMsBeforeSustain": 600000 },
+  "charger": {},
+  "minBatteryPermille": 0,
+  "wallCapMs": {}
+}
+```
+
 ### 5.3 Phase order and the per-rep protocol
 
 1. **PREFLIGHT** (§11.2). Contention baseline: the minimum of 5 spins (§8).

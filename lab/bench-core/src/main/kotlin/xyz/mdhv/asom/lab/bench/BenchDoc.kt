@@ -146,8 +146,8 @@ object BenchEnums {
     val powerSources = setOf("ac", "battery")
     val startThermals = setOf("cool", "warm", "hot")
     val loadColdness = setOf("evicted", "best-effort", "unknown")
-    val abortReasons = setOf("THERMAL_HARD", "BATTERY_TEMP", "USER_STOP", "BACKGROUNDED", "CHARGER_REMOVED", "MEMORY_PRESSURE", "WALL_CAP", "PROBE_LOST", "DEVICE_BUSY")
-    val endReasons = setOf("PLATEAU", "TIME_CAP", "THERMAL_SOFT", "THERMAL_HARD", "BATTERY_TEMP", "USER_STOP", "BACKGROUNDED", "CHARGER_REMOVED", "MEMORY_PRESSURE", "WALL_CAP", "YIELDED", "DEVICE_BUSY", "PROBE_LOST")
+    val abortReasons = setOf("THERMAL_HARD", "BATTERY_TEMP", "BATTERY_LOW", "POWER_SAVER", "USER_STOP", "BACKGROUNDED", "CHARGER_REMOVED", "MEMORY_PRESSURE", "WALL_CAP", "PROBE_LOST", "DEVICE_BUSY")
+    val endReasons = setOf("PLATEAU", "TIME_CAP", "THERMAL_SOFT", "THERMAL_HARD", "BATTERY_TEMP", "BATTERY_LOW", "POWER_SAVER", "USER_STOP", "BACKGROUNDED", "CHARGER_REMOVED", "MEMORY_PRESSURE", "WALL_CAP", "YIELDED", "DEVICE_BUSY", "PROBE_LOST")
     val tiers = TIER_ORDER.toSet()
 }
 

@@ -184,7 +184,7 @@ def test_result(spec, samples, whole, ctx):
     return out
 
 
-HARD_REASONS = {"THERMAL_HARD", "BATTERY_TEMP", "MEMORY_PRESSURE", "WALL_CAP"}
+HARD_REASONS = {"THERMAL_HARD", "BATTERY_TEMP", "BATTERY_LOW", "POWER_SAVER", "MEMORY_PRESSURE", "WALL_CAP"}
 
 
 def sustain_result(i):
@@ -193,7 +193,8 @@ def sustain_result(i):
     out = REF.derive_sustained(s, run)
     conf, flags = out["confidence"], list(out["flags"])
     # benchmark.md 6.4: a hard-ceiling abort keeps the windows, adds HARD_CEILING and caps confidence at medium; a user stop is low
-    if i["endReason"] in ("THERMAL_HARD", "BATTERY_TEMP", "MEMORY_PRESSURE", "BACKGROUNDED", "CHARGER_REMOVED", "DEVICE_BUSY"):
+    # r4 (R4-B-01): BATTERY_LOW and POWER_SAVER are hard ceilings like THERMAL_HARD and BATTERY_TEMP; DEVICE_BUSY keeps its treatment and does not set HARD_CEILING
+    if i["endReason"] in ("THERMAL_HARD", "BATTERY_TEMP", "BATTERY_LOW", "POWER_SAVER", "MEMORY_PRESSURE", "BACKGROUNDED", "CHARGER_REMOVED"):
         flags.append("HARD_CEILING")
         conf = min([conf, "medium"], key=lambda x: CONF_RANK[x])
     if i["endReason"] in ("USER_STOP",):
@@ -219,13 +220,19 @@ def spec_pins(md):
     return pins
 
 
-def spec_plan(md):
+def spec_plans(md):
+    """Every ```json block of benchmark.md 5.2, keyed by its `plan` member (r4, R4-B-06: standard, quick and ci)."""
     sec = md[md.index("### 5.2 Run-plan format"):md.index("### 5.3")]
-    txt = sec[sec.index("```json") + 7:]
-    txt = txt[:txt.index("```")]
-    kind, v = M01.parse(txt.encode("utf-8"))
-    assert kind == "ok", v
-    return v
+    plans = {}
+    for m in re.finditer(r"```json\n(.*?)```", sec, re.S):
+        kind, v = M01.parse(m.group(1).encode("utf-8"))
+        assert kind == "ok", v
+        plans[v["plan"]] = v
+    return plans
+
+
+def spec_plan(md):
+    return spec_plans(md)["standard"]
 
 
 def spec_plan_rows(md):
@@ -256,19 +263,31 @@ HARD_ON_DECI_C = {"android": 440, "linux": 450}
 SOFT_ON_DECI_C = {"android": 420}
 
 
+CEILING_ROWS = ("android", "ios", "ipados", "macos", "linux")
+
+
 def ceiling_11_3(i):
+    """The 11.3 table with the r4 names (R4-B-01) and order (R4-B-02: hard before soft; thermal, then battery, then the rest). None: no row (refused)."""
     plat, form, th, pw, pr = i["platform"], i["form"], i["thermal"], i["power"], i["presence"]
     code, head, bt = th["code"], th.get("headroom"), th.get("batteryTempDeciC")
     lvl = pw.get("level")
+    if plat not in CEILING_ROWS:
+        return None
     # hard first
     if plat == "android":
         if code >= 3:
             return "hard THERMAL_HARD"
-        if (bt is not None and bt >= 440) or (lvl is not None and lvl < 200):
+        if bt is not None and bt >= 440:
             return "hard BATTERY_TEMP"
+        if lvl is not None and lvl < 200:
+            return "hard BATTERY_LOW"
     elif plat in ("ios", "ipados"):
-        if code >= 3 or pr.get("lowPowerMode") or (lvl is not None and lvl < 200):
+        if code >= 3:
             return "hard THERMAL_HARD"
+        if lvl is not None and lvl < 200:
+            return "hard BATTERY_LOW"
+        if pr.get("lowPowerMode"):
+            return "hard POWER_SAVER"
     elif plat == "macos":
         if code >= 4:
             return "hard THERMAL_HARD"
@@ -438,6 +457,12 @@ def check_m04(root):
                 row = rows[i["plan"]]
                 cnt.ok(len(ok["planSha256"]) == 43 and ok["jcsBytes"] > 0, f"{vid}: plan hash shape")
                 cnt.ok(row[4] == "3", f"{vid}: the 5.1 table says {row[4]} reps for {i['plan']}")
+                # r4 (R4-B-06): quick and ci are JSON in 5.2 too, so their hashes are checked against the text
+                plans = spec_plans(md)
+                cnt.ok(i["plan"] in plans, f"{vid}: benchmark.md 5.2 has no JSON for plan {i['plan']}")
+                if i["plan"] in plans:
+                    jc = M01.jcs(plans[i["plan"]]).encode("utf-8")
+                    cnt.ok(b64u(hashlib.sha256(jc).digest()) == ok["planSha256"] and len(jc) == ok["jcsBytes"], f"{vid}: the {i['plan']} plan sha256 differs from the plan JSON in benchmark.md 5.2")
         elif k == "pins":
             ok = e["ok"]
             cnt.ok(ok["q1"] == spec_pins(md), f"{vid}: Q1 pins differ from the benchmark.md 4.2 table")
@@ -448,14 +473,23 @@ def check_m04(root):
             cnt.ok(SPEC_EDGES <= edges, f"{vid}: missing spec edges {sorted(SPEC_EDGES - edges)}")
             cnt.ok(edges - SPEC_EDGES <= DOCUMENTED_EXTRA_EDGES, f"{vid}: undocumented edges {sorted(edges - SPEC_EDGES - DOCUMENTED_EXTRA_EDGES)}")
         elif k == "ceilings":
-            cnt.ok(ceiling_11_3(i) == e["ok"]["ceiling"], f"{vid}: expected {e['ok']['ceiling']}, xcheck {ceiling_11_3(i)}")
+            if "reject" in e:
+                cnt.ok(ceiling_11_3(i) is None and e["reject"] == "NO_CEILING_ROW" and i["platform"] not in CEILING_ROWS, f"{vid}: a platform with no 11.3 row must be refused, not given a ceiling")
+            else:
+                cnt.ok(ceiling_11_3(i) == e["ok"]["ceiling"], f"{vid}: expected {e['ok']['ceiling']}, xcheck {ceiling_11_3(i)}")
         elif k == "trace":
             check_trace(cnt, v)
         elif k == "consent":
             got = consent_model(i)
             cnt.ok(got == ("consumed" if "ok" in e else "refused"), f"{vid}: consent model says {got}")
             if "ok" in e:
-                cnt.ok(re.fullmatch(r"[0-9a-f]{64}", e["ok"]["textSha256"]) is not None, f"{vid}: textSha256 shape")
+                if i.get("reportText", True):
+                    cnt.ok(re.fullmatch(r"[0-9a-f]{64}", e["ok"]["textSha256"]) is not None, f"{vid}: textSha256 shape")
+                else:
+                    cnt.ok("textSha256" not in e["ok"], f"{vid}: reportText false must leave the text hash out")
+                want_opt = sorted(i["ticks"]["optIns"]) if i.get("ticks") else []
+                cnt.ok(e["ok"]["optIns"] == want_opt, f"{vid}: the token carries optIns {e['ok']['optIns']}, ticks say {want_opt}")
+                cnt.ok(e["ok"]["heatTestPermitted"] == consent_heat_permitted(i), f"{vid}: heatTestPermitted {e['ok']['heatTestPermitted']}")
         else:
             cnt.ok(False, f"{vid}: unknown kind {k}")
     return cnt, kinds
@@ -464,6 +498,13 @@ def check_m04(root):
 def consent_model(i):
     if i["confirm"] != "match":
         return "refused"
+    # r4 (R4-B-07): a tick for a name the sheet did not offer, or a rerun tick on a sheet that has none, mints nothing
+    ticks = i.get("ticks")
+    if ticks is not None:
+        if any(n != "T3" or not i["t3OptInOffered"] for n in ticks["optIns"]):
+            return "refused"
+        if ticks["rerunHeatToday"] and not (i["sustainedToday"] and i["plan"] != "quick" and i["plan"] != "ci"):
+            return "refused"
     if i["consumeNowMs"] - i["mintNowMs"] >= 300000:
         return "refused"
     if i.get("consumeTwice"):
@@ -471,6 +512,13 @@ def consent_model(i):
     if i.get("consumePlan", i["plan"]) != i["plan"]:
         return "refused"
     return "consumed"
+
+
+def consent_heat_permitted(i):
+    """R4-B-07: the heat test is withheld when the sheet needed the rerun tick (a heat plan run today) and it was not ticked."""
+    needs = i["sustainedToday"] and i["plan"] not in ("quick", "ci")
+    ticked = bool(i.get("ticks") and i["ticks"]["rerunHeatToday"])
+    return (not needs) or ticked
 
 
 def check_trace(cnt, v):
@@ -507,8 +555,10 @@ def check_trace(cnt, v):
         cnt.ok(last == "IDLE" and not any("STATE PREPARING" in x for x in ev), f"{vid}: a refused run must not go past PREFLIGHT")
     if outcome == "completed":
         cnt.ok(state == "DONE" and not any("ABORTING" in x for x in ev), f"{vid}: completed without abort")
-    if outcome == "aborted":
-        cnt.ok(any("->ABORTING" in x for x in ev) and state == "DONE", f"{vid}: an aborted run passes ABORTING and finishes")
+    if outcome.startswith("aborted"):
+        # R4-B-03: the third yield (DEVICE_BUSY) goes YIELDED -> FINALIZING; every other abort passes ABORTING
+        finished_early = any(x.startswith("FINISH ") for x in ev) and any("YIELDED->FINALIZING" in x for x in ev)
+        cnt.ok((any("->ABORTING" in x for x in ev) or finished_early) and state == "DONE", f"{vid}: an aborted run passes ABORTING (or finishes at the third yield) and finishes")
 
 
 def check_m05_body(root):

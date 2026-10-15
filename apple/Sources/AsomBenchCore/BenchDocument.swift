@@ -146,9 +146,9 @@ public struct BenchDocument: Sendable {
     public static let forms = ["phone", "tablet", "handheld", "laptop", "desktop", "server"]
     public static let thermalClasses = ["cool", "warm", "hot"]
     public static let thermalNames = ["nominal", "light", "moderate", "severe", "critical"]
-    public static let abortReasons = ["THERMAL_HARD", "BATTERY_TEMP", "USER_STOP", "BACKGROUNDED", "CHARGER_REMOVED",
+    public static let abortReasons = ["THERMAL_HARD", "BATTERY_TEMP", "BATTERY_LOW", "POWER_SAVER", "USER_STOP", "BACKGROUNDED", "CHARGER_REMOVED",
                                       "MEMORY_PRESSURE", "WALL_CAP", "PROBE_LOST", "DEVICE_BUSY"]
-    public static let endReasons = ["PLATEAU", "TIME_CAP", "THERMAL_SOFT", "THERMAL_HARD", "BATTERY_TEMP", "USER_STOP",
+    public static let endReasons = ["PLATEAU", "TIME_CAP", "THERMAL_SOFT", "THERMAL_HARD", "BATTERY_TEMP", "BATTERY_LOW", "POWER_SAVER", "USER_STOP",
                                     "BACKGROUNDED", "CHARGER_REMOVED", "MEMORY_PRESSURE", "WALL_CAP", "YIELDED",
                                     "DEVICE_BUSY", "PROBE_LOST"]
 

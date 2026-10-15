@@ -139,9 +139,9 @@ public struct ConsentGate: Sendable {
 
     public init() {}
 
-    /// `ticks` nil means the caller did not report the tick state (the conformance adapter, whose vectors carry none): nothing is opted in, and
-    /// a sheet that needs the "run again today" tick mints a token whose `heatTestPermitted` is false. With `ticks` given, a sheet that needs
-    /// the tick and does not get it mints nothing, and so does an opt-in the sheet did not offer.
+    /// `ticks` nil means the caller did not report the tick state: nothing is opted in. A sheet that needs the "run again today" tick and does
+    /// not get it (ticks nil, or ticks without it) mints a token whose `heatTestPermitted` is false (R4-B-07; it used to mint nothing when
+    /// ticks were given). An opt-in the sheet did not offer, and a rerun tick on a sheet that has none, mint nothing.
     public mutating func confirm(sheetFor inputs: ConsentInputs, shownSha256: [UInt8], nowMs: Int64, ticks: ConsentTicks? = nil) -> Result<ConsentToken, ConsentRefused> {
         let want = ConsentSheet.textSha256(ConsentSheet.text(inputs))
         guard Self.constantTimeEqual(want, shownSha256) else { return .failure(ConsentRefused(reason: "hash is not the hash of the sheet shown")) }
@@ -150,7 +150,6 @@ public struct ConsentGate: Sendable {
             for optIn in ticks.optIns {
                 guard optIn == ConsentTicks.t3, inputs.t3OptInOffered else { return .failure(ConsentRefused(reason: "opt-in not offered on the sheet shown")) }
             }
-            guard !tickRequired || ticks.rerunHeatToday else { return .failure(ConsentRefused(reason: "the heat test already ran today and its tick is not ticked")) }
             guard tickRequired || !ticks.rerunHeatToday else { return .failure(ConsentRefused(reason: "the sheet shown had no rerun tick")) }
         }
         return .success(ConsentToken(plan: inputs.plan, mintedAtMs: nowMs, optIns: ticks?.optIns ?? [], rerunHeatToday: ticks?.rerunHeatToday ?? false, rerunTickWasRequired: tickRequired))
