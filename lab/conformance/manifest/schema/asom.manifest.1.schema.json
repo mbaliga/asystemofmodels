@@ -1508,6 +1508,8 @@
            "enum": [
             "THERMAL_HARD",
             "BATTERY_TEMP",
+            "BATTERY_LOW",
+            "POWER_SAVER",
             "USER_STOP",
             "BACKGROUNDED",
             "CHARGER_REMOVED",
@@ -1805,6 +1807,8 @@
           "THERMAL_SOFT",
           "THERMAL_HARD",
           "BATTERY_TEMP",
+          "BATTERY_LOW",
+          "POWER_SAVER",
           "USER_STOP",
           "BACKGROUNDED",
           "CHARGER_REMOVED",

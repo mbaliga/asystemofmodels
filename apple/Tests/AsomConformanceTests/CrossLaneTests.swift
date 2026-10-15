@@ -39,7 +39,7 @@ final class CrossLaneTests: XCTestCase {
     func testTheCommittedFixturesVerifyHereAndCarryBothOutcomes() throws {
         let dir = try fixtureDirectory()
         let rows = try R3.run(families: ["M02", "M03"], in: dir)
-        XCTAssertEqual(rows.count, 37)
+        XCTAssertEqual(rows.count, 39)
         XCTAssertEqual(R3.mismatches(rows).map { "\($0.id): \($0.reason)" }, [])
         var ok = 0, rejects: [String: Int] = [:]
         for r in rows {
@@ -49,8 +49,8 @@ final class CrossLaneTests: XCTestCase {
             case .notImplemented: XCTFail("\(r.vector.id) not run")
             }
         }
-        XCTAssertEqual(ok, 23)
-        XCTAssertEqual(rejects.values.reduce(0, +), 14)
+        XCTAssertEqual(ok, 24)
+        XCTAssertEqual(rejects.values.reduce(0, +), 15)
         XCTAssertGreaterThanOrEqual(rejects.count, 12, "non-vacuity: the reject vectors cover many distinct codes")
         for code in ["KEY_NOT_PINNED", "EXPIRED", "NONCE_MISMATCH", "TEST_ONLY_KEY", "FINGERPRINT_MISMATCH", "SIGNATURE_INVALID", "NOT_YET_VALID", "TIER_INSUFFICIENT",
                      "NON_CANONICAL", "SUBJECT_KEY_MISMATCH", "ROLLBACK", "EQUIVOCATION"] {
@@ -58,6 +58,15 @@ final class CrossLaneTests: XCTestCase {
         }
         for r in rows where r.vector.id.hasPrefix("M02-91") || r.vector.id == "M02-901" { if case .ok = r.observed {} else { XCTFail(r.vector.id) } }
         XCTAssertTrue(R3.lines(rows).allSatisfy { !$0.contains("HARNESS_ERROR") })
+        var production = 0
+        for r in rows where CrossLane.randomPayloadIds.contains(r.vector.id) {
+            guard case .bool(true)? = r.vector.input.member("context")?.member("productionKeys") else { XCTFail("\(r.vector.id) must be checked by a production-keys verifier"); continue }
+            XCTAssertEqual(r.vector.input.member("context")?.member("mode")?.stringValue, "FILE")
+            XCTAssertFalse(NodeIdentity.testOnlyNodeIds.contains(try XCTUnwrap(payload(of: r.vector.input.member("document")).flatMap { try? Conformance.parseValue($0) }?.member("body")?.member("subject")?.member("nodeId")?.stringValue)),
+                           "\(r.vector.id): the production-path export is under a key nobody published")
+            production += 1
+        }
+        XCTAssertEqual(production, CrossLane.randomPayloadIds.count, "non-vacuity: the production-path vectors were found")
     }
 
     func testEveryCommittedSignatureIsLowSExceptTheDeliberateTwinAndTheTamperedOne() throws {
@@ -71,7 +80,7 @@ final class CrossLaneTests: XCTestCase {
             if SignatureCodec.isLowS(sig) { lowS += 1 } else { highS += 1; XCTAssertEqual(r.vector.id, "M02-902", "only the high-S twin may be high-S") }
         }
         XCTAssertEqual(highS, 1)
-        XCTAssertEqual(lowS, 36)
+        XCTAssertEqual(lowS, 38)
     }
 
     func testRegeneratingGivesTheSamePayloadsAndFreshSignatures() throws {
@@ -80,22 +89,55 @@ final class CrossLaneTests: XCTestCase {
         let scratch = NSTemporaryDirectory() + "asom-crosslane-" + UUID().uuidString
         defer { try? FileManager.default.removeItem(atPath: scratch) }
         let summary = try CrossLane.generate(labDir: lab, into: scratch)
-        XCTAssertEqual(summary.m02, 23)
-        XCTAssertEqual(summary.m03, 14)
-        var compared = 0, signaturesDiffer = 0
+        XCTAssertEqual(summary.m02, 24)
+        XCTAssertEqual(summary.m03, 15)
+        var compared = 0, signaturesDiffer = 0, randomPayloads = 0
         for family in ["M02", "M03"] {
             let old = try R3.loadVectors(family: family, in: committed), new = try R3.loadVectors(family: family, in: scratch)
             XCTAssertEqual(old.map(\.id), new.map(\.id))
             for (a, b) in zip(old, new) {
-                XCTAssertEqual(payload(of: a.input.member("document")), payload(of: b.input.member("document")), "\(a.id): the payload is deterministic")
-                XCTAssertEqual(try JCS.serialize(a.input.member("context") ?? .null), try JCS.serialize(b.input.member("context") ?? .null), a.id)
+                if CrossLane.randomPayloadIds.contains(a.id) {
+                    XCTAssertNotEqual(payload(of: a.input.member("document")), payload(of: b.input.member("document")), "\(a.id): a production export generates its own key, so its payload is random")
+                    for side in [a, b] {
+                        guard case .bool(true)? = side.input.member("context")?.member("productionKeys") else { XCTFail("\(a.id) must be checked by a production-keys verifier"); continue }
+                        XCTAssertEqual(side.input.member("context")?.member("mode")?.stringValue, "FILE", a.id)
+                    }
+                    randomPayloads += 1
+                } else {
+                    XCTAssertEqual(payload(of: a.input.member("document")), payload(of: b.input.member("document")), "\(a.id): the payload is deterministic")
+                    XCTAssertEqual(try JCS.serialize(a.input.member("context") ?? .null), try JCS.serialize(b.input.member("context") ?? .null), a.id)
+                }
                 if a.input.member("document") != b.input.member("document") { signaturesDiffer += 1 }
                 compared += 1
             }
         }
-        XCTAssertEqual(compared, 37)
+        XCTAssertEqual(compared, 39)
+        XCTAssertEqual(randomPayloads, CrossLane.randomPayloadIds.count, "non-vacuity: every production-path document changed its payload")
         XCTAssertGreaterThan(signaturesDiffer, 30, "non-vacuity: ES256 here is random-nonce, so a regeneration changes the signature bytes")
         XCTAssertTrue(R3.mismatches(try R3.run(families: ["M02", "M03"], in: scratch)).isEmpty)
+    }
+
+    func testTwoRegenerationsGiveDifferentProductionExportKeysAndIdenticalEverythingElse() throws {
+        let lab = try labDirectory()
+        let first = NSTemporaryDirectory() + "asom-crosslane-a-" + UUID().uuidString, second = NSTemporaryDirectory() + "asom-crosslane-b-" + UUID().uuidString
+        defer { try? FileManager.default.removeItem(atPath: first); try? FileManager.default.removeItem(atPath: second) }
+        _ = try CrossLane.generate(labDir: lab, into: first)
+        _ = try CrossLane.generate(labDir: lab, into: second)
+        var random = 0, fixed = 0
+        for family in ["M02", "M03"] {
+            for (a, b) in zip(try R3.loadVectors(family: family, in: first), try R3.loadVectors(family: family, in: second)) {
+                XCTAssertEqual(a.id, b.id)
+                if CrossLane.randomPayloadIds.contains(a.id) {
+                    XCTAssertNotEqual(payload(of: a.input.member("document")), payload(of: b.input.member("document")), "\(a.id): the export key must be new at every signing")
+                    random += 1
+                } else {
+                    XCTAssertEqual(payload(of: a.input.member("document")), payload(of: b.input.member("document")), a.id)
+                    fixed += 1
+                }
+            }
+        }
+        XCTAssertEqual(random, CrossLane.randomPayloadIds.count)
+        XCTAssertEqual(fixed, 37)
     }
 
     func testJvmSignedDocumentsPassTheDsseLayerHere() throws {

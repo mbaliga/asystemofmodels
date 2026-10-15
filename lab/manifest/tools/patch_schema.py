@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Writes lab/conformance/manifest/schema/asom.manifest.1.schema.json and asom.bench-public.1.schema.json from the design session's r0 schemas
 (docs/design/mesh/manifest-vectors/) by applying the r3 patch list P1..P10 of LAB_SPEC 4.1, the extra patches P11 and B1..B8 recorded in
-lab/ERRATA.md (ERR-CLOSURE-1, ERR-SCHEMA-1), and the public-derivative patches PP1..PP3. Python 3 standard library only.
+lab/ERRATA.md (ERR-CLOSURE-1, ERR-SCHEMA-1), and the public-derivative patches PP1..PP3, and B9 (R4-B-01: BATTERY_LOW and POWER_SAVER join the run.abort.reason and sustain.endReason enums). Python 3 standard library only.
 
 The JSON Schema is DOCUMENTATION AND A TEST ORACLE ONLY (LAB_SPEC 4.1): the verifier's step 11 is the hand-written typed decoder in
 xyz.mdhv.asom.lab.manifest.ManifestDecoder. Run:  python3 lab/manifest/tools/patch_schema.py
@@ -90,7 +90,7 @@ def bench_schema():
                                    "contentionBeforePermille": {"type": "integer", "minimum": 0, "maximum": 1000000},
                                    "contentionAfterPermille": {"type": "integer", "minimum": 0, "maximum": 1000000},
                                    "abort": {"oneOf": [{"type": "null"}, {"type": "object", "additionalProperties": False, "required": ["reason", "atMs"],
-                                                                          "properties": {"reason": {"enum": ["THERMAL_HARD", "BATTERY_TEMP", "USER_STOP", "BACKGROUNDED", "CHARGER_REMOVED", "MEMORY_PRESSURE", "WALL_CAP", "PROBE_LOST", "DEVICE_BUSY"]},
+                                                                          "properties": {"reason": {"enum": ["THERMAL_HARD", "BATTERY_TEMP", "BATTERY_LOW", "POWER_SAVER", "USER_STOP", "BACKGROUNDED", "CHARGER_REMOVED", "MEMORY_PRESSURE", "WALL_CAP", "PROBE_LOST", "DEVICE_BUSY"]},
                                                                                          "atMs": {"type": "integer", "minimum": 0}}}]}}},
             "tiers": {"type": "array", "maxItems": 6, "items": {
                 "type": "object", "additionalProperties": False,
@@ -116,7 +116,7 @@ def bench_schema():
                 "required": ["tier", "windowMs", "capMs", "endReason", "headroomAtOnsetPermille", "windows"],
                 "properties": {"tier": {"enum": tiers}, "windowMs": {"type": "integer", "minimum": 100, "maximum": 3600000},
                                "capMs": {"type": "integer", "minimum": 1, "maximum": 86400000},
-                               "endReason": {"enum": ["PLATEAU", "TIME_CAP", "THERMAL_SOFT", "THERMAL_HARD", "BATTERY_TEMP", "USER_STOP", "BACKGROUNDED", "CHARGER_REMOVED",
+                               "endReason": {"enum": ["PLATEAU", "TIME_CAP", "THERMAL_SOFT", "THERMAL_HARD", "BATTERY_TEMP", "BATTERY_LOW", "POWER_SAVER", "USER_STOP", "BACKGROUNDED", "CHARGER_REMOVED",
                                                       "MEMORY_PRESSURE", "WALL_CAP", "YIELDED", "DEVICE_BUSY", "PROBE_LOST"]},
                                "headroomAtOnsetPermille": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 10000}, {"type": "null"}]},
                                "windows": {"type": "array", "minItems": 1, "maxItems": 240, "items": win}}}]},

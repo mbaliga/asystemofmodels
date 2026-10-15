@@ -27,6 +27,10 @@ public enum CrossLane {
         let intent: Intent
     }
 
+    /// The vectors whose payload is random on purpose: the document was made by the production entry point, which generates its own export key
+    /// (LAB_SPEC R4-L-13), so its nodeId, fingerprint and signature change at every regeneration.
+    public static let randomPayloadIds: Set<String> = ["M02-943", "M03-915"]
+
     public struct Summary {
         public let m02: Int
         public let m03: Int
@@ -66,7 +70,7 @@ public enum CrossLane {
         return .object(members)
     }
 
-    static func fileContext(fingerprint: String? = nil, method: String? = nil) -> JValue {
+    static func fileContext(fingerprint: String? = nil, method: String? = nil, production: Bool = false) -> JValue {
         var members: [JMember] = [JMember(name: "mode", value: str("FILE"))]
         if let fingerprint, let method {
             members.append(JMember(name: "comparedFingerprint", value: str(fingerprint)))
@@ -75,7 +79,7 @@ public enum CrossLane {
         members.append(JMember(name: "requiredTier", value: str("A0")))
         members.append(JMember(name: "confFloor", value: str(confFloor)))
         members.append(JMember(name: "knownBadConf", value: .array([])))
-        members.append(JMember(name: "productionKeys", value: .bool(false)))
+        members.append(JMember(name: "productionKeys", value: .bool(production)))
         return .object(members)
     }
 
@@ -128,6 +132,10 @@ public enum CrossLane {
             signatures += 1
             return try ManifestSigner.signPresentationInjectingExportKeyForTests(bodyOwn: body, audience: .file, challenge: nil, nodeKey: nil, exportKey: key.signer, nowMs: nowMs, check: check)
         }
+        func productionFile() throws -> ManifestSigner.Signed {
+            signatures += 1
+            return try ManifestSigner.signPresentation(bodyOwn: base, audience: .file, challenge: nil, nodeKey: nil, nowMs: nowMs, check: ManifestSigner.SelfCheck(confFloor: confFloor))
+        }
         let mesh1 = meshContext(pinned: key1.spki, challenge: challengeText)
 
         // M02: accepted documents.
@@ -151,6 +159,9 @@ public enum CrossLane {
         let fileDoc4 = try file(key4)
         let scanned = key4.exportFingerprint.lowercased().enumerated().map { ($0.offset > 0 && $0.offset % 4 == 0 ? " " : "") + String($0.element) }.joined()
         accepts.append(Entry(id: "M02-942", description: "Swift signer, FILE, key4, the fingerprint scanned (lowercase, spaces, no hyphens): PINNED_BY_FINGERPRINT(qr).", document: fileDoc4.document, context: fileContext(fingerprint: scanned, method: "qr"), nowMs: nowMs, intent: .ok))
+        let productionDoc = try productionFile()
+        let productionFingerprint = try unwrapFingerprint(productionDoc)
+        accepts.append(Entry(id: "M02-943", description: "Swift signer, FILE, the production entry point (the per-export key is generated inside signPresentation, never a TEST-ONLY key), a production verifier, the export fingerprint typed exactly: PINNED_BY_FINGERPRINT(typed). The payload is random at every regeneration.", document: productionDoc.document, context: fileContext(fingerprint: productionFingerprint, method: "typed", production: true), nowMs: nowMs, intent: .ok))
 
         // M03: rejected documents.
         let body2 = setting(base, ["subject", "nodeId"], to: str(key2.nodeId))
@@ -177,11 +188,17 @@ public enum CrossLane {
         rejects.append(Entry(id: "M03-912", description: "Swift signer: the rollback store holds seq 18 for this node, the document has seq 17: ROLLBACK.", document: first.document, context: meshContext(pinned: key1.spki, challenge: challengeText, rollback: .object([JMember(name: nodeKey1, value: .object([JMember(name: "seq", value: .int(18)), JMember(name: "bodyDigest", value: str(digest))]))])), nowMs: nowMs, intent: .reject("ROLLBACK")))
         rejects.append(Entry(id: "M03-913", description: "Swift signer: the store holds seq 17 with another body digest: EQUIVOCATION.", document: first.document, context: meshContext(pinned: key1.spki, challenge: challengeText, rollback: .object([JMember(name: nodeKey1, value: .object([JMember(name: "seq", value: .int(17)), JMember(name: "bodyDigest", value: str(digest))]))])), nowMs: nowMs, intent: .reject("EQUIVOCATION")))
         rejects.append(Entry(id: "M03-914", description: "Swift signer: a FILE document presented in a MESH context with no challenge to match: NONCE_MISMATCH.", document: fileDoc3.document, context: meshContext(pinned: key3.spki, challenge: challengeText), nowMs: nowMs, intent: .reject("NONCE_MISMATCH")))
+        rejects.append(Entry(id: "M03-915", description: "Swift signer, FILE, the production entry point, a production verifier: a typed fingerprint that is not this export's: FINGERPRINT_MISMATCH. The payload is random at every regeneration.", document: productionDoc.document, context: fileContext(fingerprint: key4.exportFingerprint, method: "typed", production: true), nowMs: nowMs, intent: .reject("FINGERPRINT_MISMATCH")))
 
         try write(family: "M02", entries: accepts, specRefs: ["LAB_SPEC.md 4.6", "LAB_SPEC.md 4.7"], to: dir + "/manifest/M02-swift-signed.json", labDir: labDir)
         try write(family: "M03", entries: rejects, specRefs: ["LAB_SPEC.md 4.6", "LAB_SPEC.md 4.7"], to: dir + "/manifest/M03-swift-signed.json", labDir: labDir)
         try "0.2.0\n".write(toFile: dir + "/VERSION", atomically: true, encoding: .utf8)
         return Summary(m02: accepts.count, m03: rejects.count, signatures: signatures)
+    }
+
+    static func unwrapFingerprint(_ signed: ManifestSigner.Signed) throws -> String {
+        guard let fingerprint = signed.exportFingerprint else { throw ConformanceError("a file export has no fingerprint") }
+        return fingerprint
     }
 
     static func signPresentationForKey2(_ body: JValue, key2: Key, challenge: [UInt8], check: ManifestSigner.SelfCheck) throws -> [UInt8] {

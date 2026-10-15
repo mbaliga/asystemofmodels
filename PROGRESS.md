@@ -2355,3 +2355,32 @@ $ python3 lab/tools/check_law.py -> law: OK
 $ ./gradlew jvmTest --max-workers=2 --offline -> BUILD SUCCESSFUL; 140 tests, 0 failures (core/* and server XML)
 ```
 Mutation checks (break `Staleness.fastFields`, run `:mesh-policy:test :conformance-runner:test`, see red, restore): no cap (`d.thermalBand + 1`): both LiveStateTest tests and W07-082 fail; no `>= 1` guard: both LiveStateTest tests and W07-076, -079, -080 fail; the r3 `max(last, 1)` no-op: both LiveStateTest tests and W07-075, -081 fail. The restored tree is the one measured above.
+## Design revision 4 follow-ups (track build-schema-swift): bench end-reason schema, Swift export-key review, cross-lane fixtures
+
+Scope: (a) benchmark R4-B-01 end reasons in the `asom.bench/1` schema; (b) Swift half of builder action 14 (LAB_SPEC R4-L-13); (c) the apple-ios.yml job steps. Readings: `lab/ERRATA.md` ERR-R4B-SW-1, -2; `apple/ERRATA.md` ERR-R4B-SW-3 .. -5. Worktree base: HEAD was 98ab632, reset to BASE_SHA 044e214 as instructed.
+Evidence label: LAB, Linux container, Swift 6.1 (swift-crypto), JDK 21 and JDK 17; NOT DEVICE EVIDENCE; hosted CI not seen for this change.
+
+Failing before (a): `BenchEndReasonSchemaTest > theSchemaEnumsAreTheBenchCoreEnumsExactly() FAILED: run.abort.reason lacks BATTERY_LOW` (`:manifest:test`), and `schema_oracle.py` printed 4 lines `DISAGREE R4-B-01` (abort and endReason, BATTERY_LOW and POWER_SAVER) and `4 disagree`.
+Failing before (b, fixtures): after updating the generator and tests but before regenerating, `CrossLaneTests` `Executed 4 tests, with 8 failures` (`37 is not equal to 39`, `23`/`24`, `14`/`15`, `36`/`38`, `0`/`2`).
+```
+$ python3 lab/manifest/tools/patch_schema.py   -> only asom.manifest.1.schema.json changes (BATTERY_LOW, POWER_SAVER in run.abort.reason and sustain.endReason)
+$ python3 lab/manifest/tools/schema_oracle.py  (jsonschema 4.26.0 installed outside the repo)
+    schema oracle R4-B-01: 26 end-reason embeddings accepted, 6 unknown reasons rejected
+    schema oracle: 24 accepted payloads agree, 14 SCHEMA_INVALID payloads rejected by the schema too, 0 disagree (jsonschema 4.26.0)
+$ ./gradlew -p lab :manifest:test :conformance-runner:test   (JDK 21)  -> BUILD SUCCESSFUL; manifest 61 tests 0 failures 0 skipped; conformance-runner 2307 tests 0 failures 7 skipped (the existing skips)
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab :manifest:test :conformance-runner:test -> BUILD SUCCESSFUL; manifest 61 / 0 failures; conformance-runner 2307 / 0 failures / 7 skipped
+$ PATH=/opt/swift/usr/bin:$PATH swift test --package-path apple -> Executed 265 tests, with 0 failures (0 unexpected)   (was 258: +6 ExportKeyTests, +1 two-regeneration test)
+$ swift run asom-conformance check M02,M03   (ASOM_CONFORMANCE_DIR=docs/design/mesh/manifest-vectors) -> checked 37, disagreements 0
+$ ... lines M01,M02,M03,M04,M05,M06,M08 (lab/conformance) -> 478 lines; DIAGNOSTIC check -> checked 478, mismatches 0
+$ ASOM_CONFORMANCE_DIR=apple/crosslane swift run asom-conformance generate-crosslane apple/crosslane -> wrote 24 M02 and 15 M03 vectors, 25 fresh signatures
+$ python3 apple/ci/crosslane.py jvm-lines ... ; python3 apple/ci/crosslane.py compare ... -> crosslane: 39 vectors (24 ok, 15 reject) ... JVM, Swift and the fixture agree on 39 of 39
+$ python3 apple/ci/test_crosslane.py -> Ran 8 tests OK ; python3 apple/ci/test_lane_diff.py -> Ran 13 tests OK
+$ python3 apple/ci/lane_diff.py jvm.lines swift.lines --known apple/ci/known-disagreements.txt --not-implemented apple/ci/not-implemented.txt
+    vectors: jvm=511 swift=478 agree=436 disagree=42 (known 42) jvm-only=33 (not implemented 33)   (exit 0; the 42 are exactly the LF-1 set, file unchanged)
+$ lane_diff.py ... swift-diagnostic.lines (no --known) -> vectors: jvm=511 swift=478 agree=478 disagree=0 (known 0) jvm-only=33 (not implemented 33)
+$ ./gradlew --offline jvmTest -> BUILD SUCCESSFUL (test tasks FROM-CACHE: no input of core/* or server changed); XML: 140 tests, 0 failures
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py -> law: OK
+```
+Mutation checks (break, run, see red, restore, re-run green): Swift `Signer.swift` M1 cached export key, M2 node key as export key, M3 fixed non-published key, M4 own signed by a generated key, M5 `exportKeyIsNodeKey` guard removed, M7 self-check skipped, M10 fingerprint from the node key: 7 of 7 killed (`ExportKeyTests` and `SignerTests`; M2, M3, M4 by `ExportKeyTests` alone). Swift `CrossLane.swift` C1 production vector under a TEST-ONLY key, C2 fixed non-published key, C3 `productionKeys` false in the context: 3 of 3 killed. Schema: `POWER_SAVER` dropped from the generated `sustain.endReason` enum: oracle 1 disagree and `theSchemaEnumsAreTheBenchCoreEnumsExactly` red, restored by re-running the generator (byte-identical to the saved copy). The restore step of my first mutation script left a stale modification time, so one full `swift test` ran a stale mutant binary and reported 20 failures; the file contents were never wrong (`git diff` empty for `Signer.swift`), the times were touched, and all 10 mutants were re-run with the fixed script and a clean full run (265 tests, 0 failures) is the one reported above.
+Not done / limits: the macOS (CryptoKit) leg and the iOS simulator job are unseen; `package` access is compile-time only (see ERR-R4B-SW-3); `schema_oracle.py` is not run by any workflow.
