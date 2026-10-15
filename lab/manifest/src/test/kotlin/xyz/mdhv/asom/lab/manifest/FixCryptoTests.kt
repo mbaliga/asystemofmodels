@@ -264,6 +264,22 @@ class SeqRaceTest {
     }
 
     @Test
+    fun theLockForOneStoreIsTheSameObjectForEveryConcurrentCaller() {
+        repeat(200) {
+            val store = FileSeqStore(File(java.nio.file.Files.createTempDirectory("asom-seq-lock").toFile(), "seq"))
+            val start = CyclicBarrier(8)
+            val pool = Executors.newFixedThreadPool(8)
+            try {
+                val locks = (1..8).map { pool.submit<Any> { start.await(10, TimeUnit.SECONDS); ManifestSigner.lockFor(store) } }.map { it.get(30, TimeUnit.SECONDS) }
+                assertEquals(1, locks.map { System.identityHashCode(it) }.toSet().size, "two callers got two different locks for one store")
+            } finally {
+                pool.shutdownNow()
+                store.let { }
+            }
+        }
+    }
+
+    @Test
     fun aForeignFileAtTheOldFixedTemporaryNameNeverBlocksOrIsTouchedByAWriter() {
         val dir = java.nio.file.Files.createTempDirectory("asom-seq-stale").toFile()
         try {

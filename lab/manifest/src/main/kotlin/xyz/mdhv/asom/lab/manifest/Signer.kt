@@ -148,10 +148,10 @@ class ManifestSigner(
 ) {
     private fun sha256B64u(b: ByteArray): String = Base64Strict.encodeUrlNoPad(MessageDigest.getInstance("SHA-256").digest(b))
 
-    private companion object {
+    internal companion object {
         private val locks = java.util.Collections.synchronizedMap(java.util.WeakHashMap<SeqStore, Any>())
 
-        fun lockFor(store: SeqStore): Any = locks.getOrPut(store) { Any() }
+        fun lockFor(store: SeqStore): Any = synchronized(locks) { locks.getOrPut(store) { Any() } }
     }
 
     /**
