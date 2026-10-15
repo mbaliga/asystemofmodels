@@ -73,7 +73,9 @@
       "ios",
       "ipados",
       "macos",
-      "linux"
+      "linux",
+      "windows",
+      "ubuntu-touch"
      ]
     },
     "osMajor": {

@@ -126,7 +126,7 @@ public enum CrossLane {
         }
         func file(_ key: Key, body: JValue = base) throws -> ManifestSigner.Signed {
             signatures += 1
-            return try ManifestSigner.signPresentation(bodyOwn: body, audience: .file, challenge: nil, nodeKey: nil, exportKey: key.signer, nowMs: nowMs, check: check)
+            return try ManifestSigner.signPresentationInjectingExportKeyForTests(bodyOwn: body, audience: .file, challenge: nil, nodeKey: nil, exportKey: key.signer, nowMs: nowMs, check: check)
         }
         let mesh1 = meshContext(pinned: key1.spki, challenge: challengeText)
 

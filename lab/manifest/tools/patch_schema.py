@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Writes lab/conformance/manifest/schema/asom.manifest.1.schema.json and asom.bench-public.1.schema.json from the design session's r0 schemas
 (docs/design/mesh/manifest-vectors/) by applying the r3 patch list P1..P10 of LAB_SPEC 4.1, the extra patches P11 and B1..B8 recorded in
-lab/ERRATA.md (ERR-CLOSURE-1, ERR-SCHEMA-1), and the public-derivative patches PP1..PP2. Python 3 standard library only.
+lab/ERRATA.md (ERR-CLOSURE-1, ERR-SCHEMA-1), and the public-derivative patches PP1..PP3. Python 3 standard library only.
 
 The JSON Schema is DOCUMENTATION AND A TEST ORACLE ONLY (LAB_SPEC 4.1): the verifier's step 11 is the hand-written typed decoder in
 xyz.mdhv.asom.lab.manifest.ManifestDecoder. Run:  python3 lab/manifest/tools/patch_schema.py
@@ -218,6 +218,9 @@ def patch_public(s):
     props["engine"]["properties"]["commit"] = {"oneOf": [{"type": "string", "pattern": "^[0-9a-f]{7,40}$"}, {"const": "custom"}]}
     for k in ("version", "confVersion"):
         props["harness"]["properties"][k] = {"oneOf": [{"$ref": "#/$defs/semver"}, {"const": "custom"}]}
+    # PP3 (R4-L-14): osFamily is the manifest family enum, so a windows or ubuntu-touch manifest has a derivative its own schema accepts
+    families = props["device"]["properties"]["osFamily"]["enum"]
+    families += [f for f in ("windows", "ubuntu-touch") if f not in families]
     # PP2: vendor and model are a catalogue-backed coarse name or `other` (still text)
     s["title"] = "asom public (anonymised) benchmark derivative, major version 1 (r3 conformance schema; DOCUMENTATION AND TEST ORACLE ONLY)"
     return s

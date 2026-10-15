@@ -52,6 +52,24 @@ def main():
                 print("  DISAGREE", v["id"], errs[0].message[:160])
             else:
                 ok += 1
+    # PP3 (LAB_SPEC R4-L-14): every family a manifest may state is a family its public derivative may state
+    families = man.schema["$defs"]["body"]["properties"]["device"]["properties"]["os"]["properties"]["family"]["enum"]
+    pp3 = 0
+    for v in load("manifest/M06-derivatives.json")["vectors"]:
+        if v["input"].get("kind") == "public" and "jcsUtf8" in v["expect"].get("ok", {}):
+            for family in families:
+                d = json.loads(v["expect"]["ok"]["jcsUtf8"])
+                d["device"]["osFamily"] = family
+                errs = list(pub.iter_errors(d))
+                if errs:
+                    bad += 1
+                    print("  DISAGREE", v["id"], family, errs[0].message[:160])
+                else:
+                    pp3 += 1
+    if pp3 == 0 or not {"windows", "ubuntu-touch"} <= set(families):
+        bad += 1
+        print("  DISAGREE PP3 exercised", pp3, "derivatives over", families)
+    print(f"schema oracle PP3: {pp3} (vector, family) derivatives accepted by the public schema")
     expressible = {"M03-134", "M03-135", "M03-138", "M03-139", "M03-140", "M03-142", "M03-160", "M03-161", "M03-162", "M03-163", "M03-164", "M03-165", "M03-173", "M03-174"}
     rejected = 0
     for v in load("manifest/M03-verify-reject.json")["vectors"]:

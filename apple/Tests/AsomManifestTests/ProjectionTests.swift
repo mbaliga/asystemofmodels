@@ -186,6 +186,22 @@ final class ProjectionTests: XCTestCase {
         }
     }
 
+    /// LAB_SPEC R4-L-14, PP3: `osFamily` of `asom.bench-public/1` is the family set of the manifest, windows and ubuntu-touch included.
+    /// This lane emits the family as the manifest states it, so the schema is the only thing that could refuse it.
+    func testThePublicSchemaOsFamilyEnumIsTheFamilySetThisLaneAccepts() throws {
+        let publicSchema = try labFile("manifest/schema/asom.bench-public.1.schema.json")
+        let manifestSchema = try labFile("manifest/schema/asom.manifest.1.schema.json")
+        let publicEnum = try XCTUnwrap(publicSchema.value(at: [.key("properties"), .key("device"), .key("properties"), .key("osFamily"), .key("enum")])?.elements?.compactMap { $0.stringValue })
+        let manifestEnum = try XCTUnwrap(manifestSchema.value(at: [.key("$defs"), .key("body"), .key("properties"), .key("device"), .key("properties"), .key("os"), .key("properties"), .key("family"), .key("enum")])?.elements?.compactMap { $0.stringValue })
+        XCTAssertEqual(Set(publicEnum), Set(manifestEnum), "PP3: one family set in both schemas")
+        XCTAssertEqual(publicEnum.count, Set(publicEnum).count, "no duplicate enum value")
+        XCTAssertEqual(Set(publicEnum), Set(BenchDocument.platforms), "and it is the set the bench decoder of this lane accepts")
+        XCTAssertTrue(publicEnum.contains("windows") && publicEnum.contains("ubuntu-touch"))
+        XCTAssertEqual(publicEnum.count, 7, "non-vacuity: seven families were compared")
+        let d = try XCTUnwrap(try derivative(catalogue: [t2]))
+        XCTAssertTrue(publicEnum.contains(try XCTUnwrap(d.value(at: [.key("device"), .key("osFamily")])?.stringValue)))
+    }
+
     func testRowsOutsideTheCatalogueAreDroppedAndAnEmptyResultIsNoUpload() throws {
         XCTAssertNil(try derivative(catalogue: [t1]))
         XCTAssertNil(try derivative(catalogue: []))

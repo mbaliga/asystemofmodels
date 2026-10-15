@@ -128,7 +128,7 @@ final class SignerTests: XCTestCase {
     func testFilePresentationUsesOnlyTheExportKeyAndTheDayTruncatedClock() throws {
         let key1 = try labKey("key1"), key3 = try labKey("key3")
         let now: Int64 = 1_790_676_060_123
-        let signed = try ManifestSigner.signPresentation(
+        let signed = try ManifestSigner.signPresentationInjectingExportKeyForTests(
             bodyOwn: try ownBody(), audience: .file, challenge: nil, nodeKey: key1.signer, exportKey: key3.signer, nowMs: now, check: check
         )
         let p = try parts(signed.document)
@@ -159,39 +159,50 @@ final class SignerTests: XCTestCase {
         XCTAssertEqual(code(ManifestVerifier.verify(document: signed.document, context: ctx)), "FINGERPRINT_MISMATCH")
     }
 
-    func testFileExportWithoutAnExportKeyIsRefusedAndAFreshKeyIsNeverTheNodeKey() throws {
+    /// LAB_SPEC R4-L-13. The shape pin is the type annotation: it compiles only while `signPresentation` has no export-key parameter at all.
+    func testTheProductionEntryPointGeneratesItsOwnExportKeyAndTakesNone() throws {
+        let production: (JValue, Audience, [UInt8]?, ES256Signer?, Int64, ManifestSigner.SelfCheck, ProjectionPolicy) throws -> ManifestSigner.Signed =
+            ManifestSigner.signPresentation
         let key1 = try labKey("key1")
-        XCTAssertThrowsError(try ManifestSigner.signPresentation(bodyOwn: try ownBody(), audience: .file, challenge: nil, nodeKey: key1.signer, nowMs: Fixture.nowMs, check: check)) {
-            XCTAssertEqual($0 as? ManifestSigner.Failure, .missingExportKey)
+        let selfCheck = ManifestSigner.SelfCheck(confFloor: Fixture.confFloor)
+        var nodeIds = Set<String>(), fingerprints = Set<String>()
+        var exercised = 0
+        for node in [nil, key1.signer, nil, key1.signer, nil, key1.signer] as [ES256Signer?] {
+            let signed = try production(try ownBody(), .file, nil, node, Fixture.nowMs, selfCheck, .specLiteral)
+            XCTAssertTrue(nodeIds.insert(signed.nodeId).inserted, "every export has a key of its own")
+            XCTAssertTrue(fingerprints.insert(try XCTUnwrap(signed.exportFingerprint)).inserted)
+            XCTAssertNotEqual(signed.nodeId, key1.nodeId, "never the node key, whether or not the caller names it")
+            XCTAssertFalse(NodeIdentity.testOnlyNodeIds.contains(signed.nodeId), "the production path never signs under a published test key")
+            XCTAssertEqual(signed.exportFingerprint?.count, 26)
+            exercised += 1
         }
-        // A fresh key is a different key every time; with the production default the self-check accepts it (it is not a TEST-ONLY key).
-        let production = ManifestSigner.SelfCheck(confFloor: Fixture.confFloor)
-        let a = try ManifestSigner.signPresentation(bodyOwn: try ownBody(), audience: .file, challenge: nil, nodeKey: nil, exportKey: ES256Signer.generateEphemeral(), nowMs: Fixture.nowMs, check: production)
-        let b = try ManifestSigner.signPresentation(bodyOwn: try ownBody(), audience: .file, challenge: nil, nodeKey: nil, exportKey: ES256Signer.generateEphemeral(), nowMs: Fixture.nowMs, check: production)
-        XCTAssertNotEqual(a.nodeId, b.nodeId)
-        XCTAssertNotEqual(a.nodeId, key1.nodeId)
-        XCTAssertEqual(a.exportFingerprint?.count, 26)
-        XCTAssertFalse(NodeIdentity.testOnlyNodeIds.contains(a.nodeId))
+        XCTAssertEqual(exercised, 6, "non-vacuity: six production exports were made")
+    }
+
+    func testTheTestSeamStillRefusesAFileExportWithoutAKey() throws {
+        XCTAssertThrowsError(try ManifestSigner.signPresentationInjectingExportKeyForTests(
+            bodyOwn: try ownBody(), audience: .file, challenge: nil, nodeKey: nil, exportKey: nil, nowMs: Fixture.nowMs, check: check
+        )) { XCTAssertEqual($0 as? ManifestSigner.Failure, .missingExportKey) }
     }
 
     func testAFileExportIsNeverSignedByTheNodeKey() throws {
         let key1 = try labKey("key1"), key3 = try labKey("key3")
-        XCTAssertThrowsError(try ManifestSigner.signPresentation(
+        XCTAssertThrowsError(try ManifestSigner.signPresentationInjectingExportKeyForTests(
             bodyOwn: try ownBody(), audience: .file, challenge: nil, nodeKey: key1.signer, exportKey: key1.signer, nowMs: Fixture.nowMs, check: check
         )) { XCTAssertEqual($0 as? ManifestSigner.Failure, .exportKeyIsNodeKey) }
         for node in [key1.signer, nil] as [ES256Signer?] {
-            let signed = try ManifestSigner.signPresentation(bodyOwn: try ownBody(), audience: .file, challenge: nil, nodeKey: node, exportKey: key3.signer, nowMs: Fixture.nowMs, check: check)
+            let signed = try ManifestSigner.signPresentationInjectingExportKeyForTests(bodyOwn: try ownBody(), audience: .file, challenge: nil, nodeKey: node, exportKey: key3.signer, nowMs: Fixture.nowMs, check: check)
             XCTAssertNotEqual(signed.nodeId, key1.nodeId)
         }
         let sameKeyAgain = try labKey("key1")
-        XCTAssertThrowsError(try ManifestSigner.signPresentation(
+        XCTAssertThrowsError(try ManifestSigner.signPresentationInjectingExportKeyForTests(
             bodyOwn: try ownBody(), audience: .file, challenge: nil, nodeKey: key1.signer, exportKey: sameKeyAgain.signer, nowMs: Fixture.nowMs, check: check
         )) { XCTAssertEqual($0 as? ManifestSigner.Failure, .exportKeyIsNodeKey) }
     }
 
     func testAFileExportUnderATestOnlyKeyIsRefusedByAProductionSigner() throws {
         let key3 = try labKey("key3")
-        XCTAssertThrowsError(try ManifestSigner.signPresentation(
+        XCTAssertThrowsError(try ManifestSigner.signPresentationInjectingExportKeyForTests(
             bodyOwn: try ownBody(), audience: .file, challenge: nil, nodeKey: nil, exportKey: key3.signer, nowMs: Fixture.nowMs,
             check: ManifestSigner.SelfCheck(confFloor: Fixture.confFloor)
         )) { XCTAssertEqual($0 as? ManifestSigner.Failure, .manifestUnavailable(.testOnlyKey)) }
@@ -200,7 +211,7 @@ final class SignerTests: XCTestCase {
     func testABodyTheFileProjectionRefusesIsTyped() throws {
         let key3 = try labKey("key3")
         let noBench = try ownBody().removing([.key("bench")])
-        XCTAssertThrowsError(try ManifestSigner.signPresentation(bodyOwn: noBench, audience: .file, challenge: nil, nodeKey: nil, exportKey: key3.signer, nowMs: Fixture.nowMs, check: check)) {
+        XCTAssertThrowsError(try ManifestSigner.signPresentationInjectingExportKeyForTests(bodyOwn: noBench, audience: .file, challenge: nil, nodeKey: nil, exportKey: key3.signer, nowMs: Fixture.nowMs, check: check)) {
             XCTAssertEqual($0 as? ManifestSigner.Failure, .projection(.schemaInvalid))
         }
     }

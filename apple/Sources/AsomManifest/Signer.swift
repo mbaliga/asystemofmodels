@@ -13,7 +13,7 @@ public enum ManifestSigner {
     public enum Failure: Error, Equatable, CustomStringConvertible {
         /// The challenge of an `own` presentation is missing or not 32 bytes.
         case challengeRequired
-        /// `audience == file` was asked for without a per-export key to sign with (the caller never passes the node key for it).
+        /// `audience == file` through the test seam without an export key; the production entry point always generates one.
         case missingExportKey
         /// The clock is before 1970; a day-truncated time would be negative.
         case clockInvalid
@@ -81,15 +81,37 @@ public enum ManifestSigner {
 
     static let maxSeq: Int64 = 9_007_199_254_740_991
 
-    /// Signs one presentation.
+    /// Signs one presentation. This is the production entry point (LAB_SPEC R4-L-13) and it takes no export key.
     ///
     /// - own: `bodyOwn` is the body as stored (it carries `seq`); `challenge` must be the 32 bytes the requester sent; signed by `nodeKey`.
-    /// - file: `bodyOwn` is projected (`FileProjection`), `exportKey` signs it and is the caller's to discard afterwards. Nothing is
-    ///   signed by the node key: an `exportKey` equal to `nodeKey` is refused, so a caller must pass the node key here for the guard to bind
-    ///   (ERR-FX2-ASC04). Pass `ES256Signer.generateEphemeral()` in production; tests pass the lab's TEST-ONLY per-export keys.
+    /// - file: `bodyOwn` is projected (`FileProjection`) and signed by a fresh per-export key that is generated here
+    ///   (`ES256Signer.generateEphemeral()`) and goes out of scope on return. A caller can neither choose that key nor pass the node key as
+    ///   the export key (ERR-FX2-ASC04 is closed by construction, ERR-R4B-MF-3).
     public static func signPresentation(
-        bodyOwn: JValue, audience: Audience, challenge: [UInt8]?, nodeKey: ES256Signer?, exportKey: ES256Signer? = nil,
+        bodyOwn: JValue, audience: Audience, challenge: [UInt8]?, nodeKey: ES256Signer?,
         nowMs: Int64, check: SelfCheck, projectionPolicy: ProjectionPolicy = .specLiteral
+    ) throws -> Signed {
+        try sign(
+            bodyOwn: bodyOwn, audience: audience, challenge: challenge, nodeKey: nodeKey, exportKey: audience == .file ? ES256Signer.generateEphemeral() : nil,
+            nowMs: nowMs, check: check, projectionPolicy: projectionPolicy
+        )
+    }
+
+    /// The test seam of LAB_SPEC R4-L-13: the same signer with an export key the test chose (the cross-lane generator and the signer tests need the
+    /// lab's published TEST-ONLY keys). `package` access keeps it out of the module's public interface, so no client of the library can call it.
+    package static func signPresentationInjectingExportKeyForTests(
+        bodyOwn: JValue, audience: Audience, challenge: [UInt8]?, nodeKey: ES256Signer?, exportKey: ES256Signer?,
+        nowMs: Int64, check: SelfCheck, projectionPolicy: ProjectionPolicy = .specLiteral
+    ) throws -> Signed {
+        try sign(
+            bodyOwn: bodyOwn, audience: audience, challenge: challenge, nodeKey: nodeKey, exportKey: exportKey,
+            nowMs: nowMs, check: check, projectionPolicy: projectionPolicy
+        )
+    }
+
+    private static func sign(
+        bodyOwn: JValue, audience: Audience, challenge: [UInt8]?, nodeKey: ES256Signer?, exportKey: ES256Signer?,
+        nowMs: Int64, check: SelfCheck, projectionPolicy: ProjectionPolicy
     ) throws -> Signed {
         guard nowMs >= 0 else { throw Failure.clockInvalid }
         let signer: ES256Signer

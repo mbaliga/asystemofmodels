@@ -188,11 +188,17 @@ class ManifestSigner(
     }
 
     /**
-     * Audience `file`: signed by a fresh per-export key (never the NIK), the private key is discarded on return. The body is
-     * `projectFile(bodyOwn)`: a new subject (the export key's node id, `ephemeral`), no `platformIds`, no `securityPatch`, day-granular times, no
-     * battery level, screen state, OS build or GPU driver, no `seq`, no expiry, no challenge, no evidence (ERRATA ERR-CLOSURE-1).
+     * Audience `file`: signed by a fresh per-export key that is generated here and discarded on return, never the NIK (LAB_SPEC R4-L-13). The body
+     * is `projectFile(bodyOwn)`: a new subject (the export key's node id, `ephemeral`), no `platformIds`, no `securityPatch`, day-granular times, no
+     * battery level, screen state, OS build or GPU driver, no `seq`, no expiry, no challenge, no evidence (ERRATA ERR-CLOSURE-1). The production
+     * entry point takes no key, so a caller can neither choose the export key nor hand it the node key.
      */
-    fun signFile(inputs: ManifestInputs, nowMs: Long, exportKey: EcKeyPair = Es256.generate()): SignedFile {
+    fun signFile(inputs: ManifestInputs, nowMs: Long): SignedFile = signFileWithKey(inputs, nowMs, Es256.generate())
+
+    /** The test seam of R4-L-13: the same path with a key the test chose (vectors need the published TEST-ONLY keys). Not visible outside this module. */
+    internal fun signFileWithInjectedKeyForTests(inputs: ManifestInputs, nowMs: Long, exportKey: EcKeyPair): SignedFile = signFileWithKey(inputs, nowMs, exportKey)
+
+    private fun signFileWithKey(inputs: ManifestInputs, nowMs: Long, exportKey: EcKeyPair): SignedFile {
         val body = FileProjection.body(inputs, exportKey.nodeId)
         val presentation = jo("issuedAtMs" to ji(nowMs / DAY_MS * DAY_MS))
         val payload = ManifestBuilder.payload(body, presentation)
