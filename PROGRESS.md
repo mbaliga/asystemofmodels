@@ -2207,3 +2207,29 @@ $ ./gradlew jvmTest --rerun-tasks --offline   -> BUILD SUCCESSFUL, 140 tests, 0 
 W04 law counts (non-vacuity, `lab/build/conformance-report.txt`): pairing-typed-code 16, pairing-commit-reveal 37, pairing-connection-binding 5, pairing-window-expired-on-d 2, pairing-r0-compat 41, qr-expiry-none 12, qr-expiry-enforce 7, commit-function 49, pair-decision-reveal 3, qr-reject-EXPIRED 2, qr-reject-EXPIRY_TOO_FAR 2.
 
 Mutation checks (break the implementation, run the pairing and session suites and the conformance suite, restore byte for byte; script kept outside the repository): 22 mutants, 22 killed. Default profile back to R0_COMPAT; default expiry back to ENFORCE; default orientation back to FROM_HELLO; the expiry gate running under NONE; the cold rule removed; S may send PAIR_COMMIT; the listener not naming its session from the hello; the dialler taking the derived id as its session id (also killed by `ProtoIntegrationGateTest.l16OverPairingSessionsOnRealTls`); budget 17; D accepting any opening; D accepting any typed code; the third wrong code not counted; D showing the code instead of prompting; a foreign decision accepted while COMMITTING or AWAIT_ACK; a foreign acknowledgement accepted; a foreign decision accepted while awaiting the decisions; a second valid hello accepted after the window was consumed; S putting the raw nonce in the hello; S approving without the opening; S reading `PAIRING_WINDOW_CLOSED` as a decline; the runner reading an absent profile as R0_COMPAT; the runner reading an absent expiry as ENFORCE. Older trust mutants 7, 8 and 18 re-run with `--runner`: killed. Trust mutant 19's target text has not matched since fix wave 2 (its `RemoteDecision` line changed); its L6 mutation was re-run with repaired text as the 22nd mutant above and is killed.
+## Revision 4 builder actions 2, 3, 4 (track build-session-trust), 2026-10-15
+
+Worktree base: `git rev-parse HEAD` printed 98ab632f at start, so `git fetch origin claude/asom-v1-build-brief-vw83oh && git reset --hard 2a670033b907307a4cb9fe0e982194153e3f71cc` was run; HEAD then printed 2a670033 and `docs/design/mesh/LAB_SPEC.md` exists. Nothing committed. Evidence label: LAB, oracle: self, NOT DEVICE EVIDENCE. Readings and every deliberate change to an existing test: `lab/ERRATA.md` rows ERR-R4B-ST-1 to ERR-R4B-ST-4.
+
+Failing before (each against the unchanged code, output of the real run):
+```
+MaxAgeTest > theMaximumSessionAgeIsThirtyMinutes / theRequesterSaysGoawayMaxAge... / theLenderAlsoSaysGoawayMaxAge... FAILED (3 tests completed, 3 failed)
+RevokeDoesNotBlockTest > revokingAPeerWhoseLenderIsStalledInAWriteReturnsAtOnce...: "revoke() did not return within 8000 ms while the lender was stalled in a write"
+GoawayPostedTest > aRevokeWritesNothingOnTheRevokingThread...: "the revoking thread wrote to the connection ==> expected: <347> but was: <376>"
+LeafLifetimeTest: 5 of 6 tests FAILED (e.g. "one second more is refused ==> expected: <LEAF_LIFETIME> but was: <.>")
+PeerChainVerifierTest > theModeMatrixMatchesTheSpecGrid: "window=true status=paired mode column 1 ==> expected: <PIN_EXISTS> but was: <.>"
+TrustVectorsTest with the old VerifyPeerChain.kt and the regenerated W05 file: W05-307 (expected reject PIN_SUSPENDED, accepted), W05-308 (PIN_EXISTS, accepted), W05-422.., W05-432/433 (LEAF_LIFETIME but CLOCK_SKEW), W05-438 (PIN_REVOKED), W05-439 (REGISTRY_UNREADABLE)
+```
+Gates after the change:
+```
+$ python3 lab/mesh-proto/tools/trust/gen_vectors.py && python3 lab/tools/regen_index.py  -> W05: 185 vectors (was 166), W04: 312 vectors (W04 file byte-identical), INDEX.json: 31 entries
+$ python3 lab/mesh-proto/tools/trust/xcheck_trust.py  -> xcheck W05: 185 agree, 0 disagree; xcheck W05 openssl (OpenSSL 3.0.13): templates 9 agree, 0 disagree; chains 20 agree, 0 disagree; xcheck W04: 249 agree, 0 disagree
+$ ./gradlew -p lab test --max-workers=2 --offline  (JDK 21)  -> BUILD SUCCESSFUL
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab test --max-workers=2 --offline  -> BUILD SUCCESSFUL; lab test XML: 2795 tests, 0 failures, 0 errors; :mesh-proto 294 tests, 0 failures
+$ family W05: 185 vectors, 185 pass, 0 fail; law W05/chain-reject-LEAF_LIFETIME: 13 cases; law W05/chain-reject-PIN_EXISTS: 2 cases
+$ python3 lab/tools/isolation.py  -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py  -> law: OK
+$ ./gradlew jvmTest --max-workers=2 --offline  -> BUILD SUCCESSFUL (task results FROM-CACHE); root test XML: 140 tests, 0 failures
+```
+Mutation checks (19 mutants, each an exact-string edit of one main file, restored byte for byte; a mutant counts as killed only if the build did not fail to COMPILE and a test failed): max age 24 h; max age 31 min; max age one ms late; GOAWAY written inline on the revoking thread; driver watchdog never closes the transport; `advance()` ignores a posted GOAWAY; `tick()` ignores it; post does nothing; leaf lifetime cap removed; cap exclusive; cap one second generous; cap without the 1 h back-date; inverted validity accepted; over-long leaf reported as CLOCK_SKEW; lifetime judged after the clock; PAIRED admitted by the pairing modes; SUSPENDED admitted by them; EXPECT_PAIRING alone on the old letter; PAIRING_SERVER alone on the old letter. Result: `SUMMARY 19 killed of 19` (all KILLED-BY-TEST, none COMPILE-ERROR). One run was interrupted by the harness mid-mutant and the source was found mutated and restored by hand, then the full 19 were re-run clean.
+Not run: hosted CI, Windows, macOS, any device. Windows parity of the new tests (`RevokeDoesNotBlockTest` uses a real loopback TLS peer with a small receive buffer) is untested here; the assertions are bounds, not OS-specific values.

@@ -169,7 +169,7 @@
   },
   {
     "path": "wire/W05-fingerprints.json",
-    "sha256": "fb0de249b3103419b347c06eeb44dcee5aa311d43d4c3d4a29b4757bd754b8d3",
+    "sha256": "6581b80df166749e9e5e240bf24c51680f9ac9dbe42128db0120c928f16b6e17",
     "family": "W05",
     "status": "normative"
   },

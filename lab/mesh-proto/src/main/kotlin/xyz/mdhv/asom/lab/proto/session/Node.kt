@@ -59,7 +59,8 @@ class DialReport(val sessionId: String, val code: String, val connection: MeshCo
 
 /**
  * One node: its identity, ledger, registry and ports, and every session it hosts. A registry change that leaves PAIRED closes that peer's sessions with
- * `GOAWAY revoked|suspended` (LAB_SPEC 7.2); the per-frame authorisation read in each session is the second, independent defence (trust.md 5.3).
+ * `GOAWAY revoked|suspended` (LAB_SPEC 7.2), but the listener only posts it: each session's driver writes the frame, never the thread that made the change
+ * (trust.md R4-T-08). The per-frame authorisation read in each session is the second, independent defence (trust.md 5.3).
  */
 class MeshNode(
     val cfg: NodeConfig,
@@ -103,7 +104,7 @@ class MeshNode(
         registry.addListener(
             RegistryListener { change ->
                 val g = change.goaway ?: return@RegistryListener
-                sessionsOf(change.pin).forEach { it.goAwayForRegistry(g) }
+                sessionsOf(change.pin).forEach { it.postGoAwayForRegistry(g) }
             },
         )
     }

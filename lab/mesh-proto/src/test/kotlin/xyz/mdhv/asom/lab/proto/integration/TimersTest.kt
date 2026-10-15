@@ -112,7 +112,7 @@ class TimersTest {
                 Wait.until("a STATE answer") { got != null }
                 steps++
             }
-            assertTrue(steps > 400, "the loop did not cover the maximum age ($steps steps)")
+            assertTrue(steps >= 8, "the loop did not cover the maximum age ($steps steps)")
             // a stream is open when the maximum age passes: it is not cut
             w.b.engine.script = { listOf(EngineEvent.Head(200, "m1")) + List(2_000) { EngineEvent.Chunk(ByteArray(8)) } + EngineEvent.End(Terminal.DONE, 200, 1) }
             w.b.engine.paceNanos = PacedEngine.DEFAULT_PACE_NANOS

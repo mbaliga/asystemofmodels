@@ -13,10 +13,16 @@ object SessionLimits {
     const val MAX_STREAMS: Int = 4
 
     /**
-     * PROVISIONAL: no document gives the age at which `GOAWAY max-age` is sent. 24 h is the replay window of the attemptId LRU (trust.md 5.4), so no session outlives
-     * the memory that guards it. A session with an open stream is never cut for age; it is closed at the first moment it has none.
+     * trust.md 3.3 as amended by R4-T-08 (design 4.3 and T9): 30 min forces a fresh handshake and the keyguard-bound leaf. It supersedes ERR-PI-3's PROVISIONAL 24 h.
+     * A session with an open stream is never cut for age; it says `GOAWAY max-age` at the first moment it has none.
      */
-    const val MAX_AGE_MS: Long = 86_400_000L
+    const val MAX_AGE_MS: Long = 1_800_000L
+
+    /**
+     * PROVISIONAL (ERRATA ERR-R4B-ST-2): real milliseconds a `GOAWAY` posted by a registry change may wait for its session's driver before the driver's watchdog closes the
+     * transport (the driver is stalled in a write to a peer that does not read). The same figure as the close wait of the TLS transport.
+     */
+    const val POSTED_GOAWAY_GRACE_MS: Long = 500L
 
     /** PROVISIONAL: how long an accepted attempt waits for its `INFER_BODY` (never longer than the offer's own `deadlineMs`). */
     const val BODY_WAIT_MS: Long = 30_000L

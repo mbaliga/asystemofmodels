@@ -286,10 +286,10 @@ chain_vec(n, "valid: EXPECT_PAIRING(pin1 from the QR), pin1 unknown", CH1, mode_
 chain_vec(n, "valid: PAIRING_SERVER, window open, pin1 unknown", CH1, mode_json("pairingServer"), ok_expect(PIN1, "pairingServer")); n += 1
 chain_vec(n, "valid: server mode selection picks ESTABLISHED_SERVER for a PAIRED pin even with a window open", CH1, mode_json("server"), ok_expect(PIN1, "established"), registry=PAIRED1); n += 1
 chain_vec(n, "valid: server mode selection picks PAIRING_SERVER for an unknown pin with a window open", CH1, mode_json("server"), ok_expect(PIN1, "pairingServer")); n += 1
-chain_vec(n, "valid, per the letter of trust.md 3.2: EXPECT_PAIRING accepts a SUSPENDED pin (it is not REVOKED); the registry refuses to re-pair it (L4)", CH1,
-          mode_json("expectPairing", PIN1), ok_expect(PIN1, "expectPairing"), registry={PIN1: "SUSPENDED"}); n += 1
-chain_vec(n, "valid, per the letter: PAIRING_SERVER accepts a PAIRED pin that is not REVOKED; the registry refuses the commit (PAIR_EXISTS)", CH1,
-          mode_json("pairingServer"), ok_expect(PIN1, "pairingServer"), registry=PAIRED1); n += 1
+chain_vec(n, "pin SUSPENDED: EXPECT_PAIRING (R4-T-06, design T6: a pairing mode admits a pin only if its registry row is absent; the r3 letter accepted it)", CH1,
+          mode_json("expectPairing", PIN1), {"reject": "PIN_SUSPENDED"}, registry={PIN1: "SUSPENDED"}); n += 1
+chain_vec(n, "pin PAIRED: PAIRING_SERVER (R4-T-06: the address-refresh path is not built in mesh-1; the r3 letter accepted it and the registry refused the commit)", CH1,
+          mode_json("pairingServer"), {"reject": "PIN_EXISTS"}, registry=PAIRED1); n += 1
 chain_vec(n, "production mode refuses the TEST-ONLY node key", CH1, mode_json("expectPaired", PIN1), {"reject": "TEST_ONLY_KEY"}, registry=PAIRED1, production=True); n += 1
 
 # clock: the leaf window is [notBefore - 2h, notAfter + 2h]
@@ -457,6 +457,38 @@ chain_vec(n, "the leaf is issued by a name the node does not carry but signs cor
 
 # the second node's chain, mixed with the first node's leaf key
 chain_vec(n, "a replayed leaf: node 2's chain with node 1's leaf certificate", [LEAF1, NODE2], **PAIRED_EST, expect={"reject": "ISSUER_MISMATCH"}); n += 1
+
+# R4-T-06 (design T6): the pairing modes admit a pin only if its registry row is absent; the refusal is in the verifier, not one layer down
+chain_vec(n, "pin PAIRED: EXPECT_PAIRING", CH1, mode_json("expectPairing", PIN1), {"reject": "PIN_EXISTS"}, registry=PAIRED1); n += 1
+chain_vec(n, "pin SUSPENDED: PAIRING_SERVER", CH1, mode_json("pairingServer"), {"reject": "PIN_SUSPENDED"}, registry={PIN1: "SUSPENDED"}); n += 1
+chain_vec(n, "pin PAIRED: PAIRING_SERVER with the window closed (the window is judged before the registry)", CH1, mode_json("pairingServer"), {"reject": "PAIRING_WINDOW_CLOSED"}, registry=PAIRED1, window=False); n += 1
+chain_vec(n, "pin PAIRED: server mode selection still picks ESTABLISHED_SERVER and accepts (a PAIRED peer reconnecting while a window is open)", CH1, mode_json("server"), ok_expect(PIN1, "established"), registry=PAIRED1); n += 1
+chain_vec(n, "pin PAIRED and a different pin from the QR: EXPECT_PAIRING judges the pin before the registry", CH1, mode_json("expectPairing", PIN2), {"reject": "PIN_MISMATCH"}, registry=PAIRED1); n += 1
+
+# R4-T-06: the leaf lifetime cap. notAfter - notBefore may be at most 14 days + 1 hour (the template: now - 1 h .. now + 14 d); CLOCK_SKEW is not used for it
+LIFE_CAP = T.LEAF_LIFETIME + T.BACKDATE
+LNB = NOW - T.BACKDATE
+
+
+def long_leaf(extra, not_before=None):
+    nb0 = LNB if not_before is None else not_before
+    return forge_leaf(NIK1, LEAF_KEY1, not_before=T.time_el(nb0), not_after=T.time_el(nb0 + LIFE_CAP + extra))
+
+
+chain_vec(n, "leaf lifetime exactly 14 days + 1 hour (the template, written out explicitly): accepted, the bound is inclusive", [long_leaf(0), NODE1], **PAIRED_EST, expect=ok_expect(PIN1, "established")); n += 1
+chain_vec(n, "leaf lifetime 14 days + 1 hour + 1 second", [long_leaf(1), NODE1], **PAIRED_EST, expect={"reject": "LEAF_LIFETIME"}); n += 1
+chain_vec(n, "leaf lifetime 14 days + 2 hours", [long_leaf(3600), NODE1], **PAIRED_EST, expect={"reject": "LEAF_LIFETIME"}); n += 1
+chain_vec(n, "leaf lifetime 30 days", [forge_leaf(NIK1, LEAF_KEY1, not_after=T.time_el(NOW + 30 * 86400)), NODE1], **PAIRED_EST, expect={"reject": "LEAF_LIFETIME"}); n += 1
+chain_vec(n, "leaf notAfter in 2051 (GeneralizedTime form), years beyond the cap", [forge_leaf(NIK1, LEAF_KEY1, not_after=T.time_el(2556144000)), NODE1], **PAIRED_EST, expect={"reject": "LEAF_LIFETIME"}); n += 1
+chain_vec(n, "over-long leaf with the clock at epoch 0: LEAF_LIFETIME, not CLOCK_SKEW (the lifetime is judged before the clock)", [long_leaf(1), NODE1], **PAIRED_EST, expect={"reject": "LEAF_LIFETIME"}, now=0); n += 1
+chain_vec(n, "over-long leaf with the clock a year past its notAfter: LEAF_LIFETIME, not CLOCK_SKEW", [long_leaf(1), NODE1], **PAIRED_EST, expect={"reject": "LEAF_LIFETIME"}, now=NOW + 365 * 86400); n += 1
+chain_vec(n, "over-long leaf: EXPECT_PAIRED", [long_leaf(1), NODE1], mode=mode_json("expectPaired", PIN1), registry=PAIRED1, expect={"reject": "LEAF_LIFETIME"}); n += 1
+chain_vec(n, "over-long leaf: EXPECT_PAIRING, pin unknown", [long_leaf(1), NODE1], mode=mode_json("expectPairing", PIN1), expect={"reject": "LEAF_LIFETIME"}); n += 1
+chain_vec(n, "over-long leaf: PAIRING_SERVER, pin unknown, window open", [long_leaf(1), NODE1], mode=mode_json("pairingServer"), expect={"reject": "LEAF_LIFETIME"}); n += 1
+chain_vec(n, "over-long leaf: server mode selection, pin unknown, window open", [long_leaf(1), NODE1], mode=mode_json("server"), expect={"reject": "LEAF_LIFETIME"}); n += 1
+chain_vec(n, "over-long leaf and a REVOKED pin: the certificate is judged before the registry", [long_leaf(1), NODE1], mode=mode_json("established"), registry={PIN1: "REVOKED"}, expect={"reject": "LEAF_LIFETIME"}); n += 1
+chain_vec(n, "over-long leaf and an unreadable registry: the certificate is judged before the registry", [long_leaf(1), NODE1], mode=mode_json("established"), default="UNREADABLE", expect={"reject": "LEAF_LIFETIME"}); n += 1
+chain_vec(n, "a validity that runs backwards (notAfter one second before notBefore), clock inside both skew windows: refused as a lifetime fault (conservative reading, ERR-R4B-ST-3)", [forge_leaf(NIK1, LEAF_KEY1, not_after=T.time_el(LNB - 1)), NODE1], mode=mode_json("established"), registry=PAIRED1, expect={"reject": "LEAF_LIFETIME"}, now=LNB - 3000); n += 1
 
 write(os.path.join(ROOT, "wire", "W05-fingerprints.json"), envelope(
     "W05", ["trust.md 2.3", "trust.md 2.4", "trust.md 3.2", "trust.md 15 (certs/node-leaf-templates.json, certs/verify-chain.json)", "LAB_SPEC.md 4.5", "LAB_SPEC.md 7.4"], w05.items))

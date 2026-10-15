@@ -34,8 +34,8 @@ sealed interface ChainMode {
 enum class ChainReject {
     CHAIN_LENGTH, CERT_MALFORMED, KEY_UNSUPPORTED, SIG_ALG_UNSUPPORTED, UNKNOWN_CRITICAL_EXTENSION,
     EXTENSION_MISSING, EXTENSION_INVALID, NODE_NOT_CA, PATHLEN_VIOLATION, LEAF_IS_CA, LEAF_KEY_USAGE, LEAF_EKU,
-    ISSUER_MISMATCH, AKI_MISMATCH, BAD_SIGNATURE, CLOCK_SKEW, TEST_ONLY_KEY,
-    PIN_MISMATCH, PIN_UNKNOWN, PIN_SUSPENDED, PIN_REVOKED, PAIRING_WINDOW_CLOSED, REGISTRY_UNREADABLE, INTERNAL,
+    ISSUER_MISMATCH, AKI_MISMATCH, BAD_SIGNATURE, LEAF_LIFETIME, CLOCK_SKEW, TEST_ONLY_KEY,
+    PIN_MISMATCH, PIN_UNKNOWN, PIN_SUSPENDED, PIN_REVOKED, PIN_EXISTS, PAIRING_WINDOW_CLOSED, REGISTRY_UNREADABLE, INTERNAL,
 }
 
 sealed interface ChainVerdict {
@@ -56,6 +56,9 @@ sealed interface ChainVerdict {
 object PeerChainVerifier {
     const val ALERT = "certificate_unknown"
     const val SKEW_SEC = 2L * 3600
+
+    /** trust.md 3.2 as amended by R4-T-06: a leaf is minted for 14 days from one hour in the past, so `notAfter - notBefore` is at most 14 days + 1 hour. */
+    const val LEAF_MAX_LIFETIME_SEC = CertTemplates.LEAF_LIFETIME_SEC + CertTemplates.BACKDATE_SEC
 
     fun verify(
         chain: List<ByteArray>,
@@ -122,13 +125,14 @@ object PeerChainVerifier {
         }
         if (mode == ChainMode.PairingServer && !windowOpen(pairingWindowOpen)) return reject(ChainReject.PAIRING_WINDOW_CLOSED, "no pairing window is open")
         val needsPaired = mode is ChainMode.ExpectPaired || mode == ChainMode.EstablishedServer
+        val pairing = mode is ChainMode.ExpectPairing || mode == ChainMode.PairingServer
         when (status) {
             StatusLookup.Unreadable -> return reject(ChainReject.REGISTRY_UNREADABLE, "the registry could not be read")
             is StatusLookup.Corrupt -> return reject(ChainReject.REGISTRY_UNREADABLE, "the registry holds a status this code does not know")
             StatusLookup.Absent -> if (needsPaired) return reject(ChainReject.PIN_UNKNOWN, "no registry row for this pin")
             is StatusLookup.Known -> when (status.status) {
-                PeerStatus.PAIRED -> Unit
-                PeerStatus.SUSPENDED -> if (needsPaired) return reject(ChainReject.PIN_SUSPENDED, "the peer is suspended")
+                PeerStatus.PAIRED -> if (pairing) return reject(ChainReject.PIN_EXISTS, "the pin already has a registry row; pairing admits only an absent one")
+                PeerStatus.SUSPENDED -> if (needsPaired || pairing) return reject(ChainReject.PIN_SUSPENDED, "the peer is suspended")
                 PeerStatus.REVOKED -> return reject(ChainReject.PIN_REVOKED, "the peer is revoked")
             }
         }
@@ -215,6 +219,9 @@ object PeerChainVerifier {
         if (!MessageDigestEq.equal(lAki, nSki)) return bad(ChainReject.AKI_MISMATCH, "the leaf authorityKeyIdentifier is not the node subjectKeyIdentifier")
 
         if (!signatureOk(node, nodeKey) || !signatureOk(leaf, nodeKey)) return bad(ChainReject.BAD_SIGNATURE, "a certificate signature does not verify under the node key")
+
+        val lifetime = leaf.notAfter - leaf.notBefore
+        if (lifetime < 0 || lifetime > LEAF_MAX_LIFETIME_SEC) return bad(ChainReject.LEAF_LIFETIME, "the leaf validity is longer than 14 days + 1 hour, or runs backwards")
 
         val t = now.epochSecond
         if (t < leaf.notBefore - SKEW_SEC) return bad(ChainReject.CLOCK_SKEW, "the leaf is not yet valid")

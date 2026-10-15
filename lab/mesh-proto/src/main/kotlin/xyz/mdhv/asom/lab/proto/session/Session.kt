@@ -1,6 +1,7 @@
 package xyz.mdhv.asom.lab.proto.session
 
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 import xyz.mdhv.asom.lab.ledger.MeshKind
 import xyz.mdhv.asom.lab.policy.StateBuilder
@@ -81,6 +82,7 @@ class Session private constructor(
     val role: PeerRole = conn.role
     internal val wire = Wire(conn)
     internal val rows = SessionRows(node.ledger, sessionId, if (conn.role == PeerRole.TLS_CLIENT) sessionId else null, peer.nodeTag, peerPath, wire, handshakeRecorded) { failClosedNow() }
+    @Volatile
     internal var phase: Phase = if (role == PeerRole.TLS_SERVER) Phase.AWAIT_HELLO else Phase.NEW
         private set
     internal val lender = LenderSide(this)
@@ -91,6 +93,7 @@ class Session private constructor(
     private val earlyExtensions = ArrayList<Long>()
     private val startedAt = node.ledger.now()
     private var establishedAt = 0L
+    private val posted = AtomicReference<PostedGoAway?>(null)
 
     /** The last moment a stream was open or an ACCEPTED frame of a stream (not of stream 0) moved either way: the idle timer runs from here (trust.md 3.3, ERRATA ERR-PI-3, ERR-FX2-1). */
     internal var lastStreamActivity = 0L
@@ -189,10 +192,14 @@ class Session private constructor(
     }
 
     /** Lets the engine of a served attempt produce one event. Returns the number of events handled. */
-    fun advance(): Int = guarded(0) { if (phase == Phase.ESTABLISHED) lender.advance() else 0 }
+    fun advance(): Int = guarded(0) {
+        if (runPosted()) return@guarded 1
+        if (phase == Phase.ESTABLISHED) lender.advance() else 0
+    }
 
     /** The handshake timeout (LAB_SPEC trust.md 5.1: 5 s): a session that has not established by then is closed without a word. */
     fun tick(nowMs: Long) = guarded(Unit) {
+        runPosted()
         when (phase) {
             Phase.CLOSED -> Unit
             Phase.ESTABLISHED -> timers(nowMs)
@@ -273,7 +280,42 @@ class Session private constructor(
         closeNow()
     }
 
-    internal fun goAwayForRegistry(g: RegistryGoaway) = goAway(GoAwayReason.entries.first { it.wire == g.wire })
+    private class PostedGoAway(val reason: GoAwayReason, val atNanos: Long)
+
+    /**
+     * A registry change reaches the session here (trust.md R4-T-08 "Registry listeners", ERRATA ERR-R4B-ST-2): it records the reason and returns, taking no lock and
+     * writing nothing, so the thread that revoked never waits for a socket. The session's driver writes the `GOAWAY` and closes ([runPosted], from [advance] and
+     * [tick]). The first reason wins, as it did when the frame was written inline.
+     */
+    internal fun postGoAwayForRegistry(g: RegistryGoaway) {
+        if (phase == Phase.CLOSED) return
+        val reason = GoAwayReason.entries.first { it.wire == g.wire }
+        posted.compareAndSet(null, PostedGoAway(reason, System.nanoTime()))
+    }
+
+    internal val goAwayPosted: Boolean get() = posted.get() != null && phase != Phase.CLOSED
+
+    /** Real milliseconds a posted `GOAWAY` has waited for the driver, or -1 when none is waiting. The driver's watchdog reads it without the session lock. */
+    internal fun goAwayPostedForMs(): Long {
+        val p = posted.get() ?: return -1
+        return if (phase == Phase.CLOSED) -1 else (System.nanoTime() - p.atNanos) / 1_000_000L
+    }
+
+    /** Applies a posted `GOAWAY` on the driver's thread. True when it did (the session closed, so the caller has nothing further to do). */
+    private fun runPosted(): Boolean {
+        val p = posted.get() ?: return false
+        if (phase == Phase.CLOSED) return false
+        goAway(p.reason)
+        return true
+    }
+
+    /**
+     * Closes the transport without the session lock, for a driver whose own thread is stalled in a write that holds it (a peer that does not read): the closed
+     * connection wakes that writer with a typed refusal, and the session then closes through its ordinary I/O-failure path. No `GOAWAY` is written.
+     */
+    internal fun abortTransport() {
+        wire.conn.close()
+    }
 
     /** Closes without a `GOAWAY` (the transport is gone). */
     fun close() = guarded(Unit) { closeNow() }

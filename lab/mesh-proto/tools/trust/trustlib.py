@@ -597,8 +597,11 @@ def verify_chain(chain, mode, now, registry, window_open, production_keys=True, 
         else:
             if st[1] == "REVOKED":
                 return ("reject", "PIN_REVOKED")
-            if st[1] == "SUSPENDED" and needs_paired:
+            pairing = mode[0] in ("pairing", "pairing_server")
+            if st[1] == "SUSPENDED" and (needs_paired or pairing):
                 return ("reject", "PIN_SUSPENDED")
+            if st[1] == "PAIRED" and pairing:
+                return ("reject", "PIN_EXISTS")
         return ("ok", pin, mode)
     except Exception:
         return ("reject", "INTERNAL")
@@ -657,6 +660,9 @@ def _analyse(chain, now, production_keys):
         raw = _sig_raw(c.sig)
         if raw is None or not ecdsa_verify(node.spki, c.tbs, raw):
             return ("reject", "BAD_SIGNATURE")
+    life = leaf.not_after - leaf.not_before
+    if life < 0 or life > LEAF_LIFETIME + BACKDATE:
+        return ("reject", "LEAF_LIFETIME")
     if now < leaf.not_before - SKEW or now > leaf.not_after + SKEW:
         return ("reject", "CLOCK_SKEW")
     pin = pin_of(node.spki)

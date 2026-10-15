@@ -193,7 +193,8 @@ class PeerChainVerifierTest {
     }
 
     /**
-     * The mode matrix, written out as an explicit grid from trust.md 3.2 (not computed by the same logic as the code). Rows: registry state.
+     * The mode matrix, written out as an explicit grid from trust.md 3.2 as amended by R4-T-06 (design T6: the two pairing modes admit a pin only if its row is
+     * absent; the old letter "not REVOKED" is superseded and the grid was changed deliberately). Not computed by the same logic as the code. Rows: registry state.
      * Columns: EXPECT_PAIRED, EXPECT_PAIRING, ESTABLISHED_SERVER, PAIRING_SERVER, server selection. `.` is acceptance.
      */
     @Test
@@ -207,16 +208,16 @@ class PeerChainVerifierTest {
         )
         val windowOpen = mapOf(
             "absent" to listOf("PIN_UNKNOWN", ".", "PIN_UNKNOWN", ".", "."),
-            "paired" to listOf(".", ".", ".", ".", "."),
-            "suspended" to listOf("PIN_SUSPENDED", ".", "PIN_SUSPENDED", ".", "PIN_SUSPENDED"),
+            "paired" to listOf(".", "PIN_EXISTS", ".", "PIN_EXISTS", "."),
+            "suspended" to List(5) { "PIN_SUSPENDED" },
             "revoked" to listOf("PIN_REVOKED", "PIN_REVOKED", "PIN_REVOKED", "PIN_REVOKED", "PIN_REVOKED"),
             "corrupt" to List(5) { "REGISTRY_UNREADABLE" },
             "unreadable" to List(5) { "REGISTRY_UNREADABLE" },
         )
         val windowClosed = mapOf(
             "absent" to listOf("PIN_UNKNOWN", ".", "PIN_UNKNOWN", "PAIRING_WINDOW_CLOSED", "PIN_UNKNOWN"),
-            "paired" to listOf(".", ".", ".", "PAIRING_WINDOW_CLOSED", "."),
-            "suspended" to listOf("PIN_SUSPENDED", ".", "PIN_SUSPENDED", "PAIRING_WINDOW_CLOSED", "PIN_SUSPENDED"),
+            "paired" to listOf(".", "PIN_EXISTS", ".", "PAIRING_WINDOW_CLOSED", "."),
+            "suspended" to listOf("PIN_SUSPENDED", "PIN_SUSPENDED", "PIN_SUSPENDED", "PAIRING_WINDOW_CLOSED", "PIN_SUSPENDED"),
             "revoked" to listOf("PIN_REVOKED", "PIN_REVOKED", "PIN_REVOKED", "PAIRING_WINDOW_CLOSED", "PIN_REVOKED"),
             "corrupt" to listOf("REGISTRY_UNREADABLE", "REGISTRY_UNREADABLE", "REGISTRY_UNREADABLE", "PAIRING_WINDOW_CLOSED", "REGISTRY_UNREADABLE"),
             "unreadable" to listOf("REGISTRY_UNREADABLE", "REGISTRY_UNREADABLE", "REGISTRY_UNREADABLE", "PAIRING_WINDOW_CLOSED", "REGISTRY_UNREADABLE"),
