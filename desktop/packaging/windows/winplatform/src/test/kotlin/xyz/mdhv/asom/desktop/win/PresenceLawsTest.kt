@@ -155,6 +155,17 @@ class PresenceLawsTest {
         val platform = WinPlatform(fakeEnv(), native.bundle(), WinOptions(), clock)
         val config = NodeConfig()
         val rt = NodeRuntime(platform, HostMode.USER, config, clock)
+
+        /** R4-P-12: ticks until 60 s after the first (blind) sample, so the next evaluation 2 s later is the first that can serve. */
+        fun warmUp() {
+            val end = clock.now + 60_000L
+            rt.tick()
+            while (clock.now < end) {
+                clock.now += 2_000L
+                rt.tick()
+            }
+            clock.now += 2_000L
+        }
     }
 
     @Test
@@ -187,6 +198,8 @@ class PresenceLawsTest {
         rig.input.state = NotificationState.NOT_PRESENT
         rig.sessions.current = WtsSession(1, 0, "alice", true, 0)
         rig.rt.enableLending()
+        rig.warmUp()
+        assertEquals(LenderState.ARMED, rig.rt.fsm.state, "R4-P-12: still warming up")
         rig.rt.tick()
         assertEquals(LenderState.SERVING, rig.rt.fsm.state)
         laws.hit("lp2-locked-serves-at-once")
@@ -227,17 +240,20 @@ class PresenceLawsTest {
         val saver = Rig(RawPowerStatus(1, 9, 80, 1))
         saver.input.idle = 3_600_000
         saver.rt.enableLending()
+        saver.warmUp()
         saver.rt.tick()
         assertEquals(LenderState.ARMED, saver.rt.fsm.state, "battery saver blocks")
         laws.hit("battery-saver-blocks")
         val onBattery = Rig(FakePowerStatus.LAPTOP_BATTERY)
         onBattery.input.idle = 3_600_000
         onBattery.rt.enableLending()
+        onBattery.warmUp()
         onBattery.rt.tick()
         assertEquals(LenderState.ARMED, onBattery.rt.fsm.state)
         val ok = Rig(FakePowerStatus.LAPTOP_AC)
         ok.input.idle = 3_600_000
         ok.rt.enableLending()
+        ok.warmUp()
         ok.rt.tick()
         assertEquals(LenderState.SERVING, ok.rt.fsm.state, "control: the same idle laptop on AC without saver serves")
     }

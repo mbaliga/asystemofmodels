@@ -16,6 +16,7 @@ import xyz.mdhv.asom.desktop.SystemMonotonicClock
 import xyz.mdhv.asom.desktop.ThermalPort
 import xyz.mdhv.asom.desktop.governor.HostRules
 import xyz.mdhv.asom.desktop.governor.HostRulesProvider
+import xyz.mdhv.asom.desktop.governor.SettlesBeforeServing
 import xyz.mdhv.asom.desktop.win.ctl.WinControlSocket
 import xyz.mdhv.asom.desktop.win.doctor.LidAction
 import xyz.mdhv.asom.desktop.win.doctor.WinDoctor
@@ -54,7 +55,7 @@ class WinPlatform(
     private val clock: MonotonicClock = SystemMonotonicClock,
     private val thresholds: NodeConfig = NodeConfig(),
     val listenSelection: ListenSelection = ListenSelection(),
-) : DesktopPlatform, HostRulesProvider {
+) : DesktopPlatform, HostRulesProvider, SettlesBeforeServing {
     override val id: String = "windows"
 
     /** The DACL reader the service host verifies its state directory with (windows ERRATA ERR-FX-HWM-3). */

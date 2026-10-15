@@ -18,6 +18,7 @@ import xyz.mdhv.asom.desktop.PresencePort
 import xyz.mdhv.asom.desktop.ThermalPort
 import xyz.mdhv.asom.desktop.governor.HostRules
 import xyz.mdhv.asom.desktop.governor.HostRulesProvider
+import xyz.mdhv.asom.desktop.governor.SettlesBeforeServing
 import xyz.mdhv.asom.desktop.mac.ctl.MacControlSocket
 import xyz.mdhv.asom.desktop.mac.doctor.MacDoctor
 import xyz.mdhv.asom.desktop.mac.doctor.MacDoctorInputs
@@ -83,7 +84,7 @@ class MacPlatform(
     private val nodeLockPath: Path = Path.of(NodeLock.DEFAULT_PATH),
     private val runningVersion: String = xyz.mdhv.asom.desktop.NodeVersion.STRING,
     private val installedVersion: () -> String? = { null },
-) : DesktopPlatform, HostRulesProvider, PartiallyImplemented {
+) : DesktopPlatform, HostRulesProvider, PartiallyImplemented, SettlesBeforeServing {
     override val id: String = "macos"
 
     private val transport: HelperTransport = helperTransport ?: NoHelper

@@ -85,7 +85,7 @@ data class HostSignals(
 /**
  * Marker for a host whose presence counters are read from the first evaluation on, so the governor can require a full quiet
  * dwell before the first CONDITIONS_MET (HLU-4). A host without it keeps the old start (eligible at once, a blind sample is
- * eligible); the Windows and macOS hosts adopt the marker together with their tests (desktop/ERRATA.md ERR-FX-5).
+ * eligible). The Linux, Windows and macOS desktop hosts declare it (PLATFORM_PLAN R4-P-12; desktop/ERRATA.md ERR-FX-5, ERR-R4B-HC-1).
  */
 interface SettlesBeforeServing
 

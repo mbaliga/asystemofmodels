@@ -40,6 +40,8 @@ jobs:
     env:
       ANDROID_HOME: ""
       ANDROID_SDK_ROOT: ""
+      # PLATFORM_PLAN R4-P-13: a missing dbus-daemon FAILS the private-bus tests instead of skipping them.
+      ASOM_REQUIRE_DBUS: "1"
     steps:
       # fetch-depth 0: the isolation check compares against the pinned desktop/DESKTOP_BASE_SHA, which a shallow clone lacks.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -101,6 +103,8 @@ jobs:
     env:
       ANDROID_HOME: ""
       ANDROID_SDK_ROOT: ""
+      # PLATFORM_PLAN R4-P-13: a missing dbus-daemon FAILS the private-bus tests instead of skipping them.
+      ASOM_REQUIRE_DBUS: "1"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

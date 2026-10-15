@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Static supply-chain checks of the mesh CI workflows (review findings EGR-3 and EGR-9). Standard library only.
 
-    check_workflows.py [--selftest] [workflow.yml ...]      (default: the desktop-linux, lab and cleanup-artifacts
-                                                              workflows of this repository)
+    check_workflows.py [--selftest] [workflow.yml ...]      (default: the desktop-linux, lab, cleanup-artifacts and
+                                                              desktop-windows workflows of this repository)
 
 For every file:
   * every third-party `uses:` is pinned by a full 40-hex commit SHA (a local `./` action or a `docker://...@sha256:` is fine);
@@ -19,10 +19,9 @@ import re
 import sys
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
-# desktop-windows.yml is deliberately absent: winplatform's WorkflowTest requires it to equal desktop/packaging/windows/ci/
-# desktop-windows.yml byte for byte, and that copy belongs to the Windows track (desktop/ERRATA.md ERR-FX-4). Pass the file
-# explicitly to check it.
-DEFAULT = ["desktop-linux.yml", "lab.yml", "cleanup-artifacts.yml"]
+# desktop-windows.yml joined the default set when it and its pinned copy under desktop/packaging/windows/ci/ were changed together
+# (PLATFORM_PLAN R4-P-13; desktop/ERRATA.md ERR-R4B-HC-3).
+DEFAULT = ["desktop-linux.yml", "lab.yml", "cleanup-artifacts.yml", "desktop-windows.yml"]
 HOSTILE = re.compile(r"\$\{\{\s*(github\.event\.|github\.head_ref|inputs\.)")
 SHA = re.compile(r"^[0-9a-f]{40}$")
 
