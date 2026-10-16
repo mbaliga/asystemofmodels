@@ -233,7 +233,7 @@ def add(g):
     cvec(n, "an opening of 31 bytes does not open it", NONCE_S, T.b64u(NONCE_S[:31])); n += 1
     cvec(n, "an opening of 33 bytes does not open it", NONCE_S, T.b64u(NONCE_S + b"\x00")); n += 1
     cvec(n, "an empty opening does not open it", NONCE_S, ""); n += 1
-    cvec(n, "an opening that is not canonical base64url (non-zero trailing bits) does not open it", NONCE_S, T.b64u(NONCE_S)[:-1] + "B"); n += 1
+    cvec(n, "an opening that is not canonical base64url (non-zero trailing bits) does not open it", NONCE_S, T.b64u(NONCE_S)[:-1] + "V"); n += 1
     cvec(n, "an opening with padding does not open it", NONCE_S, T.b64u(NONCE_S) + "="); n += 1
     cvec(n, "a commitment of another nonce on the wire is not opened by this nonce", NONCE_S, T.b64u(NONCE_S), commitment=T.commit_nonce(NONCE_D)); n += 1
     assert n < 470, n
@@ -260,10 +260,11 @@ def add(g):
     mdec(n, "PAIR_DECISION approve false carrying an opening is well formed (D aborts on the decline whatever it carries)", {"v": 1, "approve": False, "reveal": NS_REVEAL}); n += 1
     mdec(n, "PAIR_DECISION: an opening of 31 bytes is refused", {"v": 1, "approve": True, "reveal": T.b64u(NONCE_S[:31])}, ok=False); n += 1
     mdec(n, "PAIR_DECISION: an opening of 33 bytes is refused", {"v": 1, "approve": True, "reveal": T.b64u(NONCE_S + b"\x01")}, ok=False); n += 1
-    mdec(n, "PAIR_DECISION: an opening with padding is refused", {"v": 1, "approve": True, "reveal": NS_REVEAL[:-1] + "="}, ok=False); n += 1
+    mdec(n, "PAIR_DECISION: an opening with padding is refused", {"v": 1, "approve": True, "reveal": NS_REVEAL + "="}, ok=False); n += 1
     mdec(n, "PAIR_DECISION: an opening given as hex is refused", {"v": 1, "approve": True, "reveal": NONCE_S.hex()}, ok=False); n += 1
     mdec(n, "PAIR_DECISION: an opening that is a number is refused", {"v": 1, "approve": True, "reveal": 5}, ok=False); n += 1
     mdec(n, "PAIR_DECISION: an opening that is null is refused", '{"v":1,"approve":true,"reveal":null}', ok=False); n += 1
     mdec(n, "PAIR_DECISION: an unknown member next to the opening is ignored and not kept", {"v": 1, "approve": True, "reveal": NS_REVEAL, "note": "x"},
          normal='{"approve":true,"reveal":"%s","v":1}' % NS_REVEAL); n += 1
-    assert n < 460, n
+    mdec(n, "PAIR_DECISION: an opening whose last character differs from the canonical one only in its two unused bits is refused", {"v": 1, "approve": True, "reveal": NS_REVEAL[:-1] + "V"}, ok=False); n += 1
+    assert n <= 460, n

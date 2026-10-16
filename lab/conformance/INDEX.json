@@ -163,7 +163,7 @@
   },
   {
     "path": "wire/W04-pairing.json",
-    "sha256": "688631c08bd91faf25c019eb10ee54f971452693b7068179bdd52bae1c8108a8",
+    "sha256": "6c944393de190ea79cec41bbbfc90443d47bd86f6efb05bccc46111e4d5ca4e5",
     "family": "W04",
     "status": "normative"
   },

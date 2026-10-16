@@ -19,6 +19,7 @@ import xyz.mdhv.asom.lab.proto.session.Frames
 import xyz.mdhv.asom.lab.proto.session.Log
 import xyz.mdhv.asom.lab.proto.session.MemConnection
 import xyz.mdhv.asom.lab.proto.session.PairingChannel
+import xyz.mdhv.asom.lab.proto.session.IdRegistry
 import xyz.mdhv.asom.lab.proto.session.SeededIds
 import xyz.mdhv.asom.lab.proto.session.SpySink
 import xyz.mdhv.asom.lab.proto.session.all
@@ -64,8 +65,8 @@ class PairCeremonyOverChannelsTest {
         val memS = MemorySink()
         val memD = MemorySink()
         val conns = MemConnection.pair(null, null, log, "S>D", "D<S", ConnMode.PAIRING)
-        val chS = PairingChannel(NodeLedger("S", SpySink("S", memS, log)) { CLOCK_BASE + log.events.size }, conns.first, SeededIds(1))
-        val chD = PairingChannel(NodeLedger("D", SpySink("D", memD, log)) { CLOCK_BASE + log.events.size }, conns.second, SeededIds(2))
+        val chS = PairingChannel(NodeLedger("S", SpySink("S", memS, log)) { CLOCK_BASE + log.events.size }, conns.first, SeededIds(1), IdRegistry())
+        val chD = PairingChannel(NodeLedger("D", SpySink("D", memD, log)) { CLOCK_BASE + log.events.size }, conns.second, SeededIds(2), IdRegistry())
         val sFsm = SFsm(PairFsmConfig(pinS))
         val dFsm = DFsm(PairFsmConfig(pinD))
         var sState: SState = SState.Idle
@@ -245,8 +246,8 @@ class PairCeremonyOverChannelsTest {
         val log2 = Log()
         val conns2 = MemConnection.pair(null, null, log2, "X>D", "D<X", ConnMode.PAIRING)
         val mem2 = MemorySink()
-        val chX = PairingChannel(NodeLedger("X", SpySink("X", MemorySink(), log2)) { CLOCK_BASE + log2.events.size }, conns2.first, SeededIds(5))
-        val chD2 = PairingChannel(NodeLedger("D", SpySink("D", mem2, log2)) { CLOCK_BASE + log2.events.size }, conns2.second, SeededIds(6))
+        val chX = PairingChannel(NodeLedger("X", SpySink("X", MemorySink(), log2)) { CLOCK_BASE + log2.events.size }, conns2.first, SeededIds(5), IdRegistry())
+        val chD2 = PairingChannel(NodeLedger("D", SpySink("D", mem2, log2)) { CLOCK_BASE + log2.events.size }, conns2.second, SeededIds(6), IdRegistry())
         chD2.onFrame = { type, body -> w.fromS(type, body, 2L) }
         w.helloPin = { c -> if (c == 2L) pinX else pinS }
         val before = w.dState

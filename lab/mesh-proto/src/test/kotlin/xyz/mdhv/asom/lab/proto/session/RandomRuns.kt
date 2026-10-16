@@ -102,6 +102,13 @@ object RandomRuns {
  * client and sends `PAIR_HELLO`, its `PAIR_DECISION` and `PAIR_COMMIT_ACK`; D, the displayer, is the TLS server (the listener) and sends `PAIR_CHALLENGE`, its
  * `PAIR_DECISION` and `PAIR_COMMIT`. Each has its own ledger; nothing here implements pairing. [failD] fails a row append of the listener, [failS] of the dialler.
  */
+/** A session id registry for a pairing channel that has no node: the same first-claim-wins rule as `MeshNode.claimSessionId`. */
+class IdRegistry : SessionIdClaims {
+    private val seen = HashSet<String>()
+
+    override fun claim(id: String): Boolean = synchronized(seen) { seen.add(id) }
+}
+
 class PairWorld(val seed: Long, failS: FailPlan? = null, failD: FailPlan? = null) {
     val log = Log()
     val rnd = SplittableRandom(seed)
@@ -112,8 +119,10 @@ class PairWorld(val seed: Long, failS: FailPlan? = null, failD: FailPlan? = null
     val ledgerS = NodeLedger("S", SpySink("S", crashS ?: memS, log)) { CLOCK_BASE + log.events.size }
     val ledgerD = NodeLedger("D", SpySink("D", crashD ?: memD, log)) { CLOCK_BASE + log.events.size }
     private val conns = MemConnection.pair(null, null, log, "S>D", "D<S", ConnMode.PAIRING)
-    val s = PairingChannel(ledgerS, conns.first, SeededIds(seed * 3 + 2))
-    val d = PairingChannel(ledgerD, conns.second, SeededIds(seed * 3 + 1))
+    val claimsS = IdRegistry()
+    val claimsD = IdRegistry()
+    val s = PairingChannel(ledgerS, conns.first, SeededIds(seed * 3 + 2), claimsS)
+    val d = PairingChannel(ledgerD, conns.second, SeededIds(seed * 3 + 1), claimsD)
     val connS = conns.first
     val connD = conns.second
     val nonceS = ByteArray(32) { rnd.nextInt(256).toByte() }
@@ -131,7 +140,9 @@ class PairWorld(val seed: Long, failS: FailPlan? = null, failD: FailPlan? = null
 
     private fun bytes(n: Int) = ByteArray(n) { rnd.nextInt(256).toByte() }
 
-    fun run() {
+    fun run(earlyExtensions: Int = 0) {
+        repeat(earlyExtensions) { connS.writeRaw(Build.ext(0x91, 0, bytes(rnd.nextInt(20)))) }
+        pump()
         s.send(0x30, PairMessages.encodeHello(PairHello(nonceS, bytes(32), "Desk", "linux", "file", emptyList())))
         pump()
         d.send(0x31, PairMessages.encodeChallenge(PairChallenge(bytes(32), "Phone", "android", "strongbox")))

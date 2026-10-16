@@ -13,6 +13,7 @@ import xyz.mdhv.asom.lab.proto.session.Frames
 import xyz.mdhv.asom.lab.proto.session.Log
 import xyz.mdhv.asom.lab.proto.session.MemConnection
 import xyz.mdhv.asom.lab.proto.session.PairingChannel
+import xyz.mdhv.asom.lab.proto.session.IdRegistry
 import xyz.mdhv.asom.lab.proto.session.SeededIds
 import xyz.mdhv.asom.lab.proto.session.SpySink
 import xyz.mdhv.asom.lab.proto.trust.LawCounters
@@ -45,8 +46,8 @@ class PairDirectionTest {
         val conns = MemConnection.pair(null, null, log, "C>S", "S<C", ConnMode.PAIRING)
         private val ledgerC = NodeLedger("C", SpySink("C", memC, log)) { CLOCK_BASE + log.events.size }
         private val ledgerS = NodeLedger("S", SpySink("S", memS, log)) { CLOCK_BASE + log.events.size }
-        val client = if (orientation == null) PairingChannel(ledgerC, conns.first, SeededIds(1)) else PairingChannel(ledgerC, conns.first, SeededIds(1), orientation = orientation)
-        val server = if (orientation == null) PairingChannel(ledgerS, conns.second, SeededIds(2)) else PairingChannel(ledgerS, conns.second, SeededIds(2), orientation = orientation)
+        val client = if (orientation == null) PairingChannel(ledgerC, conns.first, SeededIds(1), IdRegistry()) else PairingChannel(ledgerC, conns.first, SeededIds(1), IdRegistry(), orientation = orientation)
+        val server = if (orientation == null) PairingChannel(ledgerS, conns.second, SeededIds(2), IdRegistry()) else PairingChannel(ledgerS, conns.second, SeededIds(2), IdRegistry(), orientation = orientation)
         val atClient = ArrayList<Int>()
         val atServer = ArrayList<Int>()
 

@@ -10117,7 +10117,7 @@
       "input": {
         "kind": "commit",
         "nonceS": "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU",
-        "revealed": "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaB"
+        "revealed": "paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaV"
       },
       "expect": {
         "ok": {
@@ -10956,7 +10956,7 @@
       "input": {
         "kind": "message",
         "type": "PAIR_DECISION",
-        "payload": "{\"v\": 1, \"approve\": true, \"reveal\": \"paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpa=\"}"
+        "payload": "{\"v\": 1, \"approve\": true, \"reveal\": \"paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU=\"}"
       },
       "expect": {
         "reject": "PROTOCOL_ERROR"
@@ -11022,6 +11022,21 @@
         "ok": {
           "normal": "{\"approve\":true,\"reveal\":\"paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaU\",\"v\":1}"
         }
+      }
+    },
+    {
+      "id": "W04-459",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "PAIR_DECISION: an opening whose last character differs from the canonical one only in its two unused bits is refused",
+      "input": {
+        "kind": "message",
+        "type": "PAIR_DECISION",
+        "payload": "{\"v\": 1, \"approve\": true, \"reveal\": \"paWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaWlpaV\"}"
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
       }
     },
     {

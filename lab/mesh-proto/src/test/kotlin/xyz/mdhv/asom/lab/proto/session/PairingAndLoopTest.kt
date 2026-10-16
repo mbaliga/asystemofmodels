@@ -76,6 +76,98 @@ class PairingAndLoopTest {
     }
 
     @Test
+    fun extensionFramesThatArriveBeforeThePairHelloAreRowedAfterTheOpenRowUnderTheIdTheHelloNames() {
+        for (early in listOf(1, 3)) {
+            val p = PairWorld(30L + early)
+            p.run(earlyExtensions = early)
+            val derived = Base64Strict.encodeUrlNoPad(p.nonceS.copyOfRange(0, 16))
+            val d = p.rowsD()
+            assertEquals(MeshKind.SESSION to "pairing", d[0].meshKind to d[0].meshCode)
+            assertEquals(List(early) { "EXT_IGNORED" }, d.drop(1).take(early).map { it.meshCode }, "the held extension frames are rowed right after the open row")
+            assertEquals("PAIR_HELLO", d[1 + early].meshCode)
+            assertTrue(d.all { it.sessionId == derived }, "every listener row, the early extension rows included, carries the id the PAIR_HELLO names (R4-L-24)")
+            PairOracle.check(p, Counts())
+        }
+    }
+
+    @Test
+    fun aListenerThatIsClosedByEarlyExtensionsAloneRowsThemUnderItsLocalId() {
+        val p = PairWorld(33)
+        p.connS.writeRaw(Build.ext(0x91, 0, ByteArray(3)))
+        p.pump()
+        p.d.close()
+        val d = p.rowsD()
+        assertEquals(listOf("pairing", "EXT_IGNORED", "close"), d.map { it.meshCode })
+        assertEquals(1, d.map { it.sessionId }.distinct().size)
+    }
+
+    @Test
+    fun aDiallerWhoseHelloRowIsNotDurableHasNoJoinIdOnItsCloseRow() {
+        val p = PairWorld(3, FailPlan(setOf(0), sticky = false))
+        p.s.send(0x30, PairMessages.encodeHello(PairHello(p.nonceS, ByteArray(32), "Desk", "linux", "file", emptyList())))
+        val close = p.rowsS().single()
+        assertEquals("close:ledger-failure", close.meshCode)
+        assertEquals(null, close.attemptId, "the hello never crossed, so the close row joins no session the listener saw")
+    }
+
+    private fun helloFrame(nonceS: ByteArray) = Frames.encode(0x30, 1, PairMessages.encodeHello(PairHello(nonceS, ByteArray(32), "Desk", "linux", "file", emptyList())))
+
+    private class Listener(val ledger: xyz.mdhv.asom.lab.ledger.NodeLedger, val mem: xyz.mdhv.asom.lab.ledger.MemorySink, val log: Log) {
+        fun open(n: Int, claims: SessionIdClaims, hello: ByteArray, onFrame: (Int, ByteArray) -> Unit = { _, _ -> }): Pair<PairingChannel, MemConnection> {
+            val conns = MemConnection.pair(null, null, log, "S$n>D", "D$n<S", ConnMode.PAIRING)
+            val d = PairingChannel(ledger, conns.second, SeededIds(100L + n), claims)
+            d.onFrame = onFrame
+            conns.first.writeRaw(hello)
+            d.pumpAvailable(4096)
+            return d to conns.first
+        }
+    }
+
+    private fun listener(): Listener {
+        val log = Log()
+        val mem = xyz.mdhv.asom.lab.ledger.MemorySink()
+        return Listener(xyz.mdhv.asom.lab.ledger.NodeLedger("D", SpySink("D", mem, log)) { CLOCK_BASE + log.events.size }, mem, log)
+    }
+
+    @Test
+    fun aSecondPairHelloWithTheSameNonceIsRefusedUnderALocalIdAndNeverSharesTheFirstSessionsId() {
+        val l = listener()
+        val claims = IdRegistry()
+        val hello = helloFrame(ByteArray(32) { 7 })
+        val derived = Base64Strict.encodeUrlNoPad(ByteArray(16) { 7 })
+        val first = l.open(1, claims, hello)
+        val second = l.open(2, claims, hello)
+        val third = l.open(3, claims, hello)
+        assertEquals(derived, first.first.sessionId)
+        assertTrue(second.first.sessionId != derived && third.first.sessionId != derived && second.first.sessionId != third.first.sessionId, "a repeated nonce names no session")
+        assertTrue(second.first.isClosed && third.first.isClosed, "the repeat is refused and closed")
+        assertTrue(!first.first.isClosed, "the first connection is untouched")
+        val byId = l.mem.all().groupBy { it.sessionId }
+        assertEquals(3, byId.size)
+        assertEquals(listOf("pairing", "PAIR_HELLO"), byId.getValue(derived).map { it.meshCode })
+        for (c in listOf(second.first, third.first)) {
+            assertEquals(listOf("pairing", "ERROR:PROTOCOL_ERROR", "close"), byId.getValue(c.sessionId).map { it.meshCode })
+        }
+        val refusal = l.log.all<Ev.Write>().filter { it.conn == "D2<S" }.flatMap { Frames.parse(it.bytes) }.single()
+        assertEquals("PROTOCOL_ERROR", refusal.code)
+    }
+
+    @Test
+    fun aPairHelloThatNamesTheIdOfAnEstablishedSessionOrOfTheNodesOwnDialIsRefusedAndItsRowsStayOutOfThatSession() {
+        val w = World(41)
+        val (cc, _) = MemConnection.pair(w.b.pin, w.a.pin, w.log, "A>B", "B<A")
+        val report = w.a.node.dial(w.b.pin, "10.0.0.2:11436", "qr") { ConnectResult("connected", cc) }
+        val known = java.util.Base64.getUrlDecoder().decode(report.sessionId)
+        val l = listener()
+        val received = ArrayList<Int>()
+        val (d, _) = l.open(1, SessionIdClaims { w.a.node.claimSessionId(it) }, helloFrame(known + ByteArray(16) { 3 })) { t, _ -> received += t }
+        assertTrue(d.isClosed)
+        assertTrue(l.mem.all().none { it.sessionId == report.sessionId }, "no pairing row joins the session this node dialled")
+        assertEquals(listOf("pairing", "ERROR:PROTOCOL_ERROR", "close"), l.mem.all().map { it.meshCode })
+        assertEquals(emptyList(), received)
+    }
+
+    @Test
     fun theBlockingReadLoopDrivesTwoSessionsOnThreads() {
         val w = World(20)
         val (cc, sc) = MemConnection.pair(w.b.pin, w.a.pin, w.log, "A>B", "B<A", blocking = true)

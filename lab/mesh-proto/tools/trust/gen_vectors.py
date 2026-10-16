@@ -528,15 +528,31 @@ def qr_input(text, now, policy, expiry):
     return inp
 
 
+QR_ENFORCE_DIFFERS = set(range(17, 25))
+
+
+def same_under_both_readings(num, desc, text, now, policy, expiry, r):
+    """ERRATA ERR-R4B-PW-1 says a qrParse vector that names no expiry reading gives the same verdict under both. QR_ENFORCE_DIFFERS lists, by number, the ones that do not."""
+    if expiry is not None:
+        return
+    e = T.qr_parse(text, now, loopback_ok=(policy == "loopbackForTests"), expiry="enforce")
+    if num in QR_ENFORCE_DIFFERS:
+        assert e != r, (num, desc, "listed as differing but does not", e)
+    else:
+        assert e == r, (num, desc, "differs under the enforcing reading", e, r)
+
+
 def qr_ok(num, desc, text, now=QNOW, policy="mesh", expiry=None):
     r = T.qr_parse(text, now, loopback_ok=(policy == "loopbackForTests"), expiry=expiry or "none")
     assert r[0] == "ok", (desc, r)
+    same_under_both_readings(num, desc, text, now, policy, expiry, r)
     w04.add(num, desc, qr_input(text, now, policy, expiry), {"ok": r[1]})
 
 
 def qr_bad(num, desc, text, code, now=QNOW, policy="mesh", expiry=None):
     r = T.qr_parse(text, now, loopback_ok=(policy == "loopbackForTests"), expiry=expiry or "none")
     assert r == ("reject", code), (desc, r, code)
+    same_under_both_readings(num, desc, text, now, policy, expiry, r)
     w04.add(num, desc, qr_input(text, now, policy, expiry), {"reject": code})
 
 

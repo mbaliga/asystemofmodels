@@ -16,6 +16,7 @@ import xyz.mdhv.asom.lab.proto.session.Ev
 import xyz.mdhv.asom.lab.proto.session.FailPlan
 import xyz.mdhv.asom.lab.proto.session.Frames
 import xyz.mdhv.asom.lab.proto.session.PairingChannel
+import xyz.mdhv.asom.lab.proto.session.SessionIdClaims
 import xyz.mdhv.asom.lab.proto.session.SeededIds
 import xyz.mdhv.asom.lab.proto.session.Table76
 import xyz.mdhv.asom.lab.proto.tls.HandshakeObserver
@@ -55,7 +56,7 @@ object TlsPairing {
                     w.b.conn = tc
                     check(tc.mode == ConnMode.PAIRING) { "the listener admitted an unknown pin without a pairing connection" }
                     accConn = tc
-                    accD = PairingChannel(w.b.ledger, tc, SeededIds(seed * 3 + 2))
+                    accD = PairingChannel(w.b.ledger, tc, SeededIds(seed * 3 + 2), SessionIdClaims { w.b.node.claimSessionId(it) })
                 } catch (e: Throwable) {
                     accError = e
                 }
@@ -66,7 +67,7 @@ object TlsPairing {
             accError?.let { throw it }
             val connS = dialer.conn!!
             check(connS.mode == ConnMode.PAIRING) { "the dialler's connection is not a pairing connection" }
-            val s = PairingChannel(w.a.ledger, connS, SeededIds(seed * 3 + 1), report.sessionId, report.handshakeRecorded)
+            val s = PairingChannel(w.a.ledger, connS, SeededIds(seed * 3 + 1), SessionIdClaims { w.a.node.claimSessionId(it) }, report.sessionId, report.handshakeRecorded)
             val d = accD!!
             val receivedByS = CopyOnWriteArrayList<Int>()
             val receivedByD = CopyOnWriteArrayList<Int>()
