@@ -2,6 +2,7 @@
 """Writes lab/conformance/manifest/schema/asom.manifest.1.schema.json and asom.bench-public.1.schema.json from the design session's r0 schemas
 (docs/design/mesh/manifest-vectors/) by applying the r3 patch list P1..P10 of LAB_SPEC 4.1, the extra patches P11 and B1..B8 recorded in
 lab/ERRATA.md (ERR-CLOSURE-1, ERR-SCHEMA-1), and the public-derivative patches PP1..PP3, and B9 (R4-B-01: BATTERY_LOW and POWER_SAVER join the run.abort.reason and sustain.endReason enums). Python 3 standard library only.
+With `--out DIR` the two files go there instead of the committed directory (CI regenerates into a temporary directory and compares byte for byte).
 
 The JSON Schema is DOCUMENTATION AND A TEST ORACLE ONLY (LAB_SPEC 4.1): the verifier's step 11 is the hand-written typed decoder in
 xyz.mdhv.asom.lab.manifest.ManifestDecoder. Run:  python3 lab/manifest/tools/patch_schema.py
@@ -9,6 +10,7 @@ xyz.mdhv.asom.lab.manifest.ManifestDecoder. Run:  python3 lab/manifest/tools/pat
 import copy
 import json
 import os
+import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
@@ -226,7 +228,12 @@ def patch_public(s):
     return s
 
 
-def main():
+def main(argv):
+    global DST
+    if argv[:1] == ["--out"] and len(argv) == 2:
+        DST = os.path.abspath(argv[1])
+    elif argv:
+        sys.exit("usage: patch_schema.py [--out DIR]")
     os.makedirs(DST, exist_ok=True)
     out = {"asom.manifest.1.schema.json": patch_manifest(load("asom.manifest.1.schema.json")),
            "asom.bench-public.1.schema.json": patch_public(load("asom.bench-public.1.schema.json"))}
@@ -238,4 +245,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

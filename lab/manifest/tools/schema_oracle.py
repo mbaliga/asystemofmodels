@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Test oracle: validates the payloads of the M02 accept vectors and the M06 public derivatives against the r3 conformance schemas
 (lab/conformance/manifest/schema/), and checks that the M03 SCHEMA_INVALID vectors whose defect the schema can express are rejected by it.
-Needs `jsonschema` (the design session used 4.26.0); prints `schema oracle: skipped (jsonschema absent)` and exits 0 without it.
+Needs `jsonschema` (the design session used 4.26.0); prints `schema oracle: skipped (jsonschema absent)` and exits 0 without it,
+or exits 2 with `--require` (CI passes it: a skipped oracle must not read as a pass).
 The schema is documentation and an oracle only; the verifier's typed decoder is normative (LAB_SPEC 4.1).
 """
 import base64
@@ -15,6 +16,9 @@ CONF = os.path.normpath(os.path.join(HERE, "..", "..", "conformance"))
 try:
     import jsonschema
 except ImportError:
+    if "--require" in sys.argv[1:]:
+        print("schema oracle: jsonschema is required and absent")
+        sys.exit(2)
     print("schema oracle: skipped (jsonschema absent)")
     sys.exit(0)
 
@@ -103,9 +107,14 @@ def main():
             else:
                 bad += 1
                 print("  DISAGREE R4-B-01 the schema accepts the unknown reason", repr(unknown), "in", place)
+    bench_props = man.schema["$defs"]["bench"]["properties"]
+    abort_enum = next(o["properties"]["reason"]["enum"] for o in bench_props["run"]["properties"]["abort"]["oneOf"] if "properties" in o)
+    end_enum = next(o["properties"]["endReason"]["enum"] for o in bench_props["sustain"]["oneOf"] if "properties" in o)
     for need in ("BATTERY_LOW", "POWER_SAVER", "DEVICE_BUSY"):
-        if need not in reasons:
-            bad += 1
+        for place, enum in (("run.abort.reason", abort_enum), ("sustain.endReason", end_enum)):
+            if need not in enum:
+                bad += 1
+                print("  DISAGREE R4-B-01", need, "is missing from the generated schema enum", place)
     if r4 < 3 * 2 or rejected_r4 < 6:
         bad += 1
         print("  DISAGREE R4-B-01 exercised", r4, "accepted and", rejected_r4, "rejected, expected at least 6 and 6")
@@ -120,7 +129,11 @@ def main():
             else:
                 bad += 1
                 print("  DISAGREE", v["id"], "the schema accepts a payload the verifier rejects with SCHEMA_INVALID")
-    print(f"schema oracle: {ok} accepted payloads agree, {rejected} SCHEMA_INVALID payloads rejected by the schema too, {bad} disagree (jsonschema {jsonschema.__version__ if hasattr(jsonschema, '__version__') else ''})".replace("  ", " "))
+    if ok < 20 or rejected < 14:
+        bad += 1
+        print("  DISAGREE the oracle exercised", ok, "accepted and", rejected, "rejected payloads, expected at least 20 and 14")
+    from importlib.metadata import version
+    print(f"schema oracle: {ok} accepted payloads agree, {rejected} SCHEMA_INVALID payloads rejected by the schema too, {bad} disagree (jsonschema {version('jsonschema')})")
     return 1 if bad else 0
 
 

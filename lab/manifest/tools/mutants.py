@@ -121,7 +121,7 @@ MUTANTS = [
     ("S02-file-keeps-securitypatch", "the FILE projection keeps securityPatch", MAN + "Signer.kt",
      "inputs.device.copy(platformIds = null, os = inputs.device.os.copy(securityPatch = null))", "inputs.device.copy(platformIds = null)"),
     ("S03-seq-no-clock", "seq ignores the clock (max(stored+1, now/1000) becomes stored+1)", MAN + "Signer.kt",
-     "maxOf((stored?.seq ?: 0L) + 1L, nowMs / 1000L)", "(stored?.seq ?: 0L) + 1L"),
+     "val clock = maxOf(1L, nowMs / 1000L)", "val clock = 1L"),
     ("S04-seq-always-new", "an unchanged body still gets a new seq", MAN + "Signer.kt",
      "if (stored != null && stored.contentDigest == digest) {", "if (stored != null && stored.contentDigest == digest && stored.seq < 0L) {"),
     ("S05-file-export-key-is-nik-free-check", "the export presentation keeps the exact time (not day-truncated)", MAN + "Signer.kt",
@@ -162,6 +162,14 @@ MUTANTS = [
      "Math.multiplyExact(a, b)", "a * b"),
     ("B14-role-helper-9000", "the occasional-helper role needs 9 tokens/s instead of 8", BEN + "BenchSet.kt",
      "const val ROLE_HELPER_MTPS: Long = 8_000L", "const val ROLE_HELPER_MTPS: Long = 9_000L"),
+    ("V42-lock-per-instance", "the signer lock is the FileSeqStore object, not the file (R4MS-1)", MAN + "Signer.kt",
+     "override val lockKey: Any get() = lock", "override val lockKey: Any get() = this"),
+    ("V43-malformed-store-is-absent", "a malformed seq store file reads as no store (R4MS-2)", MAN + "Signer.kt",
+     "throw SeqStoreCorrupt(\"the seq store ${file.path} exists and is malformed; nothing is signed until an operator resolves it\")", "return null"),
+    ("V44-no-seq-bound", "the next seq may exceed 2^53 - 1 before it is persisted (R4MS-3)", MAN + "Signer.kt",
+     "if (next > MAX_SEQ) throw ManifestUnavailable(null, \"the next seq is outside 1..2^53-1\")", ""),
+    ("V45-no-clock-bound", "a negative or out-of-range clock is persisted before it is refused (R4MS-3)", MAN + "Signer.kt",
+     "if (nowMs < 0L || nowMs > MAX_SEQ - EXPIRY_MS) throw ManifestUnavailable(null, \"the clock $nowMs is outside the range a presentation can carry\")", ""),
 ]
 
 

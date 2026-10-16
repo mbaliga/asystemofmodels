@@ -71,6 +71,25 @@ jobs:
           python3 lab/tools/regen_index.py
           test -z "$(git status --porcelain -- lab/conformance)" || { git status --porcelain -- lab/conformance; git diff --stat -- lab/conformance; exit 1; }
 
+  lab-schema-oracle:
+    name: Manifest schemas equal the generator, and the schema oracle agrees
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install the oracle's one dependency (the version the design session used)
+        run: python3 -m pip install --disable-pip-version-check jsonschema==4.26.0
+
+      - name: Committed schemas are byte for byte what patch_schema.py writes
+        run: |
+          python3 lab/manifest/tools/patch_schema.py --out "$RUNNER_TEMP/schema-regenerated"
+          diff -r "$RUNNER_TEMP/schema-regenerated" lab/conformance/manifest/schema
+
+      - name: Schema oracle (with --require a missing jsonschema is a failure, not a skip)
+        run: python3 lab/manifest/tools/schema_oracle.py --require
+
   lab-isolation-with-sdk:
     name: Lab isolation check 2 (Android SDK present)
     # ANDROID_HOME is set on this image; deliberately NOT cleared here.

@@ -34,10 +34,23 @@ class ManifestUnavailable(val code: RejectCode?, message: String) : Exception(me
 
 class StoredSeq(val seq: Long, val contentDigest: String)
 
-/** The `seq` rule needs a durable store: the value is written (with `force`) before the first signature over the new body. */
+/** The largest integer the wire form carries (2^53 - 1), and so the largest `seq` a verifier accepts. */
+internal const val MAX_SEQ = 9_007_199_254_740_991L
+
+/** The store file exists and cannot be read back; treating it as absent would restart `seq` at the clock and could reuse one already signed. */
+class SeqStoreCorrupt(message: String) : IOException(message)
+
+/**
+ * The `seq` rule needs a durable store: the value is written (with `force`) before the first signature over the new body.
+ * `load` returns null only when nothing was ever stored, and throws [IOException] when something is stored and unreadable.
+ * [lockKey] is the identity of the durable store: every instance that reads and writes the same data returns the same object, and the signer
+ * serialises on it. A decorator must forward its inner store's key.
+ */
 interface SeqStore {
     fun load(): StoredSeq?
     fun persist(stored: StoredSeq)
+
+    val lockKey: Any get() = this
 }
 
 class InMemorySeqStore : SeqStore {
@@ -55,15 +68,21 @@ class InMemorySeqStore : SeqStore {
  * (where the platform lets a directory be opened; Windows does not, and its journal covers the rename).
  */
 class FileSeqStore(private val file: File) : SeqStore {
-    /** One lock per file path, so that two instances in one process never rename onto the same target at once (Windows refuses that). */
-    private val lock: Any = locks.getOrPut(file.absoluteFile.path) { Any() }
+    /** One lock per canonical file, so that two instances in one process never rename onto the same target at once (Windows refuses that) and the signer serialises them. */
+    private val lock: Any = locks.computeIfAbsent(lockName(file)) { Any() }
+
+    override val lockKey: Any get() = lock
 
     override fun load(): StoredSeq? {
         synchronized(lock) {
-            if (!file.isFile) return null
+            if (!file.exists()) return null
+            if (!file.isFile) throw SeqStoreCorrupt("the seq store ${file.path} exists and is not a regular file")
             val lines = file.readText(Charsets.UTF_8).split("\n")
-            val seq = lines.getOrNull(0)?.toLongOrNull() ?: return null
-            val digest = lines.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: return null
+            val seq = lines.getOrNull(0)?.toLongOrNull()?.takeIf { it in 1L..MAX_SEQ }
+            val digest = lines.getOrNull(1)?.takeIf { it.isNotEmpty() }
+            if (lines.size != 3 || lines[2].isNotEmpty() || seq == null || digest == null) {
+                throw SeqStoreCorrupt("the seq store ${file.path} exists and is malformed; nothing is signed until an operator resolves it")
+            }
             return StoredSeq(seq, digest)
         }
     }
@@ -89,6 +108,18 @@ class FileSeqStore(private val file: File) : SeqStore {
 
     private companion object {
         val locks = java.util.concurrent.ConcurrentHashMap<String, Any>()
+
+        /** Lower-cased on every platform: a case-insensitive file system names one file by several spellings, and sharing a lock between two files is only contention. */
+        fun lockName(file: File): String {
+            val abs = file.absoluteFile
+            val parent = abs.parentFile
+            val canonical = try {
+                if (parent == null) abs.canonicalFile else File(parent.canonicalFile, abs.name)
+            } catch (e: IOException) {
+                abs.normalize()
+            }
+            return canonical.path.lowercase(java.util.Locale.ROOT)
+        }
     }
 
     private fun syncDirectory(dir: Path) {
@@ -149,9 +180,17 @@ class ManifestSigner(
     private fun sha256B64u(b: ByteArray): String = Base64Strict.encodeUrlNoPad(MessageDigest.getInstance("SHA-256").digest(b))
 
     internal companion object {
-        private val locks = java.util.Collections.synchronizedMap(java.util.WeakHashMap<SeqStore, Any>())
+        const val EXPIRY_MS = 600_000L
 
-        fun lockFor(store: SeqStore): Any = synchronized(locks) { locks.getOrPut(store) { Any() } }
+        fun lockFor(store: SeqStore): Any = store.lockKey
+
+        /** `max(stored + 1, nowMs / 1000)` kept inside 1..2^53-1, checked before anything is written (LAB_SPEC R4-L-13; the Swift `nextSeq`). */
+        fun nextSeq(stored: StoredSeq?, nowMs: Long): Long {
+            val clock = maxOf(1L, nowMs / 1000L)
+            val next = if (stored == null) clock else maxOf(if (stored.seq < MAX_SEQ) stored.seq + 1L else Long.MAX_VALUE, clock)
+            if (next > MAX_SEQ) throw ManifestUnavailable(null, "the next seq is outside 1..2^53-1")
+            return next
+        }
     }
 
     /**
@@ -164,19 +203,28 @@ class ManifestSigner(
     }
 
     private fun signOwnLocked(inputs: ManifestInputs, key: EcKeyPair, keyStorage: String, challenge: ByteArray, nowMs: Long, seqStore: SeqStore): Signed {
+        if (nowMs < 0L || nowMs > MAX_SEQ - EXPIRY_MS) throw ManifestUnavailable(null, "the clock $nowMs is outside the range a presentation can carry")
         val subject = ManifestBuilder.subjectJson(key.nodeId, keyStorage)
         val content = ManifestBuilder.bodyJson(Audience.OWN, null, subject, inputs, inputs.bench, inputs.device)
         val digest = sha256B64u(Jcs.serialize(content))
-        val stored = seqStore.load()
+        val stored = try {
+            seqStore.load()
+        } catch (e: IOException) {
+            throw ManifestUnavailable(null, "the seq store cannot be read: ${e.message}")
+        }
         val seq = if (stored != null && stored.contentDigest == digest) {
             stored.seq
         } else {
-            val next = maxOf((stored?.seq ?: 0L) + 1L, nowMs / 1000L)
-            seqStore.persist(StoredSeq(next, digest))
+            val next = nextSeq(stored, nowMs)
+            try {
+                seqStore.persist(StoredSeq(next, digest))
+            } catch (e: IOException) {
+                throw ManifestUnavailable(null, "the seq store cannot be written: ${e.message}")
+            }
             next
         }
         val body = ManifestBuilder.bodyJson(Audience.OWN, seq, subject, inputs, inputs.bench, inputs.device)
-        val presentation = jo("issuedAtMs" to ji(nowMs), "expiresAtMs" to ji(nowMs + 600_000L), "challenge" to js(Base64Strict.encodeUrlNoPad(challenge)))
+        val presentation = jo("issuedAtMs" to ji(nowMs), "expiresAtMs" to ji(nowMs + EXPIRY_MS), "challenge" to js(Base64Strict.encodeUrlNoPad(challenge)))
         val payload = ManifestBuilder.payload(body, presentation)
         val sig = Es256.sign(key.private, Dsse.pae(Dsse.PT_MANIFEST_V1, payload))
         val container = Dsse.container(payload, sig, key.nodeId, key.spki)
