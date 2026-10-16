@@ -1452,6 +1452,76 @@
       }
     },
     {
+      "id": "W07-083",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "FRESH passes thermal band 1 and queue bucket 1 unchanged: only STALE substitutes (ERR-R4B-TH-1)",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 11000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false,
+        "state": {
+          "thermalBand": 1,
+          "queueBucket": 1,
+          "batteryBand": "ge80",
+          "powerSource": "battery"
+        }
+      },
+      "expect": {
+        "ok": {
+          "class": "FRESH",
+          "ageMs": 1000,
+          "probeOnly": false,
+          "fast": {
+            "thermalBand": 1,
+            "queueBucket": 1,
+            "batteryBand": "ge80"
+          }
+        }
+      }
+    },
+    {
+      "id": "W07-084",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "WARM passes thermal band 1 and queue bucket 1 unchanged: only STALE substitutes (ERR-R4B-TH-1)",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 30000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false,
+        "state": {
+          "thermalBand": 1,
+          "queueBucket": 1,
+          "batteryBand": "ge80",
+          "powerSource": "battery"
+        }
+      },
+      "expect": {
+        "ok": {
+          "class": "WARM",
+          "ageMs": 20000,
+          "probeOnly": false,
+          "fast": {
+            "thermalBand": 1,
+            "queueBucket": 1,
+            "batteryBand": "ge80"
+          }
+        }
+      }
+    },
+    {
       "id": "W07-090",
       "origin": "hand",
       "status": "normative",

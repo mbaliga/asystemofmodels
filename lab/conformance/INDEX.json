@@ -1,7 +1,7 @@
 [
   {
     "path": "bench/M04-derive.json",
-    "sha256": "5cb51c10ec9bf6f712650b87861335978a8b06305a6786fef8bbd3c1082398d0",
+    "sha256": "9db2f5149486133e18881e9bce82d0b339039cc93593dbaa27834e30aa31e1fa",
     "family": "M04",
     "status": "normative"
   },
@@ -73,7 +73,7 @@
   },
   {
     "path": "policy/W07-live-state.json",
-    "sha256": "29be00a8e92044a2de038253979a13c9259420e0cafa7205796f703d319a0607",
+    "sha256": "8459573a49087568ed5e8c31f0d4527fc29dcd1d3a26a2064ed622a8877038cd",
     "family": "W07",
     "status": "normative"
   },

@@ -89,15 +89,20 @@ class ConsentToken internal constructor(
 
     val consumed: Boolean get() = spent.get()
 
-    val expiresAtMs: Long get() = mintedAtMs + ConsentSheet.TOKEN_TTL_MS
+    val expiresAtMs: Long get() = if (mintedAtMs > Long.MAX_VALUE - ConsentSheet.TOKEN_TTL_MS) Long.MAX_VALUE else mintedAtMs + ConsentSheet.TOKEN_TTL_MS
 
     /** False when the sheet needed the "run the heat test again today" tick and it was not ticked: no sustained phase may run. */
     val heatTestPermitted: Boolean get() = !rerunTickWasRequired || rerunHeatToday
 
-    /** A refused spend (another plan, expired) leaves the token unspent. */
+    /** A refused spend (another plan, expired, a clock that reads earlier than the minting time, an age that overflows) leaves the token unspent. */
     fun consume(planId: String, nowMs: Long) {
         if (planId != this.planId) throw ConsentError("token is for plan ${this.planId}")
-        if (nowMs >= expiresAtMs) throw ConsentError("token expired")
+        val age = try {
+            Math.subtractExact(nowMs, mintedAtMs)
+        } catch (e: ArithmeticException) {
+            throw ConsentError("token expired")
+        }
+        if (age < 0L || age >= ConsentSheet.TOKEN_TTL_MS) throw ConsentError("token expired")
         if (!spent.compareAndSet(false, true)) throw ConsentError("token already used")
     }
 }

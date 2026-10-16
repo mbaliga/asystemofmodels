@@ -397,6 +397,27 @@ class RouterLawsTest {
         }
     }
 
+    private val staleNow = 1_000_500L
+
+    private fun thermalOnePeer(rxMonoMs: Long) = W.peer("peer-b", state = W.state(thermal = 1), rxMonoMs = rxMonoMs, lastSame = mapOf(W.SHA_A to staleNow - 1_000))
+
+    private fun thermalOneWorld(rxMonoMs: Long) = GenWorld(W.query(), W.snapshot(peers = listOf(thermalOnePeer(rxMonoMs)), now = staleNow))
+
+    @Test
+    fun aStalePeerAtThermalBandOneIsExcludedByF10WhileTheSameWarmPeerIsRoutedAndTheOracleAgrees() {
+        val warm = thermalOneWorld(staleNow - 10_000)
+        val warmPlan = MeshRouter().plan(warm.q, warm.s).attempts
+        val routed = warmPlan.firstOrNull { it.tier == Tier.PEER }
+        assertEquals(Freshness.WARM, routed?.freshness, "a WARM peer at band 1 passes the received value and is routed")
+        assertEquals(null, OracleFilters.violation(warm, routed!!))
+
+        val stale = thermalOneWorld(staleNow - 100_000)
+        val plan = MeshRouter().plan(stale.q, stale.s)
+        assertEquals(listOf("F10_THERMAL"), plan.excluded.filter { it.nodeId == "peer-b" }.map { it.code }, "STALE band 1 reads as band 2 (R4-L-17)")
+        assertEquals(emptyList(), plan.attempts.filter { it.tier == Tier.PEER }.map { it.nodeId })
+        assertEquals("F10", OracleFilters.violation(stale, routed), "the independent oracle applies the same substitution: an attempt to a STALE band-1 peer is a violation")
+    }
+
     @Test
     fun theWorkedExampleReasonKeepsItsHeatTermOnlyInTheLedger() {
         val reason = "peer:best-score/heat"

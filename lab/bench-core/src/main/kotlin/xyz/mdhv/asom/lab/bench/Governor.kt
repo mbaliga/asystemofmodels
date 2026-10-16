@@ -35,6 +35,9 @@ object Ceilings {
 
     private val ROWS = setOf("android", "ios", "ipados", "macos", "linux")
 
+    /** The hard ceilings that read the thermal state, the battery or the power switch: they outrank every other end reason (R4-B-02). */
+    val MEASURED_HARD: Set<String> = setOf("THERMAL_HARD", "BATTERY_TEMP", "BATTERY_LOW", "POWER_SAVER")
+
     fun hasRow(platform: String): Boolean = platform in ROWS
 
     /**
@@ -209,25 +212,25 @@ class Governor(
 
     fun elapsedMs(): Long = (host.monotonicMicros() - startMicros()) / 1000L
 
-    /** Raises [GovSignal.Abort], [GovSignal.Yield] or [GovSignal.SustainEnd] when a governor rule fires; otherwise returns. Called before every timed rep. */
+    /**
+     * Raises [GovSignal.Abort], [GovSignal.Yield] or [GovSignal.SustainEnd] when a governor rule fires; otherwise returns. Called before every timed rep.
+     * When several conditions hold at once the reported reason is: a user stop (an instruction, not a reading), then the thermal and battery ceilings
+     * of 11.3 (`THERMAL_HARD`, `BATTERY_TEMP`, `BATTERY_LOW`, `POWER_SAVER`), then the rest, then a soft ceiling (R4-B-02, ERR-FX3-BP-1).
+     */
     fun check(phase: Phase) {
         val dev = host.probes.device()
         val p = host.probes
         if (stopRequested) throw GovSignal.Abort("USER_STOP")
         val presence = p.presence()
         val mobileStandalone = (dev.form == "phone" || dev.form == "tablet") && host.harness().shell.endsWith("standalone")
-        if (mobileStandalone && !presence.foreground) throw GovSignal.Abort("BACKGROUNDED")
         val power = p.power()
-        if (dev.form in setOf("phone", "tablet", "handheld", "laptop") && dev.form in plan.chargerRequiredForms && power.hasBattery && power.source != "ac") {
-            throw GovSignal.Abort("CHARGER_REMOVED")
-        }
-        plan.wallCapMs[dev.form]?.let { if (elapsedMs() >= it) throw GovSignal.Abort("WALL_CAP") }
-        if (p.memoryPressure()) throw GovSignal.Abort("MEMORY_PRESSURE")
         val thermal = p.thermal()
+        val memoryPressure = p.memoryPressure()
+        var probeLost = false
         if (plan.plan != "quick" && plan.plan != "ci") {
             if (!thermal.available) {
                 probeLostPolls++
-                if (probeLostPolls >= PROBE_LOST_POLLS) throw GovSignal.Abort("PROBE_LOST")
+                if (probeLostPolls >= PROBE_LOST_POLLS) probeLost = true
             } else {
                 probeLostPolls = 0
             }
@@ -240,16 +243,23 @@ class Governor(
             gpuBusySinceMicros = null
         }
         val heldMs = gpuBusySinceMicros?.let { (now - it) / 1000L } ?: 0L
+        var noRow = false
         val ceiling = try {
             Ceilings.evaluate(dev.platform, dev.form, thermal, power, presence, heldMs)
         } catch (e: NoCeilingRow) {
-            throw GovSignal.Abort("PROBE_LOST")
+            noRow = true
+            null
         }
-        when (val c = ceiling) {
-            is Ceiling.Hard -> {
-                if (phase == Phase.SUSTAIN && c.reason == "THERMAL_HARD") throw GovSignal.SustainEnd("THERMAL_HARD")
-                throw GovSignal.Abort(c.reason)
-            }
+        if (ceiling is Ceiling.Hard && ceiling.reason in Ceilings.MEASURED_HARD) hardCeiling(phase, ceiling)
+        if (mobileStandalone && !presence.foreground) throw GovSignal.Abort("BACKGROUNDED")
+        if (dev.form in setOf("phone", "tablet", "handheld", "laptop") && dev.form in plan.chargerRequiredForms && power.hasBattery && power.source != "ac") {
+            throw GovSignal.Abort("CHARGER_REMOVED")
+        }
+        plan.wallCapMs[dev.form]?.let { if (elapsedMs() >= it) throw GovSignal.Abort("WALL_CAP") }
+        if (memoryPressure) throw GovSignal.Abort("MEMORY_PRESSURE")
+        if (probeLost || noRow) throw GovSignal.Abort("PROBE_LOST")
+        when (ceiling) {
+            is Ceiling.Hard -> hardCeiling(phase, ceiling)
             is Ceiling.Soft -> {
                 if (phase == Phase.SUSTAIN) {
                     if (softSinceMicros == null) softSinceMicros = now
@@ -259,5 +269,10 @@ class Governor(
             null -> if (phase == Phase.SUSTAIN) softSinceMicros = null
         }
         if (state == GState.RUNNING && host.coexistence.isDaemon && host.coexistence.requestPending()) throw GovSignal.Yield()
+    }
+
+    private fun hardCeiling(phase: Phase, c: Ceiling.Hard): Nothing {
+        if (phase == Phase.SUSTAIN && c.reason == "THERMAL_HARD") throw GovSignal.SustainEnd("THERMAL_HARD")
+        throw GovSignal.Abort(c.reason)
     }
 }

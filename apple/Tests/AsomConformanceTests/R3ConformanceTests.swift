@@ -125,7 +125,7 @@ final class R3ConformanceTests: XCTestCase {
         XCTAssertNil(skipped["M04/plan"], "quick and ci are run now (R4-B-06)")
         XCTAssertEqual(skipped["M04/consent"], 1)
         XCTAssertEqual(perKind["M04/plan"], 3)
-        XCTAssertEqual(perKind["M04/consent"], 10, "5 before r4 plus M04-419 and M04-426..429 (R4-B-07)")
+        XCTAssertEqual(perKind["M04/consent"], 11, "5 before r4 plus M04-419 and M04-426..429 (R4-B-07), plus M04-431 (R4TB-07, a clock that reads earlier than the minting time)")
         XCTAssertEqual(perKind["M04/fsm"], 1)
         XCTAssertEqual(perKind["M04/ceilings"], 19, "9 before r4 plus M04-449..458 (R4-B-01, R4-B-02)")
         XCTAssertEqual(perKind["M04/pins"], 1)

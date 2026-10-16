@@ -70,7 +70,8 @@ object OracleFilters {
         if (a.tier == Tier.PEER) {
             val d = n.state!!
             if (!expired && d.fsm != Fsm.SERVING) return "F9"
-            if (!expired && (d.thermalBand == 2 || d.governor == Governor.HOLD)) return "F10"
+            val thermal = if (fr == 2 && d.thermalBand >= 1) minOf(2, d.thermalBand + 1) else d.thermalBand
+            if (!expired && (thermal == 2 || d.governor == Governor.HOLD)) return "F10"
             if (!expired && d.powerSource == "battery" && !d.charging) {
                 var band = d.batteryBand
                 if (fr == 2 && band != null) band = BatteryBand.entries.getOrElse(band.ordinal + 1) { BatteryBand.LT20 }

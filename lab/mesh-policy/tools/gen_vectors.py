@@ -367,6 +367,16 @@ W07 += [
         stale(R + 40_000, R, 0, state={"thermalBand": 2, "queueBucket": 2, "batteryBand": "ge80", "powerSource": "ac"}),
         cls("STALE", 40_000, False, {"thermalBand": 2, "queueBucket": 2, "batteryBand": "ge80"}),
     ),
+    vec(
+        "W07-083", "FRESH passes thermal band 1 and queue bucket 1 unchanged: only STALE substitutes (ERR-R4B-TH-1)",
+        stale(R + 1_000, R, 0, state={"thermalBand": 1, "queueBucket": 1, "batteryBand": "ge80", "powerSource": "battery"}),
+        cls("FRESH", 1_000, False, {"thermalBand": 1, "queueBucket": 1, "batteryBand": "ge80"}),
+    ),
+    vec(
+        "W07-084", "WARM passes thermal band 1 and queue bucket 1 unchanged: only STALE substitutes (ERR-R4B-TH-1)",
+        stale(R + 20_000, R, 0, state={"thermalBand": 1, "queueBucket": 1, "batteryBand": "ge80", "powerSource": "battery"}),
+        cls("WARM", 20_000, False, {"thermalBand": 1, "queueBucket": 1, "batteryBand": "ge80"}),
+    ),
 ]
 
 SKEW = [-600_000, -1, 0, 1, 600_000]

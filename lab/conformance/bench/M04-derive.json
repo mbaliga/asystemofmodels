@@ -10226,6 +10226,27 @@
       }
     },
     {
+      "id": "M04-431",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "R4TB-07: a token is refused when the clock reads earlier than the minting time (a wall clock stepped back), whatever the gap.",
+      "input": {
+        "kind": "consent",
+        "plan": "quick",
+        "downloadBytes": 0,
+        "tiers": [],
+        "t3OptInOffered": false,
+        "sustainedToday": false,
+        "confirm": "match",
+        "mintNowMs": 3600000,
+        "consumeNowMs": 1000
+      },
+      "expect": {
+        "reject": "CONSENT_REFUSED"
+      }
+    },
+    {
       "id": "M04-430",
       "origin": "generated",
       "status": "normative",

@@ -505,7 +505,8 @@ def consent_model(i):
             return "refused"
         if ticks["rerunHeatToday"] and not (i["sustainedToday"] and i["plan"] != "quick" and i["plan"] != "ci"):
             return "refused"
-    if i["consumeNowMs"] - i["mintNowMs"] >= 300000:
+    age = i["consumeNowMs"] - i["mintNowMs"]
+    if age < 0 or age >= 300000:
         return "refused"
     if i.get("consumeTwice"):
         return "refused"

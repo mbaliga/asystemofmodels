@@ -255,7 +255,7 @@ def staleness(i):
 
 def fast_fields(c, s):
     if c in ("FRESH", "WARM"):
-        return {"thermalBand": min(2, s["thermalBand"] + 1) if s["thermalBand"] >= 1 else s["thermalBand"], "queueBucket": s["queueBucket"], "batteryBand": s["batteryBand"]}
+        return {"thermalBand": s["thermalBand"], "queueBucket": s["queueBucket"], "batteryBand": s["batteryBand"]}
     if c == "EXPIRED":
         return None
     band = s["batteryBand"]

@@ -312,6 +312,8 @@ class RegenerateBenchVectors {
         }
         add("M04-419", "R4-B-07: a rerun tick on a sheet that has no such tick mints nothing.",
             parse("""{"kind":"consent","plan":"standard","downloadBytes":0,"tiers":[],"t3OptInOffered":false,"sustainedToday":false,"confirm":"match","mintNowMs":1000,"consumeNowMs":2000,"reportText":false,"ticks":{"optIns":[],"rerunHeatToday":true}}"""), "CONSENT_REFUSED")
+        add("M04-431", "R4TB-07: a token is refused when the clock reads earlier than the minting time (a wall clock stepped back), whatever the gap.",
+            parse("""{"kind":"consent","plan":"quick","downloadBytes":0,"tiers":[],"t3OptInOffered":false,"sustainedToday":false,"confirm":"match","mintNowMs":3600000,"consumeNowMs":1000}"""), "CONSENT_REFUSED")
         add("M04-430", "The governor state machine: every allowed edge (benchmark.md 11.4 with B9); every other pair is refused by `Governor.to`.", parse("""{"kind":"fsm"}"""))
         val ceil = listOf(
             Triple("M04-440", "Android: thermal status severe is a hard ceiling.", """{"kind":"ceilings","platform":"android","form":"phone","thermal":{"code":3,"headroom":500,"batteryTempDeciC":300},"power":{"source":"ac","level":700},"presence":{"foreground":true,"screenOn":true,"batterySaver":false,"lowPowerMode":false},"gpuBusyHeldMs":0}"""),
