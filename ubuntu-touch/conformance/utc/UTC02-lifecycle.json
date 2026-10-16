@@ -1,0 +1,1388 @@
+{
+ "family": "UTC02",
+ "confVersion": "0.1.0",
+ "specRefs": [
+  "ubuntu-touch.md 3.3",
+  "ubuntu-touch.md 3.4 (L-UT1, L-UT2, L-UT3)"
+ ],
+ "vectors": [
+  {
+   "id": "UTC02-001",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "STARTING waits for the ledger; IDLE dials nothing",
+   "input": {
+    "heartbeat": false,
+    "events": [
+     {
+      "at": 0,
+      "ev": "tick",
+      "check": true
+     },
+     {
+      "at": 0,
+      "ev": "ledger-ready",
+      "check": true
+     },
+     {
+      "at": 0,
+      "ev": "ui:active",
+      "check": true
+     },
+     {
+      "at": 100,
+      "ev": "request:r1",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "STARTING",
+       [],
+       null,
+       false
+      ],
+      [
+       "IDLE",
+       [],
+       null,
+       false
+      ],
+      [
+       "IDLE",
+       [],
+       null,
+       false
+      ],
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "UTC02-002",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a ledger that will not open is fail-closed",
+   "input": {
+    "heartbeat": false,
+    "events": [
+     {
+      "at": 0,
+      "ev": "ledger-failed",
+      "check": true
+     },
+     {
+      "at": 10,
+      "ev": "ui:active",
+      "check": true
+     },
+     {
+      "at": 20,
+      "ev": "request:r1",
+      "check": true
+     },
+     {
+      "at": 30,
+      "ev": "tick",
+      "check": true
+     },
+     {
+      "at": 40,
+      "ev": "shutdown",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "LEDGER_FAIL",
+       [],
+       null,
+       false
+      ],
+      [
+       "LEDGER_FAIL",
+       [],
+       null,
+       false
+      ],
+      [
+       "LEDGER_FAIL",
+       [],
+       "LEDGER_UNAVAILABLE",
+       false
+      ],
+      [
+       "LEDGER_FAIL",
+       [],
+       null,
+       false
+      ],
+      [
+       "LEDGER_FAIL",
+       [
+        "ExitNow"
+       ],
+       null,
+       false
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "UTC02-003",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a request before the UI has reported active is refused",
+   "input": {
+    "heartbeat": false,
+    "events": [
+     {
+      "at": 0,
+      "ev": "ledger-ready"
+     },
+     {
+      "at": 5,
+      "ev": "request:r1",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "IDLE",
+       [],
+       "INTERRUPTED_BY_SUSPEND",
+       false
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "UTC02-004",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "L-UT1: an active report exactly 10000 ms old still allows a dial",
+   "input": {
+    "heartbeat": false,
+    "events": [
+     {
+      "at": 0,
+      "ev": "ledger-ready"
+     },
+     {
+      "at": 1000,
+      "ev": "ui:active"
+     },
+     {
+      "at": 1500,
+      "ev": "request:r1",
+      "check": true
+     },
+     {
+      "at": 2000,
+      "ev": "tick",
+      "repeat": 9,
+      "every": 1000
+     },
+     {
+      "at": 11000,
+      "ev": "tick",
+      "check": true
+     },
+     {
+      "at": 12000,
+      "ev": "tick",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ],
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ],
+      [
+       "FREEZING",
+       [
+        "ForceLedger"
+       ],
+       null,
+       false
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "UTC02-005",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "L-UT1: an active report 10001 ms old freezes the node",
+   "input": {
+    "heartbeat": false,
+    "events": [
+     {
+      "at": 0,
+      "ev": "ledger-ready"
+     },
+     {
+      "at": 999,
+      "ev": "ui:active"
+     },
+     {
+      "at": 1500,
+      "ev": "request:r1",
+      "check": true
+     },
+     {
+      "at": 2000,
+      "ev": "tick",
+      "repeat": 9,
+      "every": 1000
+     },
+     {
+      "at": 11000,
+      "ev": "tick",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ],
+      [
+       "FREEZING",
+       [
+        "ForceLedger"
+       ],
+       null,
+       false
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "UTC02-006",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "the UI backgrounds the app with an attempt and a session open: cancel, close, write, force, then FROZEN, then RESUMING on return",
+   "input": {
+    "heartbeat": false,
+    "events": [
+     {
+      "at": 0,
+      "ev": "ledger-ready"
+     },
+     {
+      "at": 0,
+      "ev": "ui:active"
+     },
+     {
+      "at": 100,
+      "ev": "request:r1",
+      "check": true
+     },
+     {
+      "at": 200,
+      "ev": "session-open",
+      "check": true
+     },
+     {
+      "at": 300,
+      "ev": "attempt:a1",
+      "check": true
+     },
+     {
+      "at": 400,
+      "ev": "body:a1",
+      "check": true
+     },
+     {
+      "at": 500,
+      "ev": "ui:inactive",
+      "check": true
+     },
+     {
+      "at": 510,
+      "ev": "drained",
+      "check": true
+     },
+     {
+      "at": 5000,
+      "ev": "ui:active",
+      "check": true
+     },
+     {
+      "at": 5010,
+      "ev": "resumed",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ],
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ],
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ],
+      [
+       "ACTIVE",
+       [
+        "HoldDisplay"
+       ],
+       null,
+       true
+      ],
+      [
+       "FREEZING",
+       [
+        "CancelAttempts",
+        "CloseSessions(freezing)",
+        "WriteInterruptedRows(a1)",
+        "ReleaseDisplay",
+        "ForceLedger"
+       ],
+       null,
+       false
+      ],
+      [
+       "FROZEN",
+       [],
+       null,
+       false
+      ],
+      [
+       "RESUMING",
+       [
+        "ForceLedger"
+       ],
+       null,
+       false
+      ],
+      [
+       "IDLE",
+       [],
+       null,
+       false
+      ]
+     ],
+     "final": {
+      "state": "IDLE",
+      "sessions": 0,
+      "openAttempts": [],
+      "displayHeld": false
+     }
+    }
+   }
+  },
+  {
+   "id": "UTC02-007",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "suspending is treated like inactive",
+   "input": {
+    "heartbeat": false,
+    "events": [
+     {
+      "at": 0,
+      "ev": "ledger-ready"
+     },
+     {
+      "at": 0,
+      "ev": "ui:active"
+     },
+     {
+      "at": 10,
+      "ev": "ui:suspending",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "FREEZING",
+       [
+        "ForceLedger"
+       ],
+       null,
+       false
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "UTC02-008",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "watchdog: a gap of exactly 3000 ms is not a resume, 3001 ms is; nothing is retried",
+   "input": {
+    "heartbeat": true,
+    "events": [
+     {
+      "at": 0,
+      "ev": "ledger-ready"
+     },
+     {
+      "at": 0,
+      "ev": "ui:active"
+     },
+     {
+      "at": 100,
+      "ev": "request:r1"
+     },
+     {
+      "at": 150,
+      "ev": "session-open"
+     },
+     {
+      "at": 200,
+      "ev": "attempt:a1"
+     },
+     {
+      "at": 300,
+      "ev": "body:a1"
+     },
+     {
+      "at": 1000,
+      "ev": "tick",
+      "check": true
+     },
+     {
+      "at": 4000,
+      "ev": "tick",
+      "check": true
+     },
+     {
+      "at": 7001,
+      "ev": "tick",
+      "check": true
+     },
+     {
+      "at": 7100,
+      "ev": "resumed",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ],
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ],
+      [
+       "RESUMING",
+       [
+        "CloseSessions(suspend)",
+        "WriteInterruptedRows(a1)",
+        "ReleaseDisplay",
+        "ForceLedger"
+       ],
+       null,
+       false
+      ],
+      [
+       "IDLE",
+       [],
+       null,
+       false
+      ]
+     ],
+     "final": {
+      "state": "IDLE",
+      "sessions": 0,
+      "openAttempts": [],
+      "displayHeld": false
+     }
+    }
+   }
+  },
+  {
+   "id": "UTC02-009",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "L-UT2: the display is held from the first body sent to the last outcome, and released then",
+   "input": {
+    "heartbeat": false,
+    "events": [
+     {
+      "at": 0,
+      "ev": "ledger-ready"
+     },
+     {
+      "at": 0,
+      "ev": "ui:active"
+     },
+     {
+      "at": 10,
+      "ev": "request:r1"
+     },
+     {
+      "at": 20,
+      "ev": "session-open"
+     },
+     {
+      "at": 30,
+      "ev": "attempt:a1"
+     },
+     {
+      "at": 31,
+      "ev": "attempt:a2"
+     },
+     {
+      "at": 40,
+      "ev": "body:a1",
+      "check": true
+     },
+     {
+      "at": 41,
+      "ev": "body:a2",
+      "check": true
+     },
+     {
+      "at": 50,
+      "ev": "finished:a1",
+      "check": true
+     },
+     {
+      "at": 60,
+      "ev": "finished:a2",
+      "check": true
+     },
+     {
+      "at": 70,
+      "ev": "finished:a2",
+      "check": true
+     },
+     {
+      "at": 80,
+      "ev": "body:zz",
+      "check": true
+     },
+     {
+      "at": 90,
+      "ev": "attempt:a3"
+     },
+     {
+      "at": 100,
+      "ev": "finished:a3",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "ACTIVE",
+       [
+        "HoldDisplay"
+       ],
+       null,
+       true
+      ],
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ],
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ],
+      [
+       "ACTIVE",
+       [
+        "ReleaseDisplay"
+       ],
+       null,
+       true
+      ],
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ],
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ],
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ]
+     ],
+     "final": {
+      "state": "ACTIVE",
+      "sessions": 1,
+      "openAttempts": [],
+      "displayHeld": false
+     }
+    }
+   }
+  },
+  {
+   "id": "UTC02-010",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "ACTIVE closes its sessions after 300000 ms without work (299999 ms does not)",
+   "input": {
+    "heartbeat": true,
+    "events": [
+     {
+      "at": 0,
+      "ev": "ledger-ready"
+     },
+     {
+      "at": 0,
+      "ev": "ui:active"
+     },
+     {
+      "at": 1000,
+      "ev": "request:r1",
+      "check": true
+     },
+     {
+      "at": 1100,
+      "ev": "session-open"
+     },
+     {
+      "at": 2000,
+      "ev": "tick",
+      "repeat": 298,
+      "every": 1000
+     },
+     {
+      "at": 300000,
+      "ev": "tick",
+      "check": true
+     },
+     {
+      "at": 300999,
+      "ev": "tick",
+      "check": true
+     },
+     {
+      "at": 301000,
+      "ev": "tick",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ],
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ],
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ],
+      [
+       "IDLE",
+       [
+        "CloseSessions(idle)"
+       ],
+       null,
+       false
+      ]
+     ],
+     "final": {
+      "state": "IDLE",
+      "sessions": 0,
+      "openAttempts": [],
+      "displayHeld": false
+     }
+    }
+   }
+  },
+  {
+   "id": "UTC02-011",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "shutdown drains, exits, and then ignores everything",
+   "input": {
+    "heartbeat": false,
+    "events": [
+     {
+      "at": 0,
+      "ev": "ledger-ready"
+     },
+     {
+      "at": 0,
+      "ev": "ui:active"
+     },
+     {
+      "at": 10,
+      "ev": "request:r1"
+     },
+     {
+      "at": 20,
+      "ev": "session-open"
+     },
+     {
+      "at": 30,
+      "ev": "attempt:a1"
+     },
+     {
+      "at": 40,
+      "ev": "body:a1"
+     },
+     {
+      "at": 50,
+      "ev": "shutdown",
+      "check": true
+     },
+     {
+      "at": 60,
+      "ev": "request:r2",
+      "check": true
+     },
+     {
+      "at": 70,
+      "ev": "ui:inactive",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "ACTIVE",
+       [
+        "CancelAttempts",
+        "CloseSessions(shutdown)",
+        "WriteInterruptedRows(a1)",
+        "ReleaseDisplay",
+        "ForceLedger",
+        "ExitNow"
+       ],
+       null,
+       false
+      ],
+      [
+       "ACTIVE",
+       [],
+       null,
+       false
+      ],
+      [
+       "ACTIVE",
+       [],
+       null,
+       false
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "UTC02-012",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "while freezing or frozen every request and Peers screen is refused",
+   "input": {
+    "heartbeat": false,
+    "events": [
+     {
+      "at": 0,
+      "ev": "ledger-ready"
+     },
+     {
+      "at": 0,
+      "ev": "ui:active"
+     },
+     {
+      "at": 10,
+      "ev": "request:r1"
+     },
+     {
+      "at": 20,
+      "ev": "ui:inactive",
+      "check": true
+     },
+     {
+      "at": 21,
+      "ev": "request:r2",
+      "check": true
+     },
+     {
+      "at": 22,
+      "ev": "peers-open",
+      "check": true
+     },
+     {
+      "at": 23,
+      "ev": "drained",
+      "check": true
+     },
+     {
+      "at": 24,
+      "ev": "request:r3",
+      "check": true
+     },
+     {
+      "at": 25,
+      "ev": "peers-open",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "FREEZING",
+       [
+        "ForceLedger"
+       ],
+       null,
+       false
+      ],
+      [
+       "FREEZING",
+       [],
+       "INTERRUPTED_BY_SUSPEND",
+       false
+      ],
+      [
+       "FREEZING",
+       [],
+       "INTERRUPTED_BY_SUSPEND",
+       false
+      ],
+      [
+       "FROZEN",
+       [],
+       null,
+       false
+      ],
+      [
+       "FROZEN",
+       [],
+       "INTERRUPTED_BY_SUSPEND",
+       false
+      ],
+      [
+       "FROZEN",
+       [],
+       "INTERRUPTED_BY_SUSPEND",
+       false
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "UTC02-013",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "the UI returns while the node is still freezing: it resumes as soon as the drain is done",
+   "input": {
+    "heartbeat": false,
+    "events": [
+     {
+      "at": 0,
+      "ev": "ledger-ready"
+     },
+     {
+      "at": 0,
+      "ev": "ui:active"
+     },
+     {
+      "at": 10,
+      "ev": "ui:inactive",
+      "check": true
+     },
+     {
+      "at": 20,
+      "ev": "ui:active",
+      "check": true
+     },
+     {
+      "at": 30,
+      "ev": "drained",
+      "check": true
+     },
+     {
+      "at": 40,
+      "ev": "resumed",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "FREEZING",
+       [
+        "ForceLedger"
+       ],
+       null,
+       false
+      ],
+      [
+       "FREEZING",
+       [],
+       null,
+       false
+      ],
+      [
+       "RESUMING",
+       [
+        "ForceLedger"
+       ],
+       null,
+       false
+      ],
+      [
+       "IDLE",
+       [],
+       null,
+       false
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "UTC02-014",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "an attempt or a session cannot start outside ACTIVE",
+   "input": {
+    "heartbeat": false,
+    "events": [
+     {
+      "at": 0,
+      "ev": "attempt:a0",
+      "check": true
+     },
+     {
+      "at": 1,
+      "ev": "ledger-ready"
+     },
+     {
+      "at": 2,
+      "ev": "attempt:a1",
+      "check": true
+     },
+     {
+      "at": 3,
+      "ev": "session-open",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "STARTING",
+       [],
+       "LEDGER_UNAVAILABLE",
+       false
+      ],
+      [
+       "IDLE",
+       [],
+       "INTERRUPTED_BY_SUSPEND",
+       false
+      ],
+      [
+       "IDLE",
+       [],
+       "INTERRUPTED_BY_SUSPEND",
+       false
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "UTC02-015",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "opening the Peers screen activates the node, closing it does not deactivate it",
+   "input": {
+    "heartbeat": false,
+    "events": [
+     {
+      "at": 0,
+      "ev": "ledger-ready"
+     },
+     {
+      "at": 0,
+      "ev": "ui:active"
+     },
+     {
+      "at": 10,
+      "ev": "peers-open",
+      "check": true
+     },
+     {
+      "at": 20,
+      "ev": "peers-close",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ],
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "UTC02-016",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "inactive before the ledger is ready does not freeze a node that has not started",
+   "input": {
+    "heartbeat": false,
+    "events": [
+     {
+      "at": 0,
+      "ev": "ui:inactive",
+      "check": true
+     },
+     {
+      "at": 1,
+      "ev": "ledger-ready",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "STARTING",
+       [],
+       null,
+       false
+      ],
+      [
+       "IDLE",
+       [],
+       null,
+       false
+      ]
+     ]
+    }
+   }
+  },
+  {
+   "id": "UTC02-017",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a ledger failure with work in flight cancels it and is absorbing",
+   "input": {
+    "heartbeat": false,
+    "events": [
+     {
+      "at": 0,
+      "ev": "ledger-ready"
+     },
+     {
+      "at": 0,
+      "ev": "ui:active"
+     },
+     {
+      "at": 10,
+      "ev": "request:r1"
+     },
+     {
+      "at": 20,
+      "ev": "session-open"
+     },
+     {
+      "at": 30,
+      "ev": "attempt:a1"
+     },
+     {
+      "at": 40,
+      "ev": "body:a1"
+     },
+     {
+      "at": 50,
+      "ev": "ledger-failed",
+      "check": true
+     },
+     {
+      "at": 60,
+      "ev": "attempt:a2",
+      "check": true
+     },
+     {
+      "at": 70,
+      "ev": "ui:active",
+      "check": true
+     },
+     {
+      "at": 80,
+      "ev": "request:r2",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "LEDGER_FAIL",
+       [
+        "CancelAttempts",
+        "ReleaseDisplay"
+       ],
+       null,
+       false
+      ],
+      [
+       "LEDGER_FAIL",
+       [],
+       "LEDGER_UNAVAILABLE",
+       false
+      ],
+      [
+       "LEDGER_FAIL",
+       [],
+       null,
+       false
+      ],
+      [
+       "LEDGER_FAIL",
+       [],
+       "LEDGER_UNAVAILABLE",
+       false
+      ]
+     ],
+     "final": {
+      "state": "LEDGER_FAIL",
+      "sessions": 0,
+      "openAttempts": [],
+      "displayHeld": false
+     }
+    }
+   }
+  },
+  {
+   "id": "UTC02-018",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "closing a session that is not open changes nothing",
+   "input": {
+    "heartbeat": false,
+    "events": [
+     {
+      "at": 0,
+      "ev": "ledger-ready"
+     },
+     {
+      "at": 0,
+      "ev": "ui:active"
+     },
+     {
+      "at": 10,
+      "ev": "session-close",
+      "check": true
+     },
+     {
+      "at": 20,
+      "ev": "request:r1",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "IDLE",
+       [],
+       null,
+       false
+      ],
+      [
+       "ACTIVE",
+       [],
+       null,
+       true
+      ]
+     ],
+     "final": {
+      "state": "ACTIVE",
+      "sessions": 0,
+      "openAttempts": [],
+      "displayHeld": false
+     }
+    }
+   }
+  },
+  {
+   "id": "UTC02-019",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a node that was never told the UI is active freezes 10 s after start",
+   "input": {
+    "heartbeat": false,
+    "events": [
+     {
+      "at": 0,
+      "ev": "ledger-ready"
+     },
+     {
+      "at": 1000,
+      "ev": "tick",
+      "repeat": 10,
+      "every": 1000
+     },
+     {
+      "at": 10000,
+      "ev": "tick",
+      "check": true
+     },
+     {
+      "at": 11000,
+      "ev": "tick",
+      "check": true
+     }
+    ]
+   },
+   "expect": {
+    "ok": {
+     "steps": [
+      [
+       "IDLE",
+       [],
+       null,
+       false
+      ],
+      [
+       "FREEZING",
+       [
+        "ForceLedger"
+       ],
+       null,
+       false
+      ]
+     ]
+    }
+   }
+  }
+ ]
+}

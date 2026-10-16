@@ -1,0 +1,2156 @@
+{
+  "family": "R06",
+  "confVersion": "0.2.0",
+  "specRefs": [
+    "LAB_SPEC.md 6.5",
+    "LAB_SPEC.md 6.7 (cap)",
+    "docs/design/mesh/router.md 3.3, 3.5, 5.5, 8",
+    "core/routing CooldownRegistry (frozen v1)"
+  ],
+  "vectors": [
+    {
+      "id": "R06-001",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "EWMA: a single sample is the value",
+      "input": {
+        "kind": "ewma",
+        "samples": [
+          100
+        ]
+      },
+      "expect": {
+        "ok": {
+          "values": [
+            100
+          ]
+        }
+      }
+    },
+    {
+      "id": "R06-002",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "EWMA: (7e + x) / 8 with floor division",
+      "input": {
+        "kind": "ewma",
+        "samples": [
+          100,
+          200,
+          200,
+          200
+        ]
+      },
+      "expect": {
+        "ok": {
+          "values": [
+            100,
+            112,
+            123,
+            132
+          ]
+        }
+      }
+    },
+    {
+      "id": "R06-003",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "EWMA: a falling series",
+      "input": {
+        "kind": "ewma",
+        "samples": [
+          1000,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "expect": {
+        "ok": {
+          "values": [
+            1000,
+            875,
+            765,
+            669,
+            585
+          ]
+        }
+      }
+    },
+    {
+      "id": "R06-004",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "EWMA: floor keeps small samples from moving a small value",
+      "input": {
+        "kind": "ewma",
+        "samples": [
+          7,
+          8,
+          8,
+          8
+        ]
+      },
+      "expect": {
+        "ok": {
+          "values": [
+            7,
+            7,
+            7,
+            7
+          ]
+        }
+      }
+    },
+    {
+      "id": "R06-005",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "link: the first RTT sample is the value, the next follow the EWMA",
+      "input": {
+        "kind": "link",
+        "start": {
+          "rttMs": 0,
+          "kbps": 0,
+          "samples": 0
+        },
+        "events": [
+          {
+            "kind": "rtt",
+            "ms": 10
+          },
+          {
+            "kind": "rtt",
+            "ms": 18
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "rttMs": 11,
+          "kbps": 0,
+          "samples": 2
+        }
+      }
+    },
+    {
+      "id": "R06-006",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "link: a transfer under 256 KiB says nothing about bandwidth",
+      "input": {
+        "kind": "link",
+        "start": {
+          "rttMs": 10,
+          "kbps": 0,
+          "samples": 1
+        },
+        "events": [
+          {
+            "kind": "transfer",
+            "bytes": 262143,
+            "ms": 100
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "rttMs": 10,
+          "kbps": 0,
+          "samples": 1
+        }
+      }
+    },
+    {
+      "id": "R06-007",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "link: a transfer of exactly 256 KiB counts: bits per millisecond are kbit/s",
+      "input": {
+        "kind": "link",
+        "start": {
+          "rttMs": 10,
+          "kbps": 0,
+          "samples": 1
+        },
+        "events": [
+          {
+            "kind": "transfer",
+            "bytes": 262144,
+            "ms": 100
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "rttMs": 10,
+          "kbps": 20971,
+          "samples": 1
+        }
+      }
+    },
+    {
+      "id": "R06-008",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "link: the second bandwidth sample is smoothed",
+      "input": {
+        "kind": "link",
+        "start": {
+          "rttMs": 10,
+          "kbps": 20971,
+          "samples": 1
+        },
+        "events": [
+          {
+            "kind": "transfer",
+            "bytes": 1048576,
+            "ms": 50
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "rttMs": 10,
+          "kbps": 39321,
+          "samples": 1
+        }
+      }
+    },
+    {
+      "id": "R06-009",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "link: a transfer with no elapsed time is ignored",
+      "input": {
+        "kind": "link",
+        "start": {
+          "rttMs": 10,
+          "kbps": 500,
+          "samples": 1
+        },
+        "events": [
+          {
+            "kind": "transfer",
+            "bytes": 1048576,
+            "ms": 0
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "rttMs": 10,
+          "kbps": 500,
+          "samples": 1
+        }
+      }
+    },
+    {
+      "id": "R06-010",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "per-app output length: the first completion of an app is the value",
+      "input": {
+        "kind": "appEwma",
+        "start": {},
+        "events": [
+          {
+            "app": "app.a",
+            "tokens": 300
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "values": {
+            "app.a": 300
+          }
+        }
+      }
+    },
+    {
+      "id": "R06-011",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "per-app output length: later completions are smoothed",
+      "input": {
+        "kind": "appEwma",
+        "start": {
+          "app.a": 300
+        },
+        "events": [
+          {
+            "app": "app.a",
+            "tokens": 100
+          },
+          {
+            "app": "app.a",
+            "tokens": 100
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "values": {
+            "app.a": 253
+          }
+        }
+      }
+    },
+    {
+      "id": "R06-012",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "per-app output length: a zero-token completion counts as 1 and apps are independent",
+      "input": {
+        "kind": "appEwma",
+        "start": {
+          "app.a": 300
+        },
+        "events": [
+          {
+            "app": "app.b",
+            "tokens": 0
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "values": {
+            "app.a": 300,
+            "app.b": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "R06-013",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap counters: a committed delta adds to both counters",
+      "input": {
+        "kind": "cap",
+        "start": {
+          "wouldWin": 3,
+          "won": 1
+        },
+        "deltas": [
+          {
+            "wouldWinInc": 1,
+            "wonInc": 1
+          },
+          {
+            "wouldWinInc": 1,
+            "wonInc": 0
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "wouldWin": 5,
+          "won": 2
+        }
+      }
+    },
+    {
+      "id": "R06-014",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap counters: nothing is committed for a plan that did not execute",
+      "input": {
+        "kind": "cap",
+        "start": {
+          "wouldWin": 3,
+          "won": 1
+        },
+        "deltas": []
+      },
+      "expect": {
+        "ok": {
+          "wouldWin": 3,
+          "won": 1
+        }
+      }
+    },
+    {
+      "id": "R06-015",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap run: an UNVERIFIED key wins at would-win counts 1, 5 and 9 of 12 (ceilDiv(12, 4) = 3 wins)",
+      "input": {
+        "kind": "capRun",
+        "k": 12
+      },
+      "expect": {
+        "ok": {
+          "wins": [
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "wouldWin": 12,
+          "won": 3
+        }
+      }
+    },
+    {
+      "id": "R06-016",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap run: 4 would-win plans: exactly 1 win",
+      "input": {
+        "kind": "capRun",
+        "k": 4
+      },
+      "expect": {
+        "ok": {
+          "wins": [
+            true,
+            false,
+            false,
+            false
+          ],
+          "wouldWin": 4,
+          "won": 1
+        }
+      }
+    },
+    {
+      "id": "R06-017",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap run: 5 would-win plans: 2 wins (ceilDiv(5, 4))",
+      "input": {
+        "kind": "capRun",
+        "k": 5
+      },
+      "expect": {
+        "ok": {
+          "wins": [
+            true,
+            false,
+            false,
+            false,
+            true
+          ],
+          "wouldWin": 5,
+          "won": 2
+        }
+      }
+    },
+    {
+      "id": "R06-018",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: age 5,000 is FRESH",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          }
+        ],
+        "now": 6000
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-019",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: age 5,001 is WARM",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          }
+        ],
+        "now": 6001
+      },
+      "expect": {
+        "ok": {
+          "cls": "WARM",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-020",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: age 30,000 is WARM",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          }
+        ],
+        "now": 31000
+      },
+      "expect": {
+        "ok": {
+          "cls": "WARM",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-021",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: age 30,001 is STALE",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          }
+        ],
+        "now": 31001
+      },
+      "expect": {
+        "ok": {
+          "cls": "STALE",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-022",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: age 300,000 is STALE",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          }
+        ],
+        "now": 301000
+      },
+      "expect": {
+        "ok": {
+          "cls": "STALE",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-023",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: age 300,001 is EXPIRED",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          }
+        ],
+        "now": 301001
+      },
+      "expect": {
+        "ok": {
+          "cls": "EXPIRED",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-024",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: sampledAgeMs adds to the age: 4,000 + 2,000 = 6,000 is WARM",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 2000,
+            "rxMonoMs": 1000
+          }
+        ],
+        "now": 5000
+      },
+      "expect": {
+        "ok": {
+          "cls": "WARM",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-025",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: sampledAgeMs is capped at 60,000: a claimed age of 999,999 counts 60,000 (STALE)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 999999,
+            "rxMonoMs": 1000
+          }
+        ],
+        "now": 1000
+      },
+      "expect": {
+        "ok": {
+          "cls": "STALE",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-026",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a seq that goes backwards is EXPIRED",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 9,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "state",
+            "seq": 4,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 2000
+          }
+        ],
+        "now": 2000
+      },
+      "expect": {
+        "ok": {
+          "cls": "EXPIRED",
+          "regressed": true
+        }
+      }
+    },
+    {
+      "id": "R06-027",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: an equal seq is a repeat: ignored, the state does not get fresher",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 5000
+          }
+        ],
+        "now": 6001
+      },
+      "expect": {
+        "ok": {
+          "cls": "WARM",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-028",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a higher seq refreshes",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "state",
+            "seq": 6,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 5000
+          }
+        ],
+        "now": 6001
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-029",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a GOAWAY since the state makes it EXPIRED",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "goaway"
+          }
+        ],
+        "now": 1500
+      },
+      "expect": {
+        "ok": {
+          "cls": "EXPIRED",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-030",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a state after the GOAWAY clears it",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "goaway"
+          },
+          {
+            "kind": "state",
+            "seq": 6,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1200
+          }
+        ],
+        "now": 1500
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-031",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a closed session with a state older than 30,000 is EXPIRED",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "sessionClose"
+          }
+        ],
+        "now": 31001
+      },
+      "expect": {
+        "ok": {
+          "cls": "EXPIRED",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-032",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a closed session with a state of 30,000 or less keeps its class",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "sessionClose"
+          }
+        ],
+        "now": 31000
+      },
+      "expect": {
+        "ok": {
+          "cls": "WARM",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-033",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: seq is per session: a new session forgets the highest seq",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 100,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 1,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1500
+          }
+        ],
+        "now": 2000
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-034",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: no state at all is EXPIRED",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          }
+        ],
+        "now": 1000
+      },
+      "expect": {
+        "ok": {
+          "cls": "EXPIRED",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-035",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a piggybacked digest refreshes the fast fields and the receive time",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "piggyback",
+            "seq": 6,
+            "rxMonoMs": 9000,
+            "tb": 2,
+            "qb": 2,
+            "gov": "QUEUE",
+            "fsm": "DRAINING"
+          }
+        ],
+        "now": 10000
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-036",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a digest with no base state is ignored",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "piggyback",
+            "seq": 1,
+            "rxMonoMs": 9000,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          }
+        ],
+        "now": 10000
+      },
+      "expect": {
+        "ok": {
+          "cls": "EXPIRED",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-037",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: the fast fields after a piggyback are the digest's",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "piggyback",
+            "seq": 6,
+            "rxMonoMs": 9000,
+            "tb": 2,
+            "qb": 2,
+            "gov": "QUEUE",
+            "fsm": "DRAINING"
+          }
+        ],
+        "now": 10000,
+        "fields": true
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false,
+          "fsm": "DRAINING",
+          "thermalBand": 2,
+          "queueBucket": 2,
+          "governor": "QUEUE",
+          "seq": 6
+        }
+      }
+    },
+    {
+      "id": "R06-038",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "st digest: a well-formed digest",
+      "input": {
+        "kind": "stParse",
+        "text": "{\"seq\":6,\"fsm\":\"SERVING\",\"tb\":1,\"gov\":\"RUN\",\"qb\":2}"
+      },
+      "expect": {
+        "ok": {
+          "seq": 6,
+          "fsm": "SERVING",
+          "tb": 1,
+          "gov": "RUN",
+          "qb": 2
+        }
+      }
+    },
+    {
+      "id": "R06-039",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "st digest: unknown members are ignored",
+      "input": {
+        "kind": "stParse",
+        "text": "{\"seq\":6,\"fsm\":\"SERVING\",\"tb\":1,\"gov\":\"RUN\",\"qb\":2,\"usage\":{\"x\":1}}"
+      },
+      "expect": {
+        "ok": {
+          "seq": 6,
+          "fsm": "SERVING",
+          "tb": 1,
+          "gov": "RUN",
+          "qb": 2
+        }
+      }
+    },
+    {
+      "id": "R06-040",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "st digest: a band outside 0..2 is refused",
+      "input": {
+        "kind": "stParse",
+        "text": "{\"seq\":6,\"fsm\":\"SERVING\",\"tb\":3,\"gov\":\"RUN\",\"qb\":2}"
+      },
+      "expect": {
+        "reject": "REFUSED"
+      }
+    },
+    {
+      "id": "R06-041",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "st digest: an unknown fsm is refused",
+      "input": {
+        "kind": "stParse",
+        "text": "{\"seq\":6,\"fsm\":\"BUSY\",\"tb\":1,\"gov\":\"RUN\",\"qb\":2}"
+      },
+      "expect": {
+        "reject": "REFUSED"
+      }
+    },
+    {
+      "id": "R06-042",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "st digest: a missing member is refused",
+      "input": {
+        "kind": "stParse",
+        "text": "{\"seq\":6,\"fsm\":\"SERVING\",\"tb\":1,\"gov\":\"RUN\"}"
+      },
+      "expect": {
+        "reject": "REFUSED"
+      }
+    },
+    {
+      "id": "R06-043",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "st digest: seq 0 is refused",
+      "input": {
+        "kind": "stParse",
+        "text": "{\"seq\":0,\"fsm\":\"SERVING\",\"tb\":1,\"gov\":\"RUN\",\"qb\":2}"
+      },
+      "expect": {
+        "reject": "REFUSED"
+      }
+    },
+    {
+      "id": "R06-044",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "st digest: a fraction is refused (integers only)",
+      "input": {
+        "kind": "stParse",
+        "text": "{\"seq\":6,\"fsm\":\"SERVING\",\"tb\":1.0,\"gov\":\"RUN\",\"qb\":2}"
+      },
+      "expect": {
+        "reject": "REFUSED"
+      }
+    },
+    {
+      "id": "R06-045",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "decline back-off: retryAfterMs 12000 at 1000 clamps to 5,000..600,000",
+      "input": {
+        "kind": "declineBackoff",
+        "now": 1000,
+        "retryAfterMs": 12000
+      },
+      "expect": {
+        "ok": {
+          "until": 13000
+        }
+      }
+    },
+    {
+      "id": "R06-046",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "decline back-off: retryAfterMs 100 at 1000 clamps to 5,000..600,000",
+      "input": {
+        "kind": "declineBackoff",
+        "now": 1000,
+        "retryAfterMs": 100
+      },
+      "expect": {
+        "ok": {
+          "until": 6000
+        }
+      }
+    },
+    {
+      "id": "R06-047",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "decline back-off: retryAfterMs 9999999 at 1000 clamps to 5,000..600,000",
+      "input": {
+        "kind": "declineBackoff",
+        "now": 1000,
+        "retryAfterMs": 9999999
+      },
+      "expect": {
+        "ok": {
+          "until": 601000
+        }
+      }
+    },
+    {
+      "id": "R06-048",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "breaker (pinned to CooldownRegistry): one failure cools for 30 s",
+      "input": {
+        "kind": "breaker",
+        "curve": "provider",
+        "events": [
+          {
+            "kind": "fail",
+            "at": 0
+          }
+        ],
+        "probes": [
+          0,
+          29999,
+          30000
+        ]
+      },
+      "expect": {
+        "ok": {
+          "failures": 1,
+          "coolingUntil": 30000,
+          "probes": [
+            {
+              "at": 0,
+              "cooling": true,
+              "halfOpen": false
+            },
+            {
+              "at": 29999,
+              "cooling": true,
+              "halfOpen": false
+            },
+            {
+              "at": 30000,
+              "cooling": false,
+              "halfOpen": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "R06-049",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "breaker (pinned to CooldownRegistry): a second failure after the deadline cools for 60 s (the streak survives the deadline)",
+      "input": {
+        "kind": "breaker",
+        "curve": "provider",
+        "events": [
+          {
+            "kind": "fail",
+            "at": 0
+          },
+          {
+            "kind": "fail",
+            "at": 40000
+          }
+        ],
+        "probes": [
+          99999,
+          100000
+        ]
+      },
+      "expect": {
+        "ok": {
+          "failures": 2,
+          "coolingUntil": 100000,
+          "probes": [
+            {
+              "at": 99999,
+              "cooling": true,
+              "halfOpen": false
+            },
+            {
+              "at": 100000,
+              "cooling": false,
+              "halfOpen": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "R06-050",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "breaker (pinned to CooldownRegistry): failures double to the 15-minute cap: 30, 60, 120, 240, 480, 900, 900 s",
+      "input": {
+        "kind": "breaker",
+        "curve": "provider",
+        "events": [
+          {
+            "kind": "fail",
+            "at": 0
+          },
+          {
+            "kind": "fail",
+            "at": 0
+          },
+          {
+            "kind": "fail",
+            "at": 0
+          },
+          {
+            "kind": "fail",
+            "at": 0
+          },
+          {
+            "kind": "fail",
+            "at": 0
+          },
+          {
+            "kind": "fail",
+            "at": 0
+          },
+          {
+            "kind": "fail",
+            "at": 0
+          }
+        ],
+        "probes": [
+          899999,
+          900000
+        ]
+      },
+      "expect": {
+        "ok": {
+          "failures": 7,
+          "coolingUntil": 900000,
+          "probes": [
+            {
+              "at": 899999,
+              "cooling": true,
+              "halfOpen": false
+            },
+            {
+              "at": 900000,
+              "cooling": false,
+              "halfOpen": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "R06-051",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "breaker (pinned to CooldownRegistry): a success closes the breaker and resets the streak",
+      "input": {
+        "kind": "breaker",
+        "curve": "provider",
+        "events": [
+          {
+            "kind": "fail",
+            "at": 0
+          },
+          {
+            "kind": "fail",
+            "at": 0
+          },
+          {
+            "kind": "success",
+            "at": 0
+          },
+          {
+            "kind": "fail",
+            "at": 1000
+          }
+        ],
+        "probes": [
+          30999,
+          31000
+        ]
+      },
+      "expect": {
+        "ok": {
+          "failures": 1,
+          "coolingUntil": 31000,
+          "probes": [
+            {
+              "at": 30999,
+              "cooling": true,
+              "halfOpen": false
+            },
+            {
+              "at": 31000,
+              "cooling": false,
+              "halfOpen": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "R06-052",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "breaker (pinned to CooldownRegistry): the peer transport curve stays at 30 s however many failures",
+      "input": {
+        "kind": "breaker",
+        "curve": "peer",
+        "events": [
+          {
+            "kind": "fail",
+            "at": 0
+          },
+          {
+            "kind": "fail",
+            "at": 0
+          },
+          {
+            "kind": "fail",
+            "at": 0
+          },
+          {
+            "kind": "fail",
+            "at": 0
+          }
+        ],
+        "probes": [
+          29999,
+          30000
+        ]
+      },
+      "expect": {
+        "ok": {
+          "failures": 4,
+          "coolingUntil": 30000,
+          "probes": [
+            {
+              "at": 29999,
+              "cooling": true,
+              "halfOpen": false
+            },
+            {
+              "at": 30000,
+              "cooling": false,
+              "halfOpen": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "R06-053",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "breaker (pinned to CooldownRegistry): half-open: after the deadline a failed peer is back for an offer-only probe",
+      "input": {
+        "kind": "breaker",
+        "curve": "peer",
+        "events": [
+          {
+            "kind": "fail",
+            "at": 0
+          }
+        ],
+        "probes": [
+          29999,
+          30000,
+          60000
+        ]
+      },
+      "expect": {
+        "ok": {
+          "failures": 1,
+          "coolingUntil": 30000,
+          "probes": [
+            {
+              "at": 29999,
+              "cooling": true,
+              "halfOpen": false
+            },
+            {
+              "at": 30000,
+              "cooling": false,
+              "halfOpen": true
+            },
+            {
+              "at": 60000,
+              "cooling": false,
+              "halfOpen": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "R06-054",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "breaker (pinned to CooldownRegistry): no failure, no breaker",
+      "input": {
+        "kind": "breaker",
+        "curve": "provider",
+        "events": [],
+        "probes": [
+          0
+        ]
+      },
+      "expect": {
+        "ok": {
+          "failures": 0,
+          "coolingUntil": 0,
+          "probes": [
+            {
+              "at": 0,
+              "cooling": false,
+              "halfOpen": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "R06-055",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a GOAWAY survives the re-dial: with no new state the pre-GOAWAY state is still EXPIRED (LTQ-02)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "goaway"
+          },
+          {
+            "kind": "sessionClose"
+          },
+          {
+            "kind": "session"
+          }
+        ],
+        "now": 2000
+      },
+      "expect": {
+        "ok": {
+          "cls": "EXPIRED",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-056",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a full state after the re-dial clears the GOAWAY (LTQ-02)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "goaway"
+          },
+          {
+            "kind": "sessionClose"
+          },
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 1,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1500
+          }
+        ],
+        "now": 1600
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-057",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a digest after the re-dial clears the GOAWAY for the digest fields (LTQ-02)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "goaway"
+          },
+          {
+            "kind": "sessionClose"
+          },
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "piggyback",
+            "seq": 1,
+            "rxMonoMs": 1500,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          }
+        ],
+        "now": 1600
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-058",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a regressed seq survives the re-dial until a state arrives (LTQ-02)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 9,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "state",
+            "seq": 4,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 2000
+          },
+          {
+            "kind": "sessionClose"
+          },
+          {
+            "kind": "session"
+          }
+        ],
+        "now": 2100
+      },
+      "expect": {
+        "ok": {
+          "cls": "EXPIRED",
+          "regressed": true
+        }
+      }
+    },
+    {
+      "id": "R06-059",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a digest whose seq is below the highest seen marks the state regressed and EXPIRED (LTQ-13)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 9,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "piggyback",
+            "seq": 4,
+            "rxMonoMs": 1100,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          }
+        ],
+        "now": 1200
+      },
+      "expect": {
+        "ok": {
+          "cls": "EXPIRED",
+          "regressed": true
+        }
+      }
+    },
+    {
+      "id": "R06-060",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness: a digest at the highest seq and then above it clears the regression (LTQ-13)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 9,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "piggyback",
+            "seq": 4,
+            "rxMonoMs": 1100,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          },
+          {
+            "kind": "piggyback",
+            "seq": 10,
+            "rxMonoMs": 1300,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          }
+        ],
+        "now": 1400
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false
+        }
+      }
+    },
+    {
+      "id": "R06-061",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness of the power fields: with no digest the power fields age like the state",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          }
+        ],
+        "now": 6001,
+        "power": true
+      },
+      "expect": {
+        "ok": {
+          "cls": "WARM",
+          "regressed": false,
+          "powerCls": "WARM"
+        }
+      }
+    },
+    {
+      "id": "R06-062",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness of the power fields: a digest refreshes the digest fields only: ten minutes after the full state the power fields are EXPIRED (LTQ-06)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 0
+          },
+          {
+            "kind": "piggyback",
+            "seq": 6,
+            "rxMonoMs": 600000,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          }
+        ],
+        "now": 600100,
+        "power": true
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false,
+          "powerCls": "EXPIRED"
+        }
+      }
+    },
+    {
+      "id": "R06-063",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness of the power fields: 100 s after the full state the power fields are STALE under a fresh digest",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 0
+          },
+          {
+            "kind": "piggyback",
+            "seq": 6,
+            "rxMonoMs": 100000,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          }
+        ],
+        "now": 100100,
+        "power": true
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false,
+          "powerCls": "STALE"
+        }
+      }
+    },
+    {
+      "id": "R06-064",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness of the power fields: 10 s after the full state the power fields are WARM under a fresh digest",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 0
+          },
+          {
+            "kind": "piggyback",
+            "seq": 6,
+            "rxMonoMs": 10000,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          }
+        ],
+        "now": 10100,
+        "power": true
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false,
+          "powerCls": "WARM"
+        }
+      }
+    },
+    {
+      "id": "R06-065",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness of the power fields: the sampled age of the full state counts for the power fields (40,000 + 1,000 is STALE)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 40000,
+            "rxMonoMs": 0
+          },
+          {
+            "kind": "piggyback",
+            "seq": 6,
+            "rxMonoMs": 1000,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          }
+        ],
+        "now": 1000,
+        "power": true
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false,
+          "powerCls": "STALE"
+        }
+      }
+    },
+    {
+      "id": "R06-066",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness of the power fields: a full state at the seq of a known digest refreshes the power fields and leaves the digest fields alone",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 0
+          },
+          {
+            "kind": "piggyback",
+            "seq": 6,
+            "rxMonoMs": 100000,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          },
+          {
+            "kind": "state",
+            "seq": 6,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 100200
+          }
+        ],
+        "now": 100300,
+        "power": true
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false,
+          "powerCls": "FRESH"
+        }
+      }
+    },
+    {
+      "id": "R06-067",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness of the power fields: a GOAWAY, a re-dial and a digest: the digest fields are fresh, the power fields still date from before the GOAWAY (LTQ-02, LTQ-06)",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "goaway"
+          },
+          {
+            "kind": "sessionClose"
+          },
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "piggyback",
+            "seq": 1,
+            "rxMonoMs": 1500,
+            "tb": 0,
+            "qb": 0,
+            "gov": "RUN",
+            "fsm": "SERVING"
+          }
+        ],
+        "now": 1600,
+        "power": true
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false,
+          "powerCls": "EXPIRED"
+        }
+      }
+    },
+    {
+      "id": "R06-068",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "freshness of the power fields: a full state after the GOAWAY and the re-dial refreshes both",
+      "input": {
+        "kind": "freshness",
+        "events": [
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 5,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1000
+          },
+          {
+            "kind": "goaway"
+          },
+          {
+            "kind": "sessionClose"
+          },
+          {
+            "kind": "session"
+          },
+          {
+            "kind": "state",
+            "seq": 1,
+            "sampledAgeMs": 0,
+            "rxMonoMs": 1500
+          }
+        ],
+        "now": 1600,
+        "power": true
+      },
+      "expect": {
+        "ok": {
+          "cls": "FRESH",
+          "regressed": false,
+          "powerCls": "FRESH"
+        }
+      }
+    }
+  ]
+}

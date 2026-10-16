@@ -1,0 +1,9 @@
+build/
+.gradle/
+.kotlin/
+# jlink.sh output and downloads (a 200 MB tarball and a 39 MB runtime image are never committed)
+runtime/stage/
+runtime/.cache/
+apparmor-ci/.cache/
+__pycache__/
+*.pyc

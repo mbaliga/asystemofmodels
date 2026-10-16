@@ -1,0 +1,8 @@
+# Byte-exact data: vector files, locks and pinned lists must not be rewritten by line-ending conversion (their sha256 is checked).
+conformance/** -text
+runtime/temurin.lock -text
+runtime/jlink-modules.txt -text
+apparmor-ci/*.lock -text
+apparmor-ci/*.json -text
+*.sh text eol=lf
+*.py text eol=lf

@@ -1,0 +1,191 @@
+{
+  "schema": "asom.bench/1",
+  "benchProtocol": 1,
+  "benchSet": "qwen3-dense-1",
+  "harness": {
+    "shell": "android-daemon",
+    "coreImpl": "jvm",
+    "coreVersion": "1.0.0",
+    "confVersion": "1.0.0",
+    "timingSource": "host-monotonic",
+    "engine": {
+      "name": "llama.cpp",
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "backend": "opencl",
+      "buildFlags": "GGML_OPENCL=ON",
+      "threads": 6,
+      "gpuLayers": 99,
+      "kvType": "f16",
+      "flashAttn": "auto"
+    }
+  },
+  "device": {
+    "platform": "android",
+    "form": "phone",
+    "maker": "Example",
+    "model": "Phone X1 (synthetic)",
+    "soc": "Example SoC 8",
+    "osVersion": "16",
+    "osBuild": "EXAMPLE.260901.001",
+    "gpu": "Example GPU",
+    "gpuDriver": "example-512.0",
+    "memTotalBytes": 16000000000,
+    "unifiedMemory": true,
+    "virtualized": false
+  },
+  "memory": {
+    "availAtStartBytes": 9600000000,
+    "processLimitBytes": null,
+    "gpuWorkingSetBytes": null,
+    "limitSource": "android-availmem"
+  },
+  "run": {
+    "plan": "standard",
+    "optInTiers": ["T3"],
+    "startedAtMs": 1790668800000,
+    "endedAtMs": 1790670240000,
+    "powerSource": "ac",
+    "batteryStartPermille": 740,
+    "startThermal": "cool",
+    "screenOn": true,
+    "contentionBeforePermille": 12,
+    "contentionAfterPermille": 18,
+    "abort": null,
+    "dayUtc": "2026-09-29"
+  },
+  "tiers": [
+    "<T1, T2 omitted in this excerpt>",
+    {
+      "tier": "T3",
+      "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+      "bytes": 5027783488,
+      "quant": "Q4_K_M",
+      "startThermal": "cool",
+      "startThermalCode": 0,
+      "startedAtMs": 1790669190000,
+      "nCtx": 4096,
+      "availBeforeLoadBytes": 9510000000,
+      "peakFootprintBytes": 5980000000,
+      "kvBytesPerToken": 147456,
+      "loadColdMicros": 9800000,
+      "loadColdness": "best-effort",
+      "loadWarmMicros": 2395000,
+      "results": [
+        {
+          "test": "pp512@d0",
+          "depth": 0,
+          "unit": "mtps",
+          "samples": [8533000, 8611000, 8498000, 8570000, 9950000],
+          "value": 59743,
+          "kept": 4,
+          "keptIdx": [0, 1, 2, 3],
+          "relSpreadPermille": 13,
+          "confidence": "high",
+          "flags": ["OUTLIER_EXCLUDED"],
+          "ttftSamples": [8535100, 8613000, 8500200, 8572100, 9952300],
+          "ttftMicros": 8572100
+        },
+        {
+          "test": "tg128@d0",
+          "depth": 0,
+          "unit": "mtps",
+          "samples": [17280000, 17350000, 17310000, 17265000, 17420000],
+          "value": 7394,
+          "kept": 5,
+          "keptIdx": [0, 1, 2, 3, 4],
+          "relSpreadPermille": 8,
+          "confidence": "high",
+          "flags": []
+        }
+      ],
+      "numerics": {
+        "test": "nll1024",
+        "milliNatsPerToken": 1893,
+        "refMilliNatsPerToken": 1880,
+        "deviationPermille": 6,
+        "verdict": "pass"
+      }
+    }
+  ],
+  "sustain": {
+    "test": "sustain",
+    "windowMs": 15000,
+    "capMs": 600000,
+    "windows": [
+      [0, 113, 14900000, 0],
+      [15000, 112, 14900000, 0],
+      [30000, 113, 14900000, 0],
+      [
+        "<26 more windows omitted>"
+      ]
+    ],
+    "peakMtps": 7583,
+    "plateauMtps": 5033,
+    "onsetMs": 195000,
+    "stabilityPermille": 663,
+    "durationMs": 435000,
+    "endReason": "PLATEAU",
+    "thermalCodeAtOnset": 2,
+    "headroomAtOnsetPermille": 830,
+    "confidence": "high",
+    "flags": [],
+    "tier": "T3"
+  },
+  "energy": null,
+  "field": [
+    {
+      "tier": "T2",
+      "depthBand": "0-1k",
+      "thermalBand": "cool",
+      "powerSource": "battery",
+      "countClass": "10-99",
+      "decodeMtpsEwma": 12900,
+      "prefillMtpsEwma": 121000,
+      "lastDayUtc": "2026-09-27"
+    }
+  ],
+  "derived": {
+    "usableMemoryBytes": 7200000000,
+    "safetyPermille": 750,
+    "maxHold": {
+      "weightBytes": 6147702857,
+      "kvRatioPermille": 120,
+      "approxParamsQ4": 10078201404,
+      "largestLoadedTier": "T3",
+      "basis": "estimated"
+    },
+    "q7b": {
+      "tier": "T3",
+      "basis": "measured",
+      "decodeMtps": 7394,
+      "ttft512Micros": 8572100,
+      "verdict": "usable"
+    },
+    "answer2000": {
+      "tier": "T3",
+      "promptTokens": 512,
+      "genTokens": 2000,
+      "depthRatioPermille": 892,
+      "micros": 355499032,
+      "thermalModel": true,
+      "basis": "estimated"
+    },
+    "throttle": {
+      "tier": "T3",
+      "onsetMs": 195000,
+      "stabilityPermille": 663,
+      "testedMs": 435000,
+      "basis": "measured"
+    },
+    "role": {
+      "code": "occasional-helper",
+      "t2PlateauMtps": 9608,
+      "t3PlateauMtps": 5033
+    },
+    "overallConfidence": "high"
+  },
+  "render": {
+    "renderer": "asom.text/1",
+    "textSha256": "JBymj2Pls2JL-lNnpVQiFd3_LvN1G1K9KDorzCjL4sQ"
+  }
+}

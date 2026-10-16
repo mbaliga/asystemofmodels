@@ -1,0 +1,83 @@
+[0/1] Planning build
+Building for debugging...
+[0/13] Write sources
+[1/14] Write swift-version-6A52383ED409C6A7.txt
+[2/14] Wrapping AST for AsomDSSE for debugging
+[3/14] Wrapping AST for CryptoBoringWrapper for debugging
+[4/14] Wrapping AST for Crypto for debugging
+[6/16] Compiling AsomDSSETests CrossCheckTests.swift
+[7/16] Emitting module AsomDSSETests
+[8/17] /tmp/claude-0/-home-user-asystemofmodels/d7b7c52b-a159-509c-8299-c01066b2a991/scratchpad/mesh/platforms/ios-spike/AsomKitSpike/.build/x86_64-unknown-linux-gnu/debug/AsomKitSpikePackageDiscoveredTests.derived/all-discovered-tests.swift
+[9/17] Write sources
+[10/17] Wrapping AST for AsomDSSETests for debugging
+[12/20] Compiling AsomKitSpikePackageDiscoveredTests AsomDSSETests.swift
+[13/20] Emitting module AsomKitSpikePackageDiscoveredTests
+[14/20] Compiling AsomKitSpikePackageDiscoveredTests all-discovered-tests.swift
+[15/21] /tmp/claude-0/-home-user-asystemofmodels/d7b7c52b-a159-509c-8299-c01066b2a991/scratchpad/mesh/platforms/ios-spike/AsomKitSpike/.build/x86_64-unknown-linux-gnu/debug/AsomKitSpikePackageTests.derived/runner.swift
+[16/21] Write sources
+[17/21] Wrapping AST for AsomKitSpikePackageDiscoveredTests for debugging
+[19/23] Emitting module AsomKitSpikePackageTests
+[20/23] Compiling AsomKitSpikePackageTests runner.swift
+[21/24] Wrapping AST for AsomKitSpikePackageTests for debugging
+[22/24] Write Objects.LinkFileList
+[23/24] Linking AsomKitSpikePackageTests.xctest
+Build complete! (6.47s)
+Test Suite 'All tests' started at 2026-09-30 03:49:50.316
+Test Suite 'debug.xctest' started at 2026-09-30 03:49:50.318
+Test Suite 'CrossCheckTests' started at 2026-09-30 03:49:50.318
+Test Case 'CrossCheckTests.testCrossCheckAgainstJCA' started at 2026-09-30 03:49:50.318
+SWIFT-CROSSCHECK-BEGIN
+M02-101 sigValidUnderKey1=true
+M02-102 sigValidUnderKey1=true
+M02-103 sigValidUnderKey1=true
+M02-104 sigValidUnderKey1=true
+M02-105 sigValidUnderKey1=true
+M02-106 sigValidUnderKey1=true
+M02-107 sigValidUnderKey1=true
+M02-108 sigValidUnderKey1=true
+M02-109 sigValidUnderKey1=true
+M03-101 sigValidUnderKey1=false
+M03-102 sigValidUnderKey1=false
+M03-103 sigValidUnderKey1=false
+M03-104 sigValidUnderKey1=true
+M03-105 sigValidUnderKey1=true
+M03-106 sigValidUnderKey1=true
+M03-107 sigValidUnderKey1=true
+M03-108 sigValidUnderKey1=true
+M03-109 sigValidUnderKey1=true
+M03-110 sigValidUnderKey1=true
+M03-111 sigValidUnderKey1=true
+M03-112 sigValidUnderKey1=true
+M03-113 sigValidUnderKey1=false
+M03-114 sigValidUnderKey1=true
+M03-115 sigValidUnderKey1=true
+M03-116 sigValidUnderKey1=true
+M03-117 sigValidUnderKey1=true
+M03-118 sigValidUnderKey1=false
+M03-119 sigValidUnderKey1=true
+M03-120 sigValidUnderKey1=true
+M03-121 sigValidUnderKey1=true
+M03-122 sigValidUnderKey1=false
+M03-123 sigValidUnderKey1=true
+M03-124 sigValidUnderKey1=true
+M03-125 sigValidUnderKey1=false
+M03-126 sigValidUnderKey1=true
+M03-127 sigValidUnderKey1=true
+M03-128 sigValidUnderKey1=true
+SWIFT-CROSSCHECK-END
+Test Case 'CrossCheckTests.testCrossCheckAgainstJCA' passed (0.041 seconds)
+Test Case 'CrossCheckTests.testHighSAcceptedAndLowSNormalisation' started at 2026-09-30 03:49:50.359
+SIGNER-HIGH-S 175/400
+Test Case 'CrossCheckTests.testHighSAcceptedAndLowSNormalisation' passed (0.119 seconds)
+Test Case 'CrossCheckTests.testStrictSPKIRejectsCompressedAndTrailing' started at 2026-09-30 03:49:50.478
+Test Case 'CrossCheckTests.testStrictSPKIRejectsCompressedAndTrailing' passed (0.001 seconds)
+Test Suite 'CrossCheckTests' passed at 2026-09-30 03:49:50.479
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.161 (0.161) seconds
+Test Suite 'debug.xctest' passed at 2026-09-30 03:49:50.479
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.161 (0.161) seconds
+Test Suite 'All tests' passed at 2026-09-30 03:49:50.479
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.161 (0.161) seconds
+◇ Test run started.
+↳ Testing Library Version: 6.1 (43b6f88e2f2712e)
+↳ Target Platform: x86_64-unknown-linux-gnu
+✔ Test run with 0 tests passed after 0.001 seconds.

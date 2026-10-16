@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- NOT-YET-IMPLEMENTED: PLATFORM_PLAN step MC5 (D-v2; entry criteria D21, D22, D23, D25, D27 and D28 not met: design 9.3, R3-CONFORMANCE-10, R3-CLOSURE-8). Will hold allow-jit only, for asom and ASOM (no group entitlement).
+     This file is a placeholder and is not used by any build. It is deliberately not a valid launchd or bundle file. -->
+<placeholder/>

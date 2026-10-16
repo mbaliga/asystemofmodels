@@ -1,0 +1,194 @@
+{
+  "scenario": "F-duplicate-attempt",
+  "seed": 106,
+  "durationMs": 2400000,
+  "label": "SIMULATED — NOT DEVICE EVIDENCE",
+  "catalogue": "fixtures/catalogue.v1.json",
+  "nodes": [
+    {
+      "id": "phone",
+      "tier": "SELF",
+      "class": "PHONE",
+      "backend": "cpu",
+      "files": [
+        {
+          "modelId": "qwen3-8b",
+          "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "fileBytes": 5027784832,
+          "quant": "Q4_K_M",
+          "rank": null,
+          "ctx": 32768
+        }
+      ],
+      "truth": {
+        "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": {
+          "prefillMilliTokPerSec": 30000,
+          "decodeMilliTokPerSec": 5000,
+          "ttft0Ms": 200,
+          "steadyMilliTokPerSec": 4000,
+          "throttleOnsetMs": 180000
+        }
+      },
+      "claimScalePermille": 1000,
+      "power": {
+        "source": "battery",
+        "batteryPermille": 900,
+        "designMilliWh": 19000
+      },
+      "presence": []
+    },
+    {
+      "id": "mac",
+      "tier": "PEER",
+      "class": "DESKTOP",
+      "backend": "metal",
+      "files": [
+        {
+          "modelId": "qwen3-8b",
+          "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "fileBytes": 5027784832,
+          "quant": "Q4_K_M",
+          "rank": null,
+          "ctx": 32768
+        }
+      ],
+      "truth": {
+        "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": {
+          "prefillMilliTokPerSec": 800000,
+          "decodeMilliTokPerSec": 35000,
+          "ttft0Ms": 150,
+          "steadyMilliTokPerSec": 35000,
+          "throttleOnsetMs": null
+        }
+      },
+      "claimScalePermille": 1000,
+      "power": {
+        "source": "ac",
+        "batteryPermille": null,
+        "designMilliWh": null
+      },
+      "presence": []
+    },
+    {
+      "id": "dell",
+      "tier": "PEER",
+      "class": "LAPTOP",
+      "backend": "cpu",
+      "files": [
+        {
+          "modelId": "qwen3-8b",
+          "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "fileBytes": 5027784832,
+          "quant": "Q4_K_M",
+          "rank": null,
+          "ctx": 32768
+        }
+      ],
+      "truth": {
+        "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": {
+          "prefillMilliTokPerSec": 300000,
+          "decodeMilliTokPerSec": 20000,
+          "ttft0Ms": 200,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null
+        }
+      },
+      "claimScalePermille": 1000,
+      "power": {
+        "source": "ac",
+        "batteryPermille": null,
+        "designMilliWh": null
+      },
+      "presence": []
+    }
+  ],
+  "links": [
+    {
+      "a": "phone",
+      "b": "mac",
+      "path": "LAN",
+      "rttMedianMs": 8,
+      "rttSigmaPermille": 200,
+      "kbps": 200000,
+      "metered": false,
+      "dropsPerHour": 0
+    },
+    {
+      "a": "phone",
+      "b": "dell",
+      "path": "LAN",
+      "rttMedianMs": 12,
+      "rttSigmaPermille": 200,
+      "kbps": 200000,
+      "metered": false,
+      "dropsPerHour": 0
+    }
+  ],
+  "cloud": [
+    {
+      "provider": "openrouter",
+      "ttftMedianMs": 800,
+      "decodeMilliTokPerSec": 50000,
+      "errorPermille": {
+        "429": 20,
+        "5xx": 20
+      }
+    }
+  ],
+  "apps": [
+    {
+      "pkg": "app.a",
+      "meshAllowed": true,
+      "cloudBanned": false,
+      "deviceOnly": false,
+      "policy": "auto",
+      "arrivalsPerHour": 60,
+      "promptTokensMedian": 300,
+      "outTokensMedian": 80,
+      "sigmaPermille": 300,
+      "streamPermille": 1000,
+      "allowMeshOnMetered": false,
+      "neverCloudWhenDevicesCanAnswer": false,
+      "maxTokensCap": null
+    },
+    {
+      "pkg": "app.b",
+      "meshAllowed": true,
+      "cloudBanned": false,
+      "deviceOnly": false,
+      "policy": "auto",
+      "arrivalsPerHour": 60,
+      "promptTokensMedian": 500,
+      "outTokensMedian": 100,
+      "sigmaPermille": 300,
+      "streamPermille": 500,
+      "allowMeshOnMetered": false,
+      "neverCloudWhenDevicesCanAnswer": false,
+      "maxTokensCap": null
+    }
+  ],
+  "faults": [
+    {
+      "atMs": 600000,
+      "kind": "duplicate-attempt",
+      "node": null,
+      "phase": null,
+      "durationMs": null,
+      "valuePermille": null
+    },
+    {
+      "atMs": 1200000,
+      "kind": "duplicate-attempt",
+      "node": null,
+      "phase": null,
+      "durationMs": null,
+      "valuePermille": null
+    }
+  ],
+  "expect": {
+    "lawViolations": 0,
+    "minPlacementPermille": {},
+    "minBatteryReductionPermille": null,
+    "maxShareOverHindsightPermille": {}
+  }
+}

@@ -1,0 +1,39 @@
+# asom USER unit (linux.md 3.2), for ~/.config/systemd/user/ or /usr/lib/systemd/user/. Shipped DISABLED: no package or
+# script ever enables or starts it. `systemctl --user enable asom` is the owner's explicit choice (start at login);
+# start at boot additionally needs `loginctl enable-linger $USER`.
+# The user manager cannot apply the Protect* family, PrivateTmp, the capability sets, the device policy or a dedicated
+# user and directories without user namespaces or privilege, so they are absent here. There is NO sandbox beyond
+# NoNewPrivileges and the seccomp-based restrictions: every process of the same uid can read the node's key, ledger and models.
+[Unit]
+Description=asom node (lends compute only when enabled; see `asom status`)
+Documentation=file:%h/.local/opt/asom/current/share/doc/LINUX.md
+After=network-online.target
+
+[Service]
+Type=exec
+ExecStart=%h/.local/opt/asom/current/bin/asom-node --mode=user
+UMask=0077
+# T17(c): no token, ledger row or prompt ever reaches the journal.
+StandardOutput=null
+StandardError=null
+# No core dumps (they could contain prompts).
+LimitCORE=0
+# Needs memory delegation to the user manager (assumption LA21); harmless where it is not delegated.
+MemorySwapMax=0
+Nice=10
+CPUWeight=20
+IOSchedulingClass=idle
+NoNewPrivileges=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+TimeoutStopSec=35
+# A JVM stopped by SIGTERM runs its shutdown hooks and exits 143 (128+15): a clean stop, not a failure.
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

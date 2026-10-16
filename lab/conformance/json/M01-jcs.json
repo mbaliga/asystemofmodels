@@ -1,0 +1,1383 @@
+{
+  "family": "M01",
+  "confVersion": "0.2.0",
+  "specRefs": [
+    "docs/design/mesh/LAB_SPEC.md 4.2 (strict JSON, JCS integer profile, strict base64)",
+    "docs/design/mesh/LAB_SPEC.md 4.9 (M01-001..012, M01-101..110)",
+    "docs/design/mesh/platforms.md 8.9 (M01-001 seed)",
+    "docs/design/mesh/manifest.md 5.2, 5.3, 6.2"
+  ],
+  "vectors": [
+    {
+      "id": "M01-001",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "UTF-16 code-unit key order (U+1F600 sorts before U+FF21), '/' not escaped, control characters as lowercase \\u00XX, NFD kept (design-session seed input, escaped form).",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"b\": 1, \"a\": 2, \"\\u00e9\": 3, \"\\ud83d\\ude00\": 4, \"\\uff21\": 5, \"url\": \"https://x/y\", \"ctl\": \"\\u0001\\n\", \"nfd\": \"e\\u0301\"}"
+      },
+      "expect": {
+        "ok": {
+          "text": "{\"a\":2,\"b\":1,\"ctl\":\"\\u0001\\n\",\"nfd\":\"e\u0301\",\"url\":\"https://x/y\",\"\u00e9\":3,\"\ud83d\ude00\":4,\"\uff21\":5}",
+          "utf8Hex": "7b2261223a322c2262223a312c2263746c223a225c75303030315c6e222c226e6664223a2265cc81222c2275726c223a2268747470733a2f2f782f79222c22c3a9223a332c22f09f9880223a342c22efbca1223a357d"
+        }
+      }
+    },
+    {
+      "id": "M01-002",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Every C0 control character, quote, backslash and DEL: short escapes for BS TAB LF FF CR, lowercase \\u00xx for the rest, DEL and '/' literal.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[\"\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\u0007\\b\\t\\n\\u000b\\f\\r\\u000e\\u000f\\u0010\\u0011\\u0012\\u0013\\u0014\\u0015\\u0016\\u0017\\u0018\\u0019\\u001a\\u001b\\u001c\\u001d\\u001e\\u001f\\u007f\\\"\\\\\\/\"]"
+      },
+      "expect": {
+        "ok": {
+          "text": "[\"\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\u0007\\b\\t\\n\\u000b\\f\\r\\u000e\\u000f\\u0010\\u0011\\u0012\\u0013\\u0014\\u0015\\u0016\\u0017\\u0018\\u0019\\u001a\\u001b\\u001c\\u001d\\u001e\\u001f\u007f\\\"\\\\/\"]",
+          "utf8Hex": "5b225c75303030305c75303030315c75303030325c75303030335c75303030345c75303030355c75303030365c75303030375c625c745c6e5c75303030625c665c725c75303030655c75303030665c75303031305c75303031315c75303031325c75303031335c75303031345c75303031355c75303031365c75303031375c75303031385c75303031395c75303031615c75303031625c75303031635c75303031645c75303031655c75303031667f5c225c5c2f225d"
+        }
+      }
+    },
+    {
+      "id": "M01-003",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "An escaped '/' and escaped non-ASCII characters are written literally.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"url\":\"https:\\/\\/x\\/y\",\"caf\\u00e9\":\"\\u00e9\\u00e8\",\"emoji\":\"\\ud83d\\ude00\"}"
+      },
+      "expect": {
+        "ok": {
+          "text": "{\"caf\u00e9\":\"\u00e9\u00e8\",\"emoji\":\"\ud83d\ude00\",\"url\":\"https://x/y\"}",
+          "utf8Hex": "7b22636166c3a9223a22c3a9c3a8222c22656d6f6a69223a22f09f9880222c2275726c223a2268747470733a2f2f782f79227d"
+        }
+      }
+    },
+    {
+      "id": "M01-004",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "No Unicode normalisation: NFD 'e' + U+0301 and NFC U+00E9 stay distinct keys and are ordered by code units.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"\\u00e9\":2,\"e\\u0301\":1}"
+      },
+      "expect": {
+        "ok": {
+          "text": "{\"e\u0301\":1,\"\u00e9\":2}",
+          "utf8Hex": "7b2265cc81223a312c22c3a9223a327d"
+        }
+      }
+    },
+    {
+      "id": "M01-005",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Integers at and around +-(2^53-1) in shortest decimal form.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[9007199254740991,-9007199254740991,9007199254740990,-9007199254740990,0,1,-1,10,100,1000000]"
+      },
+      "expect": {
+        "ok": {
+          "text": "[9007199254740991,-9007199254740991,9007199254740990,-9007199254740990,0,1,-1,10,100,1000000]",
+          "utf8Hex": "5b393030373139393235343734303939312c2d393030373139393235343734303939312c393030373139393235343734303939302c2d393030373139393235343734303939302c302c312c2d312c31302c3130302c313030303030305d"
+        }
+      }
+    },
+    {
+      "id": "M01-006",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Whitespace of every permitted kind (space, tab, LF, CR) is removed; arrays keep their order; nested objects are sorted recursively.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "\r\n{ \"b\" :\t[ 3 , 1 ,\n2 ] ,\r\n \"a\" : { \"z\" : null , \"y\" : true } }\r\n"
+      },
+      "expect": {
+        "ok": {
+          "text": "{\"a\":{\"y\":true,\"z\":null},\"b\":[3,1,2]}",
+          "utf8Hex": "7b2261223a7b2279223a747275652c227a223a6e756c6c7d2c2262223a5b332c312c325d7d"
+        }
+      }
+    },
+    {
+      "id": "M01-007",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "The three literals.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"t\":true,\"f\":false,\"n\":null}"
+      },
+      "expect": {
+        "ok": {
+          "text": "{\"f\":false,\"n\":null,\"t\":true}",
+          "utf8Hex": "7b2266223a66616c73652c226e223a6e756c6c2c2274223a747275657d"
+        }
+      }
+    },
+    {
+      "id": "M01-008",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Key order with supplementary characters: U+D7FF < U+10000 < U+1F600 < U+E000 < U+FF21 < U+FFFF by code units (a code-point sort gives U+D7FF, U+E000, U+FF21, U+FFFF, U+10000, U+1F600).",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"\\uffff\":7,\"\\uff21\":6,\"\\ud83d\\ude00\":3,\"\\ue000\":5,\"\\ud800\\udc00\":2,\"\\ud7ff\":1,\"a\":0}"
+      },
+      "expect": {
+        "ok": {
+          "text": "{\"a\":0,\"\ud7ff\":1,\"\ud800\udc00\":2,\"\ud83d\ude00\":3,\"\ue000\":5,\"\uff21\":6,\"\uffff\":7}",
+          "utf8Hex": "7b2261223a302c22ed9fbf223a312c22f0908080223a322c22f09f9880223a332c22ee8080223a352c22efbca1223a362c22efbfbf223a377d"
+        }
+      }
+    },
+    {
+      "id": "M01-009",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Surrogate-pair escapes in either hex case and BMP escapes in either case produce the same literal characters.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[\"\\uD83D\\uDE00\\ud83d\\ude00\\u00E9\\u00e9\\uFF21\"]"
+      },
+      "expect": {
+        "ok": {
+          "text": "[\"\ud83d\ude00\ud83d\ude00\u00e9\u00e9\uff21\"]",
+          "utf8Hex": "5b22f09f9880f09f9880c3a9c3a9efbca1225d"
+        }
+      }
+    },
+    {
+      "id": "M01-010",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Keys that look alike but differ after unescaping are distinct: case, a trailing space, and NFC versus NFD.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"a\":1,\"A\":2,\"a \":3,\"a\\u0301\":4,\"\\u00e1\":5}"
+      },
+      "expect": {
+        "ok": {
+          "text": "{\"A\":2,\"a\":1,\"a \":3,\"a\u0301\":4,\"\u00e1\":5}",
+          "utf8Hex": "7b2241223a322c2261223a312c226120223a332c2261cc81223a342c22c3a1223a357d"
+        }
+      }
+    },
+    {
+      "id": "M01-011",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "The empty key sorts first; a prefix sorts before its extensions; objects inside arrays are sorted too.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"b\":{\"y\":1,\"x\":2},\"\":0,\"aa\":[{\"z\":1,\"a\":2}],\"a\":null}"
+      },
+      "expect": {
+        "ok": {
+          "text": "{\"\":0,\"a\":null,\"aa\":[{\"a\":2,\"z\":1}],\"b\":{\"x\":2,\"y\":1}}",
+          "utf8Hex": "7b22223a302c2261223a6e756c6c2c226161223a5b7b2261223a322c227a223a317d5d2c2262223a7b2278223a322c2279223a317d7d"
+        }
+      }
+    },
+    {
+      "id": "M01-012",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Already canonical input comes back byte for byte (idempotence).",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"a\":2,\"b\":1,\"ctl\":\"\\u0001\\n\",\"nfd\":\"e\u0301\",\"url\":\"https://x/y\",\"\u00e9\":3,\"\ud83d\ude00\":4,\"\uff21\":5}"
+      },
+      "expect": {
+        "ok": {
+          "text": "{\"a\":2,\"b\":1,\"ctl\":\"\\u0001\\n\",\"nfd\":\"e\u0301\",\"url\":\"https://x/y\",\"\u00e9\":3,\"\ud83d\ude00\":4,\"\uff21\":5}",
+          "utf8Hex": "7b2261223a322c2262223a312c2263746c223a225c75303030315c6e222c226e6664223a2265cc81222c2275726c223a2268747470733a2f2f782f79222c22c3a9223a332c22f09f9880223a342c22efbca1223a357d"
+        }
+      }
+    },
+    {
+      "id": "M01-013",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Nesting of exactly 16 arrays is accepted.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]"
+      },
+      "expect": {
+        "ok": {
+          "text": "[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]",
+          "utf8Hex": "5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d"
+        }
+      }
+    },
+    {
+      "id": "M01-014",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Nesting of exactly 16 objects is accepted, and a scalar under the deepest object does not add a level.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":1}}}}}}}}}}}}}}}}"
+      },
+      "expect": {
+        "ok": {
+          "text": "{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":1}}}}}}}}}}}}}}}}",
+          "utf8Hex": "7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a7b2261223a317d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d"
+        }
+      }
+    },
+    {
+      "id": "M01-015",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A top-level scalar with surrounding whitespace.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "  null \n"
+      },
+      "expect": {
+        "ok": {
+          "text": "null",
+          "utf8Hex": "6e756c6c"
+        }
+      }
+    },
+    {
+      "id": "M01-016",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Control characters and DEL as member names sort by code unit: U+0000 < U+001F < space < U+007F.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"\\u007f\":4,\" \":3,\"\\u001f\":2,\"\\u0000\":1}"
+      },
+      "expect": {
+        "ok": {
+          "text": "{\"\\u0000\":1,\"\\u001f\":2,\" \":3,\"\u007f\":4}",
+          "utf8Hex": "7b225c7530303030223a312c225c7530303166223a322c2220223a332c227f223a347d"
+        }
+      }
+    },
+    {
+      "id": "M01-017",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Empty containers and the empty string.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[{},[],\"\",{\"\":{}}]"
+      },
+      "expect": {
+        "ok": {
+          "text": "[{},[],\"\",{\"\":{}}]",
+          "utf8Hex": "5b7b7d2c5b5d2c22222c7b22223a7b7d7d5d"
+        }
+      }
+    },
+    {
+      "id": "M01-101",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A fraction.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"a\":1.5}"
+      },
+      "expect": {
+        "reject": "NON_INTEGER_NUMBER"
+      }
+    },
+    {
+      "id": "M01-102",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "An exponent.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[1e2]"
+      },
+      "expect": {
+        "reject": "NON_INTEGER_NUMBER"
+      }
+    },
+    {
+      "id": "M01-103",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Minus zero.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[-0]"
+      },
+      "expect": {
+        "reject": "NON_INTEGER_NUMBER"
+      }
+    },
+    {
+      "id": "M01-104",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A duplicate member name.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"a\":1,\"a\":2}"
+      },
+      "expect": {
+        "reject": "DUPLICATE_KEY"
+      }
+    },
+    {
+      "id": "M01-105",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A lone high surrogate escape.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[\"\\ud800\"]"
+      },
+      "expect": {
+        "reject": "INVALID_UNICODE"
+      }
+    },
+    {
+      "id": "M01-106",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "2^53, one beyond the range.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[9007199254740992]"
+      },
+      "expect": {
+        "reject": "NUMBER_RANGE"
+      }
+    },
+    {
+      "id": "M01-107",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Nesting of 17 arrays.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]"
+      },
+      "expect": {
+        "reject": "MALFORMED_JSON"
+      }
+    },
+    {
+      "id": "M01-108",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A byte order mark before the value.",
+      "input": {
+        "kind": "canonicalize",
+        "inputHex": "efbbbf7b7d"
+      },
+      "expect": {
+        "reject": "MALFORMED_JSON"
+      }
+    },
+    {
+      "id": "M01-109",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A byte that is never valid in UTF-8 inside a string.",
+      "input": {
+        "kind": "canonicalize",
+        "inputHex": "5b22ff225d"
+      },
+      "expect": {
+        "reject": "INVALID_UNICODE"
+      }
+    },
+    {
+      "id": "M01-110",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Non-whitespace after the value.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{} x"
+      },
+      "expect": {
+        "reject": "TRAILING_DATA"
+      }
+    },
+    {
+      "id": "M01-111",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "NaN.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[NaN]"
+      },
+      "expect": {
+        "reject": "NON_INTEGER_NUMBER"
+      }
+    },
+    {
+      "id": "M01-112",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Infinity.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[Infinity]"
+      },
+      "expect": {
+        "reject": "NON_INTEGER_NUMBER"
+      }
+    },
+    {
+      "id": "M01-113",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Negative Infinity.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[-Infinity]"
+      },
+      "expect": {
+        "reject": "NON_INTEGER_NUMBER"
+      }
+    },
+    {
+      "id": "M01-114",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A leading zero.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[01]"
+      },
+      "expect": {
+        "reject": "NON_INTEGER_NUMBER"
+      }
+    },
+    {
+      "id": "M01-115",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "An upper-case exponent.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[1E2]"
+      },
+      "expect": {
+        "reject": "NON_INTEGER_NUMBER"
+      }
+    },
+    {
+      "id": "M01-116",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A fraction that is a whole number.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[1.0]"
+      },
+      "expect": {
+        "reject": "NON_INTEGER_NUMBER"
+      }
+    },
+    {
+      "id": "M01-117",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "-(2^53), one beyond the range on the negative side.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[-9007199254740992]"
+      },
+      "expect": {
+        "reject": "NUMBER_RANGE"
+      }
+    },
+    {
+      "id": "M01-118",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A 20-digit integer.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[99999999999999999999]"
+      },
+      "expect": {
+        "reject": "NUMBER_RANGE"
+      }
+    },
+    {
+      "id": "M01-119",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "An overlong encoding of NUL (C0 80).",
+      "input": {
+        "kind": "canonicalize",
+        "inputHex": "5b22c080225d"
+      },
+      "expect": {
+        "reject": "INVALID_UNICODE"
+      }
+    },
+    {
+      "id": "M01-120",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "An encoded surrogate code point U+D800 (ED A0 80).",
+      "input": {
+        "kind": "canonicalize",
+        "inputHex": "5b22eda080225d"
+      },
+      "expect": {
+        "reject": "INVALID_UNICODE"
+      }
+    },
+    {
+      "id": "M01-121",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A truncated three-byte sequence (E2 82) before the closing quote.",
+      "input": {
+        "kind": "canonicalize",
+        "inputHex": "5b22e282225d"
+      },
+      "expect": {
+        "reject": "INVALID_UNICODE"
+      }
+    },
+    {
+      "id": "M01-122",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A stray continuation byte.",
+      "input": {
+        "kind": "canonicalize",
+        "inputHex": "5b2280225d"
+      },
+      "expect": {
+        "reject": "INVALID_UNICODE"
+      }
+    },
+    {
+      "id": "M01-123",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A code point above U+10FFFF (F4 90 80 80).",
+      "input": {
+        "kind": "canonicalize",
+        "inputHex": "5b22f4908080225d"
+      },
+      "expect": {
+        "reject": "INVALID_UNICODE"
+      }
+    },
+    {
+      "id": "M01-124",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A lone low surrogate escape.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[\"\\udc00\"]"
+      },
+      "expect": {
+        "reject": "INVALID_UNICODE"
+      }
+    },
+    {
+      "id": "M01-125",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A high surrogate escape followed by a non-surrogate escape.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[\"\\ud800\\u0041\"]"
+      },
+      "expect": {
+        "reject": "INVALID_UNICODE"
+      }
+    },
+    {
+      "id": "M01-126",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A duplicate that only exists after unescaping.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"a\":1,\"\\u0061\":2}"
+      },
+      "expect": {
+        "reject": "DUPLICATE_KEY"
+      }
+    },
+    {
+      "id": "M01-127",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A duplicate one level down.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"x\":{\"k\":1,\"k\":2}}"
+      },
+      "expect": {
+        "reject": "DUPLICATE_KEY"
+      }
+    },
+    {
+      "id": "M01-128",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Nesting of 17 objects.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":1}}}}}}}}}}}}}}}}}"
+      },
+      "expect": {
+        "reject": "MALFORMED_JSON"
+      }
+    },
+    {
+      "id": "M01-129",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A truncated document.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"a\":"
+      },
+      "expect": {
+        "reject": "MALFORMED_JSON"
+      }
+    },
+    {
+      "id": "M01-130",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Empty input.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": ""
+      },
+      "expect": {
+        "reject": "MALFORMED_JSON"
+      }
+    },
+    {
+      "id": "M01-131",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Whitespace only.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": " \t\r\n"
+      },
+      "expect": {
+        "reject": "MALFORMED_JSON"
+      }
+    },
+    {
+      "id": "M01-132",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A raw line feed inside a string.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[\"a\nb\"]"
+      },
+      "expect": {
+        "reject": "MALFORMED_JSON"
+      }
+    },
+    {
+      "id": "M01-133",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Single-quoted string.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "['a']"
+      },
+      "expect": {
+        "reject": "MALFORMED_JSON"
+      }
+    },
+    {
+      "id": "M01-134",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A trailing comma.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[1,]"
+      },
+      "expect": {
+        "reject": "MALFORMED_JSON"
+      }
+    },
+    {
+      "id": "M01-135",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Two values.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "1 2"
+      },
+      "expect": {
+        "reject": "TRAILING_DATA"
+      }
+    },
+    {
+      "id": "M01-136",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Two objects.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{}{}"
+      },
+      "expect": {
+        "reject": "TRAILING_DATA"
+      }
+    },
+    {
+      "id": "M01-137",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A vertical tab is not whitespace (leading).",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "\u000b{}"
+      },
+      "expect": {
+        "reject": "MALFORMED_JSON"
+      }
+    },
+    {
+      "id": "M01-138",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A no-break space after the value is trailing data, not whitespace.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{}\u00a0"
+      },
+      "expect": {
+        "reject": "TRAILING_DATA"
+      }
+    },
+    {
+      "id": "M01-140",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Order: a duplicate (row 6) and trailing data (row 8) give the duplicate.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"a\":1,\"a\":2} x"
+      },
+      "expect": {
+        "reject": "DUPLICATE_KEY"
+      }
+    },
+    {
+      "id": "M01-141",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Order: a fraction (row 4) before a duplicate (row 6).",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"a\":1.5,\"a\":2}"
+      },
+      "expect": {
+        "reject": "NON_INTEGER_NUMBER"
+      }
+    },
+    {
+      "id": "M01-142",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Order: an out-of-range integer (row 5) before a duplicate (row 6).",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"a\":9007199254740992,\"a\":2}"
+      },
+      "expect": {
+        "reject": "NUMBER_RANGE"
+      }
+    },
+    {
+      "id": "M01-143",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Order: a lone surrogate (row 3) before a fraction (row 4).",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[\"\\ud800\",1.5]"
+      },
+      "expect": {
+        "reject": "INVALID_UNICODE"
+      }
+    },
+    {
+      "id": "M01-144",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Order: invalid UTF-8 (row 2) before a fraction (row 4).",
+      "input": {
+        "kind": "canonicalize",
+        "inputHex": "5b22ff222c312e355d"
+      },
+      "expect": {
+        "reject": "INVALID_UNICODE"
+      }
+    },
+    {
+      "id": "M01-145",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Order: depth 17 (row 7) before trailing data (row 8).",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]] x"
+      },
+      "expect": {
+        "reject": "MALFORMED_JSON"
+      }
+    },
+    {
+      "id": "M01-146",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Order: a duplicate (row 6) before depth 17 (row 7).",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[{\"a\":1,\"a\":2},[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]"
+      },
+      "expect": {
+        "reject": "DUPLICATE_KEY"
+      }
+    },
+    {
+      "id": "M01-147",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Order: a byte order mark (row 1) before everything.",
+      "input": {
+        "kind": "canonicalize",
+        "inputHex": "efbbbf7b2261223a312c2261223a327d2078"
+      },
+      "expect": {
+        "reject": "MALFORMED_JSON"
+      }
+    },
+    {
+      "id": "M01-148",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Order: a syntax error (row 1) before invalid UTF-8 (row 2).",
+      "input": {
+        "kind": "canonicalize",
+        "inputHex": "5b22ff222c"
+      },
+      "expect": {
+        "reject": "MALFORMED_JSON"
+      }
+    },
+    {
+      "id": "M01-149",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Order: invalid UTF-8 after the value (row 2) before trailing data (row 8).",
+      "input": {
+        "kind": "canonicalize",
+        "inputHex": "7b7d20ff"
+      },
+      "expect": {
+        "reject": "INVALID_UNICODE"
+      }
+    },
+    {
+      "id": "M01-150",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A fraction in the trailing data is never parsed: the answer is trailing data.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{} 1.5"
+      },
+      "expect": {
+        "reject": "TRAILING_DATA"
+      }
+    },
+    {
+      "id": "M01-151",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Order: an out-of-range integer (row 5) before depth 17 (row 7).",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "[9007199254740992,[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]"
+      },
+      "expect": {
+        "reject": "NUMBER_RANGE"
+      }
+    },
+    {
+      "id": "M01-152",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Order: a fraction (row 4) wins wherever it sits: after a duplicate.",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"a\":1,\"a\":2,\"b\":1.5}"
+      },
+      "expect": {
+        "reject": "NON_INTEGER_NUMBER"
+      }
+    },
+    {
+      "id": "M01-153",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Order: a lone surrogate (row 3) before a duplicate (row 6) and trailing data (row 8).",
+      "input": {
+        "kind": "canonicalize",
+        "inputText": "{\"a\":\"\\ud800\",\"a\":1} x"
+      },
+      "expect": {
+        "reject": "INVALID_UNICODE"
+      }
+    },
+    {
+      "id": "M01-301",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Standard alphabet, padded.",
+      "input": {
+        "kind": "base64Either",
+        "text": "QQ=="
+      },
+      "expect": {
+        "ok": {
+          "hex": "41"
+        }
+      }
+    },
+    {
+      "id": "M01-302",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Standard alphabet, unpadded.",
+      "input": {
+        "kind": "base64Either",
+        "text": "QQ"
+      },
+      "expect": {
+        "ok": {
+          "hex": "41"
+        }
+      }
+    },
+    {
+      "id": "M01-303",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Standard alphabet with '+' and '/'.",
+      "input": {
+        "kind": "base64Either",
+        "text": "+/+/"
+      },
+      "expect": {
+        "ok": {
+          "hex": "fbffbf"
+        }
+      }
+    },
+    {
+      "id": "M01-304",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "URL-safe alphabet with '-' and '_'.",
+      "input": {
+        "kind": "base64Either",
+        "text": "-_-_"
+      },
+      "expect": {
+        "ok": {
+          "hex": "fbffbf"
+        }
+      }
+    },
+    {
+      "id": "M01-305",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "The empty string is the empty byte string.",
+      "input": {
+        "kind": "base64Either",
+        "text": ""
+      },
+      "expect": {
+        "ok": {
+          "hex": ""
+        }
+      }
+    },
+    {
+      "id": "M01-306",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Padded three-character tail.",
+      "input": {
+        "kind": "base64Either",
+        "text": "QUI="
+      },
+      "expect": {
+        "ok": {
+          "hex": "4142"
+        }
+      }
+    },
+    {
+      "id": "M01-307",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Non-zero unused bits, two-character tail.",
+      "input": {
+        "kind": "base64Either",
+        "text": "QR=="
+      },
+      "expect": {
+        "reject": "ENCODING"
+      }
+    },
+    {
+      "id": "M01-308",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Non-zero unused bits, three-character tail.",
+      "input": {
+        "kind": "base64Either",
+        "text": "QUJ="
+      },
+      "expect": {
+        "reject": "ENCODING"
+      }
+    },
+    {
+      "id": "M01-309",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Padding one short.",
+      "input": {
+        "kind": "base64Either",
+        "text": "QQ="
+      },
+      "expect": {
+        "reject": "ENCODING"
+      }
+    },
+    {
+      "id": "M01-310",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Too much padding.",
+      "input": {
+        "kind": "base64Either",
+        "text": "QQ==="
+      },
+      "expect": {
+        "reject": "ENCODING"
+      }
+    },
+    {
+      "id": "M01-311",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A single character.",
+      "input": {
+        "kind": "base64Either",
+        "text": "Q"
+      },
+      "expect": {
+        "reject": "ENCODING"
+      }
+    },
+    {
+      "id": "M01-312",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Mixed alphabets ('+' and '-').",
+      "input": {
+        "kind": "base64Either",
+        "text": "AAA+AAA-"
+      },
+      "expect": {
+        "reject": "ENCODING"
+      }
+    },
+    {
+      "id": "M01-313",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Whitespace inside.",
+      "input": {
+        "kind": "base64Either",
+        "text": "Q Q=="
+      },
+      "expect": {
+        "reject": "ENCODING"
+      }
+    },
+    {
+      "id": "M01-314",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Trailing line feed.",
+      "input": {
+        "kind": "base64Either",
+        "text": "QUJD\n"
+      },
+      "expect": {
+        "reject": "ENCODING"
+      }
+    },
+    {
+      "id": "M01-315",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Padding in the middle.",
+      "input": {
+        "kind": "base64Either",
+        "text": "QQ==QQ=="
+      },
+      "expect": {
+        "reject": "ENCODING"
+      }
+    },
+    {
+      "id": "M01-316",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Padding on a full quantum.",
+      "input": {
+        "kind": "base64Either",
+        "text": "QUJD="
+      },
+      "expect": {
+        "reject": "ENCODING"
+      }
+    },
+    {
+      "id": "M01-317",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Leading padding.",
+      "input": {
+        "kind": "base64Either",
+        "text": "=QQ"
+      },
+      "expect": {
+        "reject": "ENCODING"
+      }
+    },
+    {
+      "id": "M01-318",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A non-ASCII character.",
+      "input": {
+        "kind": "base64Either",
+        "text": "QUJ\u00c9"
+      },
+      "expect": {
+        "reject": "ENCODING"
+      }
+    },
+    {
+      "id": "M01-320",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "b64url: URL-safe alphabet, no padding.",
+      "input": {
+        "kind": "base64UrlNoPad",
+        "text": "-_-_"
+      },
+      "expect": {
+        "ok": {
+          "hex": "fbffbf"
+        }
+      }
+    },
+    {
+      "id": "M01-321",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "b64url: two-character tail.",
+      "input": {
+        "kind": "base64UrlNoPad",
+        "text": "QQ"
+      },
+      "expect": {
+        "ok": {
+          "hex": "41"
+        }
+      }
+    },
+    {
+      "id": "M01-322",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "b64url: padding is not allowed.",
+      "input": {
+        "kind": "base64UrlNoPad",
+        "text": "QQ=="
+      },
+      "expect": {
+        "reject": "ENCODING"
+      }
+    },
+    {
+      "id": "M01-323",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "b64url: the standard alphabet is not allowed.",
+      "input": {
+        "kind": "base64UrlNoPad",
+        "text": "+/8"
+      },
+      "expect": {
+        "reject": "ENCODING"
+      }
+    },
+    {
+      "id": "M01-324",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "b64url: non-zero unused bits.",
+      "input": {
+        "kind": "base64UrlNoPad",
+        "text": "QR"
+      },
+      "expect": {
+        "reject": "ENCODING"
+      }
+    },
+    {
+      "id": "M01-325",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "b64url: the 43-character node id of TEST-ONLY key1 is a 32-byte pin.",
+      "input": {
+        "kind": "base64UrlNoPad",
+        "text": "vaw93hb8yBZTX2LebYgzri1pfOnBlRIILoBLiyK_eN4"
+      },
+      "expect": {
+        "ok": {
+          "hex": "bdac3dde16fcc816535f62de6d8833ae2d697ce9c19512082e804b8b22bf78de"
+        }
+      }
+    }
+  ]
+}

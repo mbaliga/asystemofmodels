@@ -1,0 +1,11 @@
+# ILLUSTRATIVE M04 seed vectors computed by bench_ref.py (not normative). Output fields: value, kept, relSpreadPermille, confidence, flags [, ttftMicros].
+M04-001 outlier excluded (rates) {"value": 7394, "kept": 4, "relSpreadPermille": 4, "confidence": "high", "flags": ["OUTLIER_EXCLUDED"]}
+M04-002a MAD==0 path, 23%-slower sample KEPT (under the 25% cut) {"value": 12800, "kept": 5, "relSpreadPermille": 230, "confidence": "low", "flags": []}
+M04-002b MAD==0 path, 29%-slower sample EXCLUDED {"value": 12800, "kept": 4, "relSpreadPermille": 0, "confidence": "high", "flags": ["OUTLIER_EXCLUDED"]}
+M04-003 two deviants of five -> UNSTABLE, none excluded {"value": 12736, "kept": 5, "relSpreadPermille": 376, "confidence": "low", "flags": ["UNSTABLE"]}
+M04-004 paired spans: excluded rep's TTFT excluded too; TTFT = upper median of kept {"value": 59743, "kept": 4, "relSpreadPermille": 13, "confidence": "high", "flags": ["OUTLIER_EXCLUDED"], "ttftMicros": 8572100}
+M04-005 warm start caps confidence at medium {"value": 129949, "kept": 5, "relSpreadPermille": 6, "confidence": "medium", "flags": []}
+M04-006 contention 120 permille caps at medium {"value": 7398, "kept": 5, "relSpreadPermille": 4, "confidence": "medium", "flags": []}
+M04-007 sustained: no throttle within cap {"peakMtps": 6666, "plateauMtps": 6666, "onsetMs": null, "stabilityPermille": 1000, "durationMs": 600000, "confidence": "high", "flags": []}
+M04-008 sustained: onset late, plateau not reached {"peakMtps": 6666, "plateauMtps": 5333, "onsetMs": 450000, "stabilityPermille": 800, "durationMs": 510000, "confidence": "medium", "flags": ["PLATEAU_NOT_REACHED"]}
+M04-009 nearest-rank p10/p90 over 4 kept rates [59458,59743,60002,60249]: 59458 60249

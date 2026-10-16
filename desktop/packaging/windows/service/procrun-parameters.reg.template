@@ -1,0 +1,23 @@
+Windows Registry Editor Version 5.00
+
+; NOT-YET-IMPLEMENTED: PLATFORM_PLAN step W4/W5 (D-v2). A TEMPLATE, never imported by anything in this track, and its values are
+; UNVERIFIED until the W5 install smoke has run on a Windows host (whether procrun's StartMethod may block until StopMethod
+; is assumption WIN-SVC-1 in ../ERRATA.md).
+;
+; What the service registers (windows.md 3.2). No StdOutput and no StdError on purpose: the service writes nothing to either.
+; @@INSTALL@@ is the install directory chosen by the MSI (never a user-writable one).
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Apache Software Foundation\ProcRun 2.0\asom\Parameters\Java]
+"Jvm"="@@INSTALL@@\\runtime\\bin\\server\\jvm.dll"
+"Options"="-Djna.nounpack=true\0-Djna.noclasspath=true\0-Djna.boot.library.path=@@INSTALL@@\\native\0-XX:-CreateCoredumpOnCrash\0-Dfile.encoding=UTF-8"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Apache Software Foundation\ProcRun 2.0\asom\Parameters\Start]
+"Mode"="jvm"
+"Class"="xyz.mdhv.asom.desktop.win.ServiceEntry"
+"Method"="start"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Apache Software Foundation\ProcRun 2.0\asom\Parameters\Stop]
+"Mode"="jvm"
+"Class"="xyz.mdhv.asom.desktop.win.ServiceEntry"
+"Method"="stop"
+"Timeout"=dword:00000023

@@ -1,0 +1,38 @@
+[KV] Qwen3-8B KV bytes/token f16=147456 (144 KiB), q8_0=78336
+[KV] prompt=512 f16: 72 MiB -> 1.0-1.9 s over 610-320 Mbps
+[KV] prompt=512 q8_0: 38 MiB -> 0.5-1.0 s over 610-320 Mbps
+[KV] prompt=4096 f16: 576 MiB -> 7.9-15.1 s over 610-320 Mbps
+[KV] prompt=4096 q8_0: 306 MiB -> 4.2-8.0 s over 610-320 Mbps
+[KV] M4 Pro-class prefill of 512 tok at ~440 tok/s ~ 1.2 s (7B Q4_0 figure used as proxy for 8B: ASSUMPTION)
+[KV] M4 Pro-class prefill of 4096 tok at ~440 tok/s ~ 9.3 s (7B Q4_0 figure used as proxy for 8B: ASSUMPTION)
+[PP] decode activation per boundary per token = 8192 bytes (f16) -> bandwidth irrelevant; latency dominates
+[PP] single-node 50 tok/s (20 ms/tok) + 7.5 ms RTT/token -> 36.4 tok/s (-27%)
+[PP] single-node 50 tok/s (20 ms/tok) + 30.0 ms RTT/token -> 20.0 tok/s (-60%)
+[PP] single-node 20 tok/s (50 ms/tok) + 7.5 ms RTT/token -> 17.4 tok/s (-13%)
+[PP] single-node 20 tok/s (50 ms/tok) + 30.0 ms RTT/token -> 12.5 tok/s (-38%)
+[PP] single-node 5 tok/s (200 ms/tok) + 7.5 ms RTT/token -> 4.8 tok/s (-4%)
+[PP] single-node 5 tok/s (200 ms/tok) + 30.0 ms RTT/token -> 4.3 tok/s (-13%)
+[SD] expected tokens/round E(alpha,k) = (1-alpha^(k+1))/(1-alpha)
+[SD]   alpha=0.6 k=3: E=2.18
+[SD]   alpha=0.6 k=5: E=2.38
+[SD]   alpha=0.8 k=3: E=2.95
+[SD]   alpha=0.8 k=5: E=3.69
+[SD] phone-drafts/desktop-verifies k=3 alpha=0.7: 13.8 tok/s vs desktop alone 50 tok/s
+[SD] phone-drafts/desktop-verifies k=5 alpha=0.7: 10.4 tok/s vs desktop alone 50 tok/s
+[SD] capacity-bound S, k=3 alpha=0.7: cross-device 3.06 tok/s vs in-node 2.98 tok/s vs plain 1.49 tok/s
+[SD] capacity-bound S, k=5 alpha=0.7: cross-device 3.51 tok/s vs in-node 3.35 tok/s vs plain 1.49 tok/s
+[WR] phone local: TTFT 16.7 s, total 76.5 s
+[WR] Mac peer:    TTFT 1.27 s, total 7.9 s  (speed-up TTFT x13, total x9.7)
+[WR] phone energy avoided ~382 J = 0.7% of a 15.4 Wh battery (ASSUMED 5 W draw)
+[FO] fan-out ceiling = sum/fastest = 1.65x for rates [1000.0, 400.0, 250.0] (ASSUMED)
+
+#1 peer Mac (AC, idle, model loaded): score=10977 usable=True
+    estimate: {"batteryCostMs": 0, "batteryUsedPermille": 0, "decodeEffMilliTokPerSec": 45000, "decodeMs": 6645, "energyMilliJ": 315800, "firstTokMs": 5, "heatCostMs": 0, "loadMs": 0, "netMs": 11, "prefillMs": 1250, "queueMs": 0, "totalMs": 7911, "ttftMs": 1266}
+    terms:    {"S1_timeMs": 9177, "S2_batteryMs": 0, "S3_heatMs": 0, "S4_localityBiasMs": 1000, "S5_qualityMs": 800, "S6_uncertaintyMs": 0}
+#2 peer Deck (AC, busy with one queued job, file not loaded, state STALE): score=69623 usable=True
+    estimate: {"batteryCostMs": 0, "batteryUsedPermille": 0, "decodeEffMilliTokPerSec": 14000, "decodeMs": 21358, "energyMilliJ": 382875, "firstTokMs": 6, "heatCostMs": 0, "loadMs": 5028, "netMs": 77, "prefillMs": 4167, "queueMs": 9000, "totalMs": 39636, "ttftMs": 18278}
+    terms:    {"S1_timeMs": 57914, "S2_batteryMs": 0, "S3_heatMs": 0, "S4_localityBiasMs": 1000, "S5_qualityMs": 800, "S6_uncertaintyMs": 9909}
+#3 self (phone, battery 60%, light thermal): score=146167 usable=True
+    estimate: {"batteryCostMs": 14000, "batteryUsedPermille": 7, "decodeEffMilliTokPerSec": 5000, "decodeMs": 59800, "energyMilliJ": 382335, "firstTokMs": 0, "heatCostMs": 38233, "loadMs": 0, "netMs": 0, "prefillMs": 16667, "queueMs": 0, "totalMs": 76467, "ttftMs": 16667}
+    terms:    {"S1_timeMs": 93134, "S2_batteryMs": 14000, "S3_heatMs": 38233, "S4_localityBiasMs": 0, "S5_qualityMs": 800, "S6_uncertaintyMs": 0}
+winner=RWLS-SQQ3-SEZA-5MRW runner-up=K7QD-2MXA-PL4E-9TNB dominant term=S1_timeMs (+48737 ms for runner-up)

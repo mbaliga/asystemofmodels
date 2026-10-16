@@ -1,0 +1,36 @@
+ASOM CAPABILITY REPORT
+Device: Example Phone 1 by ExampleVendor (phone)
+Report 17, signed 2026-09-29 10:00 UTC, valid until 2026-09-29 10:10 UTC
+Signer: node XWWD-3XQW-7TEB-MU27
+
+VERIFICATION (checked by this viewer, not stated by the device)
+- Signature: valid. The report has not changed since this key signed it.
+- Signer key: matches the key you paired with.
+- Key storage: StrongBox secure element (self-reported, not attested).
+- Freshness: signed for your request.
+- Not proven: that the measurements were honest or typical, that the device model is true,
+  or that the benchmark software was unmodified.
+
+DEVICE
+- Chip: ExampleSoC 8 by ExampleSilicon, 8 CPU cores
+- Memory: 17.2 GB
+- Accelerators: GPU ExampleGPU 800 (opencl, vulkan); NPU ExampleNPU (no API used)
+- OS: android 16, security patch 2026-09-01
+- Cooling: fan; power: battery
+- Benchmark: asom-bench 1.0.0, method asom-bench-method/1, llama.cpp 0123abcd
+
+RESULTS
+1. example-3b-instruct Q4_K_M (2.0 GB file) on opencl, measured 2026-09-28 14:02 UTC
+   - Writes about 18.4 tokens/s at 512 tokens of context, 15.1 tokens/s at 3584.
+   - Reads prompts at about 212.0 tokens/s; first token after 2.5 s for a 512-token prompt.
+   - Under sustained load (10 min 0 s): slows down after 3 min 10 s, settles at 11.2 tokens/s (61% of the short-context speed).
+   - Memory: needs about 2.6 GB; 8.3 GB was free before loading, leaving about 5.7 GB.
+   - Power: about 6.1 W (from battery current); on battery, battery 87% at start.
+   - Runs: 5 of 5 completed, 0 discarded.
+2. example-3b-instruct Q8_0 (3.4 GB file) on cpu, measured 2026-09-28 14:40 UTC
+   - Writes about 9.8 tokens/s at 512 tokens of context.
+   - Reads prompts at about 61.0 tokens/s; first token after 8.6 s for a 512-token prompt.
+   - Under sustained load (5 min 0 s): no slowdown detected; settles at 9.1 tokens/s.
+   - Memory: needs about 3.9 GB; 8.1 GB was free before loading, leaving about 4.2 GB.
+   - Power: not measured; charging, battery 64% at start.
+   - Runs: 3 of 5 completed, 1 discarded. Few runs: treat as rough.

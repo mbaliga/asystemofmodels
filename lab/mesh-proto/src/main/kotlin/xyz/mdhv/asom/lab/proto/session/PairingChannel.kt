@@ -1,0 +1,246 @@
+package xyz.mdhv.asom.lab.proto.session
+
+import java.io.IOException
+import xyz.mdhv.asom.lab.json.Base64Strict
+import xyz.mdhv.asom.lab.ledger.NodeLedger
+import xyz.mdhv.asom.lab.proto.pairing.MsgParse
+import xyz.mdhv.asom.lab.proto.pairing.PairDirectionGuard
+import xyz.mdhv.asom.lab.proto.pairing.PairMessages
+import xyz.mdhv.asom.lab.proto.pairing.PairOrientation
+import xyz.mdhv.asom.lab.proto.pairing.PairSide
+import xyz.mdhv.asom.lab.proto.transport.MeshConnection
+import xyz.mdhv.asom.lab.proto.wire.ConnMode
+import xyz.mdhv.asom.lab.proto.wire.FrameTypes
+import xyz.mdhv.asom.lab.proto.wire.Inbound
+import xyz.mdhv.asom.lab.proto.wire.MeshError
+import xyz.mdhv.asom.lab.proto.wire.MessageCodec
+import xyz.mdhv.asom.lab.proto.wire.PairMsg
+import xyz.mdhv.asom.lab.proto.wire.Parsed
+import xyz.mdhv.asom.lab.proto.wire.PeerError
+import xyz.mdhv.asom.lab.proto.wire.PeerRole
+import xyz.mdhv.asom.lab.proto.wire.RawFrame
+
+/**
+ * The node-wide record of session ids (the last 65,536 a node dialled, minted or accepted): [claim] says whether [id] was new and records it. A host passes
+ * its node's registry (`MeshNode.claimSessionId`), so that a pairing connection can never take an id that another session of the node already names (ERRATA ERR-FX3-PW-1).
+ */
+fun interface SessionIdClaims {
+    fun claim(id: String): Boolean
+}
+
+/**
+ * The per-frame ledger side of a pairing-mode connection (LAB_SPEC 7.6: one `PAIRING` row per `PAIR_*` frame on each node, `SESSION` open and close). The
+ * bodies of the messages belong to the pairing track: this class carries them as opaque payloads to [onFrame] and writes the rows, with the same
+ * durable-before rule and the same FC-2 as an established session. The session id is the unpadded base64url of the first 16 bytes of `PAIR_HELLO.nonceS`
+ * (under R4-T-10 the commitment `C`), which both sides know once the hello has crossed (LAB_SPEC 7.5, R4-L-24): the listener, which is D, derives it from the hello
+ * it receives and writes its `SESSION` open row under it once the node-wide [SessionIdClaims] has accepted it as new (a hello whose id is already known is refused with `PROTOCOL_ERROR`
+ * under a locally minted id, and so is a first frame that is not a valid hello), and the dialler, which is S, sends the hello
+ * and keeps its own local connection id, carrying the derived id in `attemptId` from its `PAIR_HELLO` row on (ERRATA ERR-LL-2).
+ */
+class PairingChannel(
+    private val ledger: NodeLedger,
+    conn: MeshConnection,
+    ids: IdSource,
+    /** The node's session id registry; the listener's id comes from the peer's hello and must be new (R4-T-08: the rule `HELLO.sessionNonce` already follows). */
+    private val claims: SessionIdClaims,
+    /** The dialer's id for this connection (the one its `DIAL` rows carry) and the handshake figure those rows recorded, so that L-L15 counts the handshake once (ERRATA ERR-PI-7). */
+    dialSessionId: String? = null,
+    dialHandshakeRecorded: Long = 0,
+    /** Where S is taken from: the TLS role as trust.md 4.3 draws it (the default since R4-T-10; ERRATA ERR-FX2-3), or the first `PAIR_HELLO` for a host that does not know the role. */
+    orientation: PairOrientation = PairOrientation.FROM_TLS_ROLE,
+) {
+    private val wire = Wire(conn)
+    private val role = conn.role
+    private val guard = PairDirectionGuard(if (orientation == PairOrientation.FROM_TLS_ROLE) (if (conn.role == PeerRole.TLS_CLIENT) PairSide.S else PairSide.D) else null)
+    private var inboundFrames = 0
+    private val rows = SessionRows(ledger, dialSessionId ?: ids.b64(16), null, "unknown", null, wire, dialHandshakeRecorded) { failClosedNow() }
+    private var closed = false
+    private val lock = Any()
+    private val earlyExtensions = ArrayList<Long>()
+    private var joinPending = false
+
+    /** Receives each `PAIR_*` payload after its row is durable. */
+    var onFrame: (type: Int, payload: ByteArray) -> Unit = { _, _ -> }
+
+    val sessionId: String get() = rows.sessionId
+
+    val isClosed: Boolean get() = closed
+
+    init {
+        require(conn.mode == ConnMode.PAIRING) { "a pairing channel runs on a pairing-mode connection" }
+        if (dialSessionId == null) claims.claim(rows.sessionId)
+    }
+
+    private fun <T> guarded(default: T, block: () -> T): T = synchronized(lock) {
+        try {
+            block()
+        } catch (e: FailClosed) {
+            default
+        } catch (e: IOException) {
+            closeNow()
+            default
+        }
+    }
+
+    private fun idFrom(hello: ByteArray): String? {
+        val ok = PairMessages.parseHello(hello) as? MsgParse.Ok ?: return null
+        return Base64Strict.encodeUrlNoPad(ok.value.nonceS.copyOfRange(0, 16))
+    }
+
+    /** The listener's `SESSION` open row; extension frames that came before the session had a name are rowed right after it, under the same id (the rule of an established listener, ERR-FX2-7). */
+    private fun openIfListener() {
+        if (role == PeerRole.TLS_SERVER && !rows.opened) {
+            rows.open("pairing")
+            val early = earlyExtensions.toList()
+            earlyExtensions.clear()
+            for (bytes in early) rows.control(rows.frameRow(xyz.mdhv.asom.lab.ledger.MeshKind.CONTROL, "EXT_IGNORED", inn = bytes))
+        }
+    }
+
+    /**
+     * The hello names the session: the listener's id (until its open row is written) or the dialler's `attemptId`, never the dialler's own connection id. Returns
+     * false only for a listener that receives a hello whose id the node already knows: it keeps its minted id and the caller refuses the connection.
+     */
+    private fun nameFromHello(payload: ByteArray, received: Boolean): Boolean {
+        val id = idFrom(payload) ?: return true
+        if (role == PeerRole.TLS_SERVER) {
+            if (!rows.opened) {
+                if (!claims.claim(id) && received) return false
+                rows.sessionId = id
+            }
+        } else if (rows.joinId == null) {
+            rows.joinId = id
+            joinPending = true
+        }
+        return true
+    }
+
+    /** Sends one `PAIR_*` frame on stream 1: row first, then the frame. */
+    fun send(type: Int, payload: ByteArray) = guarded(Unit) {
+        check(!closed && FrameTypes.isPair(type)) { "a PAIR_* frame on an open pairing channel" }
+        check(guard.allowOutbound(type)) { "a PAIR_* frame this end's side may send" }
+        val frame = RawFrame(type, 1, payload)
+        if (type == FrameTypes.PAIR_HELLO) nameFromHello(payload, received = false)
+        openIfListener()
+        rows.control(rows.frameRow(xyz.mdhv.asom.lab.ledger.MeshKind.PAIRING, FrameTypes.nameOf(type), out = appBytes(frame)))
+        joinPending = false
+        wire.write(frame)
+    }
+
+    fun onBytes(buf: ByteArray, off: Int = 0, len: Int = buf.size - off) = guarded(Unit) {
+        if (closed) return@guarded
+        for (ev in wire.decoder.feed(buf, off, len)) {
+            if (closed) break
+            when (ev) {
+                is Inbound.Frame -> if (spent()) refuse(MeshError.PROTOCOL_ERROR) else inbound(ev.frame)
+                is Inbound.ExtIgnored -> if (spent()) {
+                    refuse(MeshError.PROTOCOL_ERROR)
+                } else if (role == PeerRole.TLS_SERVER && !rows.opened) {
+                    if (earlyExtensions.size >= SessionLimits.MAX_EARLY_EXTENSIONS) refuse(MeshError.PROTOCOL_ERROR) else earlyExtensions += ev.appBytes
+                } else {
+                    rows.control(rows.frameRow(xyz.mdhv.asom.lab.ledger.MeshKind.CONTROL, "EXT_IGNORED", inn = ev.appBytes))
+                }
+                is Inbound.Failure -> refuse(ev.error)
+            }
+        }
+    }
+
+    /** Every inbound frame forces a durable row, so a peer that has not been authenticated yet gets a fixed number of them (ERRATA ERR-FX2-6). */
+    private fun spent(): Boolean = ++inboundFrames > MAX_INBOUND_FRAMES
+
+    private fun refuse(error: MeshError) {
+        openIfListener()
+        val err = PeerError(error)
+        rows.control(rows.frameRow(xyz.mdhv.asom.lab.ledger.MeshKind.CONTROL, "ERROR:${error.name}", out = appBytes(MessageCodec.frame(err, 0))))
+        wire.write(MessageCodec.frame(err, 0))
+        closeNow()
+    }
+
+    /** The blocking loop a real transport uses: read until the peer closes or the transport fails, then close the channel. */
+    fun runReadLoop(chunk: Int = 16_384) {
+        val buf = ByteArray(chunk)
+        while (!closed) {
+            val n = try {
+                wire.input.read(buf, 0, buf.size)
+            } catch (e: IOException) {
+                -1
+            }
+            if (n < 0) {
+                close()
+                return
+            }
+            onBytes(buf, 0, n)
+        }
+    }
+
+    fun pumpAvailable(maxChunk: Int = 4096): Int {
+        val buf: ByteArray
+        val n: Int
+        synchronized(lock) {
+            if (closed) return 0
+            val avail = wire.input.available()
+            if (avail <= 0) return 0
+            buf = ByteArray(minOf(avail, maxChunk))
+            n = wire.input.read(buf, 0, buf.size)
+        }
+        if (n > 0) onBytes(buf, 0, n)
+        return maxOf(n, 0)
+    }
+
+    private fun inbound(f: RawFrame) {
+        if (role == PeerRole.TLS_SERVER && f.type == FrameTypes.PAIR_HELLO && !nameFromHello(f.payload, received = true)) return refuse(MeshError.PROTOCOL_ERROR)
+        openIfListener()
+        when (val p = MessageCodec.parse(f, guard)) {
+            is Parsed.Reject -> {
+                val err = PeerError(p.error)
+                val frame = MessageCodec.frame(err, 0)
+                rows.control(rows.frameRow(xyz.mdhv.asom.lab.ledger.MeshKind.CONTROL, "ERROR:${p.error.name}", out = appBytes(frame)))
+                wire.write(frame)
+                closeNow()
+            }
+            is Parsed.Ok -> when (val m = p.message) {
+                is PairMsg -> {
+                    if (f.type == FrameTypes.PAIR_HELLO && role == PeerRole.TLS_CLIENT) nameFromHello(f.payload, received = true)
+                    rows.control(rows.frameRow(xyz.mdhv.asom.lab.ledger.MeshKind.PAIRING, FrameTypes.nameOf(f.type), inn = appBytes(f)))
+                    joinPending = false
+                    onFrame(f.type, f.payload)
+                }
+                is PeerError -> {
+                    rows.control(rows.frameRow(xyz.mdhv.asom.lab.ledger.MeshKind.CONTROL, "ERROR:${m.code.name}", inn = appBytes(f)))
+                    closeNow()
+                }
+                else -> Unit
+            }
+        }
+    }
+
+    fun close() = guarded(Unit) { closeNow() }
+
+    private fun closeNow() {
+        if (closed) return
+        closed = true
+        try {
+            openIfListener()
+        } catch (e: FailClosed) {
+            return
+        }
+        wire.kill()
+        rows.close("close", 200)
+    }
+
+    private fun failClosedNow() {
+        if (closed && rows.closeWritten) return
+        closed = true
+        if (joinPending) {
+            rows.joinId = null
+            joinPending = false
+        }
+        wire.kill()
+        rows.close("close:ledger-failure", 503)
+    }
+
+    companion object {
+        /** The most frames, `PAIR_*` and extensions together, a peer may deliver on one pairing connection; a legitimate ceremony delivers six (ERRATA ERR-FX2-6). */
+        const val MAX_INBOUND_FRAMES = 16
+    }
+}

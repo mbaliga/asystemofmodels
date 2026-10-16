@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=asom
+Comment=Borrow models from your own paired devices
+Exec=qmlscene qml/Main.qml
+Icon=assets/asom.svg
+Terminal=false
+Type=Application
+X-Ubuntu-Touch=true
+X-Lomiri-Touch=true

@@ -1,0 +1,2545 @@
+{
+  "family": "R03",
+  "confVersion": "0.2.0",
+  "specRefs": [
+    "LAB_SPEC.md 6.7 (merge per policy, cap)",
+    "LAB_SPEC.md 6.8 (RL9, RL10, RL11, RL13 exceptions)",
+    "docs/design/mesh/router.md 5.4, 5.5"
+  ],
+  "vectors": [
+    {
+      "id": "R03-001",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "auto: usable sovereign by S, then the v1 cloud order, then unusable sovereign by S",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              100,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              50,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p3/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p3",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": false,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [
+          {
+            "id": "cloud:openrouter/m",
+            "provider": "openrouter",
+            "model": "m",
+            "rank": null,
+            "s1": null
+          },
+          {
+            "id": "cloud:groq/m",
+            "provider": "groq",
+            "model": "m",
+            "rank": null,
+            "s1": null
+          }
+        ],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p2/a1a1a1a1",
+            "PEER:p1/a1a1a1a1",
+            "cloud:openrouter/m",
+            "cloud:groq/m",
+            "PEER:p3/a1a1a1a1"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-002",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "auto: an unusable sovereign candidate goes after every cloud entry even when its score is best",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": false,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [
+          {
+            "id": "cloud:openrouter/m",
+            "provider": "openrouter",
+            "model": "m",
+            "rank": null,
+            "s1": null
+          }
+        ],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "cloud:openrouter/m",
+            "PEER:p1/a1a1a1a1"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-003",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "auto with the user switch neverCloudWhenDevicesCanAnswer: unusable sovereign moves ahead of the cloud",
+      "input": {
+        "policy": "auto",
+        "neverCloud": true,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              100,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p3/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p3",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": false,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [
+          {
+            "id": "cloud:openrouter/m",
+            "provider": "openrouter",
+            "model": "m",
+            "rank": null,
+            "s1": null
+          }
+        ],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p1/a1a1a1a1",
+            "PEER:p3/a1a1a1a1",
+            "cloud:openrouter/m"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-004",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "auto: probe-only entries are last within their block (counterexample to RL9: p1 dominates p2 but is probe-only)",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": true,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              90,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p2/a1a1a1a1",
+            "PEER:p1/a1a1a1a1"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-005",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "auto: probe-only entries are last within the unusable block too",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": false,
+            "probe": true,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              90,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": false,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [
+          {
+            "id": "cloud:openrouter/m",
+            "provider": "openrouter",
+            "model": "m",
+            "rank": null,
+            "s1": null
+          }
+        ],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "cloud:openrouter/m",
+            "PEER:p2/a1a1a1a1",
+            "PEER:p1/a1a1a1a1"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-006",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "tie-break: equal S, this device (SELF) before a peer",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              70,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "SELF:self/a1a1a1a1",
+            "tier": "SELF",
+            "nodeId": "self",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              70,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "LOCAL_MEASURED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "SELF:self/a1a1a1a1",
+            "PEER:p1/a1a1a1a1"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-007",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "tie-break: equal S and tier, by nodeId",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              70,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              70,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p1/a1a1a1a1",
+            "PEER:p2/a1a1a1a1"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-008",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "tie-break: equal S, tier and node, by modelId then sha",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/b2b2b2b2",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "zeta",
+            "sha": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+            "terms": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p1/c3c3c3c3",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "alpha",
+            "sha": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "terms": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "alpha",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p1/a1a1a1a1",
+            "PEER:p1/c3c3c3c3",
+            "PEER:p1/b2b2b2b2"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-009",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "auto: this device counts as usable, so it is in the first block whatever the gate says",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "SELF:self/a1a1a1a1",
+            "tier": "SELF",
+            "nodeId": "self",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              500,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "LOCAL_MEASURED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              100,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [
+          {
+            "id": "cloud:openrouter/m",
+            "provider": "openrouter",
+            "model": "m",
+            "rank": null,
+            "s1": null
+          }
+        ],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p1/a1a1a1a1",
+            "SELF:self/a1a1a1a1",
+            "cloud:openrouter/m"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-010",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "local-only: this device only, by S",
+      "input": {
+        "policy": "local-only",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "SELF:self/a1a1a1a1",
+            "tier": "SELF",
+            "nodeId": "self",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              90,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "LOCAL_MEASURED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "SELF:self/b2b2b2b2",
+            "tier": "SELF",
+            "nodeId": "self",
+            "modelId": "m",
+            "sha": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+            "terms": [
+              30,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "LOCAL_MEASURED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "SELF:self/b2b2b2b2",
+            "SELF:self/a1a1a1a1"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-011",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cheapest: sovereign by (S2 + S3), then S; the cloud after every sovereign entry",
+      "input": {
+        "policy": "cheapest",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              500,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              999,
+              0,
+              100,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p3/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p3",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              50,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [
+          {
+            "id": "cloud:openrouter/m",
+            "provider": "openrouter",
+            "model": "m",
+            "rank": null,
+            "s1": null
+          },
+          {
+            "id": "cloud:groq/m",
+            "provider": "groq",
+            "model": "m",
+            "rank": null,
+            "s1": null
+          }
+        ],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p3/a1a1a1a1",
+            "PEER:p2/a1a1a1a1",
+            "PEER:p1/a1a1a1a1",
+            "cloud:openrouter/m",
+            "cloud:groq/m"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-012",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cheapest: equal S2 + S3 falls back to S",
+      "input": {
+        "policy": "cheapest",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              200,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              100,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p2/a1a1a1a1",
+            "PEER:p1/a1a1a1a1"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-013",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cheapest: probe-only after non-probe with the same (S2 + S3)",
+      "input": {
+        "policy": "cheapest",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              100,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": true,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              900,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p2/a1a1a1a1",
+            "PEER:p1/a1a1a1a1"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-014",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cheapest: an unusable sovereign candidate still precedes priced cloud",
+      "input": {
+        "policy": "cheapest",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              900,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": false,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [
+          {
+            "id": "cloud:openrouter/m",
+            "provider": "openrouter",
+            "model": "m",
+            "rank": null,
+            "s1": null
+          }
+        ],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p1/a1a1a1a1",
+            "cloud:openrouter/m"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-015",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "fastest: each sovereign entry goes before the first cloud entry whose estimate it beats; the cloud order never changes",
+      "input": {
+        "policy": "fastest",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              40,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              150,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [
+          {
+            "id": "cloud:openrouter/m",
+            "provider": "openrouter",
+            "model": "m",
+            "rank": null,
+            "s1": 50
+          },
+          {
+            "id": "cloud:groq/m",
+            "provider": "groq",
+            "model": "m",
+            "rank": null,
+            "s1": 100
+          },
+          {
+            "id": "cloud:anthropic/m",
+            "provider": "anthropic",
+            "model": "m",
+            "rank": null,
+            "s1": 200
+          }
+        ],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p1/a1a1a1a1",
+            "cloud:openrouter/m",
+            "cloud:groq/m",
+            "PEER:p2/a1a1a1a1",
+            "cloud:anthropic/m"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-016",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "fastest: an unmeasured cloud entry (no estimate) is beaten by any sovereign entry",
+      "input": {
+        "policy": "fastest",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              9000,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [
+          {
+            "id": "cloud:openrouter/m",
+            "provider": "openrouter",
+            "model": "m",
+            "rank": null,
+            "s1": 50
+          },
+          {
+            "id": "cloud:groq/m",
+            "provider": "groq",
+            "model": "m",
+            "rank": null,
+            "s1": null
+          }
+        ],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "cloud:openrouter/m",
+            "PEER:p1/a1a1a1a1",
+            "cloud:groq/m"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-017",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "fastest: a tie goes to the cloud (an entry must beat, not tie)",
+      "input": {
+        "policy": "fastest",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              50,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [
+          {
+            "id": "cloud:openrouter/m",
+            "provider": "openrouter",
+            "model": "m",
+            "rank": null,
+            "s1": 50
+          }
+        ],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "cloud:openrouter/m",
+            "PEER:p1/a1a1a1a1"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-018",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "fastest: sovereign entries in non-decreasing S1 (probe-only after equal S1 only: RL10 outranks the partition)",
+      "input": {
+        "policy": "fastest",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              30,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": true,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              60,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p3/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p3",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              30,
+              5,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p3/a1a1a1a1",
+            "PEER:p1/a1a1a1a1",
+            "PEER:p2/a1a1a1a1"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-019",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "best-reasoning: by catalogue rank, sovereign first on equal rank, the cloud order unchanged",
+      "input": {
+        "policy": "best-reasoning",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": 3,
+            "key": null
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              99,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": 2,
+            "key": null
+          }
+        ],
+        "cloud": [
+          {
+            "id": "cloud:anthropic/m",
+            "provider": "anthropic",
+            "model": "m",
+            "rank": 1,
+            "s1": null
+          },
+          {
+            "id": "cloud:openrouter/m",
+            "provider": "openrouter",
+            "model": "m",
+            "rank": 2,
+            "s1": null
+          },
+          {
+            "id": "cloud:groq/m",
+            "provider": "groq",
+            "model": "m",
+            "rank": 3,
+            "s1": null
+          }
+        ],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "cloud:anthropic/m",
+            "PEER:p2/a1a1a1a1",
+            "cloud:openrouter/m",
+            "PEER:p1/a1a1a1a1",
+            "cloud:groq/m"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-020",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "best-reasoning: unranked entries last, sovereign before cloud among them",
+      "input": {
+        "policy": "best-reasoning",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [
+          {
+            "id": "cloud:openrouter/m",
+            "provider": "openrouter",
+            "model": "m",
+            "rank": 1,
+            "s1": null
+          },
+          {
+            "id": "cloud:groq/m",
+            "provider": "groq",
+            "model": "m",
+            "rank": null,
+            "s1": null
+          }
+        ],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "cloud:openrouter/m",
+            "PEER:p1/a1a1a1a1",
+            "cloud:groq/m"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-021",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "best-reasoning: equal rank orders sovereign by (probe-only, S)",
+      "input": {
+        "policy": "best-reasoning",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": true,
+            "claim": "CORROBORATED",
+            "rank": 2,
+            "key": null
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              50,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": 2,
+            "key": null
+          },
+          {
+            "id": "PEER:p3/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p3",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              900,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": 1,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p3/a1a1a1a1",
+            "PEER:p2/a1a1a1a1",
+            "PEER:p1/a1a1a1a1"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-022",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap: the top UNVERIFIED candidate wins its first would-win placement",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "UNVERIFIED",
+            "rank": null,
+            "key": {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal"
+            }
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              20,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p1/a1a1a1a1",
+            "PEER:p2/a1a1a1a1"
+          ],
+          "capDelta": [
+            {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal",
+              "wouldWinInc": 1,
+              "wonInc": 1,
+              "swapped": false
+            }
+          ],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-023",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap: wouldWin 1, won 1: ceilDiv(2, 4) = 1 <= won, so the next usable sovereign candidate takes the placement (counterexample to RL9 and RL10: the cap swaps)",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "UNVERIFIED",
+            "rank": null,
+            "key": {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal"
+            }
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              20,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": [
+          {
+            "nodeId": "p1",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "wouldWin": 1,
+            "won": 1
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p2/a1a1a1a1",
+            "PEER:p1/a1a1a1a1"
+          ],
+          "capDelta": [
+            {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal",
+              "wouldWinInc": 1,
+              "wonInc": 0,
+              "swapped": true
+            }
+          ],
+          "cappedSwap": true
+        }
+      }
+    },
+    {
+      "id": "R03-024",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap: wins are allowed at would-win counts 1, 5, 9: wouldWin 4, won 1 -> 5th would-win, ceilDiv(5, 4) = 2 > 1, it wins",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "UNVERIFIED",
+            "rank": null,
+            "key": {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal"
+            }
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              20,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": [
+          {
+            "nodeId": "p1",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "wouldWin": 4,
+            "won": 1
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p1/a1a1a1a1",
+            "PEER:p2/a1a1a1a1"
+          ],
+          "capDelta": [
+            {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal",
+              "wouldWinInc": 1,
+              "wonInc": 1,
+              "swapped": false
+            }
+          ],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-025",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap: wouldWin 2, won 1 -> 3rd, ceilDiv(3, 4) = 1 <= 1, swap",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "UNVERIFIED",
+            "rank": null,
+            "key": {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal"
+            }
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              20,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": [
+          {
+            "nodeId": "p1",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "wouldWin": 2,
+            "won": 1
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p2/a1a1a1a1",
+            "PEER:p1/a1a1a1a1"
+          ],
+          "capDelta": [
+            {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal",
+              "wouldWinInc": 1,
+              "wonInc": 0,
+              "swapped": true
+            }
+          ],
+          "cappedSwap": true
+        }
+      }
+    },
+    {
+      "id": "R03-026",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap: only when another USABLE sovereign candidate exists (the other is unusable)",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "UNVERIFIED",
+            "rank": null,
+            "key": {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal"
+            }
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              20,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": false,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [
+          {
+            "id": "cloud:openrouter/m",
+            "provider": "openrouter",
+            "model": "m",
+            "rank": null,
+            "s1": null
+          }
+        ],
+        "caps": [
+          {
+            "nodeId": "p1",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "wouldWin": 9,
+            "won": 9
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p1/a1a1a1a1",
+            "cloud:openrouter/m",
+            "PEER:p2/a1a1a1a1"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-027",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap: the cap never moves work to the cloud (no other sovereign candidate)",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "UNVERIFIED",
+            "rank": null,
+            "key": {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal"
+            }
+          }
+        ],
+        "cloud": [
+          {
+            "id": "cloud:openrouter/m",
+            "provider": "openrouter",
+            "model": "m",
+            "rank": null,
+            "s1": null
+          }
+        ],
+        "caps": [
+          {
+            "nodeId": "p1",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "wouldWin": 9,
+            "won": 9
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p1/a1a1a1a1",
+            "cloud:openrouter/m"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-028",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap: a CORROBORATED top candidate is not capped",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              20,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": [
+          {
+            "nodeId": "p1",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "wouldWin": 9,
+            "won": 9
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p1/a1a1a1a1",
+            "PEER:p2/a1a1a1a1"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-029",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap: this device (LOCAL_MEASURED) is never capped",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "SELF:self/a1a1a1a1",
+            "tier": "SELF",
+            "nodeId": "self",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "LOCAL_MEASURED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              20,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": []
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "SELF:self/a1a1a1a1",
+            "PEER:p2/a1a1a1a1"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-030",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap: a cloud entry ahead of the sovereign candidate means there is no would-win placement to cap (fastest)",
+      "input": {
+        "policy": "fastest",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              90,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "UNVERIFIED",
+            "rank": null,
+            "key": {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal"
+            }
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              95,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [
+          {
+            "id": "cloud:openrouter/m",
+            "provider": "openrouter",
+            "model": "m",
+            "rank": null,
+            "s1": 10
+          }
+        ],
+        "caps": [
+          {
+            "nodeId": "p1",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "wouldWin": 9,
+            "won": 9
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "cloud:openrouter/m",
+            "PEER:p1/a1a1a1a1",
+            "PEER:p2/a1a1a1a1"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-031",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap: the swap takes the best OTHER usable sovereign candidate (the first usable one in order)",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "UNVERIFIED",
+            "rank": null,
+            "key": {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal"
+            }
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              30,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": false,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p3/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p3",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              40,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": [
+          {
+            "nodeId": "p1",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "wouldWin": 1,
+            "won": 1
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p3/a1a1a1a1",
+            "PEER:p1/a1a1a1a1",
+            "PEER:p2/a1a1a1a1"
+          ],
+          "capDelta": [
+            {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal",
+              "wouldWinInc": 1,
+              "wonInc": 0,
+              "swapped": true
+            }
+          ],
+          "cappedSwap": true
+        }
+      }
+    },
+    {
+      "id": "R03-032",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap: the counters of backend metal still count after the peer's live state switches to vulkan (wouldWin 3, won 1 -> 4th, ceilDiv(4, 4) = 1 <= 1, swap) (LTQ-01)",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "UNVERIFIED",
+            "rank": null,
+            "key": {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "vulkan"
+            }
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              20,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": [
+          {
+            "nodeId": "p1",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "wouldWin": 3,
+            "won": 1
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p2/a1a1a1a1",
+            "PEER:p1/a1a1a1a1"
+          ],
+          "capDelta": [
+            {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "vulkan",
+              "wouldWinInc": 1,
+              "wonInc": 0,
+              "swapped": true
+            }
+          ],
+          "cappedSwap": true
+        }
+      }
+    },
+    {
+      "id": "R03-033",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap: counters on two backends of one file add up (metal 2/1 and vulkan 1/0 -> wouldWin 3, won 1 -> swap) (LTQ-01)",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "UNVERIFIED",
+            "rank": null,
+            "key": {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "vulkan"
+            }
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              20,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": [
+          {
+            "nodeId": "p1",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "wouldWin": 2,
+            "won": 1
+          },
+          {
+            "nodeId": "p1",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "vulkan",
+            "wouldWin": 1,
+            "won": 0
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p2/a1a1a1a1",
+            "PEER:p1/a1a1a1a1"
+          ],
+          "capDelta": [
+            {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "vulkan",
+              "wouldWinInc": 1,
+              "wonInc": 0,
+              "swapped": true
+            }
+          ],
+          "cappedSwap": true
+        }
+      }
+    }
+  ]
+}

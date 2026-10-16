@@ -1,0 +1,4410 @@
+{
+  "family": "W01",
+  "confVersion": "0.2.0",
+  "specRefs": [
+    "LAB_SPEC.md 3.5 (W01-100..299)",
+    "REVIEW_ROUND3.md R3-CLOSURE-11 (4)"
+  ],
+  "vectors": [
+    {
+      "id": "W01-100",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 1: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.0017067791421919252",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00170678",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-101",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 2: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.15980829936515695",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.1598083",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-102",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 3: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "47.97669083556739",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "47.97669084",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-103",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 4: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "7.72594100586536E-5",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00007726",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-104",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 5: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "7.70746762374461E-5",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00007707",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-105",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 6: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.2465121395230869",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.24651214",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-106",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 7: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "4.475438096371431",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "4.4754381",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-107",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 8: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "5.672035996624482E-4",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.0005672",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-108",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 9: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.3822784214569813E-6",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000138",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-109",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 10: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.541954294818386",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.54195429",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-110",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 11: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.7897408354038833E-5",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.0000279",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-111",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 12: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.004566926884768964",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00456693",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-112",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 13: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.0099897868766235E-4",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.000101",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-113",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 14: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "6.774370926990555E-4",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00067744",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-114",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 15: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "6.246250512324624E-5",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00006246",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-115",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 16: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "6.876776038367887E-8",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000007",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-116",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 17: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.012551078400576308",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.01255108",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-117",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 18: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.9308000909473797",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.93080009",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-118",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 19: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.03153223156002014",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.03153223",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-119",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 20: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "5.340355875911411",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "5.34035588",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-120",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 21: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "5.315720339491932E-9",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000001",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-121",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 22: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "7.86250969627252E-9",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000001",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-122",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 23: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.8489148400959033E-4",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00028489",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-123",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 24: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.2604648402723472E-8",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000002",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-124",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 25: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.4322700253121577E-6",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000143",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-125",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 26: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "3.364441732233046E-9",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-126",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 27: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "4.685099951545523E-4",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00046851",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-127",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 28: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.0710360544205287",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.07103605",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-128",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 29: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "3.0285240888741696E-9",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-129",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 30: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "94.45540573958215",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "94.45540574",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-130",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 31: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.0037702825974758377",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00377028",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-131",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 32: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.002834957576501931",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00283496",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-132",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 33: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.338093224191771E-5",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00002338",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-133",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 34: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "6.743013455546854E-5",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00006743",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-134",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 35: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "6.109485302029744E-7",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000061",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-135",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 36: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "6.71941204124624E-4",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00067194",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-136",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 37: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "9.558256562608201E-4",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00095583",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-137",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 38: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.1700546911900422",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.17005469",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-138",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 39: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.9962503390783962",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.99625034",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-139",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 40: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.022610393551600834",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.02261039",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-140",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 41: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "3.020724592160989",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "3.02072459",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-141",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 42: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.06165549024243676",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.06165549",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-142",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 43: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "3.980758981196614E-7",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.0000004",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-143",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 44: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.016542106843470922",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.01654211",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-144",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 45: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "3.614085006705178",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "3.61408501",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-145",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 46: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.708616071665289",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "1.70861607",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-146",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 47: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "3.7048065116357966E-6",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.0000037",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-147",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 48: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "5.636020611920553E-8",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000006",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-148",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 49: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "6.812857875671019",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "6.81285788",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-149",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 50: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "10.954480849520273",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "10.95448085",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-150",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 51: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.0913129693812725E-6",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000209",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-151",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 52: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.8017821160381823E-8",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000003",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-152",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 53: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "3.824020026852905E-6",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000382",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-153",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 54: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "21.974200981756237",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "21.97420098",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-154",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 55: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.1393593017519933E-5",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00002139",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-155",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 56: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "9.226546496897748E-9",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000001",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-156",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 57: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.004759343841219394",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00475934",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-157",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 58: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "5.131596648940183E-8",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000005",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-158",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 59: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "34.80592157096854",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "34.80592157",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-159",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 60: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "4.28319656357173",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "4.28319656",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-160",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 61: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "6.180388541460529E-4",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00061804",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-161",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 62: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "5.650280126987097E-9",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000001",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-162",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 63: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.18874078942805175",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.18874079",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-163",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 64: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "7.494305663920291E-4",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00074943",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-164",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 65: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.08403859857314802",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.0840386",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-165",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 66: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.2003056391960697E-6",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.0000012",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-166",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 67: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.5809144445196014E-9",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-167",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 68: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.746557086291205E-9",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-168",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 69: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.0017907372529136067",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00179074",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-169",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 70: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.0901729350983613E-8",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000002",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-170",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 71: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "6.010078824304389E-8",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000006",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-171",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 72: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.1394398769354233",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "1.13943988",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-172",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 73: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "50.068945422751604",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "50.06894542",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-173",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 74: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.03998987728772782",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.03998988",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-174",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 75: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.0016667116153047635",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00166671",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-175",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 76: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.5013352264185562E-4",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00015013",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-176",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 77: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.007308912410481141",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00730891",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-177",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 78: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.8953871454750386",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "2.89538715",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-178",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 79: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.7298791590475675",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.72987916",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-179",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 80: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.583189443308482E-8",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000002",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-180",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 81: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.01397763273732643",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.01397763",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-181",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 82: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.682276035156257E-7",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000027",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-182",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 83: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "4.4676500442877124E-5",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00004468",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-183",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 84: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "5.738979829402421",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "5.73897983",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-184",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 85: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.03433736215961912",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.03433736",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-185",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 86: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "22.347672443764154",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "22.34767244",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-186",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 87: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.18042350012491198",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.1804235",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-187",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 88: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.4788572004892373E-8",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000002",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-188",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 89: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "8.844453903101277E-8",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000009",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-189",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 90: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.13151390956466846",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.13151391",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-190",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 91: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.38421612864138194",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.38421613",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-191",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 92: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.858608135819896E-5",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00001859",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-192",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 93: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.1609837321100815E-8",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000001",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-193",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 94: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "30.324764327041205",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "30.32476433",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-194",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 95: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.003684083578936284",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00368408",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-195",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 96: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.0788404174431434E-8",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000001",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-196",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 97: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.603480043319485",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "2.60348004",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-197",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 98: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.9135916370897306",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "1.91359164",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-198",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 99: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.002896247338197E-9",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-199",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 100: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.4861537389058684E-6",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000249",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-200",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 101: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.1251492319135996",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.12514923",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-201",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 102: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.0030021497820829704",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00300215",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-202",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 103: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.020657437850054795",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.02065744",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-203",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 104: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.0801022957355383E-4",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00020801",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-204",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 105: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.2058699822888551E-4",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00012059",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-205",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 106: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "78.21891101387789",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "78.21891101",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-206",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 107: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.01104435193198383",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.01104435",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-207",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 108: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.1013133803055645E-9",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-208",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 109: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.117665091832969",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "2.11766509",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-209",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 110: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "10.170824403878926",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "10.1708244",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-210",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 111: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.7689330820249507E-5",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00001769",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-211",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 112: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "4.379444257976283E-8",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000004",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-212",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 113: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.009985582789848799",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00998558",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-213",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 114: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.0037328791108952215",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00373288",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-214",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 115: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.0827711931375166E-7",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000011",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-215",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 116: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.2638842217718059E-8",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000001",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-216",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 117: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "74.69584645409407",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "74.69584645",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-217",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 118: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.8829428115509485E-5",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00002883",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-218",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 119: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.6326539601445225E-4",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00016327",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-219",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 120: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.001543349666941989",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00154335",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-220",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 121: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.04276395059635403",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.04276395",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-221",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 122: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.13874818682218384",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.13874819",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-222",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 123: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "46.92607337159279",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "46.92607337",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-223",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 124: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.777630082727011E-4",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00017776",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-224",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 125: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.4280779846119816E-7",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000024",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-225",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 126: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.4631727683176186E-7",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000015",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-226",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 127: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.0767164658761469E-8",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000001",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-227",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 128: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.2183826323754668E-5",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00002218",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-228",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 129: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "4.244925508255849E-7",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000042",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-229",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 130: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "3.5281186011607476E-6",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000353",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-230",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 131: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "4.6028876872147665E-7",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000046",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-231",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 132: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "5.276087546712341E-4",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00052761",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-232",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 133: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.0028463436957420155",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00284634",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-233",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 134: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "7.240091544609629E-9",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000001",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-234",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 135: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.1453877013956911E-4",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00011454",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-235",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 136: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "3.2700539128861727E-9",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-236",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 137: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.019109152924711603",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.01910915",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-237",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 138: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.499546912120268E-9",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-238",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 139: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "8.486431361982687E-9",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000001",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-239",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 140: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.9164509427031342E-5",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00001916",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-240",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 141: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.014983399000367298",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.0149834",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-241",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 142: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.13257121406064684",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.13257121",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-242",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 143: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.0028402337713924588",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00284023",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-243",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 144: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.001087786426038955",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00108779",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-244",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 145: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "9.388407427125115",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "9.38840743",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-245",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 146: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "5.618451092368559E-7",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000056",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-246",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 147: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.1401108297390186",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "1.14011083",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-247",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 148: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "9.789003555732163E-4",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.0009789",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-248",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 149: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.3956843937169947",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "1.39568439",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-249",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 150: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "5.917402315178246E-7",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000059",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-250",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 151: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "5.002957848515808E-7",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.0000005",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-251",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 152: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "4.0749600602491145E-4",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.0004075",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-252",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 153: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.426900101461345E-7",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000024",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-253",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 154: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.778824480953765",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.77882448",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-254",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 155: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "3.480328005266256E-7",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000035",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-255",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 156: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.4991894391866508E-6",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.0000015",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-256",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 157: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "5.265357211949786",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "5.26535721",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-257",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 158: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.8073409020565695E-6",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000181",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-258",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 159: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "5.759095603449799E-8",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000006",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-259",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 160: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "19.39763799893739",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "19.397638",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-260",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 161: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.0740188959501912E-9",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-261",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 162: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "5.833917291195814E-8",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000006",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-262",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 163: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.08805056851409382",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.08805057",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-263",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 164: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.33284012261555224",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.33284012",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-264",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 165: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.5296098868292453E-6",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000153",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-265",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 166: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "7.667710964096955E-6",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000767",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-266",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 167: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.741188178758145",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "2.74118818",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-267",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 168: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "6.565773073191924E-5",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00006566",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-268",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 169: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.8099558416457833E-5",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.0000181",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-269",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 170: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "4.891650544456737E-9",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-270",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 171: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "5.082716640914157E-5",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00005083",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-271",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 172: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "4.5310193912225014E-5",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00004531",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-272",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 173: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.8445219880660682E-9",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-273",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 174: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "4.863775948888656",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "4.86377595",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-274",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 175: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "3.866383863463274E-6",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000387",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-275",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 176: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.5711421911678487E-9",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-276",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 177: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.8211124158301164E-8",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000002",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-277",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 178: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "5.4119193112904765E-6",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000541",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-278",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 179: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "14.811027834937182",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "14.81102783",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-279",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 180: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.5004140765100366",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.50041408",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-280",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 181: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.3777807038902277E-6",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000238",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-281",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 182: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "8.099861443690644E-5",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.000081",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-282",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 183: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.899985453620959E-8",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000002",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-283",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 184: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "5.308911156010328E-5",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00005309",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-284",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 185: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.03081284185970752",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.03081284",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-285",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 186: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "3.432905606664215E-6",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000343",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-286",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 187: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.3492859197330813",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "1.34928592",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-287",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 188: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "12.42163402556087",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "12.42163403",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-288",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 189: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.6298136075923974E-6",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000163",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-289",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 190: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "5.562137548177116E-9",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000001",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-290",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 191: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.298485615723768E-6",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.0000023",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-291",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 192: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "0.10565241389845684",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.10565241",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-292",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 193: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "3.7728256858698574",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "3.77282569",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-293",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 194: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.7231446851353914E-5",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00002723",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-294",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 195: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "4.868803377455313E-8",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000005",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-295",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 196: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "62.677611307530206",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "62.67761131",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-296",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 197: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.1447555618459118E-8",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00000001",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-297",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 198: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "2.119462084434536E-6",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00000212",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-298",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 199: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "1.3174564806655885E-5",
+        "costBasis": "usage"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "usage",
+          "X-Asom-Cost-Est": "0.00001317",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    },
+    {
+      "id": "W01-299",
+      "origin": "generated",
+      "status": "proposed",
+      "oracle": "self",
+      "description": "log-uniform cost, SplittableRandom(1) draw 200: 10^(-9 + 11u) via StrictMath.pow, shortest round-trip string; expected recorded from formatUsd on 21.0.10",
+      "input": {
+        "servedProvider": "openrouter",
+        "servedModel": "llama-3.3-70b",
+        "egress": "cloud",
+        "costEst": "4.979260079628714E-5",
+        "costBasis": "heuristic"
+      },
+      "expect": {
+        "ok": {
+          "X-Asom-Cost-Basis": "heuristic",
+          "X-Asom-Cost-Est": "0.00004979",
+          "X-Asom-Egress": "cloud",
+          "X-Asom-Served-By": "openrouter/llama-3.3-70b"
+        }
+      }
+    }
+  ]
+}
