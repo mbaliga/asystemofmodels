@@ -141,7 +141,7 @@ class Session private constructor(
 
     /** Bytes arrived from the transport. Any chunking gives the same result. */
     fun onBytes(buf: ByteArray, off: Int = 0, len: Int = buf.size - off) = guarded(Unit) {
-        if (phase == Phase.CLOSED) return@guarded
+        if (phase == Phase.CLOSED || revoked()) return@guarded
         for (ev in wire.decoder.feed(buf, off, len)) {
             if (phase == Phase.CLOSED) break
             when (ev) {
@@ -238,7 +238,7 @@ class Session private constructor(
 
     fun offer(spec: OfferSpec, body: ByteArray, listener: AttemptListener): String = synchronized(lock) {
         try {
-            if (phase == Phase.CLOSED) throw SessionClosedForSend()
+            if (phase == Phase.CLOSED || revoked()) throw SessionClosedForSend()
             check(phase == Phase.ESTABLISHED && role == PeerRole.TLS_CLIENT) { "offers go from an established requester session" }
             requester.offer(spec, body, listener)
         } catch (e: FailClosed) {
@@ -252,16 +252,19 @@ class Session private constructor(
         }
     }
 
-    fun cancel(attemptId: String, reason: xyz.mdhv.asom.lab.proto.wire.CancelReason) = guarded(Unit) { requester.cancel(attemptId, reason) }
+    fun cancel(attemptId: String, reason: xyz.mdhv.asom.lab.proto.wire.CancelReason) = guarded(Unit) {
+        if (phase == Phase.CLOSED || revoked()) return@guarded
+        requester.cancel(attemptId, reason)
+    }
 
     fun requestState(cb: (StateResult) -> Unit) = guarded(Unit) {
-        if (phase == Phase.CLOSED) return@guarded cb(StateResult.Lost)
+        if (phase == Phase.CLOSED || revoked()) return@guarded cb(StateResult.Lost)
         check(phase == Phase.ESTABLISHED && role == PeerRole.TLS_CLIENT)
         requester.requestState(cb)
     }
 
     fun requestManifest(challenge: ByteArray, cb: (ManifestResult) -> Unit) = guarded(Unit) {
-        if (phase == Phase.CLOSED) return@guarded cb(ManifestResult.Lost)
+        if (phase == Phase.CLOSED || revoked()) return@guarded cb(ManifestResult.Lost)
         check(phase == Phase.ESTABLISHED && role == PeerRole.TLS_CLIENT)
         requester.requestManifest(challenge, cb)
     }
@@ -301,11 +304,24 @@ class Session private constructor(
         return if (phase == Phase.CLOSED) -1 else (System.nanoTime() - p.atNanos) / 1_000_000L
     }
 
-    /** Applies a posted `GOAWAY` on the driver's thread. True when it did (the session closed, so the caller has nothing further to do). */
+    /** Applies a posted `GOAWAY` on the calling thread, which is never the thread that revoked. True when it did (the session closed, so the caller has nothing further to do). */
     private fun runPosted(): Boolean {
         val p = posted.get() ?: return false
         if (phase == Phase.CLOSED) return false
         goAway(p.reason)
+        return true
+    }
+
+    /**
+     * The registry's word on this peer, applied under the session lock at every entry point that would move a frame or take one as a success (ERRATA ERR-FX3-SS-1;
+     * trust.md 8.1 step 4). A posted `GOAWAY` is written now if no driver has yet; a requester also reads [PeerRegistry.sessionDecision] itself, as the lender reads
+     * `authorize` per frame, so that a revoke that was never posted (it landed before the session was registered) still ends the session. True when the session closed.
+     */
+    private fun revoked(): Boolean {
+        if (runPosted()) return true
+        if (role != PeerRole.TLS_CLIENT || phase == Phase.CLOSED) return false
+        val d = node.registry.sessionDecision(peer) as? SessionDecision.Goaway ?: return false
+        goAway(GoAwayReason.entries.first { it.wire == d.reason.wire })
         return true
     }
 
@@ -420,6 +436,7 @@ class Session private constructor(
             is AckDecision.Refuse -> fail(if (d.error.code == MeshError.VERSION_UNSUPPORTED) Refusal.HELLO_BAD_VERSION else Refusal.HELLO_NODE_MISMATCH)
             is AckDecision.Established -> {
                 if (abs(ack.ts - node.ledger.now()) > c.clockSkewMs) return fail(Refusal.CLOCK_SKEW)
+                if (node.registry.sessionDecision(peer) !is SessionDecision.Keep) return fail(Refusal.PEER_NOT_PAIRED)
                 granted = d.granted
                 limits = d.limits
                 established()

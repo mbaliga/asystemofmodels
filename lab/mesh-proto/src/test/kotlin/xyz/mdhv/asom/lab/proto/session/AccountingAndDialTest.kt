@@ -168,6 +168,17 @@ class AccountingAndDialTest {
         assertEquals(76L, received, "the inbound frames of the session are counted with the same stack")
     }
 
+    @Test
+    fun theJsseCalibrationIsUsedOnlyForTheSuiteAndTheJdksItWasTakenWith() {
+        assertEquals(Overhead.JSSE_17_21, tlsOverheadStack("TLS_AES_256_GCM_SHA384", 17))
+        assertEquals(Overhead.JSSE_17_21, tlsOverheadStack("TLS_AES_256_GCM_SHA384", 21))
+        assertEquals(Overhead.UNCALIBRATED, tlsOverheadStack("TLS_AES_128_GCM_SHA256", 17), "another suite is not the calibrated one")
+        assertEquals(Overhead.UNCALIBRATED, tlsOverheadStack("TLS_CHACHA20_POLY1305_SHA256", 21))
+        assertEquals(Overhead.UNCALIBRATED, tlsOverheadStack("TLS_AES_256_GCM_SHA384", 22), "a JDK nobody calibrated")
+        assertEquals(Overhead.UNCALIBRATED, tlsOverheadStack("TLS_AES_256_GCM_SHA384", 11))
+        assertEquals(Overhead.UNCALIBRATED, tlsOverheadStack(""))
+    }
+
     // ------------------------------------------------------------------------------------------------------------ DIAL
 
     @Test

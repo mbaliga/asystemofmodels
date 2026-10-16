@@ -204,8 +204,7 @@ class Link(val kit: String, val session: Session, val conn: MemConnection) {
     var eof = false
 }
 
-class World(val seed: Long = 1, failA: FailPlan? = null, failB: FailPlan? = null, val maxChunk: Int = 64, keyAName: String = "key1", keyBName: String = "key2", val measured: Boolean = true, limitsB: xyz.mdhv.asom.lab.proto.wire.Limits? = null) {
-    val log = Log()
+class World(val seed: Long = 1, failA: FailPlan? = null, failB: FailPlan? = null, val maxChunk: Int = 64, keyAName: String = "key1", keyBName: String = "key2", val measured: Boolean = true, limitsB: xyz.mdhv.asom.lab.proto.wire.Limits? = null, val log: Log = Log()) {
     val rnd = SplittableRandom(seed)
     private val keyA = TestOnlyKeys.key(keyAName)
     private val keyB = TestOnlyKeys.key(keyBName)

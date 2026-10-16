@@ -5,6 +5,7 @@
   python3 lab/mesh-proto/tools/integration/mutants.py --jdk17 3 5 9   # selected mutants (1-based) on JDK 17 (/opt/jdks/jdk-17)
   python3 lab/mesh-proto/tools/integration/mutants.py --list          # names only
   python3 lab/mesh-proto/tools/integration/mutants.py --baseline      # the unmutated suite must pass first
+  python3 lab/mesh-proto/tools/integration/mutants.py --check         # every target text occurs the expected number of times (no Gradle)
 
 A mutant is a list of exact-string edits (file under lab/mesh-proto/src/main/kotlin/xyz/mdhv/asom/lab/proto, old text, new text, expected number of occurrences). The original bytes of every
 touched file are held in memory and restored in a `finally`; a mutant whose text is not found (or found a different number of times) aborts the script, because a mutant that changed
@@ -53,7 +54,7 @@ MUTANTS = [
         (SES, "            now - establishedAt >= SessionLimits.MAX_AGE_MS -> goAway(GoAwayReason.MAX_AGE)\n", "", 1)]),
     # --- the other timers and limits ---
     ("an accepted attempt whose body never comes never expires", [
-        (LEN, "            if (now - a.acceptedAt >= wait) finish(a, EngineEvent.End(Terminal.ERROR, 408, null))\n", "", 1)]),
+        (LEN, "            if (now - a.acceptedAt >= wait) {\n                a.expired = true\n                finish(a, EngineEvent.End(Terminal.ERROR, 408, null))\n            }\n", "", 1)]),
     ("the body wait ignores the offer's own deadline", [
         (LEN, "val wait = minOf(a.offer.deadlineMs, SessionLimits.BODY_WAIT_MS)", "val wait = SessionLimits.BODY_WAIT_MS", 1)]),
     ("a fifth concurrent stream is accepted (the cap is 5)", [
@@ -63,7 +64,7 @@ MUTANTS = [
     ("the per-source handshake limit is not applied", [
         (LIM, "        if (window.size >= perSourcePerWindow) return Admission.Refused(Admission.Why.PER_SOURCE_RATE)\n", "", 1)]),
     ("the global in-flight handshake limit is not applied", [
-        (LIM, "        if (inFlight >= maxInFlight) return Admission.Refused(Admission.Why.GLOBAL_IN_FLIGHT)\n", "", 1)]),
+        (LIM, "        if (tickets.size >= maxInFlight) return Admission.Refused(Admission.Why.GLOBAL_IN_FLIGHT)\n", "", 1)]),
     ("a chain our verifier refused is reported as a refused socket instead of pin-mismatch", [
         (DIAL, "        MeshTlsRefusal.PEER_CHAIN_REJECTED, MeshTlsRefusal.PEER_CERTIFICATE_MISSING -> PIN_MISMATCH", "        MeshTlsRefusal.PEER_CHAIN_REJECTED, MeshTlsRefusal.PEER_CERTIFICATE_MISSING -> REFUSED", 1)]),
     # --- the fixes this track made, reverted ---
@@ -85,7 +86,7 @@ MUTANTS = [
         (LEN, 'when (val auth = s.node.registry.authorize(s.peer, "state")) {', 'when (val auth = authCache.getOrPut("state") { s.node.registry.authorize(s.peer, "state") }) {', 1),
         (LEN, 'when (val auth = s.node.registry.authorize(s.peer, "manifest")) {', 'when (val auth = authCache.getOrPut("manifest") { s.node.registry.authorize(s.peer, "manifest") }) {', 1)]),
     ("the registry change listener does not close the sessions of a peer that left PAIRED", [
-        (NODE, "                val g = change.goaway ?: return@RegistryListener\n                sessionsOf(change.pin).forEach { it.goAwayForRegistry(g) }\n", "", 1)]),
+        (NODE, "                val g = change.goaway ?: return@RegistryListener\n                sessionsOf(change.pin).forEach { it.postGoAwayForRegistry(g) }\n", "", 1)]),
     ("a duplicate attemptId is accepted", [(NODE, "        return before\n", "        return false\n", 1)]),
     ("the extension skip has no EXT_IGNORED row", [
         (SES, '        rows.control(rows.frameRow(MeshKind.CONTROL, "EXT_IGNORED", inn = e.appBytes))\n', "", 1)]),
@@ -100,7 +101,22 @@ MUTANTS = [
     ("the DIAL intent is appended after the connect", [
         (NODE, "        ledger.appendIntent(row(Phase.INTENT, null, 0, null, null, null))\n        val result = dialer.connect(destAddr)\n",
          "        val result = dialer.connect(destAddr)\n        ledger.appendIntent(row(Phase.INTENT, null, 0, null, null, null))\n", 1)]),
+    ("SessionDriver.close() does not abort the transport first (a driver stalled in a write waits for the 30 s write budget)", [
+        ("integration/SessionDriver.kt", "        stop.set(true)\n        session.abortTransport()\n        session.close()", "        stop.set(true)\n        session.close()", 1)]),
 ]
+
+
+def check_targets():
+    """Every edit of every mutant must find its text the expected number of times in the current sources: a refactor that renames a target would otherwise disarm a mutant silently (ERRATA ERR-FX3-SS-4). Needs no Gradle."""
+    stale = 0
+    for idx, (name, edits) in enumerate(MUTANTS, 1):
+        for rel, old, new, count in edits:
+            found = open(os.path.join(SRC, rel), "rb").read().decode("utf-8").count(old)
+            if found != count:
+                stale += 1
+                print("mutant %d: the text occurs %d times (expected %d) in %s: %s" % (idx, found, count, rel, name))
+    print("mutant targets checked: %d mutants, %d stale edits" % (len(MUTANTS), stale))
+    return 2 if stale else 0
 
 
 def gradle(args, jdk17):
@@ -116,6 +132,10 @@ SUITE = [":mesh-proto:test", "--tests", "xyz.mdhv.asom.lab.proto.integration.*"]
 
 def main(argv):
     jdk17 = "--jdk17" in argv
+    if "--check" in argv:
+        return check_targets()
+    if check_targets():
+        return 2
     if "--list" in argv:
         for i, (name, _) in enumerate(MUTANTS):
             print("%2d  %s" % (i + 1, name))

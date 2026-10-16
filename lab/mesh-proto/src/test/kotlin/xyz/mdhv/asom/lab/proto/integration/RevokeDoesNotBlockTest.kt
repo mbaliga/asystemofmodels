@@ -107,4 +107,34 @@ class RevokeDoesNotBlockTest {
             Wait.until("the revoked, stalled session to end", timeoutMs = boundMs) { session.closed }
         }
     }
+
+    @Test
+    fun closingTheDriverOfASessionStalledInAWriteReturnsWithinTheBoundAndNotAfterTheWriteBudget() {
+        val s = stalledLender(949)
+        s.w.use {
+            awaitStall(s)
+            val session = s.accepted.session!!
+            assertTrue(!session.closed)
+            val t0 = System.nanoTime()
+            val done = CountDownLatch(1)
+            Thread { try { s.accepted.driver!!.close() } finally { done.countDown() } }.also { it.isDaemon = true; it.start() }
+            assertTrue(done.await(boundMs, TimeUnit.MILLISECONDS), "SessionDriver.close() did not return within $boundMs ms while the session was stalled in a write")
+            println("  driver close with a stalled session took ${(System.nanoTime() - t0) / 1_000_000L} ms")
+            Wait.until("the stalled session to end", timeoutMs = boundMs) { session.closed }
+        }
+    }
+
+    @Test
+    fun closingTheDriverRightAfterARevokeOfAStalledLenderIsEquallyBounded() {
+        val s = stalledLender(950)
+        s.w.use { w ->
+            awaitStall(s)
+            val session = s.accepted.session!!
+            w.b.registry.revoke(w.a.pin, 10)
+            val done = CountDownLatch(1)
+            Thread { try { s.accepted.driver!!.close() } finally { done.countDown() } }.also { it.isDaemon = true; it.start() }
+            assertTrue(done.await(boundMs, TimeUnit.MILLISECONDS), "SessionDriver.close() right after a revoke did not return within $boundMs ms")
+            Wait.until("the stalled session to end", timeoutMs = boundMs) { session.closed }
+        }
+    }
 }

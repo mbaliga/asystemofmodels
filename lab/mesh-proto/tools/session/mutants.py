@@ -4,6 +4,7 @@
   python3 lab/mesh-proto/tools/session/mutants.py            # every mutant against the session tests of :mesh-proto
   python3 lab/mesh-proto/tools/session/mutants.py 1 4 7      # selected mutants (1-based)
   python3 lab/mesh-proto/tools/session/mutants.py --list     # names only
+  python3 lab/mesh-proto/tools/session/mutants.py --check    # every target text occurs the expected number of times (no Gradle)
 
 A mutant is a list of exact-string edits (file, old text, new text, expected number of occurrences). The original bytes of every touched file are held in memory and
 restored in a `finally`; a mutant whose text is not found (or found a different number of times) aborts the script, because a mutant that changed nothing proves
@@ -30,8 +31,8 @@ MUTANTS = [
         (LEN, "        s.rows.control(outcomeRow(a, 503, code.wire, out, null))\n        a.bytesOut = out\n        release(a)\n        s.writeAttemptFrame(frame)\n",
          "        s.writeAttemptFrame(frame)\n        s.rows.control(outcomeRow(a, 503, code.wire, out, null))\n        a.bytesOut = out\n        release(a)\n", 1)]),
     ("the requester intent row is appended AFTER the INFER_OFFER is sent", [
-        (REQ, "        node.ledger.appendIntent(intentRow(spec, id))\n        val a = Attempt(stream, id, spec, body, listener)\n        a.startTs = node.ledger.now()\n        a.bytesOut += appBytes(frame)\n        attempts[stream] = a\n        s.writeAttemptFrame(frame)\n",
-         "        val a = Attempt(stream, id, spec, body, listener)\n        a.startTs = node.ledger.now()\n        a.bytesOut += appBytes(frame)\n        attempts[stream] = a\n        s.writeAttemptFrame(frame)\n        node.ledger.appendIntent(intentRow(spec, id))\n", 1)]),
+        (REQ, "        node.ledger.appendIntent(intentRow(spec, id))\n        val a = Attempt(stream, id, spec, body, listener)\n        a.startTs = node.ledger.now()\n        a.lastActivity = a.startTs\n        a.bytesOut += appBytes(frame)\n        attempts[stream] = a\n        s.writeAttemptFrame(frame)\n",
+         "        val a = Attempt(stream, id, spec, body, listener)\n        a.startTs = node.ledger.now()\n        a.lastActivity = a.startTs\n        a.bytesOut += appBytes(frame)\n        attempts[stream] = a\n        s.writeAttemptFrame(frame)\n        node.ledger.appendIntent(intentRow(spec, id))\n", 1)]),
     ("the lender outcome row is appended AFTER INFER_END is sent", [
         (LEN, "        try {\n            s.rows.attempt(row)\n        } catch (e: LedgerWriteException) {\n            a.run?.cancel()\n            release(a)\n            s.failClosedNow()\n            throw FailClosed()\n        }\n        a.bytesOut = out\n        a.done = true\n        release(a)\n        s.writeAttemptFrame(end)\n",
          "        s.writeAttemptFrame(end)\n        try {\n            s.rows.attempt(row)\n        } catch (e: LedgerWriteException) {\n            a.run?.cancel()\n            release(a)\n            s.failClosedNow()\n            throw FailClosed()\n        }\n        a.bytesOut = out\n        a.done = true\n        release(a)\n", 1)]),
@@ -77,7 +78,7 @@ MUTANTS = [
     ("st is sent to a peer that does not hold scope state", [
         (SES, "        if (node.registry.authorize(peer, \"state\") !is AuthDecision.Allow) return null\n", "", 1)]),
     ("the registry change listener does not close the sessions of a peer that left PAIRED", [
-        (NODE, "                val g = change.goaway ?: return@RegistryListener\n                sessionsOf(change.pin).forEach { it.goAwayForRegistry(g) }\n", "", 1)]),
+        (NODE, "                val g = change.goaway ?: return@RegistryListener\n                sessionsOf(change.pin).forEach { it.postGoAwayForRegistry(g) }\n", "", 1)]),
     ("the DIAL intent is appended after the connect", [
         (NODE, "        ledger.appendIntent(row(Phase.INTENT, null, 0, null, null, null))\n        val result = dialer.connect(destAddr)\n",
          "        val result = dialer.connect(destAddr)\n        ledger.appendIntent(row(Phase.INTENT, null, 0, null, null, null))\n", 1)]),
@@ -89,10 +90,33 @@ MUTANTS = [
     ("a CANCEL for any attempt on any stream is accepted silently", [
         (LEN, "        if (a == null || a.offer.attemptId != c.attemptId) return s.fail(Refusal.CANCEL_UNKNOWN_ATTEMPT)\n", "        if (a == null) return\n", 1)]),
     ("an INFER_BODY without an accepted offer is ignored instead of refused", [
-        (LEN, "        if (a == null || a.state != Stage.ACCEPTED) return s.fail(Refusal.BODY_WITHOUT_OFFER)\n", "        if (a == null || a.state != Stage.ACCEPTED) return\n", 1)]),
+        (LEN, "        if (a.state != Stage.ACCEPTED) return s.fail(Refusal.BODY_WITHOUT_OFFER)\n", "        if (a.state != Stage.ACCEPTED) return\n", 1)]),
     ("the SESSION close row does not carry the uncovered input bytes", [
         (ROWS, "bytesIn = (wire.input.count - coveredIn).coerceAtLeast(0), meshCode = code,", "bytesIn = 0, meshCode = code,", 1)]),
+    ("a posted GOAWAY is not applied by offer (the requester keeps offering to a revoked lender)", [
+        (SES, "            if (phase == Phase.CLOSED || revoked()) throw SessionClosedForSend()\n", "            if (phase == Phase.CLOSED) throw SessionClosedForSend()\n", 1)]),
+    ("a posted GOAWAY is not applied by onBytes (answers of a revoked lender are taken as successes)", [
+        (SES, "        if (phase == Phase.CLOSED || revoked()) return@guarded\n        for (ev in", "        if (phase == Phase.CLOSED) return@guarded\n        for (ev in", 1)]),
+    ("a requester never reads the registry itself (only a posted GOAWAY ends the session)", [
+        (SES, "        if (role != PeerRole.TLS_CLIENT || phase == Phase.CLOSED) return false\n", "        return false\n", 1)]),
+    ("a HELLO_ACK from a peer that is not PAIRED establishes the session", [
+        (SES, "                if (node.registry.sessionDecision(peer) !is SessionDecision.Keep) return fail(Refusal.PEER_NOT_PAIRED)\n                granted = d.granted", "                granted = d.granted", 1)]),
+    ("the JSSE calibration is used for every suite and every JDK", [
+        (WIRE, "if (cipherSuite == CALIBRATED_SUITE && jdkFeature in CALIBRATED_JDKS) Overhead.JSSE_17_21 else Overhead.UNCALIBRATED", "Overhead.JSSE_17_21", 1)]),
 ]
+
+
+def check_targets():
+    """Every edit of every mutant must find its text the expected number of times in the current sources: a refactor that renames a target would otherwise disarm a mutant silently (ERRATA ERR-FX3-SS-4). Needs no Gradle."""
+    stale = 0
+    for idx, (name, edits) in enumerate(MUTANTS, 1):
+        for rel, old, new, count in edits:
+            found = open(os.path.join(SRC, rel), "rb").read().decode("utf-8").count(old)
+            if found != count:
+                stale += 1
+                print("mutant %d: the text occurs %d times (expected %d) in %s: %s" % (idx, found, count, rel, name))
+    print("mutant targets checked: %d mutants, %d stale edits" % (len(MUTANTS), stale))
+    return 2 if stale else 0
 
 
 def gradle(args):
@@ -102,6 +126,10 @@ def gradle(args):
 
 
 def main(argv):
+    if "--check" in argv:
+        return check_targets()
+    if check_targets():
+        return 2
     if "--list" in argv:
         for i, (name, _) in enumerate(MUTANTS):
             print("%2d  %s" % (i + 1, name))

@@ -35,11 +35,11 @@ sealed class Ev {
     class Connect(val node: String, val destAddr: String) : Ev()
 }
 
-class Log {
+open class Log {
     val events = ArrayList<Ev>()
 
     @Synchronized
-    fun <E : Ev> add(e: E): E {
+    open fun <E : Ev> add(e: E): E {
         e.seq = events.size
         events += e
         return e

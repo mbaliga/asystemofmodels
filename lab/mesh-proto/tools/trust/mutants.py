@@ -4,6 +4,7 @@
   python3 lab/mesh-proto/tools/trust/mutants.py            # every mutant against :mesh-proto:test
   python3 lab/mesh-proto/tools/trust/mutants.py 1 4 7      # selected mutants (1-based)
   python3 lab/mesh-proto/tools/trust/mutants.py --runner 1 # also run :conformance-runner:test for the selected mutants
+  python3 lab/mesh-proto/tools/trust/mutants.py --check    # every target text occurs exactly once (no Gradle)
 
 Each mutant is an exact-string replacement in one source file. The file is restored byte for byte in a `finally`, and a final `git diff --quiet` of
 the two source packages is NOT used (the files are untracked in a fresh worktree): the original bytes are held in memory and compared after the run.
@@ -66,14 +67,26 @@ MUTANTS = [
     ("a REVOKED pin with a valid proof reaches the challenge (L7)", FSM,
      "is StatusLookup.Known -> if (st.status == PeerStatus.REVOKED) {", "is StatusLookup.Known -> if (st.status == PeerStatus.REVOKED && false) {"),
     ("a second valid hello is accepted after the window was consumed (L6)", FSM,
-     "        is DEvent.HelloReceived -> same(s, PairEffect.Refuse(Refusal.PAIRING_WINDOW_CLOSED))\n        is DEvent.RemoteDecision, is DEvent.AckReceived -> abort(AbortReason.PROTOCOL, Refusal.PROTOCOL_ERROR)",
-     "        is DEvent.HelloReceived -> DStep(DState.Consumed(e.pinS, e.nonceS, e.freshNonceD, e.nowMs), listOf(PairEffect.SendChallenge))\n        is DEvent.RemoteDecision, is DEvent.AckReceived -> abort(AbortReason.PROTOCOL, Refusal.PROTOCOL_ERROR)"),
+     "        is DEvent.HelloReceived -> same(s, PairEffect.Refuse(Refusal.PAIRING_WINDOW_CLOSED))\n        is DEvent.RemoteDecision -> if (foreign(e.connId, s.connId)) same(s, PairEffect.Refuse(Refusal.PROTOCOL_ERROR))",
+     "        is DEvent.HelloReceived -> DStep(DState.Consumed(e.pinS, e.nonceS.copyOf(), e.freshNonceD.copyOf(), e.nowMs, e.connId), listOf(PairEffect.SendChallenge))\n        is DEvent.RemoteDecision -> if (foreign(e.connId, s.connId)) same(s, PairEffect.Refuse(Refusal.PROTOCOL_ERROR))"),
     ("the registry forgets a row that is not REVOKED", REG,
      "if (row.status != PeerStatus.REVOKED) return refuse(RegistryRefusal.NOT_REVOKED)", ""),
     ("a SUSPENDED row is restored by a network status claim", REG,
      "is NetworkEvent.RevocationHint, is NetworkEvent.StatusClaim -> refuse(RegistryRefusal.NETWORK_TRANSITION_RETIRED)",
      "is NetworkEvent.RevocationHint -> refuse(RegistryRefusal.NETWORK_TRANSITION_RETIRED)\n        is NetworkEvent.StatusClaim -> { if (e.claimed == PeerStatus.PAIRED) restore(e.pin, 0); RegistryResult.Updated }"),
 ]
+
+
+def check_targets():
+    """Every mutant must find its text exactly once in the current sources: a refactor that renames a target would otherwise disarm a mutant silently (ERRATA ERR-FX3-SS-4). Needs no Gradle."""
+    stale = 0
+    for idx, (name, rel, old, new) in enumerate(MUTANTS, 1):
+        found = open(os.path.join(SRC, rel), "rb").read().decode("utf-8").count(old)
+        if found != 1:
+            stale += 1
+            print("mutant %d: the text occurs %d times (expected 1) in %s: %s" % (idx, found, rel, name))
+    print("mutant targets checked: %d mutants, %d stale edits" % (len(MUTANTS), stale))
+    return 2 if stale else 0
 
 
 def gradle(args):
@@ -84,6 +97,10 @@ def gradle(args):
 
 def main(argv):
     runner = "--runner" in argv
+    if "--check" in argv:
+        return check_targets()
+    if check_targets():
+        return 2
     picks = [int(a) for a in argv[1:] if a.isdigit()]
     todo = [(i + 1, m) for i, m in enumerate(MUTANTS) if not picks or (i + 1) in picks]
     failures = 0

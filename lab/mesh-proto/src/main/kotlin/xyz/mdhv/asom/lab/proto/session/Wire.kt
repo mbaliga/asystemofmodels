@@ -21,10 +21,18 @@ internal interface ReportsOverheadStack {
     val overheadStack: Overhead.Stack
 }
 
-/** The stack of the ESTIMATED form for [conn]: what it reports, JSSE for the SSLEngine transport, else the RFC 8446 floor ([Overhead.UNCALIBRATED]). */
+/** The one suite and the two JDK feature releases the JSSE figures of [Overhead.JSSE_17_21] were measured with (ERRATA ERR-R4B-LT-2, ERR-FX3-SS-3). */
+private const val CALIBRATED_SUITE = "TLS_AES_256_GCM_SHA384"
+private val CALIBRATED_JDKS = setOf(17, 21)
+
+/** The stack of the ESTIMATED form for an SSLEngine connection: the JSSE calibration only for the suite and JDK it was taken with, else the RFC 8446 floor (R4-L-25). */
+internal fun tlsOverheadStack(cipherSuite: String, jdkFeature: Int = Runtime.version().feature()): Overhead.Stack =
+    if (cipherSuite == CALIBRATED_SUITE && jdkFeature in CALIBRATED_JDKS) Overhead.JSSE_17_21 else Overhead.UNCALIBRATED
+
+/** The stack of the ESTIMATED form for [conn]: what it reports, [tlsOverheadStack] for the SSLEngine transport, else the RFC 8446 floor ([Overhead.UNCALIBRATED]). */
 internal fun overheadStackOf(conn: MeshConnection): Overhead.Stack = when (conn) {
     is ReportsOverheadStack -> conn.overheadStack
-    is TlsMeshConnection -> Overhead.JSSE_17_21
+    is TlsMeshConnection -> tlsOverheadStack(conn.facts.cipherSuite)
     else -> Overhead.UNCALIBRATED
 }
 

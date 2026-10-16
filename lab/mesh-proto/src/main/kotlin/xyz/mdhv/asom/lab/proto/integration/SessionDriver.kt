@@ -44,9 +44,13 @@ class SessionDriver(private val session: Session, private val clock: () -> Long,
         }
     }
 
-    /** Stops the ticker, closes the session (idempotent) and waits, bounded, for both threads. */
+    /**
+     * Stops the ticker, closes the session (idempotent) and waits, bounded, for the threads. The transport is closed first, without the session lock: the watchdog
+     * stops with [stop], and a ticker stalled in a write holds the lock that [Session.close] needs, so only the closed connection can wake it (ERRATA ERR-FX3-SS-2).
+     */
     override fun close() {
         stop.set(true)
+        session.abortTransport()
         session.close()
         ticker.join(2_000)
         reader.join(2_000)
