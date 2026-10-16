@@ -2487,3 +2487,46 @@ Failing before the fix (real output, same tests, unchanged sources): `StrictStar
 After (JDK 17.0.12, `JAVA_HOME=/opt/jdks/jdk-17 ./gradlew --max-workers=2 -p desktop --rerun-tasks desktopTest :packaging:windows:winplatform:test :packaging:macos:macplatform:test`): `BUILD SUCCESSFUL`; summed from build/test-results: node-core 83 tests 0 failures, node 130 tests 0 failures, winplatform 163 tests (27 skipped, the Windows-only ones, as before) 0 failures, macplatform 161 tests (11 skipped, macOS-only) 0 failures. The same four tasks on JDK 21: `BUILD SUCCESSFUL`. `python3 desktop/tools/check_workflows.py --selftest`: `workflow-law selftest OK: 14 mutants caught, 3 clean controls passed`; `python3 desktop/tools/check_workflows.py`: `workflow-law: 6 workflow files; ... spec paths read by a path-filtered lane: 6` / `workflow-law: OK`. `bash desktop/tools/isolation.sh`: `ISOLATION: all checks passed`. `python3 lab/tools/isolation.py`: `isolation check 4: OK (shipped tree byte-identical to the pinned base)`; `python3 lab/tools/check_law.py`: `law: OK`; `python3 desktop/tools/check_paths.py`: `0 problems`; `cmp` of both `desktop-macos.yml` copies: identical; `yaml.safe_load` of the four edited workflows: parses, job counts unchanged. Root `./gradlew --rerun-tasks jvmTest`: `BUILD SUCCESSFUL`, 140 tests, 0 failed (summed from the XML).
 
 Not run: any hosted workflow (the `branches: [main]` change to `apple-ios.yml` and the new `persist-credentials` keys are untested on GitHub Actions), a Windows or macOS machine (the strict start and the GPU re-check are fake-clock LAB evidence of the rule, NEEDS-DEVICE-VALIDATION), the Swift lane (untouched).
+
+
+### Corrections: hosted red runs, VERSION 0.2.0 change record, stale counts, generator guard (track fix3-honesty; findings R4H-01, R4H-02, R4H-07, R4H-10; base 5c4871b)
+
+Evidence label: LAB (this container, JDK 21 and JDK 17 on Linux, Swift 6.1 on Linux), `oracle: self`, NOT DEVICE EVIDENCE. Hosted-CI facts below were read through the GitHub check-runs API; they were not run here. Reading and choices: `lab/ERRATA.md` ERR-FX3-HN-1 to HN-4 and `apple/ERRATA.md` ERR-FX3-HN-4a.
+
+R4H-01, red hosted runs that this file never recorded. `044e214` (build wave r4 group 7): `W0 lab on Windows (JDK 21)` and `(JDK 17)` failed (run 38693013482, jobs 116284629370 and 116284629364). `08ab72f`: `W0 lab on Windows (JDK 21)` failed (run 38693858552, job 116287264272). Fixes: `08ab72f` (the bench-core test read `benchmark.md` with CRLF after the Windows checkout) and `d4baacb` (`ManifestSigner.lockFor` was a non-atomic `getOrPut`, so two signers could take two locks and sign two bodies under one seq; ERR-FX-CV9 was therefore not true under contention before `d4baacb`). `5c4871b`: both `W0 lab on Windows` jobs `success` (run 38697490410). The failing test names of the red runs could not be recovered from the job-log tails (only Gradle frames); the attribution is from the commit messages. Failing-before evidence for the new `SeqRaceTest` case, produced here with `lockFor` temporarily reverted (restored afterwards):
+```
+$ ./gradlew -p lab :manifest:test --tests '*SeqRaceTest*'      (old lockFor)
+SeqRaceTest > theLockForOneStoreIsTheSameObjectForEveryConcurrentCaller() FAILED
+    org.opentest4j.AssertionFailedError: two callers got two different locks for one store ==> expected: <1> but was: <2>
+4 tests completed, 1 failed            BUILD FAILED
+$ same command, fix restored           BUILD SUCCESSFUL
+```
+
+R4H-02, `VERSION` 0.2.0 was not bumped although vectors changed after `2a67003`. The bump is WAIT-OWNER (D30 to D32) and was NOT done. Compared id by id with `2a67003` (script in the session scratchpad): expectation changed M04-420, M04-425, M04-443, M04-444 (generated file), W05-307, W05-308, W07-075; input changed M08-017 and 47 W04 ids (W04-013, W04-014, W04-045..048, W04-500..540); added M04 27, W05 19, W07 2, M08 19, W04 131; every other vector file identical by id; the two JSON schemas under `manifest/schema/` also differ from `2a67003` (enum widenings: `windows`, `ubuntu-touch`, `BATTERY_LOW`, `POWER_SAVER`); `confVersion` 0.2.0 throughout. LAB_SPEC 3.2 ("a generated file changes only together with a `VERSION` bump") is therefore violated at `5c4871b` until builder action 15 lands; `lab/conformance/README.md` now lists the ids and the corrected per-file counts (M04 130, W07 69, M08 96, W04 443, W05 185), and builder action 15 must cover them.
+
+R4H-07, stale counts. Real output at `5c4871b`:
+```
+$ ./gradlew -p lab :conformance-runner:run --args='lines M01,M02,M03,M04,M05,M06,M08' --quiet | wc -l          -> 511
+$ swift run asom-conformance lines M01,M02,M03,M04,M05,M06,M08 | wc -l                                          -> 478
+$ python3 apple/ci/lane_diff.py jvm.lines swift.lines --known ... --not-implemented ...
+    vectors: jvm=511 swift=478 agree=436 disagree=42 (known 42) jvm-only=33 (not implemented 33)
+$ swift test --package-path apple                                                                               -> Executed 265 tests, with 0 failures
+$ python3 apple/ci/test_lane_diff.py                                                                            -> Ran 13 tests OK
+```
+`apple/README.md` (M04 97 of 130, M08 96, "Current counts" sentence, `not-implemented.txt` 33), the `apple/ci/known-disagreements.txt` header (`42 of 478`) and `apple/ERRATA.md` (ERR-R4B-MF-5 limit is permanent: refused by R4-B-02) were updated. No other stale count outside these files was searched for.
+
+R4H-10, the generator that clobbered `L02-frame-rows.json`. Before: a scratch run of `lab/mesh-policy/tools/gen_vectors.py` printed `ledger/L02-frame-rows.json: 21 vectors` and `diff -rq` reported that file as different. After: L02-022 and L02-023 are in the generator and `write()` refuses to drop a committed id; the scratch run printed `L01 56, W07 69, W07p 97, L02 23 vectors` with an empty `diff -rq`; with L02-023 renamed in the scratch copy it printed `refusing to write ledger/L02-frame-rows.json: it would lose committed vector ids ['L02-023']; add them to this generator first` (exit 1).
+
+Gates:
+```
+$ ./gradlew -p lab :mesh-policy:test :manifest:test :conformance-runner:test --max-workers=2 --offline    (JDK 21)   BUILD SUCCESSFUL
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab ... --rerun-tasks                                             (JDK 17)   BUILD SUCCESSFUL
+    summed from build/test-results on JDK 17: mesh-policy 33 tests, manifest 62, conformance-runner 2309 (7 skipped, the existing proposed-skipped cases); failures 0, errors 0
+$ python3 lab/tools/regen_index.py -> INDEX.json: 31 entries (no change)
+$ python3 lab/tools/isolation.py   -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py   -> law: OK
+$ ./gradlew jvmTest --offline      -> BUILD SUCCESSFUL; XML: 140 tests, 0 failures (test tasks from cache: no input of core/* or server changed)
+```
+Not done: `VERSION` bump; `LAB_SPEC.md` R4-L-08 list; hosted CI was not run for this change.
+
+Re-verification of the entry above (same track, second pass, LAB, NOT DEVICE EVIDENCE): every figure was re-run. Hosted check-runs re-read through the GitHub API (`044e214` Windows JDK 21 and 17 failure; `08ab72f` Windows JDK 21 failure, JDK 17 success; `5c4871b` both success). The `lockFor` mutation was re-applied (`locks.getOrPut(store) { Any() }` without `synchronized`): `SeqRaceTest > theLockForOneStoreIsTheSameObjectForEveryConcurrentCaller` failed (`4 tests completed, 1 failed`), then restored (`git status` shows no change to `Signer.kt`). Correction made in this pass: the entry said no file other than the listed vector files differs from `2a67003`; the two JSON schemas under `lab/conformance/manifest/schema/` do differ (enum widenings), and README and `ERR-FX3-HN-2` now say so. Counts re-run: JVM `lines` 511, Swift `lines` 478, `lane_diff.py` `jvm=511 swift=478 agree=436 disagree=42 (known 42) jvm-only=33 (not implemented 33)`, `swift test` `Executed 265 tests, with 0 failures`, `test_lane_diff.py` 13 tests OK. `./gradlew -p lab :mesh-policy:test :manifest:test :conformance-runner:test --rerun-tasks` on JDK 21 and on JDK 17.0.12: `BUILD SUCCESSFUL`, mesh-policy 33, manifest 62, conformance-runner 2309 (7 skipped), 0 failures, 0 errors on both. `isolation.py` OK, `check_law.py` OK, root `jvmTest` `BUILD SUCCESSFUL` (140 tests, 0 failures, from cache).

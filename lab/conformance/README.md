@@ -19,14 +19,14 @@ Evidence label: **LAB**, `oracle: self`, never device evidence.
 | `json/M01-jcs.json` | M01 | 93 hand vectors: the strict parser, JCS and strict base64 (L0.2a) |
 | `manifest/M01-der-raw.json`, `M02-verify-accept.json`, `M03-verify-reject.json`, `M05-render.json`, `M06-derivatives.json`, `manifest/schema/` | M01 (der/raw), M02, M03, M05, M06 | 12, 20, 71, 12 and 10 generated vectors; the two JSON schemas (L0.2, L0.3). The M01 family name is shared by `json/` and `manifest/`; they are different vectors |
 | `manifest/M03-verify-reject-fx.json` | M03 | 37 generated vectors, M03-179..215 (review fix CV-1 to CV-9); the second file of the M03 family, kept apart because `HostileFramesTest` pins 71 vectors in `M03-verify-reject.json` |
-| `bench/M04-derive.json`, `bench/M05-body.json` | M04, M05 | 94 and 30 generated vectors (L0.3) |
+| `bench/M04-derive.json`, `bench/M05-body.json` | M04, M05 | 130 and 30 generated vectors (L0.3) |
 | `ledger/L01-destination-sets.json`, `L02-frame-rows.json` | L01, L02 | 56 and 23 hand vectors (L0.4) |
-| `policy/W07-live-state.json`, `W07p-presence.json` | W07, W07p | 67 and 97 hand vectors (L0.4) |
-| `router/R01-hard-filter.json`, `R02-scoring.json`, `R03-ordering.json`, `R05-failover.json`, `R06-reducers.json`, `M08-claim-tracker.json` | R01, R02, R03, R05, R06, M08 | 91, 50, 33, 44, 68 and 77 vectors (L0.6) |
-| `wire/W04-pairing.json`, `W05-fingerprints.json`, `W06-frames.json`, `W07-state-frames.json` | W04, W05, W06, W07 | 312, 166, 284 and 31 vectors (L0.5, proto-trust and proto-wire; the W07 here is the STATE-frame half of the family whose live-state half is under `policy/`) |
+| `policy/W07-live-state.json`, `W07p-presence.json` | W07, W07p | 69 and 97 hand vectors (L0.4) |
+| `router/R01-hard-filter.json`, `R02-scoring.json`, `R03-ordering.json`, `R05-failover.json`, `R06-reducers.json`, `M08-claim-tracker.json` | R01, R02, R03, R05, R06, M08 | 91, 50, 33, 44, 68 and 96 vectors (L0.6) |
+| `wire/W04-pairing.json`, `W05-fingerprints.json`, `W06-frames.json`, `W07-state-frames.json` | W04, W05, W06, W07 | 443, 185, 284 and 31 vectors (L0.5, proto-trust and proto-wire; the W07 here is the STATE-frame half of the family whose live-state half is under `policy/`) |
 
 Not present at this commit, despite earlier versions of this table: `history/r0/` and `scenarios/` (the simulator's scenarios live in `lab/mesh-sim`, ERRATA ERR-R6-13).
-Counts are read from the files at head `3a91da05` (`INDEX.json` lists 31 files; every vector is `oracle: self`; all `normative` except the proposed ones named under Pass rules: W00-100..104, W01b-reach and the 200 of `W01-generated.json`).
+Counts were re-read from the files at head `5c4871b` (`INDEX.json` lists 31 files; every vector is `oracle: self`; all `normative` except the proposed ones named under Pass rules: W00-100..104, W01b-reach and the 200 of `W01-generated.json`).
 
 Every vector file is one JSON object: `{family, confVersion, specRefs, vectors[]}`; each vector has `id`, `origin`
 (`hand` | `generated`), `status` (`normative` | `proposed` | `illustrative`), `oracle` (`self` | `independent` | `external`),
@@ -83,7 +83,24 @@ or were added while `VERSION` stayed `0.2.0` (every `confVersion` too), so a con
 | `router/` | none | R01-082..091, R02-047..050, R03-032, R03-033, R06-055..068, M08-065..082 |
 | `wire/W04-pairing.json`, `W05-fingerprints.json`, `W06-frames.json`, `W07-state-frames.json` | | new files (wave 3) |
 
-A consumer that pinned the earlier 0.2.0 set must re-read M02-113, M02-118, M02-120, M03-131 and M05-109: their expectations differ.
+A consumer that pinned the 0.2.0 set as it stood at `3733200` must re-read M02-113, M02-118, M02-120, M03-131 and M05-109: their expectations differ. The second table below adds what changed after `2a67003` (the r4 and r4b waves, up to `5c4871b`): a consumer that pinned the set at `2a67003` must also re-read the ids in that table.
+
+### Vector changes after `2a67003` (r4 and r4b waves, `VERSION` still 0.2.0; R4H-02, ERRATA `ERR-FX3-HN-2`)
+
+**LAB_SPEC 3.2 ("a generated file changes only together with a `VERSION` bump") is currently violated for the generated files in this table, pending the bump (WAIT-OWNER: REVISION_4 section 6 action 15 and D30 to D32; R4-L-08 restates the rule but its recorded list stops at the earlier five ids).** The `VERSION` was deliberately not bumped by this change. Compared id by id with the files at `2a67003` (`confVersion` is `0.2.0` before and after in every file):
+
+| File (origin of the changed ids) | Expectation changed | Input changed (expectation the same) | Added |
+|---|---|---|---|
+| `bench/M04-derive.json` (generated) | M04-420, M04-425, M04-443, M04-444 | none | 27: M04-061..066, M04-313..315, M04-326..328, M04-419, M04-426..429, M04-449..458 |
+| `wire/W05-fingerprints.json` (hand) | W05-307, W05-308 | none | 19: W05-422..440 |
+| `policy/W07-live-state.json` (hand) | W07-075 | none | 2: W07-081, W07-082 |
+| `router/M08-claim-tracker.json` (hand) | none | M08-017 | 19: M08-083..101 |
+| `wire/W04-pairing.json` (hand for the 47 changed ids; the file also holds 121 generated vectors) | none | 47: W04-013, W04-014, W04-045..048, W04-500..540 | 131: W04-017..024, W04-450..458, W04-460..468, W04-480..499, W04-700..743, W04-760..780, W04-800..819 |
+
+The generated file `bench/M04-derive.json` is the literal LAB_SPEC 3.2 violation; the hand files are listed because the file-level `confVersion` is the only thing a consumer can compare, and a consumer that pinned `2a67003` would otherwise read different expectations under the same version string. No other vector file differs from `2a67003` in any id (L02-022 and L02-023 were already in `2a67003`). Two non-vector files do differ: `manifest/schema/asom.bench-public.1.schema.json` (the platform enum gained `windows` and `ubuntu-touch`) and `manifest/schema/asom.manifest.1.schema.json` (two enums gained `BATTERY_LOW` and `POWER_SAVER`); both only widen what the schema accepts (ERRATA `ERR-R4B-MF-4`, `ERR-FX3-HN-2`), they carry no `confVersion`, and builder action 15 should still list them.
+
+**Builder action 15 (the `VERSION` bump to 0.3.0, one commit) must cover every id in both tables**, and must regenerate the generated files above from their generators (`lab/mesh-policy/tools/gen_vectors.py` now reproduces L01, L02, W07 and W07p byte for byte and refuses to write a file that would lose a committed id, ERRATA `ERR-FX3-HN-3`).
+
 
 ## Findings recorded by pinning v1 (for the owner; not vector edits)
 

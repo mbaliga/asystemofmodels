@@ -1,4 +1,4 @@
-# Vectors on which the Swift lane (spec-literal reading) and the JVM lane print different verdicts: 42 of 456 (the first Swift lane
+# Vectors on which the Swift lane (spec-literal reading) and the JVM lane print different verdicts: 42 of 478 (the 478 that both lanes print at head 5c4871b; at the first Swift lane
 # diff, I0b, listed 37 of 340; the fix-crypto vectors M02-121, M02-122, M03-191, M03-192, M03-208 are the other 5, all shadowed by the same cause). Explicit on purpose: apple/ci/lane_diff.py fails on any disagreement NOT listed here, on any entry
 # that now agrees, on an entry without a reason, and on a duplicate; apple/ci/test_lane_diff.py shows each of those failures.
 #

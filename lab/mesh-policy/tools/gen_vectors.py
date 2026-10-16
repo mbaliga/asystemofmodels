@@ -4,6 +4,7 @@
 Every EXPECTED value below is typed by hand from LAB_SPEC 6.2, 6.3, 6.5, 7.2, 7.5-7.7 and design 8.4-8.6 (arithmetic such as `9 + payload` is written
 out). Nothing here calls the Kotlin code, so a vector that disagrees with the implementation is a real disagreement to be investigated, never a recording.
 Python 3 standard library only. Run from anywhere; it rewrites the four files, then run `python3 lab/tools/regen_index.py`.
+write() refuses to overwrite a file that would lose a committed vector id, so a vector added by hand to a generated file must be added here too.
 """
 import json
 import os
@@ -27,6 +28,12 @@ def rej(code):
 def write(sub, name, family, refs, vectors):
     path = os.path.join(ROOT, sub, name)
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            have = {v["id"] for v in json.load(f)["vectors"]}
+        lost = sorted(have - {v["id"] for v in vectors})
+        if lost:
+            raise SystemExit(f"refusing to write {sub}/{name}: it would lose committed vector ids {lost}; add them to this generator first")
     doc = {"family": family, "confVersion": CONF, "specRefs": refs, "vectors": vectors}
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(doc, f, indent=2, ensure_ascii=False)
@@ -862,6 +869,24 @@ l02(
         "B": H_B + [r("infer-served", "outcome", "FRAME_TOO_LARGE", 54, 129, 503, 1, a="a1")],
     },
     show=["A", "B"], onlyKinds=["control", "infer-sent", "infer-served"],
+)
+l02(
+    "L02-022", "a received ERROR code and GOAWAY reason that are free text (an address, prompt text, a device name) are stored as ERROR:UNKNOWN and GOAWAY:unknown on both nodes: peer-authored text never reaches a row (LAB_SPEC 7.2, LTQ-04)",
+    HS + [fr("B", "ERROR", 30, stream="0", code="x 192.168.1.20 my prompt text"), fr("B", "GOAWAY", 17, stream="0", code="see you, Alice's iPad"), close("A")],
+    {
+        "A": H_A + [r("control", None, "ERROR:UNKNOWN", 0, 39, 200, 1), r("control", None, "GOAWAY:unknown", 0, 26, 200, 1)],
+        "B": H_B + [r("control", None, "ERROR:UNKNOWN", 39, 0, 200, 1), r("control", None, "GOAWAY:unknown", 26, 0, 200, 1)],
+    },
+    show=["A", "B"], onlyKinds=["control"],
+)
+l02(
+    "L02-023", "a code that only resembles a member of the closed set (lower case, a trailing space, an embedded newline, a prefix) is not a member: it is stored as UNKNOWN (LTQ-04)",
+    HS + [fr("B", "ERROR", 30, stream="0", code="peer_busy"), fr("B", "GOAWAY", 17, stream="0", code="IDLE\nidle"), close("A")],
+    {
+        "A": H_A + [r("control", None, "ERROR:UNKNOWN", 0, 39, 200, 1), r("control", None, "GOAWAY:unknown", 0, 26, 200, 1)],
+        "B": H_B + [r("control", None, "ERROR:UNKNOWN", 39, 0, 200, 1), r("control", None, "GOAWAY:unknown", 26, 0, 200, 1)],
+    },
+    show=["A", "B"], onlyKinds=["control"],
 )
 
 write(
