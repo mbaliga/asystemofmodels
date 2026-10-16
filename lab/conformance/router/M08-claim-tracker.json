@@ -7618,6 +7618,584 @@
           ]
         }
       }
+    },
+    {
+      "id": "M08-102",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX3-TP-1 variation-selector padding: 1,200 letters with 300 U+FE0F (3 bytes each) and 300 U+E0100 (4 bytes each, 2,100 bytes of padding) interleaved: both are default-ignorable (U+FE0F is Mn, U+E0100 is Mn), removed: outBytes 1,200, ratio 973, exactly the unpadded answer",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 20000,
+            "parts": [
+              {
+                "text": "x",
+                "times": 600
+              },
+              {
+                "text": "\ufe0f",
+                "times": 300
+              },
+              {
+                "text": "\udb40\udd00",
+                "times": 300
+              },
+              {
+                "text": "x",
+                "times": 600
+              }
+            ]
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 20500,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 1200,
+          "outTokEst": 300,
+          "predictedMs": 19961,
+          "elapsedMs": 20500,
+          "ratio": 973,
+          "discard": null
+        }
+      }
+    },
+    {
+      "id": "M08-103",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX3-TP-1 combining-grapheme-joiner and filler padding: 1,200 letters with 200 U+034F (Mn, 2 bytes), 100 U+115F (Lo, 3), 100 U+3164 (Lo, 3) and 100 U+FFA0 (Lo, 3) interleaved: all default-ignorable, removed: outBytes 1,200, ratio 973",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 20000,
+            "parts": [
+              {
+                "text": "x",
+                "times": 600
+              },
+              {
+                "text": "\u034f",
+                "times": 200
+              },
+              {
+                "text": "\u115f",
+                "times": 100
+              },
+              {
+                "text": "\u3164",
+                "times": 100
+              },
+              {
+                "text": "\uffa0",
+                "times": 100
+              },
+              {
+                "text": "x",
+                "times": 600
+              }
+            ]
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 20500,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 1200,
+          "outTokEst": 300,
+          "predictedMs": 19961,
+          "elapsedMs": 20500,
+          "ratio": 973,
+          "discard": null
+        }
+      }
+    },
+    {
+      "id": "M08-104",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX3-TP-1 blank-glyph padding: 1,200 letters with 200 U+2800 BRAILLE PATTERN BLANK (So, 3 bytes; not default-ignorable, listed by name), 100 U+17B4 (Mn) and 100 U+180B (Mn) interleaved: removed: outBytes 1,200, ratio 973",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 20000,
+            "parts": [
+              {
+                "text": "x",
+                "times": 600
+              },
+              {
+                "text": "\u2800",
+                "times": 200
+              },
+              {
+                "text": "\u17b4",
+                "times": 100
+              },
+              {
+                "text": "\u180b",
+                "times": 100
+              },
+              {
+                "text": "x",
+                "times": 600
+              }
+            ]
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 20500,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 1200,
+          "outTokEst": 300,
+          "predictedMs": 19961,
+          "elapsedMs": 20500,
+          "ratio": 973,
+          "discard": null
+        }
+      }
+    },
+    {
+      "id": "M08-105",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX3-TP-2 NFC expansion is capped: 300 letters and 300 U+0958 (3 bytes each, 900 raw; NFC expands each to U+0915 U+093C, 6 bytes): the NFC form would be 2,100 bytes, more than was sent; outBytes is min(NFC form, the same text without NFC) = 1,200, ratio 973",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 20000,
+            "parts": [
+              {
+                "text": "x",
+                "times": 300
+              },
+              {
+                "text": "\u0958",
+                "times": 300
+              }
+            ]
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 20500,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 1200,
+          "outTokEst": 300,
+          "predictedMs": 19961,
+          "elapsedMs": 20500,
+          "ratio": 973,
+          "discard": null
+        }
+      }
+    },
+    {
+      "id": "M08-106",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX3-TP-1 control: a visible combining mark is not invisible padding: 600 x (e + U+0300) is 1,800 raw bytes, NFC composes each pair to U+00E8 (2 bytes): outBytes 1,200, ratio 973",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 20000,
+            "parts": [
+              {
+                "text": "e\u0300",
+                "times": 600
+              }
+            ]
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 20500,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 1200,
+          "outTokEst": 300,
+          "predictedMs": 19961,
+          "elapsedMs": 20500,
+          "ratio": 973,
+          "discard": null
+        }
+      }
+    },
+    {
+      "id": "M08-107",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX3-TP-4 a formatted honest answer on the NORMALISED basis: 133 indented lines and 4 letters (1,467 raw bytes, 1,200 after normalisation) in the honest time: outBytes 1,200, ratio 973, CORROBORATED-grade (>= 800) exactly like the plain 1,200-letter answer (M08-002); the bytes-per-token table is measured on this normalised text",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 20000,
+            "parts": [
+              {
+                "text": "  r = f(y)\n",
+                "times": 133
+              },
+              {
+                "text": "xxxx",
+                "times": 1
+              }
+            ]
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 20500,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 1200,
+          "outTokEst": 300,
+          "predictedMs": 19961,
+          "elapsedMs": 20500,
+          "ratio": 973,
+          "discard": null
+        }
+      }
+    },
+    {
+      "id": "M08-108",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX3-TP-4 the trap, pinned: the same formatted answer from a lender running at 90 % of its claim when the table was (wrongly) measured on RAW bytes (4,000 bytes per token over 1,467 raw bytes = 367 tokens, honest time 23,311 / 0.9 = 25,901 ms): the tracker counts 1,200 normalised bytes (300 tokens, predicted 19,961), ratio floor(19,961,000 / 25,901) = 770 < 800: the tracker does not compensate, so a raw-basis table would mark honest formatted answers down; the table must be generated with AnswerText",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 100000,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "t": 25800,
+            "parts": [
+              {
+                "text": "  r = f(y)\n",
+                "times": 133
+              },
+              {
+                "text": "xxxx",
+                "times": 1
+              }
+            ]
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 25901,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 1200,
+          "outTokEst": 300,
+          "predictedMs": 19961,
+          "elapsedMs": 25901,
+          "ratio": 770,
+          "discard": null
+        }
+      }
     }
   ]
 }

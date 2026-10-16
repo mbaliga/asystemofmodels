@@ -1,10 +1,10 @@
 """M08 (the claim tracker and its adversaries, LAB_SPEC 6.6) for gen_vectors.py.
 
 The worked numbers (M08-001..004) and the adversary table (M08-010..022) are the spec's own, with the expected values written out by hand in the descriptions and
-asserted below. The remaining vectors (M08-023 on) are hand-derived and cross-checked against the Python tracker in this file, an independent reading of 6.6.
+asserted below. The remaining vectors (M08-023 on) are hand-derived and cross-checked against the Python tracker in this file (a same-session cross-check, not an independent reading: ERR-FX3-TP-5).
 R3-OVERCLAIM-1: M08-017 does NOT claim the design's 'at most about 2x' padding bound; it pins what the mechanism gives (ratio 2,071 at 3,000 bytes of VISIBLE filler) and the
-worst case at the cap (M08-046, M08-047). r4 (LAB_SPEC R4-L-18, R4-L-19): `outBytes` is counted over the normalised answer text (`normalise()` below, an independent reading with
-`unicodedata`); M08-083..093 pin the normalisation, M08-094..096 interpolation, M08-097 inheritance with no recorded claim body, M08-098..101 the ASC01 state and penalty cases. The
+worst case at the cap (M08-046, M08-047). r4 (LAB_SPEC R4-L-18, R4-L-19): `outBytes` is counted over the normalised answer text (`normalise()` below, a same-session transliteration of the Kotlin and Swift normalisers with
+`unicodedata`, NOT an independent reading: ERR-FX3-TP-5); M08-083..093 pin the normalisation, M08-094..096 interpolation, M08-097 inheritance with no recorded claim body, M08-098..101 the ASC01 state and penalty cases. The
 file is written with ascii_only so that the invisible characters of the normalisation vectors are visible \\uXXXX escapes."""
 import json
 import os
@@ -34,12 +34,24 @@ def base(**kw):
     return d
 
 
-def normalise(text):
-    """LAB_SPEC R4-L-19, in the spec's own order: NFC; remove Unicode Cf and control (Cc) characters; collapse every run of space separators (Zs, Zl, Zp) to one
-    U+0020; trim. Control characters are removed BEFORE whitespace is collapsed, so a tab or a newline is dropped, not collapsed (ERR-R4B-TR-1)."""
-    t = "".join(c for c in unicodedata.normalize("NFC", text) if unicodedata.category(c) not in ("Cf", "Cc"))
+# ERR-FX3-TP-1: the invisible set, spelled out so that no runtime's Unicode table decides it. Default_Ignorable_Code_Point (Unicode 15.0; equal to Perl 5 and the Swift 6.1 runtime property) plus
+# U+2800 BRAILLE PATTERN BLANK, plus the Cf characters assigned after Unicode 13 (U+0890..0891, U+13430..1343F) so that JDK 17 (Unicode 13) and JDK 21 (Unicode 15) agree.
+INVISIBLE = ((0x00AD, 0x00AD), (0x034F, 0x034F), (0x061C, 0x061C), (0x0890, 0x0891), (0x115F, 0x1160), (0x17B4, 0x17B5), (0x180B, 0x180F), (0x200B, 0x200F),
+             (0x202A, 0x202E), (0x2060, 0x206F), (0x2800, 0x2800), (0x3164, 0x3164), (0xFE00, 0xFE0F), (0xFEFF, 0xFEFF), (0xFFA0, 0xFFA0), (0xFFF0, 0xFFF8),
+             (0x13430, 0x1343F), (0x1BCA0, 0x1BCA3), (0x1D173, 0x1D17A), (0xE0000, 0xE0FFF))
+
+
+def invisible(c):
+    cp = ord(c)
+    return unicodedata.category(c) in ("Cf", "Cc") or any(lo <= cp <= hi for lo, hi in INVISIBLE)
+
+
+def strip(text):
+    """Removes invisible characters (Cc, Cf, the INVISIBLE set), collapses every run of space separators (Zs, Zl, Zp) to one U+0020 and trims. No NFC."""
     out, pending = [], False
-    for c in t:
+    for c in text:
+        if invisible(c):
+            continue
         if unicodedata.category(c) in ("Zs", "Zl", "Zp"):
             pending = True
         else:
@@ -48,6 +60,17 @@ def normalise(text):
             pending = False
             out.append(c)
     return "".join(out)
+
+
+def normalise(text):
+    """LAB_SPEC R4-L-19 in the spec's own order, with the invisible set of ERR-FX3-TP-1: NFC first, then `strip`. A tab or a newline (Cc) is removed, never collapsed (ERR-R4B-TR-1)."""
+    return strip(unicodedata.normalize("NFC", text))
+
+
+def counted_bytes(text):
+    """The bytes that count as `outBytes` (ERR-FX3-TP-2): the NFC form, but never more than the same text without NFC. NFC can expand (U+0958, U+1D160) and must not
+    turn a visible character into more counted bytes than it was sent with."""
+    return min(len(normalise(text).encode("utf-8")), len(strip(text).encode("utf-8")))
 
 
 def chunk_text(c):
@@ -63,7 +86,7 @@ def evaluate(inp):
     last = None
     for c in chunks:
         last = max(last or 0, c["tTo"] if "count" in c else c["t"])
-    total = len(normalise("".join(chunk_text(c) for c in chunks)).encode("utf-8"))
+    total = counted_bytes("".join(chunk_text(c) for c in chunks))
     end_t = inp["end"]["t"] if inp["end"] else None
     t_end = max([t for t in (end_t, last) if t is not None])
     elapsed = max(1, t_end - inp["tBodyMs"])
@@ -450,5 +473,33 @@ def trunc_events(file, at, n_short=6):
 penalty("M08-101", "ERR-FX2-ASC01: two files of one peer are each DISCREPANT (five ratios of 500) and then each truncates six answers (budget tripped): DISCREPANT is not lifted, so the penalty latches at the 5th kept "
         "observation of the second file (7 days from 2,000), is not extended by the later discards, and disc is 400 before, during and after it (both files are still DISCREPANT)",
         trunc_events("A", 1000) + trunc_events("B", 2000), [2000, 2000 + 7 * DAY - 1, 2000 + 7 * DAY, 2000 + 30 * DAY], dict(untilWallMs=2000 + 7 * DAY, repeats=1), [400, 400, 400, 400])
+
+# ERR-FX3-TP-1..4 (review findings R4TB-03, R4TB-05): the invisible set beyond Cf, the NFC expansion cap and the normalised basis of the bytes-per-token table. Only characters whose
+# category and normalisation have been stable since Unicode 4.0 (U+FE0F 3.2, U+E0100 4.0, U+034F 3.2, U+115F 1.1, U+3164 1.1, U+FFA0 1.1, U+2800 3.0, U+17B4 3.0, U+180B 3.0, U+0958 1.1).
+VS16, VS17 = "\ufe0f", "\U000e0100"
+m08_eval("M08-102", "ERR-FX3-TP-1 variation-selector padding: 1,200 letters with 300 U+FE0F (3 bytes each) and 300 U+E0100 (4 bytes each, 2,100 bytes of padding) interleaved: both are default-ignorable "
+         "(U+FE0F is Mn, U+E0100 is Mn), removed: outBytes 1,200, ratio 973, exactly the unpadded answer",
+         base(chunks=[dict(t=20000, parts=parts(("x", 600), (VS16, 300), (VS17, 300), ("x", 600)))], end=HONEST_END), dict(outBytes=1200, ratio=973, discard=None))
+m08_eval("M08-103", "ERR-FX3-TP-1 combining-grapheme-joiner and filler padding: 1,200 letters with 200 U+034F (Mn, 2 bytes), 100 U+115F (Lo, 3), 100 U+3164 (Lo, 3) and 100 U+FFA0 (Lo, 3) interleaved: "
+         "all default-ignorable, removed: outBytes 1,200, ratio 973",
+         base(chunks=[dict(t=20000, parts=parts(("x", 600), ("\u034f", 200), ("\u115f", 100), ("\u3164", 100), ("\uffa0", 100), ("x", 600)))], end=HONEST_END), dict(outBytes=1200, ratio=973, discard=None))
+m08_eval("M08-104", "ERR-FX3-TP-1 blank-glyph padding: 1,200 letters with 200 U+2800 BRAILLE PATTERN BLANK (So, 3 bytes; not default-ignorable, listed by name), 100 U+17B4 (Mn) and 100 U+180B (Mn) interleaved: "
+         "removed: outBytes 1,200, ratio 973",
+         base(chunks=[dict(t=20000, parts=parts(("x", 600), ("\u2800", 200), ("\u17b4", 100), ("\u180b", 100), ("x", 600)))], end=HONEST_END), dict(outBytes=1200, ratio=973, discard=None))
+m08_eval("M08-105", "ERR-FX3-TP-2 NFC expansion is capped: 300 letters and 300 U+0958 (3 bytes each, 900 raw; NFC expands each to U+0915 U+093C, 6 bytes): the NFC form would be 2,100 bytes, "
+         "more than was sent; outBytes is min(NFC form, the same text without NFC) = 1,200, ratio 973",
+         base(chunks=[dict(t=20000, parts=parts(("x", 300), ("\u0958", 300)))], end=HONEST_END), dict(outBytes=1200, ratio=973, discard=None))
+m08_eval("M08-106", "ERR-FX3-TP-1 control: a visible combining mark is not invisible padding: 600 x (e + U+0300) is 1,800 raw bytes, NFC composes each pair to U+00E8 (2 bytes): outBytes 1,200, ratio 973",
+         base(chunks=[dict(t=20000, parts=parts(("e\u0300", 600)))], end=HONEST_END), dict(outBytes=1200, ratio=973, discard=None))
+# R4TB-05: formatted honest answers. 133 lines of two-space indentation then 'r = f(y)' then a newline, then 4 letters: 1,467 raw bytes, 1,200 normalised (the newline is removed and the indentation
+# run collapses to one space). The table basis is the normalised text (ERR-FX3-TP-4): the lender at its claim reads the plain-answer ratio 973.
+FORMATTED = parts(("  r = f(y)\n", 133), ("xxxx", 1))
+m08_eval("M08-107", "ERR-FX3-TP-4 a formatted honest answer on the NORMALISED basis: 133 indented lines and 4 letters (1,467 raw bytes, 1,200 after normalisation) in the honest time: outBytes 1,200, ratio 973, "
+         "CORROBORATED-grade (>= 800) exactly like the plain 1,200-letter answer (M08-002); the bytes-per-token table is measured on this normalised text",
+         base(chunks=[dict(t=20000, parts=FORMATTED)], end=HONEST_END), dict(outBytes=1200, ratio=973, discard=None))
+m08_eval("M08-108", "ERR-FX3-TP-4 the trap, pinned: the same formatted answer from a lender running at 90 % of its claim when the table was (wrongly) measured on RAW bytes (4,000 bytes per token over 1,467 raw "
+         "bytes = 367 tokens, honest time 23,311 / 0.9 = 25,901 ms): the tracker counts 1,200 normalised bytes (300 tokens, predicted 19,961), ratio floor(19,961,000 / 25,901) = 770 < 800: the tracker does not "
+         "compensate, so a raw-basis table would mark honest formatted answers down; the table must be generated with AnswerText",
+         base(chunks=[dict(t=25800, parts=FORMATTED)], end=dict(t=25901, payload=END_OK)), dict(outBytes=1200, ratio=770, discard=None, predictedMs=19961, elapsedMs=25901))
 
 write("M08-claim-tracker.json", "M08", ["LAB_SPEC.md 6.6", "ASOM_MESH_DESIGN.md 5.7", "docs/design/mesh/REVIEW_ROUND3.md R3-OVERCLAIM-1, R3-CLOSURE-5", "LAB_SPEC.md R4-L-18, R4-L-19"], M08, ascii_only=True)

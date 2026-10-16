@@ -233,9 +233,90 @@ class ClaimTrackerTest {
         assertEquals(973, padded.ratio, "invisible padding in the honest time is the honest ratio")
     }
 
+    /** ERR-FX3-TP-1 (review R4TB-03): default-ignorable padding that is not Cf was counted (300 to 400 bytes per 100 characters). */
+    @Test
+    fun defaultIgnorablePaddingThatIsNotAFormatCharacterIsRemoved() {
+        val families = mapOf(
+            "variation selector 16" to "\uFE0F",
+            "variation selector 17 (supplementary)" to "\uDB40\uDD00",
+            "combining grapheme joiner" to "\u034F",
+            "hangul choseong filler" to "\u115F",
+            "hangul filler" to "\u3164",
+            "halfwidth hangul filler" to "\uFFA0",
+            "braille pattern blank" to "\u2800",
+            "khmer inherent vowel" to "\u17B4",
+            "mongolian free variation selector" to "\u180B",
+            "tag character" to "\uDB40\uDC41",
+            "soft hyphen" to "\u00AD",
+        )
+        var cases = 0
+        for ((name, pad) in families) {
+            assertEquals(1_200, outBytesOf("x".repeat(600) + pad.repeat(100) + "x".repeat(600)), name)
+            assertEquals(1_200, outBytesOf("x".repeat(600), pad.repeat(100), "x".repeat(600)), "$name across chunks")
+            cases++
+        }
+        assertTrue(cases >= 11, "families exercised: $cases")
+    }
+
+    /** The invisible set is spelled out, so the verdict does not follow the Unicode tables of the running JDK. Every code point of it is removed; a sample of visible ones survives. */
+    @Test
+    fun everyCodePointOfTheNamedInvisibleSetIsRemovedAndVisibleOnesSurvive() {
+        var removed = 0
+        var i = 0
+        while (i < AnswerText.INVISIBLE.size) {
+            for (cp in AnswerText.INVISIBLE[i]..AnswerText.INVISIBLE[i + 1]) {
+                assertEquals("xx", AnswerText.normalize("x" + String(Character.toChars(cp)) + "x"), "U+" + cp.toString(16).uppercase())
+                removed++
+            }
+            i += 2
+        }
+        assertTrue(removed > 4_000, "code points checked: $removed")
+        var visible = 0
+        for (cp in listOf(0x41, 0x301, 0x300, 0x5D9, 0x93C, 0x1F600, 0x2603, 0x3042, 0xAC00, 0x20AC, 0x958, 0x1160 + 1, 0x2801, 0xFE10, 0x180A, 0x17B3, 0x17B6)) {
+            val n = AnswerText.normalize("x" + String(Character.toChars(cp)) + "x")
+            assertTrue(n.codePointCount(0, n.length) >= 3, "U+" + cp.toString(16) + " is visible")
+            visible++
+        }
+        assertTrue(visible >= 17)
+    }
+
+    /** ERR-FX3-TP-2: NFC can expand (U+0958 3 -> 6 bytes, U+1D160 4 -> 12), so the counted bytes are capped at the same text without NFC. */
+    @Test
+    fun normalisationNeverCountsMoreBytesThanTheAnswerWasSentWith() {
+        assertEquals(1_200, outBytesOf("x".repeat(300) + "\u0958".repeat(300)), "U+0958 would be 2,100 after NFC")
+        assertEquals(1_200, outBytesOf("x".repeat(400) + "\uD834\uDD60".repeat(200)), "U+1D160 would be 2,800 after NFC")
+        val alphabet = listOf("x", "\u0958", "\uD834\uDD60", "e", "\u0301", "\u00E9", "\u212B", "\u2126", "\u200B", " ", "\n", "\uFE0F", "\u0344")
+        val r = SplittableRandom(23)
+        var cases = 0
+        var expanded = 0
+        repeat(600) {
+            val text = (0 until r.nextInt(1, 120)).joinToString("") { alphabet[r.nextInt(alphabet.size)] }
+            val counted = AnswerText.normalizedBytes(text)
+            assertTrue(counted <= text.toByteArray(Charsets.UTF_8).size, "monotone over ${text.map { it.code.toString(16) }}")
+            assertEquals(counted, outBytesOf(text))
+            cases++
+            if (AnswerText.normalize(text).toByteArray(Charsets.UTF_8).size > text.toByteArray(Charsets.UTF_8).size) expanded++
+        }
+        assertTrue(cases >= Laws.FLOOR && expanded > 20, "cases $cases, NFC-expanded $expanded")
+    }
+
+    /** ERR-FX3-TP-4 (review R4TB-05): a formatted honest answer loses a fifth of its raw bytes; the bytes-per-token table is on the normalised basis, so it reads as the plain answer does. */
+    @Test
+    fun aFormattedHonestAnswerOnTheNormalisedBasisIsCorroboratedGrade() {
+        val formatted = "  r = f(y)\n".repeat(133) + "xxxx"
+        assertEquals(1_467, formatted.toByteArray().size)
+        val bytes = outBytesOf(formatted)
+        assertEquals(1_200, bytes)
+        val honest = ClaimTracker.evaluate(Observation(key, true, 0, 20_500, bytes, 500, 1_024, 11, false, null, null, null, null), claim, bpt)
+        assertEquals(973, honest.ratio)
+        assertTrue(honest.ratio >= ClaimTracker.CORR)
+        val slow = ClaimTracker.evaluate(Observation(key, true, 0, 25_901, bytes, 500, 1_024, 11, false, null, null, null, null), claim, bpt)
+        assertEquals(770, slow.ratio, "a lender at 90 percent of its claim, judged by a table measured on raw bytes: below CORR, so the table must be normalised")
+    }
+
     @Test
     fun theNormalisedLengthDoesNotDependOnHowTheAnswerIsCutIntoChunks() {
-        val alphabet = listOf("x", "y", " ", " ", "\n", "​", "e", "́", "é", " ", " ", " ", "　", "\u0007", "﻿", "क", "़")
+        val alphabet = listOf("\uFE0F", "\u034F", "\u2800", "x", "y", " ", " ", "\n", "​", "e", "́", "é", " ", " ", " ", "　", "\u0007", "﻿", "क", "़")
         val r = SplittableRandom(19)
         var cases = 0
         var shrank = 0

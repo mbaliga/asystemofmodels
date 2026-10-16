@@ -5,7 +5,7 @@ import AsomJSON
 /// Written from the spec text and the M08 vector files; the JVM implementation (`lab/mesh-router`) and the runner's M08 adapter were not
 /// opened. It is a second implementation, cross-lane evidence, and NOT independent: the vectors fixed several of its readings (apple/ERRATA.md
 /// E-33, ERR-FX-M08-1, ERR-FX2-ASC10). The r4 additions (`AnswerText`, text chunks) were written by a session that had also read and edited the
-/// JVM tracker (apple/ERRATA.md ERR-R4B-TR-4).
+/// JVM tracker (lab/ERRATA.md ERR-R4B-TR-4, apple/ERRATA.md ERR-R4B-TR-14; what is and is not independent: apple/ERRATA.md ERR-FX3-TP-5).
 /// Integers only, floor division unless `ceilDiv`, every multiplication checked.
 public enum TrackerConstants {
     public static let win = 20

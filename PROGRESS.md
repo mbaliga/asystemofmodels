@@ -2421,3 +2421,30 @@ Failing before (real output, unchanged sources): `GoawayPostedTest` four new cas
 After: `./gradlew --max-workers=2 --offline -p lab :mesh-proto:test :conformance-runner:test` BUILD SUCCESSFUL on JDK 21 (2m 13s) and again with `JAVA_HOME=/opt/jdks/jdk-17` and `--rerun-tasks` BUILD SUCCESSFUL (2m 40s): `mesh-proto tests 321 skipped 0 failures 0 errors 0` (base 312, nine added), `conformance-runner tests 2309 skipped 7 failures 0 errors 0` on both (summed from build/test-results XML). The two stalled-driver close tests now take about 2.2 s each. `python3 lab/tools/isolation.py`: `isolation check 4: OK (shipped tree byte-identical to the pinned base)`; `python3 lab/tools/check_law.py`: `law: OK`; root `./gradlew jvmTest` BUILD SUCCESSFUL (core and server results came from the build cache: those sources are untouched).
 
 Mutation checks (applied, suite run, restored; each harness `--check` reports 0 stale edits): session mutants 3, 21, 27 (re-pointed) and 29 to 33 (new) KILLED, and 29 to 33 were also confirmed one at a time against `GoawayPostedTest` or `AccountingAndDialTest` alone (the first failing test of the full run was an unrelated `KnobMatrixTest executionError` for some, so the targeted run is the evidence); integration mutants 13, 18, 26 (re-pointed) and 33 (`SessionDriver.close` without `abortTransport`, killed by `RevokeDoesNotBlockTest`) KILLED on JDK 21; trust mutant 19 (re-pointed) KILLED. Not mutation-checked on JDK 17. Not done: re-running the whole old lists (only the repaired and new mutants were run); the r4 mutant lists (not in the repository: BLOCKED, ERR-FX3-SS-4); wiring `--check` into check_law.py (outside this track's write set); any hosted CI; any Windows run.
+
+### Gate: fix wave 3, track fix3-tracker-padding (R4TB-03, R4TB-05, R4TB-10, R4H-05, R4H-08)
+
+Evidence label: LAB, `oracle: self`, JDK 17.0.12 and JDK 21 on Linux, Swift 6.1 on Linux, NOT DEVICE EVIDENCE. Readings and choices: `lab/ERRATA.md` ERR-FX3-TP-1..6 and `apple/ERRATA.md` ERR-FX3-TP. Base 5c4871bbc4877856b39777ae6fe0bd396d3a6fcc.
+
+Change: `AnswerText` (Kotlin `ClaimTracker.kt`, Swift `AnswerText.swift`, Python `gen_m08.py`) removes a written-out invisible set (Default_Ignorable_Code_Point plus U+2800 and the newer Cf; 20 ranges, identical in the three lanes) in addition to Cc and Cf, and counts `min(NFC form, same text without NFC)`. M08-102..108 added (M08 is now 103 vectors; `INDEX.json` regenerated; no existing vector changed). The bytes-per-token basis (normalised text) is recorded as a rule in ERRATA; no code computes that table today. Swift headers fixed to cite rows that exist.
+
+Failing before (unchanged tracker code, JDK 21):
+```
+ClaimTrackerTest > defaultIgnorablePaddingThatIsNotAFormatCharacterIsRemoved() FAILED
+    org.opentest4j.AssertionFailedError: variation selector 16 ==> expected: <1200> but was: <1500>
+ClaimTrackerTest > normalisationNeverCountsMoreBytesThanTheAnswerWasSentWith() FAILED
+    org.opentest4j.AssertionFailedError: U+0958 would be 2,100 after NFC ==> expected: <1200> but was: <2100>
+FAIL M08-102: expected {"outBytes":1200,...,"ratio":973,...} but observed {"outBytes":3300,"outTokEst":825,"predictedMs":46211,"elapsedMs":20500,"ratio":2254,"discard":null}
+FAIL M08-105: ... observed {"outBytes":2100,"outTokEst":525,"predictedMs":31211,"elapsedMs":20500,"ratio":1522,"discard":null}
+Swift: R3ConformanceTests.swift:69: error: ... M08-104: value differs: member outBytes: got 2400 want 1200
+       R3ConformanceTests.swift:69: error: ... M08-105: value differs: member outBytes: got 2100 want 1200
+```
+
+Mutation checks (each applied, suite run, restored; the restored file was compared with the saved copy): Kotlin set check ignored: `defaultIgnorablePaddingThatIsNotAFormatCharacterIsRemoved`, `everyCodePointOfTheNamedInvisibleSetIsRemovedAndVisibleOnesSurvive`, M08-102, -103, -104 fail; Kotlin `normalizedBytes` without the `min`: `normalisationNeverCountsMoreBytesThanTheAnswerWasSentWith` and M08-105 fail; Kotlin range U+FE00..FE0F shortened to FE0E: the padding test and M08-102 fail; Swift set check ignored: 23 failing assertions; Swift `min` removed: `testNormalisationNeverCountsMoreBytesThanTheAnswerWasSentWith` and M08-105 fail.
+
+Real output after the fix:
+- `./gradlew --max-workers=2 -p lab :mesh-router:test :conformance-runner:test --offline --rerun-tasks`, JDK 21 and again with `JAVA_HOME=/opt/jdks/jdk-17`: `BUILD SUCCESSFUL`; mesh-router tests 68, failures 0, errors 0, skipped 0; conformance-runner tests 2316, failures 0, errors 0, skipped 7 (the skips are the runner's pre-existing not-implemented rows, not touched), on both JDKs (summed from `build/test-results` XML).
+- `swift test --package-path apple` (Swift 6.1, Linux): `Executed 269 tests, with 0 failures`.
+- `python3 lab/tools/xcheck.py lab/conformance`: every family `0 disagree` (self-oracled, same-session).
+- `python3 lab/tools/check_law.py`: `law: OK`. `python3 lab/tools/isolation.py`: `isolation check 4: OK`.
+- root `./gradlew jvmTest --offline --rerun-tasks -x :core:routing:jacocoTestReport`: 140 tests, 0 failures on the second run; the FIRST run had one failure, `AsomServerIntegrationTest > a failed-over attempt gets its own cloud ledger row()`, a `:server` test this track does not touch (no file under `core/` or `server/` changed); it did not repeat. Not investigated further here; it looks like the asynchronous-ledger read race of the CI lessons.

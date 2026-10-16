@@ -505,6 +505,85 @@ final class ClaimTrackerTests: XCTestCase {
         XCTAssertEqual(AnswerText.normalizedByteCount("e\u{0301}"), 2)
     }
 
+    /// ERR-FX3-TP-1 (review R4TB-03): default-ignorable padding that is not Cf must not count.
+    func testDefaultIgnorablePaddingThatIsNotAFormatCharacterIsRemoved() throws {
+        let families: [(String, String)] = [
+            ("variation selector 16", "\u{FE0F}"), ("variation selector 17", "\u{E0100}"), ("combining grapheme joiner", "\u{034F}"),
+            ("hangul choseong filler", "\u{115F}"), ("hangul filler", "\u{3164}"), ("halfwidth hangul filler", "\u{FFA0}"),
+            ("braille pattern blank", "\u{2800}"), ("khmer inherent vowel", "\u{17B4}"), ("mongolian free variation selector", "\u{180B}"),
+            ("tag character", "\u{E0041}"), ("soft hyphen", "\u{00AD}"),
+        ]
+        var cases = 0
+        for (name, pad) in families {
+            let whole = String(repeating: "x", count: 600) + String(repeating: pad, count: 100) + String(repeating: "x", count: 600)
+            XCTAssertEqual(try AttemptEvaluator.evaluate(textAttempt([whole])).outBytes, 1200, name)
+            let split = [String(repeating: "x", count: 600), String(repeating: pad, count: 100), String(repeating: "x", count: 600)]
+            XCTAssertEqual(try AttemptEvaluator.evaluate(textAttempt(split)).outBytes, 1200, "\(name) across chunks")
+            cases += 1
+        }
+        XCTAssertEqual(cases, 11, "non-vacuity: every family ran")
+    }
+
+    /// The written-out set must contain every scalar the running runtime calls Default_Ignorable_Code_Point and be nothing but DI, Cc/Cf and U+2800
+    /// and the Cf characters newer than Unicode 13; an independent check of the table the Kotlin lane copied by hand (same session, ERR-FX3-TP-5).
+    func testTheWrittenOutInvisibleSetCoversDefaultIgnorableCodePoints() {
+        var missing: [UInt32] = [], extra: [UInt32] = [], diChecked = 0, setChecked = 0
+        for v in UInt32(0)...0x10FFFF {
+            guard let s = Unicode.Scalar(v) else { continue }
+            let inSet = AnswerText.invisible.contains { $0.contains(v) }
+            if s.properties.isDefaultIgnorableCodePoint {
+                diChecked += 1
+                if !inSet { missing.append(v) }
+            }
+            if inSet {
+                setChecked += 1
+                let cat = s.properties.generalCategory
+                if !(s.properties.isDefaultIgnorableCodePoint || cat == .format || cat == .control || v == 0x2800 || cat == .unassigned) { extra.append(v) }
+            }
+        }
+        XCTAssertEqual(missing, [], "default-ignorable scalars missing from the set")
+        XCTAssertEqual(extra, [], "scalars in the set that are neither default-ignorable, Cc, Cf nor U+2800")
+        XCTAssertGreaterThan(diChecked, 4000, "non-vacuity")
+        XCTAssertGreaterThan(setChecked, 4000, "non-vacuity")
+        for v: UInt32 in [0x41, 0x301, 0x300, 0x5D9, 0x93C, 0x1F600, 0x2603, 0x3042, 0xAC00, 0x20AC, 0x958, 0x1161, 0x2801, 0xFE10, 0x180A, 0x17B3, 0x17B6] {
+            XCTAssertEqual(AnswerText.normalize("x" + String(Unicode.Scalar(v)!) + "x").unicodeScalars.count >= 3, true, "U+\(String(v, radix: 16)) is visible")
+        }
+    }
+
+    /// ERR-FX3-TP-2: NFC can expand (U+0958 3 -> 6 bytes, U+1D160 4 -> 12), so the counted bytes are capped at the same text without NFC.
+    func testNormalisationNeverCountsMoreBytesThanTheAnswerWasSentWith() throws {
+        XCTAssertEqual(try AttemptEvaluator.evaluate(textAttempt([String(repeating: "x", count: 300) + String(repeating: "\u{0958}", count: 300)])).outBytes, 1200, "U+0958 would be 2,100 after NFC")
+        XCTAssertEqual(try AttemptEvaluator.evaluate(textAttempt([String(repeating: "x", count: 400) + String(repeating: "\u{1D160}", count: 200)])).outBytes, 1200, "U+1D160 would be 2,800 after NFC")
+        let alphabet = ["x", "\u{0958}", "\u{1D160}", "e", "\u{0301}", "\u{00E9}", "\u{212B}", "\u{2126}", "\u{200B}", " ", "\n", "\u{FE0F}", "\u{0344}"]
+        var state: UInt64 = 23
+        func next(_ bound: Int) -> Int {
+            state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+            return Int((state >> 33) % UInt64(bound))
+        }
+        var cases = 0, expanded = 0
+        for _ in 0..<600 {
+            let text = (0..<(1 + next(119))).map { _ in alphabet[next(alphabet.count)] }.joined()
+            let counted = AnswerText.normalizedByteCount(text)
+            XCTAssertLessThanOrEqual(counted, Int64(text.utf8.count), "monotone over \(scalars(text))")
+            cases += 1
+            if AnswerText.normalize(text).utf8.count > text.utf8.count { expanded += 1 }
+        }
+        XCTAssertGreaterThan(cases, 500)
+        XCTAssertGreaterThan(expanded, 20, "non-vacuity: NFC expanded in some cases")
+    }
+
+    /// ERR-FX3-TP-4 (review R4TB-05): a formatted honest answer loses a fifth of its raw bytes; the bytes-per-token table is on the normalised basis.
+    func testAFormattedHonestAnswerOnTheNormalisedBasisIsCorroboratedGrade() throws {
+        let formatted = String(repeating: "  r = f(y)\n", count: 133) + "xxxx"
+        XCTAssertEqual(formatted.utf8.count, 1467)
+        let honest = try AttemptEvaluator.evaluate(textAttempt([formatted]))
+        XCTAssertEqual(honest.outBytes, 1200)
+        XCTAssertEqual(honest.ratio, 973)
+        XCTAssertGreaterThanOrEqual(honest.ratio, TrackerConstants.corr)
+        let slow = try AttemptEvaluator.evaluate(textAttempt([formatted], elapsed: 25_901))
+        XCTAssertEqual(slow.ratio, 770, "a lender at 90 percent of its claim, judged by a table measured on raw bytes: below CORR, so the table must be normalised")
+    }
+
     func testTheNormalisedLengthDoesNotDependOnHowTheAnswerIsCutIntoChunks() throws {
         let alphabet = ["x", "y", " ", " ", "\n", "\u{200B}", "e", "\u{0301}", "\u{00E9}", "\u{00A0}", "\u{2003}", "\u{2028}", "\u{3000}", "\u{07}", "\u{FEFF}", "\u{0915}", "\u{093C}"]
         var state: UInt64 = 19
