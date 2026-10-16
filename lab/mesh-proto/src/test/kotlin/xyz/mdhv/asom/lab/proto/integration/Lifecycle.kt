@@ -29,6 +29,33 @@ class Waiting : AttemptListener {
     @Volatile
     var onChunkHook: (Int) -> Unit = {}
 
+    private val cancelWanted = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val cancelSent = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val offeredId = java.util.concurrent.atomic.AtomicReference<String?>(null)
+
+    @Volatile
+    private var cancelWith: (String) -> Unit = {}
+
+    /**
+     * Cancels the attempt once [after] chunks have arrived, whichever of the chunk and the offer's returned id comes second. Install it BEFORE the
+     * offer and pass the id the offer returned to [offered]: installing a hook after the offer loses the cancel whenever the stream outruns the test
+     * thread (a slow runner), and the attempt then finishes instead of being cancelled.
+     */
+    fun cancelAfter(after: Int, cancel: (String) -> Unit) {
+        cancelWith = cancel
+        onChunkHook = { n -> if (n >= after) { cancelWanted.set(true); fireCancel() } }
+    }
+
+    fun offered(id: String) {
+        offeredId.set(id)
+        fireCancel()
+    }
+
+    private fun fireCancel() {
+        val id = offeredId.get() ?: return
+        if (cancelWanted.get() && cancelSent.compareAndSet(false, true)) cancelWith(id)
+    }
+
     override fun onAccepted(accept: InferAccept): Boolean = true
 
     override fun onHead(head: InferHead) {
@@ -90,8 +117,8 @@ object Lifecycle {
             val cancelled = Waiting()
             val cancelBody = "{\"messages\":[]}".toByteArray()
             w.noteBody(cancelBody, "req-cancel")
-            val id = sa.offer(spec(index = 1, requestId = "req-cancel"), cancelBody, cancelled)
-            cancelled.onChunkHook = { n -> if (n == 3) sa.cancel(id, CancelReason.CLIENT_GONE) }
+            cancelled.cancelAfter(3) { sa.cancel(it, CancelReason.CLIENT_GONE) }
+            cancelled.offered(sa.offer(spec(index = 1, requestId = "req-cancel"), cancelBody, cancelled))
             val co = cancelled.await("the cancelled attempt")
             check(co.terminal == Terminal.CANCELLED) { "cancelled attempt: ${co.terminal} ${co.status}" }
             w.b.engine.paceNanos = 0

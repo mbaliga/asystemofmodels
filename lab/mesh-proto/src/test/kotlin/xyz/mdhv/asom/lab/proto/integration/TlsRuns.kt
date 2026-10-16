@@ -72,11 +72,9 @@ object TlsRuns {
                         val rec = Waiting()
                         val body = ByteArray(prompt.coerceAtMost(800)) { "abcdefghijklmnopqrstuvwxyz0123456789"[rnd.nextInt(36)].code.toByte() }
                         w.noteBody(body, "req-$index-$seed")
+                        if (cancelling) rec.cancelAfter(1 + rnd.nextInt(4)) { sa.cancel(it, CancelReason.CLIENT_GONE) }
                         val id = sa.offer(spec(model, index++, "req-${index - 1}-$seed", rnd.nextBoolean()), body, rec)
-                        if (cancelling) {
-                            val after = 1 + rnd.nextInt(4)
-                            rec.onChunkHook = { n -> if (n == after) sa.cancel(id, CancelReason.CLIENT_GONE) }
-                        }
+                        rec.offered(id)
                         Wait.until("attempt $id to finish") { rec.outcome != null || sa.closed }
                     } catch (e: LedgerUnavailableException) {
                     } catch (e: SessionClosedForSend) {
@@ -175,9 +173,9 @@ object TlsRuns {
         val cut = AtomicBoolean(false)
         val body = "{\"messages\":[]}".toByteArray()
         w.noteBody(body, "req-cut-$seed")
-        sa.offer(spec(requestId = "req-cut-$seed"), body, rec)
+        // the hook is installed before the offer: with few chunks before the cut the stream could pass the threshold before a later install
         rec.onChunkHook = { n ->
-            if (n == chunksBeforeCut && cut.compareAndSet(false, true)) {
+            if (n >= chunksBeforeCut && cut.compareAndSet(false, true)) {
                 if (crashDialer) {
                     w.a.dead.crash()
                     link.connA!!.reset()
@@ -187,6 +185,7 @@ object TlsRuns {
                 }
             }
         }
+        sa.offer(spec(requestId = "req-cut-$seed"), body, rec)
         Wait.until("the cut") { cut.get() }
         val survivor: Session = if (crashDialer) sb else sa
         Wait.until("the survivor's session to end") { survivor.closed }

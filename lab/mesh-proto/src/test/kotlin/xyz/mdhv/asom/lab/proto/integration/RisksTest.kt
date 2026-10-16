@@ -173,9 +173,9 @@ class RisksTest {
             val finished = AtomicInteger()
             repeat(20) { i ->
                 val rec = Waiting()
-                var id = ""
-                rec.onChunkHook = { n -> if (n == 1) sa.cancel(id, CancelReason.CLIENT_GONE) }
-                id = sa.offer(spec(index = i, requestId = "req-race-$i"), "{}".toByteArray(), rec)
+                rec.cancelAfter(1) { sa.cancel(it, CancelReason.CLIENT_GONE) }
+                val id = sa.offer(spec(index = i, requestId = "req-race-$i"), "{}".toByteArray(), rec)
+                rec.offered(id)
                 val o = rec.await()
                 if (o.terminal == Terminal.CANCELLED) cancelledInTime.incrementAndGet()
                 finished.incrementAndGet()
