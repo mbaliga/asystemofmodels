@@ -276,10 +276,14 @@ class FakeCpu(var system: Double? = 0.1, var process: Double? = 0.05) : CpuLoadS
 }
 
 /** A scripted PDH: each call to `collect` returns the next entry (the last one repeats). */
-class FakePdh(private val scripts: Map<String, List<List<CounterValue>?>> = emptyMap()) : PdhApi {
+class FakePdh(private val scripts: Map<String, List<List<CounterValue>?>> = emptyMap(), private var failFirstOpens: Int = 0, private val failOpensOf: String? = null) : PdhApi {
     val opened = ArrayList<String>()
     override fun open(englishCounterPath: String): PdhCounterSet? {
         opened += englishCounterPath
+        if (failFirstOpens > 0 && englishCounterPath == failOpensOf) {
+            failFirstOpens--
+            return null
+        }
         val script = scripts[englishCounterPath] ?: return null
         return object : PdhCounterSet {
             var i = 0

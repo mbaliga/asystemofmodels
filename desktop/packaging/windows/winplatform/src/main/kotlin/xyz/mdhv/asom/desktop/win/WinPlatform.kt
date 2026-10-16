@@ -1,8 +1,10 @@
 package xyz.mdhv.asom.desktop.win
 
+import xyz.mdhv.asom.desktop.BlindGpuPort
 import xyz.mdhv.asom.desktop.ControlSocketServer
 import xyz.mdhv.asom.desktop.DesktopPlatform
 import xyz.mdhv.asom.desktop.GpuContentionPort
+import xyz.mdhv.asom.desktop.GpuCounterExistence
 import xyz.mdhv.asom.desktop.HostMode
 import xyz.mdhv.asom.desktop.HostRefusedException
 import xyz.mdhv.asom.desktop.ListenerGate
@@ -68,7 +70,8 @@ class WinPlatform(
 
     private val powerPort: WinPowerPort by lazy { WinPowerPort(natives.powerStatus, natives.powerRequests, natives.suspend) }
     private val presencePort: WinPresencePort by lazy { WinPresencePort(natives.cpu) }
-    private val gpuProbe: GpuEngineProbe? by lazy { GpuEngineProbe.create(natives.pdh) }
+    private val gpuExistence = GpuCounterExistence()
+    private var gpuFound: GpuEngineProbe? = null
     private val thermalProbe: ThermalZoneProbe by lazy {
         val counters = try {
             natives.pdh.open(ThermalZoneProbe.COUNTER_PATH)
@@ -101,7 +104,26 @@ class WinPlatform(
 
     override fun presence(): PresencePort = presencePort
 
-    override fun gpuContention(): GpuContentionPort? = gpuProbe
+    /** Existence is decided over time, never by one open (HC-R3): see [GpuCounterExistence]. */
+    @Synchronized
+    override fun gpuContention(): GpuContentionPort? {
+        gpuFound?.let { return it }
+        if (!gpuExistence.shouldProbe()) return null
+        val opened = GpuEngineProbe.create(natives.pdh)
+        if (opened != null) {
+            gpuFound = opened
+            gpuExistence.found()
+            return opened
+        }
+        gpuExistence.missed()
+        return if (gpuExistence.absent) null else BlindGpuPort
+    }
+
+    @Synchronized
+    private fun gpuForDoctor(): GpuEngineProbe? = gpuFound ?: GpuEngineProbe.create(natives.pdh)?.also {
+        gpuFound = it
+        gpuExistence.found()
+    }
 
     override fun thermal(): ThermalPort = thermalProbe
 
@@ -146,7 +168,7 @@ class WinPlatform(
                 programData = pd,
                 power = powerPort,
                 thermal = thermalProbe,
-                gpu = gpuProbe,
+                gpu = gpuForDoctor(),
                 jnaProperties = listOf("jna.nounpack", "jna.noclasspath", "jna.boot.library.path").associateWith { System.getProperty(it) },
                 serviceMode = mode == HostMode.SYSTEM,
             ),

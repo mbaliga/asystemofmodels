@@ -1,9 +1,11 @@
 package xyz.mdhv.asom.desktop.mac
 
 import java.nio.file.Path
+import xyz.mdhv.asom.desktop.BlindGpuPort
 import xyz.mdhv.asom.desktop.ControlSocketServer
 import xyz.mdhv.asom.desktop.DesktopPlatform
 import xyz.mdhv.asom.desktop.GpuContentionPort
+import xyz.mdhv.asom.desktop.GpuCounterExistence
 import xyz.mdhv.asom.desktop.HostMode
 import xyz.mdhv.asom.desktop.HostRefusedException
 import xyz.mdhv.asom.desktop.ListenerGate
@@ -97,9 +99,9 @@ class MacPlatform(
     private val powerPort: MacPowerPort by lazy { MacPowerPort(client) }
     private val presencePort: MacPresencePort by lazy { MacPresencePort(cpu) }
     private val thermalPort: MacThermalPort by lazy { MacThermalPort(client) }
-    private val gpuProbe: MacGpuProbe? by lazy {
-        if (MacGpuProbe.counterExists(client) == false) null else MacGpuProbe(client, ownGpuBusy)
-    }
+    private val gpuProbe: MacGpuProbe by lazy { MacGpuProbe(client, ownGpuBusy) }
+    private val gpuExistence = GpuCounterExistence()
+    private var gpuFound = false
     val presenceReader: MacPresenceReader by lazy { MacPresenceReader(client) }
 
     /** True for a build that carries no Team ID: the state is in the dev directory and `asom status` must say `UNSIGNED BUILD: container protection absent`. */
@@ -124,7 +126,24 @@ class MacPlatform(
 
     override fun presence(): PresencePort = presencePort
 
-    override fun gpuContention(): GpuContentionPort? = gpuProbe
+    /** Existence is decided over time, never by one probe (HC-R3): see [GpuCounterExistence]. A helper that cannot be reached decides nothing. */
+    @Synchronized
+    override fun gpuContention(): GpuContentionPort? {
+        if (gpuFound) return gpuProbe
+        if (!gpuExistence.shouldProbe()) return null
+        return when (MacGpuProbe.counterExists(client)) {
+            true -> {
+                gpuFound = true
+                gpuExistence.found()
+                gpuProbe
+            }
+            false -> {
+                gpuExistence.missed()
+                if (gpuExistence.absent) null else BlindGpuPort
+            }
+            null -> gpuProbe
+        }
+    }
 
     override fun thermal(): ThermalPort = thermalPort
 

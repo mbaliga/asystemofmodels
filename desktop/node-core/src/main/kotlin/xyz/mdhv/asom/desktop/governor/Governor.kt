@@ -11,7 +11,7 @@ import xyz.mdhv.asom.desktop.ThermalReading
  * A gate starts UNSETTLED: neither drained nor known to be eligible, because nothing has yet shown that the owner is away
  * (finding HLU-4). It leaves that state only through one of the two dwells above, so a node enabled while the machine is
  * in use does not serve until the machine has been quiet for the whole eligible dwell. [startEligible] restores the
- * pre-HLU-4 start for a host that has not adopted [SettlesBeforeServing] yet.
+ * pre-HLU-4 start for direct unit tests only; no host uses it (ERR-FX3-HC-3).
  * An unreadable value (null) changes nothing and restarts both dwell timers, so a blind sample never counts either way.
  */
 class DwellGate(
@@ -19,17 +19,25 @@ class DwellGate(
     private val onHoldMs: Long,
     private val offBelow: Int,
     private val offHoldMs: Long,
-    startEligible: Boolean = false,
+    private val startEligible: Boolean = false,
 ) {
     private enum class Phase { UNSETTLED, ACTIVE, ELIGIBLE }
 
-    private var phase = if (startEligible) Phase.ELIGIBLE else Phase.UNSETTLED
+    private val initial get() = if (startEligible) Phase.ELIGIBLE else Phase.UNSETTLED
+    private var phase = initial
     val active: Boolean get() = phase == Phase.ACTIVE
 
     /** True once the value has stayed below [offBelow] for [offHoldMs] (and the gate has not been ACTIVE since). */
     val eligible: Boolean get() = phase == Phase.ELIGIBLE
     private var aboveSince: Long? = null
     private var belowSince: Long? = null
+
+    /** Back to the start state: nothing known about the machine, both dwell timers cleared. */
+    fun reset() {
+        phase = initial
+        aboveSince = null
+        belowSince = null
+    }
 
     fun update(nowMs: Long, value: Int?): Boolean {
         if (value == null) {
@@ -83,9 +91,10 @@ data class HostSignals(
 )
 
 /**
- * Marker for a host whose presence counters are read from the first evaluation on, so the governor can require a full quiet
- * dwell before the first CONDITIONS_MET (HLU-4). A host without it keeps the old start (eligible at once, a blind sample is
- * eligible). The Linux, Windows and macOS desktop hosts declare it (PLATFORM_PLAN R4-P-12; desktop/ERRATA.md ERR-FX-5, ERR-R4B-HC-1).
+ * Declaration that a host's presence counters are read from the first evaluation on. Since ERR-FX3-HC-4 the strict start
+ * (a full quiet dwell before the first CONDITIONS_MET, HLU-4, PLATFORM_PLAN R4-P-12) no longer depends on it: [NodeRuntime]
+ * applies it to every host, so a host that forgets the marker, or a wrapper that does not inherit it, cannot lose it.
+ * The Linux, Windows and macOS desktop hosts still declare it (desktop/ERRATA.md ERR-FX-5, ERR-R4B-HC-1).
  */
 interface SettlesBeforeServing
 
@@ -141,6 +150,16 @@ class Governor(private val cfg: NodeConfig, private val rules: HostRules, privat
     private val cpuGate = DwellGate(cfg.cpuOtherDrainPermille, cfg.cpuOtherDrainHoldMs, cfg.eligiblePermille, cfg.eligibleHoldMs, startEligible = !settleBeforeServing)
     private val gpuGate = DwellGate(cfg.gpuOtherDrainPermille, cfg.gpuOtherDrainHoldMs, cfg.eligiblePermille, cfg.eligibleHoldMs, startEligible = !settleBeforeServing)
     private val memGate = DwellGate(cfg.memoryPsiFullDrainCenti, cfg.memoryPsiHoldMs, cfg.memoryPsiFullDrainCenti / 2, cfg.eligibleHoldMs)
+
+    /**
+     * Forget everything the gates have learned: the machine is neither known to be in use nor known to be quiet. Called when
+     * the owner enables lending from OFF, so a re-enable settles for the whole eligible dwell like a first start (HC-R1).
+     */
+    fun resettle() {
+        cpuGate.reset()
+        gpuGate.reset()
+        memGate.reset()
+    }
 
     fun evaluate(nowMs: Long, r: Readings): Evaluation {
         val presence = ArrayList<String>()

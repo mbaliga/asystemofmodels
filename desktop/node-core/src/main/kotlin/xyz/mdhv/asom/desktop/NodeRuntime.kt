@@ -13,7 +13,6 @@ import xyz.mdhv.asom.desktop.governor.HostSignals
 import xyz.mdhv.asom.desktop.governor.HostSignalsProvider
 import xyz.mdhv.asom.desktop.governor.LenderState
 import xyz.mdhv.asom.desktop.governor.ProviderFsm
-import xyz.mdhv.asom.desktop.governor.SettlesBeforeServing
 import xyz.mdhv.asom.desktop.governor.Readings
 
 /**
@@ -31,7 +30,7 @@ class NodeRuntime(
 ) {
     val rules: HostRules = (platform as? HostRulesProvider)?.hostRules(config, mode) ?: DesktopRules(config)
     val fsm: ProviderFsm = ProviderFsm(FsmConfig(graceMs = rules.graceMs, presenceFirst = mode == HostMode.FOREGROUND, holdDownMs = config.presenceHoldDownMs))
-    private val governor = Governor(config, rules, settleBeforeServing = platform is SettlesBeforeServing)
+    private val governor = Governor(config, rules)
 
     private fun apply(event: FsmEvent): FsmStep {
         val step = fsm.apply(event, clock.nowMs())
@@ -40,7 +39,10 @@ class NodeRuntime(
     }
 
     /** The owner's explicit "start lending". Only ever called from an owner action. */
-    fun enableLending(): FsmStep = apply(FsmEvent.USER_ENABLE)
+    fun enableLending(): FsmStep {
+        if (fsm.state == LenderState.OFF) governor.resettle()
+        return apply(FsmEvent.USER_ENABLE)
+    }
 
     fun disableLending(): FsmStep = apply(FsmEvent.USER_DISABLE)
 

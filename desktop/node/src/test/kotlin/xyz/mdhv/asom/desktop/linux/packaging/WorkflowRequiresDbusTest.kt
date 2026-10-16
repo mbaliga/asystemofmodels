@@ -21,16 +21,39 @@ class WorkflowRequiresDbusTest {
         return (if (end < 0) rest else rest.take(end)).joinToString("\n")
     }
 
+    /** True when the job's own `    env:` block (four-space key, six-space entries) sets the variable to "1"; a step's env does not count. */
+    private fun jobEnvRequiresDbus(body: String): Boolean {
+        val lines = body.lines()
+        val start = lines.indexOf("    env:")
+        if (start < 0) return false
+        val entries = lines.drop(start + 1).takeWhile { it.isBlank() || it.startsWith("      ") }
+        return entries.any { it == "      ASOM_REQUIRE_DBUS: \"1\"" }
+    }
+
     @Test
     fun `the JVM jobs and the systemd VM job set ASOM_REQUIRE_DBUS so the private-bus tests cannot skip`() {
         val jobs = listOf("desktop-jvm", "desktop-jvm-arm", "systemd-vm")
         var seen = 0
         for (job in jobs) {
-            val body = jobBody(job)
-            assertTrue(Regex("^\\s+ASOM_REQUIRE_DBUS:\\s*\"1\"\\s*$", RegexOption.MULTILINE).containsMatchIn(body), "$job does not set ASOM_REQUIRE_DBUS: \"1\"")
+            assertTrue(jobEnvRequiresDbus(jobBody(job)), "$job does not set ASOM_REQUIRE_DBUS: \"1\" in its job-level env")
             seen++
         }
         assertEquals(3, seen, "non-vacuity: three jobs were inspected")
+    }
+
+    @Test
+    fun `the check accepts only the job-level env, not a step env, a comment, or another value (HC-R5)`() {
+        val ok = "    env:\n      ANDROID_HOME: \"\"\n      ASOM_REQUIRE_DBUS: \"1\"\n    steps:\n      - run: x"
+        assertTrue(jobEnvRequiresDbus(ok), "control: the job-level line is accepted")
+        val moved = "    env:\n      ANDROID_HOME: \"\"\n    steps:\n      - name: Isolation checks\n        env:\n          ASOM_REQUIRE_DBUS: \"1\"\n        run: x"
+        assertTrue(!jobEnvRequiresDbus(moved), "moved into a step env (block form, deeper indent)")
+        val stepSixSpace = "    env:\n      ANDROID_HOME: \"\"\n    steps:\n      - name: a\n      ASOM_REQUIRE_DBUS: \"1\""
+        assertTrue(!jobEnvRequiresDbus(stepSixSpace), "a six-space line after the env block has ended is not in the env")
+        val commented = "    env:\n      # ASOM_REQUIRE_DBUS: \"1\"\n    steps:\n      - run: x"
+        assertTrue(!jobEnvRequiresDbus(commented), "commented out")
+        val zero = "    env:\n      ASOM_REQUIRE_DBUS: \"0\"\n    steps:\n      - run: x"
+        assertTrue(!jobEnvRequiresDbus(zero), "another value")
+        assertTrue(!jobEnvRequiresDbus("    steps:\n      - run: x"), "no env block at all")
     }
 
     @Test

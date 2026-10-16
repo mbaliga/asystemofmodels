@@ -132,6 +132,9 @@ class GovernorTest {
         rt.enableLending()
         assertEquals(LenderState.ARMED, rt.fsm.state)
         rt.tick()
+        assertEquals(LenderState.ARMED, rt.fsm.state, "a fresh enable settles for the whole quiet dwell first (R4-P-12)")
+        clock.now += 62_000
+        rt.tick()
         assertEquals(LenderState.SERVING, rt.fsm.state)
         assertEquals(listOf(FsmEffect.OPEN_LISTENER, FsmEffect.TAKE_DELAY_LOCK), effects.toList())
         platform.thermal = ThermalReading(2, 90_000, 80_000, listOf("s"))
@@ -164,11 +167,11 @@ class GovernorTest {
         rt.tick()
         assertEquals(LenderState.SERVING, rt.fsm.state)
         laws.hit("runtime-flow")
-        // the host without the marker keeps the old start: its first tick after enable serves (Windows and macOS, ERR-FX-5)
-        val legacy = NodeRuntime(FakePlatform(cpuOther = 300), HostMode.USER, cfg, FakeClock())
-        legacy.enableLending()
-        legacy.tick()
-        assertEquals(LenderState.SERVING, legacy.fsm.state)
+        // no host keeps the pre-HLU-4 start any more: one without the marker is strict too (ERR-FX3-HC-4)
+        val unmarked = NodeRuntime(FakePlatform(cpuOther = 300), HostMode.USER, cfg, FakeClock())
+        unmarked.enableLending()
+        unmarked.tick()
+        assertEquals(LenderState.ARMED, unmarked.fsm.state)
         laws.hit("runtime-flow")
     }
 
