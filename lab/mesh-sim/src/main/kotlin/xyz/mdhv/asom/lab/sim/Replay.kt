@@ -9,6 +9,7 @@ import xyz.mdhv.asom.lab.json.JString
 import xyz.mdhv.asom.lab.json.Jcs
 import xyz.mdhv.asom.lab.json.ParseResult
 import xyz.mdhv.asom.lab.json.StrictJson
+import xyz.mdhv.asom.lab.router.Exclusion
 import xyz.mdhv.asom.lab.router.MeshConfig
 import xyz.mdhv.asom.lab.router.MeshPlan
 import xyz.mdhv.asom.lab.router.MeshPlanException
@@ -26,7 +27,8 @@ object DecisionFormat {
     fun attempts(p: MeshPlan?): List<String> =
         p?.attempts?.map { "${key(it)}|${it.reason}|total=${it.estimate?.totalMs}|score=${it.score?.total}|claim=${it.claimState}|fresh=${it.freshness}" }.orEmpty()
 
-    fun excluded(p: MeshPlan?): List<String> = p?.excluded?.map { "${it.nodeId}:${it.code}" }.orEmpty()
+    /** A plan that threw still says what it excluded (`MeshPlanException.excluded`): RL18 reads F14 off the decision of a request that got an error. */
+    fun excluded(p: MeshPlan?, ofError: List<Exclusion> = emptyList()): List<String> = (p?.excluded ?: ofError).map { "${it.nodeId}:${it.code}" }
 }
 
 fun DecisionRec.line(): String = Jcs.serializeToString(
@@ -66,12 +68,14 @@ object Replay {
             if (e.kind != "request") continue
             var plan: MeshPlan? = null
             var err: String? = null
+            var ofError: List<Exclusion> = emptyList()
             try {
                 plan = MeshRouter().plan(model.query(e), model.snapshot(e.t))
             } catch (x: MeshPlanException) {
                 err = x.code
+                ofError = x.excluded
             }
-            recomputed += DecisionRec(e.str("id"), e.t, e.seq, DecisionFormat.attempts(plan), err, DecisionFormat.excluded(plan)).line()
+            recomputed += DecisionRec(e.str("id"), e.t, e.seq, DecisionFormat.attempts(plan), err, DecisionFormat.excluded(plan, ofError)).line()
         }
         val recorded = decisionLines.drop(1).filter { it.isNotEmpty() }
         val diff = ArrayList<String>()

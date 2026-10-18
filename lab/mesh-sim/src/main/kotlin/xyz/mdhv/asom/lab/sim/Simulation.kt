@@ -65,12 +65,15 @@ import xyz.mdhv.asom.lab.router.AttemptContext
 import xyz.mdhv.asom.lab.router.AttemptEvent
 import xyz.mdhv.asom.lab.router.AttemptObserver
 import xyz.mdhv.asom.lab.router.AttemptPhase
+import xyz.mdhv.asom.lab.router.AttemptErrors
+import xyz.mdhv.asom.lab.router.AttemptsError
 import xyz.mdhv.asom.lab.router.BreakerEffect
 import xyz.mdhv.asom.lab.router.CapDelta
 import xyz.mdhv.asom.lab.router.ClaimKey
 import xyz.mdhv.asom.lab.router.ClaimState
 import xyz.mdhv.asom.lab.router.ClaimTracker
 import xyz.mdhv.asom.lab.router.Estimator
+import xyz.mdhv.asom.lab.router.Exclusion
 import xyz.mdhv.asom.lab.router.Failover
 import xyz.mdhv.asom.lab.router.MeshConfig
 import xyz.mdhv.asom.lab.router.MeshPlan
@@ -78,6 +81,8 @@ import xyz.mdhv.asom.lab.router.MeshPlanException
 import xyz.mdhv.asom.lab.router.MeshQuery
 import xyz.mdhv.asom.lab.router.MeshRouter
 import xyz.mdhv.asom.lab.router.PerfPrior
+import xyz.mdhv.asom.lab.router.ProbePolicy
+import xyz.mdhv.asom.lab.router.RouteReasons
 import xyz.mdhv.asom.lab.router.PlannedAttempt
 import xyz.mdhv.asom.lab.router.StDigestParser
 import xyz.mdhv.asom.lab.router.Tier
@@ -98,6 +103,11 @@ class AttemptLog(val requestId: String, val index: Int, val tier: Tier, val targ
     var deliveredToClient = false
     var attemptId: String? = null
     var registryOkAtBody: Boolean? = null
+    var probe = false
+    var probeOk = false
+
+    /** The route reason of the attempt as it ran: the plan's reason, `;probe` for an offer-only probe, and `;prev:<status>` after a failed attempt (router.md 10.1). */
+    var reason: String = ""
 }
 
 class ReqRecord(val id: String, val app: AppSpec, val startT: Long, val model: String, val P: Int, val B: Long, val N: Int, val maxTokens: Int, val stream: Boolean, val deadlineMs: Long) {
@@ -159,6 +169,7 @@ class Simulation(val sc: Scenario, val catalogue: Catalogue, val variant: Varian
     private var streamCounter = 1
     private val sessions = HashMap<String, PeerSession>()
     private val lastPullAt = HashMap<String, Long>()
+    private val lastProbeAt = HashMap<String, Long>()
     private val generation = HashMap<String, Int>()
     private var selfBusyUntil = 0L
     private var selfBusySince: Long? = null
@@ -663,13 +674,15 @@ class Simulation(val sc: Scenario, val catalogue: Catalogue, val variant: Varian
             val snap = model.snapshot(loop.now)
             var p: MeshPlan? = null
             var err: String? = null
+            var ofError: List<Exclusion> = emptyList()
             try {
                 p = MeshRouter().plan(q, snap)
             } catch (x: MeshPlanException) {
                 err = x.code
+                ofError = x.excluded
             }
             val ordered = p?.let { if (variant == Variant.B2) it.copy(attempts = staticOrder(it.attempts)) else it }
-            decisions += DecisionRec(rec.id, loop.now, e.seq, DecisionFormat.attempts(ordered), err, DecisionFormat.excluded(p))
+            decisions += DecisionRec(rec.id, loop.now, e.seq, DecisionFormat.attempts(ordered), err, DecisionFormat.excluded(p, ofError))
             rec.planned = ordered?.attempts?.map { idOf(it) }.orEmpty()
             rec.firstReason = ordered?.attempts?.firstOrNull()?.reason
             rec.firstTarget = ordered?.attempts?.firstOrNull()?.let { targetOf(it) }
@@ -680,37 +693,71 @@ class Simulation(val sc: Scenario, val catalogue: Catalogue, val variant: Varian
             }
             rec.hindsight = hindsight(q, snap)
             plan = ordered
+            installProbe(ordered!!)
             for (c in p.capDelta.entries) {
                 emit("cap", "node" to c.key.nodeId, "sha" to c.key.fileSha256, "backend" to c.key.backend, "wouldWinInc" to c.wouldWinInc.toLong(), "wonInc" to c.wonInc.toLong(), "swapped" to c.swapped)
             }
             next()
         }
 
+        private var probeSrc: PlannedAttempt? = null
+
+        /**
+         * RP-2: a probe-only peer that would beat the head of its block is sent an offer without content, in front of the plan. The plan keeps its order; if the peer accepts, its
+         * attempt moves to the front (see [settleProbe]). At most one probe per request and one per peer per `probeIntervalMs`, and never past `maxAttempts`.
+         */
+        private fun installProbe(p: MeshPlan) {
+            val i = p.probeIndex ?: return
+            if (variant != Variant.B3 || p.attempts.size >= cfg.maxAttempts) return
+            val target = p.attempts[i]
+            val id = target.nodeId!!
+            if (!ProbePolicy.due(lastProbeAt[id], loop.now, cfg)) return
+            lastProbeAt[id] = loop.now
+            probeSrc = target
+            plan = p.copy(attempts = listOf(target) + p.attempts)
+        }
+
+        private fun settleProbe() {
+            val src = probeSrc ?: return
+            probeSrc = null
+            val all = plan!!.attempts
+            val rest = all.drop(1).filter { it !== src }
+            val ok = rec.attempts.first().probeOk
+            plan = plan!!.copy(attempts = listOf(all.first()) + (if (ok) listOf(src) else emptyList()) + rest)
+        }
+
         private fun staticOrder(a: List<PlannedAttempt>): List<PlannedAttempt> =
             a.filter { it.tier == Tier.SELF } + a.filter { it.tier == Tier.PEER }.sortedBy { it.nodeId } + a.filter { it.tier == Tier.CLOUD }
+
+        private fun unmapped(e: AttemptsError): String = e.code ?: "UNMAPPED(owner-decision):${e.why}"
 
         private fun next() {
             if (aborted) return
             idx++
+            if (idx == 1) settleProbe()
             val attempts = plan!!.attempts
             if (idx >= attempts.size) {
-                rec.error = rec.error ?: "ALL_ATTEMPTS_FAILED"
+                rec.error = rec.error ?: unmapped(AttemptErrors.errorAfterAttempts(attempts, attempts.indices.toSet(), false))
                 finish(502, null)
                 return
             }
             if (loop.now > rec.startT + rec.deadlineMs) {
-                rec.error = "DEADLINE"
+                rec.error = unmapped(AttemptErrors.errorAfterAttempts(attempts, (0 until idx).toSet(), true))
                 finish(504, null)
                 return
             }
             val a = attempts[idx]
             val log = AttemptLog(rec.id, idx, a.tier, targetOf(a), loop.now)
+            val prevStatus = rec.attempts.lastOrNull()?.takeIf { !it.probeOk }?.status
+            val probing = probeSrc != null && idx == 0
+            val base = if (probing && ";probe" !in a.reason) a.reason + ";probe" else a.reason
+            log.reason = if (prevStatus != null && prevStatus != "ok") RouteReasons.withPrev(base, prevStatus) else base
             rec.attempts += log
             try {
                 when (a.tier) {
                     Tier.SELF -> selfAttempt(a, log)
                     Tier.CLOUD -> cloudAttempt(a, log)
-                    Tier.PEER -> PeerAttempt(a, log).start()
+                    Tier.PEER -> PeerAttempt(a, log, offerOnly = probeSrc != null && idx == 0).start()
                 }
             } catch (x: LedgerUnavailableException) {
                 log.status = "LEDGER_UNAVAILABLE"
@@ -836,7 +883,7 @@ class Simulation(val sc: Scenario, val catalogue: Catalogue, val variant: Varian
         }
 
         // ---- a peer -------------------------------------------------------------------------------------------------------------------------------
-        inner class PeerAttempt(private val a: PlannedAttempt, private val log: AttemptLog) : Losable {
+        inner class PeerAttempt(private val a: PlannedAttempt, private val log: AttemptLog, private val offerOnly: Boolean = false) : Losable {
             private val peerId = a.nodeId!!
             private val ps = peerSims.getValue(peerId)
             private val file = a.file!!
@@ -884,6 +931,7 @@ class Simulation(val sc: Scenario, val catalogue: Catalogue, val variant: Varian
 
             fun start() {
                 log.attemptId = attemptId
+                log.probe = offerOnly
                 if (!eligibleNow()) {
                     log.status = "F1_ELIGIBILITY"
                     finished = true
@@ -1037,6 +1085,23 @@ class Simulation(val sc: Scenario, val catalogue: Catalogue, val variant: Varian
                 ra.receive(f.frame)
                 piggybackFrom(f.text!!)
                 emit("link-rtt", "peer" to peerId, "ms" to r)
+                if (offerOnly) {
+                    val cancel = payloads.cancel(attemptId, stream, CancelReasonWire.SUPERSEDED)
+                    s.conn.setPayload(cancel.text)
+                    ra.send(cancel.frame)
+                    s.conn.deliver(false, cancel.frame)
+                    la?.receiveOther(cancel.frame)
+                    ra.finish(499, "CANCELLED_BEFORE_BODY", 0)
+                    log.status = "CANCELLED_BEFORE_BODY"
+                    log.probe = true
+                    log.probeOk = true
+                    log.registryOkAtBody = eligibleNow()
+                    release()
+                    emit("breaker-ok", "peer" to peerId)
+                    finished = true
+                    next()
+                    return
+                }
                 if (worseNow() || !eligibleNow()) {
                     val cancel = payloads.cancel(attemptId, stream, CancelReasonWire.POLICY_CHANGED)
                     s.conn.setPayload(cancel.text)

@@ -62,7 +62,11 @@ final class ClaimTrackerTests: XCTestCase {
         XCTAssertEqual(try AttemptEvaluator.evaluate(attempt(link: cold)), try AttemptEvaluator.evaluate(attempt()), "a cold session changes nothing in the tracker")
         XCTAssertEqual(try AttemptEvaluator.netMs(Self.link, bytes: 12_500), 10 + 1, "ceilDiv(100,000 / 100,000) = 1")
         XCTAssertEqual(try AttemptEvaluator.netMs(Self.link, bytes: 12_501), 10 + 2, "a single bit more rounds up")
-        XCTAssertThrowsError(try AttemptEvaluator.netMs(LinkEstimate(rttMs: 1, kbps: 0, sessionWarm: true), bytes: 1))
+        XCTAssertEqual(try AttemptEvaluator.netMs(LinkEstimate(rttMs: 1, kbps: 0, sessionWarm: true), bytes: 12_500), 1 + 1, "ERR-FX4-RT-10: kbps 0 is unmeasured, the LAN default 100,000 applies (the old assertion pinned the throw)")
+        XCTAssertEqual(try AttemptEvaluator.netMs(LinkEstimate(rttMs: 1, kbps: -5, sessionWarm: true), bytes: 12_500), 1 + 1)
+        XCTAssertEqual(try AttemptEvaluator.netMs(LinkEstimate(rttMs: 1, kbps: 0, sessionWarm: true, path: .overlay), bytes: 12_500), 1 + 5, "OVERLAY default 20,000: ceilDiv(100,000 / 20,000) = 5")
+        XCTAssertEqual(try AttemptEvaluator.netMs(LinkEstimate(rttMs: 1, kbps: 50_000, sessionWarm: true, path: .overlay), bytes: 12_500), 1 + 2, "a measured value wins over the path default")
+        XCTAssertThrowsError(try AttemptEvaluator.ceilDiv(1, 0), "the divisor-positive guard itself stays")
         XCTAssertThrowsError(try AttemptEvaluator.netMs(Self.link, bytes: Int64.max))
     }
 

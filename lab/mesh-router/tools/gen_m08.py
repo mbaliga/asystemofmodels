@@ -24,7 +24,8 @@ BPT = (4000, 8000)
 
 
 def net_warm(link, b):
-    return link["rttMs"] + ref.cdiv(b * 8, link["kbps"])
+    kbps = link["kbps"] if link["kbps"] > 0 else ref.CFG["pathKbps"][link["path"]]
+    return link["rttMs"] + ref.cdiv(b * 8, kbps)
 
 
 def base(**kw):
@@ -501,5 +502,9 @@ m08_eval("M08-108", "ERR-FX3-TP-4 the trap, pinned: the same formatted answer fr
          "bytes = 367 tokens, honest time 23,311 / 0.9 = 25,901 ms): the tracker counts 1,200 normalised bytes (300 tokens, predicted 19,961), ratio floor(19,961,000 / 25,901) = 770 < 800: the tracker does not "
          "compensate, so a raw-basis table would mark honest formatted answers down; the table must be generated with AnswerText",
          base(chunks=[dict(t=25800, parts=FORMATTED)], end=dict(t=25901, payload=END_OK)), dict(outBytes=1200, ratio=770, discard=None, predictedMs=19961, elapsedMs=25901))
+
+# ERR-FX4-RT-10 (RP-10): `kbps` 0 is the normal value until a transfer of at least 256 KiB, and E1 then uses the path default (LAN 100,000 kbit/s); the Swift tracker used to divide by it and throw.
+m08_eval("M08-109", "RP-10 an unmeasured bandwidth (kbps 0, path LAN) takes the LAN default 100,000 kbit/s: E1 = 10 + ceilDiv(40,960, 100,000) = 11, exactly the worked numbers of M08-001: predicted 19,961 ms, ratio 973",
+         base(link=LK(rtt=10, kbps=0, path="LAN", warm=True), chunks=EVEN, end=dict(t=20500, payload=END_OK)), dict(predictedMs=19961, ratio=973))
 
 write("M08-claim-tracker.json", "M08", ["LAB_SPEC.md 6.6", "ASOM_MESH_DESIGN.md 5.7", "docs/design/mesh/REVIEW_ROUND3.md R3-OVERCLAIM-1, R3-CLOSURE-5", "LAB_SPEC.md R4-L-18, R4-L-19"], M08, ascii_only=True)

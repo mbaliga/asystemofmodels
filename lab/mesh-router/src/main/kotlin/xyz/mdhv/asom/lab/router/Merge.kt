@@ -85,16 +85,17 @@ object Merge {
     }
 
     /**
-     * The top entry, when it is a sovereign UNVERIFIED candidate and another USABLE sovereign candidate exists, wins at most `ceilDiv(wouldWin, 4)` of the
-     * placements it would win; otherwise it swaps places with the best other usable sovereign candidate. The cap never moves work to the cloud and never
-     * changes eligibility.
+     * The top entry, when it is a sovereign UNVERIFIED candidate and another USABLE, VERIFIED sovereign candidate of a DIFFERENT node exists, wins at most
+     * `ceilDiv(wouldWin, 4)` of the placements it would win, counted over all the files of its node; otherwise it swaps places with the best such candidate.
+     * The cap never moves work to the cloud and never changes eligibility. A partner on the same node, or one whose own claim is UNVERIFIED, is no partner:
+     * it would hand the placement to a claim the cap protects against, with no counter of its own moving (ERR-FX4-RT-1).
      */
     private fun applyCap(items: List<MergeItem>, caps: Map<ClaimKey, CapCounter>): MergeResult {
         val top = (items.firstOrNull() as? MergeItem.Sov)?.c
         if (top == null || top.claimState != ClaimState.UNVERIFIED || top.key == null) return MergeResult(items, CapDelta(), false)
-        val di = items.indexOfFirst { it is MergeItem.Sov && it.c !== top && it.c.usable }
+        val di = items.indexOfFirst { it is MergeItem.Sov && it.c.usable && it.c.nodeId != top.nodeId && it.c.claimState != ClaimState.UNVERIFIED }
         if (di < 0) return MergeResult(items, CapDelta(), false)
-        val counter = ClaimTracker.capAt(caps, top.key)
+        val counter = ClaimTracker.capAtNode(caps, top.key.nodeId)
         val wouldWin = counter.wouldWin + 1
         return if (counter.won >= Sat.ceilDiv(wouldWin.toLong(), 4)) {
             val out = items.toMutableList()

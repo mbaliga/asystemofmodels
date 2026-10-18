@@ -12,6 +12,12 @@ import xyz.mdhv.asom.routing.Candidate
  * sorted collections in decision paths. Everything a peer said reached the snapshot through the reducers ([LiveStateCache], [ClaimTracker]).
  */
 class MeshRouter {
+    private companion object {
+        /** Total over a file row, so that the survivor of two rows with one sha never depends on input order; the smallest known context first, an unknown one before any (RP-9). */
+        val FILE_ORDER: Comparator<FileKey> = compareBy<FileKey> { it.fileSha256 }.thenComparing(compareBy(nullsFirst(naturalOrder<Long>())) { it.contextTokens })
+            .thenBy { it.modelId }.thenBy { it.quant ?: "" }.thenBy { it.fileBytes }.thenBy { it.catalogueRank ?: Int.MIN_VALUE }.thenBy { it.kind }
+    }
+
     fun plan(q: MeshQuery, s: MeshSnapshot): MeshPlan {
         val cfg = s.config
         val policy = Policy.fromWire(q.v1.model) ?: q.v1.policyHeader ?: cfg.defaultPolicy
@@ -40,7 +46,7 @@ class MeshRouter {
         val selfHasEngine = s.self.self?.hasEngine == true
         val nodes = buildList {
             if (Dest.T in p && selfHasEngine) add(s.self)
-            if (Dest.O in p) addAll(s.peers.distinctBy { it.nodeId })
+            if (Dest.O in p) addAll(s.peers.groupBy { it.nodeId }.values.filter { it.size == 1 }.map { it.single() })
         }.sortedBy { it.nodeId }
 
         val excluded = ArrayList<Exclusion>()
@@ -50,7 +56,7 @@ class MeshRouter {
         val universe = ArrayList<Pair<NodeView, FileKey>>()
         for (n in nodes) {
             val fast = if (n.tier == Tier.PEER) fastViewOf(n, s.nowMonoMs) else null
-            val files = n.files.filter { serves(it, q, virtual, cfg) }.distinctBy { it.fileSha256 }.sortedBy { it.fileSha256 }
+            val files = n.files.filter { serves(it, q, virtual, cfg) }.sortedWith(FILE_ORDER).distinctBy { it.fileSha256 }
             for (f in files) {
                 universeSize++
                 universe += n to f
@@ -83,7 +89,7 @@ class MeshRouter {
         if (attempts.isEmpty()) throw errorFor(policy, p, selfHasEngine, universe, excluded, (cloud as? CloudTier.Failed)?.code, virtual)
 
         val planned = attempts.mapIndexed { i, item -> planned(i, item, attempts, merged, policy, sov.isNotEmpty(), cloudEntries.isNotEmpty()) }
-        return MeshPlan(planned, excluded.sortedWith(compareBy({ it.nodeId }, { it.fileSha256 })), merged.capDelta, detail(planned, excluded))
+        return MeshPlan(planned, excluded.sortedWith(compareBy({ it.nodeId }, { it.fileSha256 })), merged.capDelta, detail(planned, excluded, policy), probeIndexOf(planned))
     }
 
     private fun serves(f: FileKey, q: MeshQuery, virtual: Boolean, cfg: MeshConfig): Boolean =
@@ -104,7 +110,7 @@ class MeshRouter {
             val ewma = s.cloud.ewmaMs[c.provider.id]
             if (ewma != null) {
                 val ttft = Math.ceil(ewma).toLong().coerceIn(0, Sat.MAX)
-                val rate = s.cloud.cloudRateMilliTokPerSec[c.provider.id] ?: s.config.cloudDecodePriorMilliTokPerSec
+                val rate = s.cloud.cloudRateMilliTokPerSec[c.provider.id]?.takeIf { it > 0 } ?: s.config.cloudDecodePriorMilliTokPerSec
                 val total = Sat.add(ttft, Sat.ceilDiv(Sat.mul(outTokens - 1, 1_000_000), rate))
                 s1 = Sat.add(total, if (q.stream) ttft else 0L)
             }
@@ -156,8 +162,8 @@ class MeshRouter {
                         policy == Policy.FASTEST -> "policy-fastest"
                         else -> "policy-rank"
                     }
-                    val runnerUp = attempts.drop(1).firstOrNull { it is MergeItem.Sov && (policy != Policy.AUTO || it.c.usable == c.usable) } as? MergeItem.Sov
-                    val term = if (code == "only-eligible" || runnerUp == null) null else RouteReasons.dominantTerm(c.score, runnerUp.c.score)
+                    val runnerUp = runnerUpOf(attempts.drop(1).filterIsInstance<MergeItem.Sov>().map { it.c }, c.usable, policy) { it.usable }
+                    val term = if (code == "only-eligible" || runnerUp == null) null else RouteReasons.dominantTerm(c.score, runnerUp.score)
                     val flags = buildList {
                         if (merged.cappedSwap) add("cap:unverified")
                         if (c.probeOnly) add("probe")
@@ -170,11 +176,28 @@ class MeshRouter {
         }
     }
 
-    private fun detail(planned: List<PlannedAttempt>, excluded: List<Exclusion>): String = buildString {
+    /**
+     * A probe-only peer is placed behind every non-probe candidate of its block, so while a working device exists it would never be asked again and its breaker
+     * would never close (RP-2). The candidate to ask is the best-scoring usable probe-only peer attempt that beats the first non-probe usable sovereign attempt.
+     */
+    private fun probeIndexOf(planned: List<PlannedAttempt>): Int? {
+        val head = planned.indexOfFirst { it.tier != Tier.CLOUD && it.usable && !it.probeOnly }
+        if (head < 0) return null
+        val headScore = planned[head].score!!.total
+        return planned.indices.filter { i -> i > head && planned[i].tier == Tier.PEER && planned[i].usable && planned[i].probeOnly && planned[i].score!!.total < headScore }
+            .minWithOrNull(compareBy<Int> { planned[it].score!!.total }.thenBy { it })
+    }
+
+    /** One selection of the runner-up for the reason's dominant term and the ledger detail: the next sovereign attempt, in the winner's usability block under `auto` (RP-7). */
+    private fun <T> runnerUpOf(rest: List<T>, headUsable: Boolean, policy: Policy, usable: (T) -> Boolean): T? = rest.firstOrNull { policy != Policy.AUTO || usable(it) == headUsable }
+
+    private fun detail(planned: List<PlannedAttempt>, excluded: List<Exclusion>, policy: Policy): String = buildString {
         fun brk(a: PlannedAttempt) = a.score?.let { "S1=${it.s1Time} S2=${it.s2Battery} S3=${it.s3Heat} S4=${it.s4Locality} S5=${it.s5Quality} S6=${it.s6Uncertainty} S=${it.total}" } ?: "cloud"
         val sovereign = planned.filter { it.tier != Tier.CLOUD }
         sovereign.getOrNull(0)?.let { append("winner ${it.nodeId}/${it.file!!.modelId} ${brk(it)}") }
-        sovereign.getOrNull(1)?.let { append("; runner-up ${it.nodeId}/${it.file!!.modelId} ${brk(it)}") }
+        sovereign.getOrNull(0)?.let { w ->
+            runnerUpOf(sovereign.drop(1), w.usable, policy) { it.usable }?.let { append("; runner-up ${it.nodeId}/${it.file!!.modelId} ${brk(it)}") }
+        }
         if (excluded.isNotEmpty()) {
             if (isNotEmpty()) append("; ")
             append("excluded ").append(excluded.sortedWith(compareBy({ it.nodeId }, { it.fileSha256 })).joinToString(",") { "${it.nodeId}/${it.fileSha256.take(8)}:${it.code}" })
@@ -212,6 +235,7 @@ class MeshRouter {
         if (Dest.C in p && cloudErr != null) return err(cloudErr, "the cloud tier has no usable provider")
         if (policy == Policy.LOCAL_ONLY || (Dest.T in p && !selfHasEngine && Dest.O !in p)) return err("LOCAL_ENGINE_ABSENT", "no local engine can serve the request")
         if (universe.isEmpty() && !virtual) return err("MODEL_UNKNOWN", "no device this app may use holds the model")
+        if (Dest.C !in p) return err("LOCAL_ENGINE_ABSENT", "no device this app may use can serve the request, and the cloud is not a permitted destination")
         return err("NO_PROVIDER_KEY", "no usable provider for this app")
     }
 }

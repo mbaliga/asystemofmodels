@@ -2723,3 +2723,46 @@ python3 lab/tools/check_law.py -> law: OK
 ./gradlew jvmTest --max-workers=2 -> BUILD SUCCESSFUL; 140 tests, 0 failures, 0 errors (from cache)
 ```
 Not run: `swift test --package-path apple` (no Swift toolchain here); hosted CI. The JDK 21 run's `BUILD` line was cut off by my output filter; its result is the XML totals above.
+
+## Gate: lab fix wave 4, track fix4b-router (ROUTER-REVIEW RP-1..RP-11; base f32b2af) - LAB, CI-APPROX, oracle: self, SIMULATED, NOT DEVICE EVIDENCE
+
+Findings and outcomes (ids ERR-FX4-RT-1..13 in `lab/ERRATA.md`, RT-10 also in `apple/ERRATA.md`): RP-1 FIXED (cap partner is a verified candidate of another node, counters per node), RP-2 FIXED (offer-only probe, `MeshPlan.probeIndex`, sim RL18 asserts the peer serves again), RP-3 FIXED (ref.py ported, vectors added; the Kotlin was already right), RP-4 FIXED with a PROVISIONAL 10,000 mWh (owner item), RP-5 FIXED, RP-6 PARTIAL (`AttemptErrors.errorAfterAttempts` maps only to ALL_PROVIDERS_COOLING; the other situations are BLOCKED(owner-decision), no code invented), RP-7 PARTIAL (runner-up fixed, executed reasons carry prev; writing the reason into the terminal ledger row is BLOCKED(cross-track: lab/ledger-model)), RP-8 FIXED, RP-9 FIXED, RP-10 FIXED in code but NOT RUN (no Swift toolchain), RP-11 pinned as intended, plus the idleUnloadMs boundary test and ERR-FX4-RT-13 (error decisions record their exclusions).
+
+Failing output seen BEFORE each fix (tests written first, run on the unfixed code):
+```
+ReviewFixTest rp1_aLiarWithTwoFiles...        the liar won 20 of 20 placements (bound 5): [liar, liar, liar, ...]
+ReviewFixTest rp1_twoUnverifiedPeers...       UNVERIFIED peers won 20 of 20 (bound 5): [liar, liar2, liar2, liar2, liar, ...]
+ReviewFixTest rp1_lawRl11b...                 RL11b violated: seed 1: the liar won 33 of 33 would-win plans over 2 files (bound 9)
+ReviewFixTest rp4_...                         an unknown capacity is charged at least as much as a known one (S2 0 vs 48000)
+ReviewFixTest rp5_...                         mesh=true ==> expected: <LOCAL_ENGINE_ABSENT> but was: <NO_PROVIDER_KEY>
+ReviewFixTest rp8_...                         java.lang.IllegalArgumentException: a divisor is positive
+ReviewFixTest rp9_aDuplicatedFileKey...       expected: <([NO_PROVIDER_KEY], [])> but was: <([PEER:peer-d/a1a1...], [])>
+ReviewFixTest rp7_theRunnerUp...              the detail must not name a runner-up the reason was not computed against: winner self-node/qwen3-8b ... runner-up deck/qwen3-8b ... S=168623
+ReviewFixSimTest rp6_...                      codes outside the frozen v1 set ...: [ALL_ATTEMPTS_FAILED]   (RP-6 recorded request errors: ALL_ATTEMPTS_FAILED=35, ALL_PROVIDERS_COOLING=234, MESH_STREAM_INTERRUPTED=1)
+ReviewFixSimTest rp2_aPeerThatWasUsefulServesAgain...   RL18/serves-again [T-RL18 seed 1]: mac was back at 720000 and never served again before 1080000 (served 3 requests before its first outage), ... dell was back at 840000 ...
+gen_vectors.py (R01-092)                      AssertionError: R01-092: hand exclusions [['peer-a', 'a1a1a1a1', 'F10_THERMAL']] vs ref []
+gen_vectors.py (M08-109)                      ref.py cdiv: assert b > 0 -> AssertionError
+```
+
+Mutation checks (each applied, the named suite failed, restored; Kotlin tests unless marked V = conformance runner vectors): same-node partner (killed after adding rp1_aVerifiedSecondFile..., it first SURVIVED because the other file was UNVERIFIED), UNVERIFIED partner, per-file counter, cap without partner (V), unknown design free, no LOCAL_ENGINE_ABSENT clause (V), cloud rate 0, file order (V), duplicate node (V), runner-up of the detail, no probe index, probe on any score (first SURVIVED: the 'slow' peer was unusable; fixed), wrong code of errorAfterAttempts, `<=` to `<` in the idle-unload test, sim without probe, failed probe re-asked (first SURVIVED, mutation redefined), sim without breaker close at the probe accept (first SURVIVED, check added), invented code in the sim (first SURVIVED, scenario T-FX4-NOCLOUD added), no prev in the executed reason.
+
+Gates, run in this container after the change (totals from `build/test-results/test/*.xml`):
+```
+./gradlew -p lab :mesh-router:test :mesh-sim:test :conformance-runner:test --max-workers=2 --offline --rerun-tasks --continue   (JDK 21)
+  BUILD SUCCESSFUL in 1m 14s
+  mesh-router tests 90 skipped 0 failures 0 errors 0
+  mesh-sim tests 44 skipped 0 failures 0 errors 0
+  conformance-runner tests 2368 skipped 7 failures 0 errors 0
+JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab :mesh-router:test :mesh-sim:test :conformance-runner:test --max-workers=2 --offline --rerun-tasks --continue   (launcher JVM 17.0.12)
+  BUILD SUCCESSFUL in 1m 14s
+  mesh-router tests 90 skipped 0 failures 0 errors 0
+  mesh-sim tests 44 skipped 0 failures 0 errors 0
+  conformance-runner tests 2368 skipped 7 failures 0 errors 0
+python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+python3 lab/tools/check_law.py -> law: OK
+./gradlew jvmTest --max-workers=2 --offline -> BUILD SUCCESSFUL; 140 tests, 0 failures, 0 errors (from cache)
+python3 lab/mesh-router/tools/gen_vectors.py -> R01 98, R02 54, R03 37, R05 44, R06 68, M08 104 vectors; R05 and R06 byte-identical to before; lab/conformance/INDEX.json regenerated with lab/tools/regen_index.py (re-run it after merging the groups)
+```
+Non-vacuity printed by the new laws: `RL11b iterations: 70 violations: 0`, `RL18b iterations: 232 violations: 0`, `RL18/serves-again iterations: 24 violations: 0`, 22 offer-only probes (all accepted, none with a body), RL16 468 and RL22 63 cases on T-RL18.
+
+Not run: `swift test --package-path apple` and the hosted `apple-ios` lane-diff (no Swift toolchain here); Windows. Files outside the listed directories: `lab/conformance/INDEX.json` (derived, regenerated) and `apple/Tests/AsomConformanceTests/R3ConformanceTests.swift` (the two M08 count pins, 47 to 48 and 103 to 104).

@@ -8196,6 +8196,77 @@
           "discard": null
         }
       }
+    },
+    {
+      "id": "M08-109",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "RP-10 an unmeasured bandwidth (kbps 0, path LAN) takes the LAN default 100,000 kbit/s: E1 = 10 + ceilDiv(40,960, 100,000) = 11, exactly the worked numbers of M08-001: predicted 19,961 ms, ratio 973",
+      "input": {
+        "kind": "evaluate",
+        "claim": {
+          "decodeAt": [
+            [
+              512,
+              20000
+            ]
+          ],
+          "prefillMilliTokPerSec": 100000,
+          "ttft0Ms": 0,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null,
+          "powerMilliW": null,
+          "kvBytesPerToken": 100000,
+          "peakProcessBytes": 6000000000,
+          "flags": []
+        },
+        "link": {
+          "rttMs": 10,
+          "kbps": 0,
+          "path": "LAN",
+          "metered": false,
+          "sessionWarm": true,
+          "samples": 5
+        },
+        "promptTokens": 500,
+        "promptBytes": 5120,
+        "maxTokens": 1024,
+        "bpt": [
+          4000,
+          8000
+        ],
+        "tBodyMs": 0,
+        "chunks": [
+          {
+            "tFrom": 66,
+            "tTo": 19800,
+            "count": 300,
+            "bytesEach": 4
+          }
+        ],
+        "head": null,
+        "end": {
+          "t": 20500,
+          "payload": "{\"attemptId\":\"a\",\"status\":200,\"terminal\":\"done\"}"
+        },
+        "acceptedSha": null,
+        "heldBackend": null,
+        "heldCommit": null,
+        "claimCommit": null,
+        "concurrent": false,
+        "peerDigest": null
+      },
+      "expect": {
+        "ok": {
+          "outBytes": 1200,
+          "outTokEst": 300,
+          "predictedMs": 19961,
+          "elapsedMs": 20500,
+          "ratio": 973,
+          "discard": null
+        }
+      }
     }
   ]
 }

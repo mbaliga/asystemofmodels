@@ -13,7 +13,7 @@ CFG = dict(
     queueBucketMs=[0, 10000, 30000],
     quantPenaltyMs={"F16": 0, "BF16": 0, "Q8_0": 0, "Q6_K": 200, "Q5_K_M": 400, "Q4_K_M": 800, "Q4_0": 1000, "Q3_K_M": 2500, "Q2_K": 5000},
     unknownQuantPenaltyMs=1000, msPerRankStep=5000, unrankedRankOffset=10, autoRankFloor=None, cloudDecodePrior=50000,
-    maxAttempts=6, maxPeerAttempts=3, bpt=(4000, 8000), outDefault=256, outMax=32768, slack=268435456,
+    unknownSelfDesignMilliWh=10000, maxAttempts=6, maxPeerAttempts=3, bpt=(4000, 8000), outDefault=256, outMax=32768, slack=268435456,
 )
 
 
@@ -270,7 +270,7 @@ FR_ORDER = ["FRESH", "WARM", "STALE", "EXPIRED"]
 
 
 def fast_fields(w, n):
-    """thermalBand, queueBucket, batteryBand after the staleness substitution of LAB_SPEC 6.5 (literal: the thermal rule is a no-op).
+    """thermalBand, queueBucket, batteryBand after the staleness substitution of LAB_SPEC 6.5 (r4, R4-L-17: a STALE thermal band >= 1 reads min(2, band + 1)).
     The fields a digest does not carry (power source, charging, battery band) are classified by `powerFreshness` when the world gives one (the requester's
     age of the last FULL state); the class used for probe-only and S6 is the worse of the two."""
     d = n["state"]
@@ -281,6 +281,8 @@ def fast_fields(w, n):
     if n.get("powerFreshness") is not None and FR_ORDER.index(n["powerFreshness"]) > FR_ORDER.index(fr_d):
         fr_p = n["powerFreshness"]
     tb, qb, band = d["thermalBand"], d["queueBucket"], d["batteryBand"]
+    if fr_d == "STALE" and tb >= 1:
+        tb = min(2, tb + 1)
     if fr_d == "STALE" and qb >= 1:
         qb = min(2, qb + 1)
     if fr_p == "STALE" and d["powerSource"] == "battery":
@@ -397,6 +399,8 @@ def estimate(w, n, f, fast, res, N):
     energy = fdiv(mul(power, add(prefill, decode)), 1000)
     on_batt = (n["self"]["onBattery"] and not n["self"]["charging"]) if selfn else (fast["src"] == "battery" and not fast["chg"])
     design = n["self"]["batteryDesignMilliWh"] if selfn else n["batteryDesignMilliWh"]
+    if selfn and not (design and design > 0):
+        design = CFG["unknownSelfDesignMilliWh"]
     used = cdiv(mul(energy, 1000), mul(design, 3600)) if (on_batt and design and design > 0) else 0
     return dict(outTokens=N, netMs=net, loadMs=load, queueMs=queue, preEff=res["prefill"], prefillMs=prefill, decEff=res["decode"], decodeMs=decode,
                 ttftMs=ttft, totalMs=total, energyMilliJ=energy, batteryUsedPermille=used)
@@ -437,6 +441,12 @@ def usable(w, n, est):
     return n["tier"] == "SELF" or (est["decEff"] >= CFG["minDecodeMilliTokPerSec"] and est["ttftMs"] <= CFG["maxTtftMs"] and est["totalMs"] <= w["query"]["deadlineMs"])
 
 
+def file_order(f):
+    """A total order over a file row: the first of several rows with one sha is the one with the smallest known context, an unknown context before any (RP-9)."""
+    return (f["fileSha256"], -1 if f["contextTokens"] is None else f["contextTokens"], f["modelId"], f["quant"] or "", f["fileBytes"],
+            -(1 << 31) if f["catalogueRank"] is None else f["catalogueRank"], f["kind"])
+
+
 def sovereign(w):
     """(excluded, survivors) exactly as LAB_SPEC 6.2-6.4 define them, for the JSON world `w` (the cloud tier is not modelled here)."""
     q = w["query"]
@@ -448,13 +458,14 @@ def sovereign(w):
     if "T" in P and w["self"]["self"]["hasEngine"]:
         nodes.append(w["self"])
     if "O" in P:
-        nodes += w["peers"]
+        ids = [n["nodeId"] for n in w["peers"]]
+        nodes += [n for n in w["peers"] if ids.count(n["nodeId"]) == 1]
     nodes.sort(key=lambda n: n["nodeId"])
     excluded, surv = [], []
     for n in nodes:
         fast = fast_fields(w, n) if n["tier"] == "PEER" else None
         seen = set()
-        for f in sorted(n["files"], key=lambda f: f["fileSha256"]):
+        for f in sorted(n["files"], key=file_order):
             if f["fileSha256"] in seen or not serves(f, q, virtual, w["config"]):
                 continue
             seen.add(f["fileSha256"])
@@ -522,9 +533,9 @@ def merge(policy, sov, cloud, never_cloud, caps):
     delta, swapped = [], False
     if items and items[0][0] == "S" and items[0][1]["claim"] == "UNVERIFIED" and items[0][1].get("key"):
         top = items[0][1]
-        di = next((i for i, (k, x) in enumerate(items) if i > 0 and k == "S" and x["usable"]), None)
+        di = next((i for i, (k, x) in enumerate(items) if i > 0 and k == "S" and x["usable"] and x["nodeId"] != top["nodeId"] and x["claim"] != "UNVERIFIED"), None)
         if di is not None:
-            cnt = tuple(sum(v[i] for k, v in caps.items() if k[0] == top["key"][0] and k[1] == top["key"][1]) for i in (0, 1))
+            cnt = tuple(sum(v[i] for k, v in caps.items() if k[0] == top["key"][0]) for i in (0, 1))
             wouldwin = cnt[0] + 1
             if cnt[1] >= -(-wouldwin // 4):
                 items[0], items[di] = items[di], items[0]

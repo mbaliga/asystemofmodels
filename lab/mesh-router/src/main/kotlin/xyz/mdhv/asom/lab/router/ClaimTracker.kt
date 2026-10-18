@@ -122,6 +122,19 @@ object ClaimTracker {
         return CapCounter(wouldWin, won)
     }
 
+    /** The cap counters of one node: its files are one counter, so that a second file cannot restart the 1-in-4 bound (ERR-FX4-RT-1). */
+    fun capAtNode(caps: Map<ClaimKey, CapCounter>, nodeId: String): CapCounter {
+        var wouldWin = 0
+        var won = 0
+        for ((k, c) in caps) {
+            if (k.nodeId == nodeId) {
+                wouldWin += c.wouldWin
+                won += c.won
+            }
+        }
+        return CapCounter(wouldWin, won)
+    }
+
     private fun slotOf(states: Map<ClaimKey, TrackerState>, key: ClaimKey): ClaimKey =
         if (key in states) key else states.keys.filter { sameFile(it, key) }.minByOrNull { it.backend } ?: key
 

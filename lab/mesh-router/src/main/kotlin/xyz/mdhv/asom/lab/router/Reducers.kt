@@ -180,3 +180,8 @@ object DeclineBackoff {
     /** `INFER_DECLINE.retryAfterMs`, clamped to the range the spec allows; the requester never trusts a longer stay-away than 10 minutes. */
     fun until(nowMs: Long, retryAfterMs: Long): Long = Sat.add(nowMs, retryAfterMs.coerceIn(MIN_MS, MAX_MS))
 }
+
+object ProbePolicy {
+    /** An offer-only probe of one peer is due when none was sent inside the interval (ERR-FX4-RT-2); the executor keeps the last time per peer. */
+    fun due(lastProbeMonoMs: Long?, nowMonoMs: Long, cfg: MeshConfig): Boolean = lastProbeMonoMs == null || nowMonoMs - lastProbeMonoMs >= cfg.probeIntervalMs
+}

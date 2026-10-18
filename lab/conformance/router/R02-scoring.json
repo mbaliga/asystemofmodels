@@ -11971,6 +11971,804 @@
           }
         }
       }
+    },
+    {
+      "id": "R02-051",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S2: this device on battery with NO design capacity is charged the provisional 10,000 mWh (RP-4): E11 383,335 mJ, E12 ceilDiv(383335 x 1000, 10000 x 3600) = 11, S2 = 11 x 2000 x 4000 / 1000",
+      "input": {
+        "nowMonoMs": 1000500,
+        "wallNowMs": 1790000000000,
+        "meshGlobalOn": true,
+        "query": {
+          "model": "auto",
+          "policyHeader": null,
+          "fallback": [],
+          "noTrain": false,
+          "op": "chat",
+          "stream": true,
+          "promptTokens": 500,
+          "promptBytes": 2000,
+          "maxTokensCap": 300,
+          "deadlineMs": 120000,
+          "embeddingIdentity": null,
+          "app": {
+            "pkg": "app.a",
+            "meshAllowed": true,
+            "cloudBanned": false,
+            "deviceOnly": false,
+            "allowMeshOnMetered": false,
+            "neverCloudWhenDevicesCanAnswer": false
+          }
+        },
+        "self": {
+          "nodeId": "self-node",
+          "nodeTag": "self-nod",
+          "tier": "SELF",
+          "deviceClass": "PHONE",
+          "peer": null,
+          "files": [
+            {
+              "modelId": "qwen3-8b",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "quant": "Q4_K_M",
+              "fileBytes": 5027784832,
+              "catalogueRank": null,
+              "kind": "CHAT",
+              "contextTokens": 32768
+            }
+          ],
+          "priors": [
+            {
+              "nodeId": "self-node",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "cpu",
+              "prior": {
+                "decodeAt": [
+                  [
+                    512,
+                    5000
+                  ]
+                ],
+                "prefillMilliTokPerSec": 30000,
+                "ttft0Ms": 200,
+                "steadyMilliTokPerSec": 4000,
+                "throttleOnsetMs": 180000,
+                "powerMilliW": 5000,
+                "kvBytesPerToken": 100000,
+                "peakProcessBytes": 6000000000,
+                "flags": []
+              }
+            }
+          ],
+          "self": {
+            "batteryPermille": 150,
+            "charging": false,
+            "onBattery": true,
+            "saver": false,
+            "batteryDesignMilliWh": null,
+            "thermalCode": 0,
+            "governor": "RUN",
+            "availBytes": 20000000000,
+            "loaded": [
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "userActive": false,
+            "busyForMs": 0,
+            "hasEngine": true,
+            "backend": "cpu",
+            "localQueueMs": 0
+          },
+          "state": null,
+          "stateRxMonoMs": null,
+          "sessionOpen": false,
+          "goawaySeen": false,
+          "link": null,
+          "breaker": {
+            "coolingUntilMonoMs": null,
+            "declineBackoffUntilMonoMs": null,
+            "halfOpen": false
+          },
+          "lastSameFileMonoMs": {},
+          "ownReservationsMs": 0,
+          "maxContextTokens": null,
+          "batteryDesignMilliWh": null,
+          "stateRegressed": false
+        },
+        "peers": [],
+        "cloud": {
+          "keysPresent": [],
+          "coolingUntilWallMs": {},
+          "ewmaMs": {},
+          "cloudRates": {}
+        },
+        "tracker": [],
+        "caps": [],
+        "penalties": {},
+        "appEwmaOut": {},
+        "config": {}
+      },
+      "expect": {
+        "ok": {
+          "attempts": {
+            "SELF:self-node/a1a1a1a1": {
+              "estimate": {
+                "outTokens": 300,
+                "netMs": 0,
+                "loadMs": 0,
+                "queueMs": 0,
+                "preEff": 30000,
+                "prefillMs": 16867,
+                "decEff": 5000,
+                "decodeMs": 59800,
+                "ttftMs": 16867,
+                "totalMs": 76667,
+                "energyMilliJ": 383335,
+                "batteryUsedPermille": 11
+              },
+              "terms": {
+                "S1": 93534,
+                "S2": 88000,
+                "S3": 0,
+                "S4": 0,
+                "S5": 800,
+                "S6": 0,
+                "S": 182334
+              },
+              "usable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "R02-052",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "S2: a non-positive design capacity is unknown too (RP-4)",
+      "input": {
+        "nowMonoMs": 1000500,
+        "wallNowMs": 1790000000000,
+        "meshGlobalOn": true,
+        "query": {
+          "model": "auto",
+          "policyHeader": null,
+          "fallback": [],
+          "noTrain": false,
+          "op": "chat",
+          "stream": true,
+          "promptTokens": 500,
+          "promptBytes": 2000,
+          "maxTokensCap": 300,
+          "deadlineMs": 120000,
+          "embeddingIdentity": null,
+          "app": {
+            "pkg": "app.a",
+            "meshAllowed": true,
+            "cloudBanned": false,
+            "deviceOnly": false,
+            "allowMeshOnMetered": false,
+            "neverCloudWhenDevicesCanAnswer": false
+          }
+        },
+        "self": {
+          "nodeId": "self-node",
+          "nodeTag": "self-nod",
+          "tier": "SELF",
+          "deviceClass": "PHONE",
+          "peer": null,
+          "files": [
+            {
+              "modelId": "qwen3-8b",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "quant": "Q4_K_M",
+              "fileBytes": 5027784832,
+              "catalogueRank": null,
+              "kind": "CHAT",
+              "contextTokens": 32768
+            }
+          ],
+          "priors": [
+            {
+              "nodeId": "self-node",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "cpu",
+              "prior": {
+                "decodeAt": [
+                  [
+                    512,
+                    5000
+                  ]
+                ],
+                "prefillMilliTokPerSec": 30000,
+                "ttft0Ms": 200,
+                "steadyMilliTokPerSec": 4000,
+                "throttleOnsetMs": 180000,
+                "powerMilliW": 5000,
+                "kvBytesPerToken": 100000,
+                "peakProcessBytes": 6000000000,
+                "flags": []
+              }
+            }
+          ],
+          "self": {
+            "batteryPermille": 150,
+            "charging": false,
+            "onBattery": true,
+            "saver": false,
+            "batteryDesignMilliWh": 0,
+            "thermalCode": 0,
+            "governor": "RUN",
+            "availBytes": 20000000000,
+            "loaded": [
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "userActive": false,
+            "busyForMs": 0,
+            "hasEngine": true,
+            "backend": "cpu",
+            "localQueueMs": 0
+          },
+          "state": null,
+          "stateRxMonoMs": null,
+          "sessionOpen": false,
+          "goawaySeen": false,
+          "link": null,
+          "breaker": {
+            "coolingUntilMonoMs": null,
+            "declineBackoffUntilMonoMs": null,
+            "halfOpen": false
+          },
+          "lastSameFileMonoMs": {},
+          "ownReservationsMs": 0,
+          "maxContextTokens": null,
+          "batteryDesignMilliWh": null,
+          "stateRegressed": false
+        },
+        "peers": [],
+        "cloud": {
+          "keysPresent": [],
+          "coolingUntilWallMs": {},
+          "ewmaMs": {},
+          "cloudRates": {}
+        },
+        "tracker": [],
+        "caps": [],
+        "penalties": {},
+        "appEwmaOut": {},
+        "config": {}
+      },
+      "expect": {
+        "ok": {
+          "attempts": {
+            "SELF:self-node/a1a1a1a1": {
+              "estimate": {
+                "outTokens": 300,
+                "netMs": 0,
+                "loadMs": 0,
+                "queueMs": 0,
+                "preEff": 30000,
+                "prefillMs": 16867,
+                "decEff": 5000,
+                "decodeMs": 59800,
+                "ttftMs": 16867,
+                "totalMs": 76667,
+                "energyMilliJ": 383335,
+                "batteryUsedPermille": 11
+              },
+              "terms": {
+                "S1": 93534,
+                "S2": 88000,
+                "S3": 0,
+                "S4": 0,
+                "S5": 800,
+                "S6": 0,
+                "S": 182334
+              },
+              "usable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "R02-053",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a STALE handheld lender at thermal band 1 reads band 2 and is excluded by F10, so only this device is scored (RP-3)",
+      "input": {
+        "nowMonoMs": 1000500,
+        "wallNowMs": 1790000000000,
+        "meshGlobalOn": true,
+        "query": {
+          "model": "auto",
+          "policyHeader": null,
+          "fallback": [],
+          "noTrain": false,
+          "op": "chat",
+          "stream": true,
+          "promptTokens": 500,
+          "promptBytes": 2000,
+          "maxTokensCap": 300,
+          "deadlineMs": 120000,
+          "embeddingIdentity": null,
+          "app": {
+            "pkg": "app.a",
+            "meshAllowed": true,
+            "cloudBanned": false,
+            "deviceOnly": false,
+            "allowMeshOnMetered": false,
+            "neverCloudWhenDevicesCanAnswer": false
+          }
+        },
+        "self": {
+          "nodeId": "self-node",
+          "nodeTag": "self-nod",
+          "tier": "SELF",
+          "deviceClass": "PHONE",
+          "peer": null,
+          "files": [
+            {
+              "modelId": "qwen3-8b",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "quant": "Q4_K_M",
+              "fileBytes": 5027784832,
+              "catalogueRank": null,
+              "kind": "CHAT",
+              "contextTokens": 32768
+            }
+          ],
+          "priors": [
+            {
+              "nodeId": "self-node",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "cpu",
+              "prior": {
+                "decodeAt": [
+                  [
+                    512,
+                    5000
+                  ]
+                ],
+                "prefillMilliTokPerSec": 30000,
+                "ttft0Ms": 200,
+                "steadyMilliTokPerSec": 4000,
+                "throttleOnsetMs": 180000,
+                "powerMilliW": 5000,
+                "kvBytesPerToken": 100000,
+                "peakProcessBytes": 6000000000,
+                "flags": []
+              }
+            }
+          ],
+          "self": {
+            "batteryPermille": 900,
+            "charging": false,
+            "onBattery": true,
+            "saver": false,
+            "batteryDesignMilliWh": 19000,
+            "thermalCode": 0,
+            "governor": "RUN",
+            "availBytes": 20000000000,
+            "loaded": [
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "userActive": false,
+            "busyForMs": 0,
+            "hasEngine": true,
+            "backend": "cpu",
+            "localQueueMs": 0
+          },
+          "state": null,
+          "stateRxMonoMs": null,
+          "sessionOpen": false,
+          "goawaySeen": false,
+          "link": null,
+          "breaker": {
+            "coolingUntilMonoMs": null,
+            "declineBackoffUntilMonoMs": null,
+            "halfOpen": false
+          },
+          "lastSameFileMonoMs": {},
+          "ownReservationsMs": 0,
+          "maxContextTokens": null,
+          "batteryDesignMilliWh": null,
+          "stateRegressed": false
+        },
+        "peers": [
+          {
+            "nodeId": "deck",
+            "nodeTag": "deck",
+            "tier": "PEER",
+            "deviceClass": "HANDHELD",
+            "peer": {
+              "paired": true,
+              "routeEnabled": true,
+              "inferGrantedToMe": true,
+              "requireCharging": false,
+              "limits": {
+                "maxConcurrent": 1,
+                "maxBodyBytes": 8388608,
+                "maxTokens": 4096,
+                "rpm": 30,
+                "idleUnloadMs": 300000
+              }
+            },
+            "files": [
+              {
+                "modelId": "qwen3-8b",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "quant": "Q4_K_M",
+                "fileBytes": 5027784832,
+                "catalogueRank": null,
+                "kind": "CHAT",
+                "contextTokens": 32768
+              }
+            ],
+            "priors": [
+              {
+                "nodeId": "deck",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "metal",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      512,
+                      12000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              }
+            ],
+            "self": null,
+            "state": {
+              "seq": 10,
+              "sampledAgeMs": 0,
+              "fsm": "SERVING",
+              "powerSource": "ac",
+              "charging": false,
+              "batteryBand": null,
+              "thermalBand": 1,
+              "governor": "RUN",
+              "backend": "metal",
+              "commit": "0123abc",
+              "confVersion": "0.2.0",
+              "held": [
+                "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+              ],
+              "queueBucket": 0,
+              "manifestSeq": null,
+              "manifestDigest": null
+            },
+            "stateRxMonoMs": 900500,
+            "sessionOpen": true,
+            "goawaySeen": false,
+            "link": {
+              "rttMs": 10,
+              "kbps": 100000,
+              "path": "LAN",
+              "metered": false,
+              "sessionWarm": true,
+              "samples": 5
+            },
+            "breaker": {
+              "coolingUntilMonoMs": null,
+              "declineBackoffUntilMonoMs": null,
+              "halfOpen": false
+            },
+            "lastSameFileMonoMs": {
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": 1000400
+            },
+            "ownReservationsMs": 0,
+            "maxContextTokens": null,
+            "batteryDesignMilliWh": null,
+            "stateRegressed": false
+          }
+        ],
+        "cloud": {
+          "keysPresent": [],
+          "coolingUntilWallMs": {},
+          "ewmaMs": {},
+          "cloudRates": {}
+        },
+        "tracker": [],
+        "caps": [],
+        "penalties": {},
+        "appEwmaOut": {},
+        "config": {}
+      },
+      "expect": {
+        "ok": {
+          "attempts": {
+            "SELF:self-node/a1a1a1a1": {
+              "estimate": {
+                "outTokens": 300,
+                "netMs": 0,
+                "loadMs": 0,
+                "queueMs": 0,
+                "preEff": 30000,
+                "prefillMs": 16867,
+                "decEff": 5000,
+                "decodeMs": 59800,
+                "ttftMs": 16867,
+                "totalMs": 76667,
+                "energyMilliJ": 383335,
+                "batteryUsedPermille": 6
+              },
+              "terms": {
+                "S1": 93534,
+                "S2": 12000,
+                "S3": 0,
+                "S4": 0,
+                "S5": 800,
+                "S6": 0,
+                "S": 106334
+              },
+              "usable": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "R02-054",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a WARM handheld lender at thermal band 1 is scored with S3 = 250 permille of prefill + decode (RP-3 control)",
+      "input": {
+        "nowMonoMs": 1000500,
+        "wallNowMs": 1790000000000,
+        "meshGlobalOn": true,
+        "query": {
+          "model": "auto",
+          "policyHeader": null,
+          "fallback": [],
+          "noTrain": false,
+          "op": "chat",
+          "stream": true,
+          "promptTokens": 500,
+          "promptBytes": 2000,
+          "maxTokensCap": 300,
+          "deadlineMs": 120000,
+          "embeddingIdentity": null,
+          "app": {
+            "pkg": "app.a",
+            "meshAllowed": true,
+            "cloudBanned": false,
+            "deviceOnly": false,
+            "allowMeshOnMetered": false,
+            "neverCloudWhenDevicesCanAnswer": false
+          }
+        },
+        "self": {
+          "nodeId": "self-node",
+          "nodeTag": "self-nod",
+          "tier": "SELF",
+          "deviceClass": "PHONE",
+          "peer": null,
+          "files": [
+            {
+              "modelId": "qwen3-8b",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "quant": "Q4_K_M",
+              "fileBytes": 5027784832,
+              "catalogueRank": null,
+              "kind": "CHAT",
+              "contextTokens": 32768
+            }
+          ],
+          "priors": [
+            {
+              "nodeId": "self-node",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "cpu",
+              "prior": {
+                "decodeAt": [
+                  [
+                    512,
+                    5000
+                  ]
+                ],
+                "prefillMilliTokPerSec": 30000,
+                "ttft0Ms": 200,
+                "steadyMilliTokPerSec": 4000,
+                "throttleOnsetMs": 180000,
+                "powerMilliW": 5000,
+                "kvBytesPerToken": 100000,
+                "peakProcessBytes": 6000000000,
+                "flags": []
+              }
+            }
+          ],
+          "self": {
+            "batteryPermille": 900,
+            "charging": false,
+            "onBattery": true,
+            "saver": false,
+            "batteryDesignMilliWh": 19000,
+            "thermalCode": 0,
+            "governor": "RUN",
+            "availBytes": 20000000000,
+            "loaded": [
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+            ],
+            "userActive": false,
+            "busyForMs": 0,
+            "hasEngine": false,
+            "backend": "cpu",
+            "localQueueMs": 0
+          },
+          "state": null,
+          "stateRxMonoMs": null,
+          "sessionOpen": false,
+          "goawaySeen": false,
+          "link": null,
+          "breaker": {
+            "coolingUntilMonoMs": null,
+            "declineBackoffUntilMonoMs": null,
+            "halfOpen": false
+          },
+          "lastSameFileMonoMs": {},
+          "ownReservationsMs": 0,
+          "maxContextTokens": null,
+          "batteryDesignMilliWh": null,
+          "stateRegressed": false
+        },
+        "peers": [
+          {
+            "nodeId": "deck",
+            "nodeTag": "deck",
+            "tier": "PEER",
+            "deviceClass": "HANDHELD",
+            "peer": {
+              "paired": true,
+              "routeEnabled": true,
+              "inferGrantedToMe": true,
+              "requireCharging": false,
+              "limits": {
+                "maxConcurrent": 1,
+                "maxBodyBytes": 8388608,
+                "maxTokens": 4096,
+                "rpm": 30,
+                "idleUnloadMs": 300000
+              }
+            },
+            "files": [
+              {
+                "modelId": "qwen3-8b",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "quant": "Q4_K_M",
+                "fileBytes": 5027784832,
+                "catalogueRank": null,
+                "kind": "CHAT",
+                "contextTokens": 32768
+              }
+            ],
+            "priors": [
+              {
+                "nodeId": "deck",
+                "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+                "backend": "metal",
+                "prior": {
+                  "decodeAt": [
+                    [
+                      512,
+                      12000
+                    ]
+                  ],
+                  "prefillMilliTokPerSec": 60000,
+                  "ttft0Ms": 300,
+                  "steadyMilliTokPerSec": 12000,
+                  "throttleOnsetMs": null,
+                  "powerMilliW": null,
+                  "kvBytesPerToken": 100000,
+                  "peakProcessBytes": 6000000000,
+                  "flags": []
+                }
+              }
+            ],
+            "self": null,
+            "state": {
+              "seq": 10,
+              "sampledAgeMs": 0,
+              "fsm": "SERVING",
+              "powerSource": "ac",
+              "charging": false,
+              "batteryBand": null,
+              "thermalBand": 1,
+              "governor": "RUN",
+              "backend": "metal",
+              "commit": "0123abc",
+              "confVersion": "0.2.0",
+              "held": [
+                "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+              ],
+              "queueBucket": 0,
+              "manifestSeq": null,
+              "manifestDigest": null
+            },
+            "stateRxMonoMs": 990500,
+            "sessionOpen": true,
+            "goawaySeen": false,
+            "link": {
+              "rttMs": 10,
+              "kbps": 100000,
+              "path": "LAN",
+              "metered": false,
+              "sessionWarm": true,
+              "samples": 5
+            },
+            "breaker": {
+              "coolingUntilMonoMs": null,
+              "declineBackoffUntilMonoMs": null,
+              "halfOpen": false
+            },
+            "lastSameFileMonoMs": {
+              "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": 1000400
+            },
+            "ownReservationsMs": 0,
+            "maxContextTokens": null,
+            "batteryDesignMilliWh": null,
+            "stateRegressed": false
+          }
+        ],
+        "cloud": {
+          "keysPresent": [],
+          "coolingUntilWallMs": {},
+          "ewmaMs": {},
+          "cloudRates": {}
+        },
+        "tracker": [],
+        "caps": [],
+        "penalties": {},
+        "appEwmaOut": {},
+        "config": {}
+      },
+      "expect": {
+        "ok": {
+          "attempts": {
+            "PEER:deck/a1a1a1a1": {
+              "estimate": {
+                "outTokens": 300,
+                "netMs": 11,
+                "loadMs": 0,
+                "queueMs": 0,
+                "preEff": 42000,
+                "prefillMs": 12205,
+                "decEff": 8400,
+                "decodeMs": 35596,
+                "ttftMs": 12221,
+                "totalMs": 47817,
+                "energyMilliJ": 717015,
+                "batteryUsedPermille": 0
+              },
+              "terms": {
+                "S1": 60038,
+                "S2": 0,
+                "S3": 11950,
+                "S4": 1000,
+                "S5": 800,
+                "S6": 0,
+                "S": 73788
+              },
+              "usable": true
+            }
+          }
+        }
+      }
     }
   ]
 }

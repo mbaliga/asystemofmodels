@@ -129,7 +129,7 @@ final class R3ConformanceTests: XCTestCase {
         XCTAssertEqual(perKind["M04/fsm"], 1)
         XCTAssertEqual(perKind["M04/ceilings"], 19, "9 before r4 plus M04-449..458 (R4-B-01, R4-B-02)")
         XCTAssertEqual(perKind["M04/pins"], 1)
-        XCTAssertEqual(perKind["M08/evaluate"], 47)
+        XCTAssertEqual(perKind["M08/evaluate"], 48)
         XCTAssertEqual(perKind["M08/sequence"], 26)
         XCTAssertEqual(perKind["M08/state"], 12)
         XCTAssertEqual(perKind["M08/claimBody"], 2)
@@ -137,7 +137,7 @@ final class R3ConformanceTests: XCTestCase {
         XCTAssertEqual(perKind["M08/claimBudget"], 2)
         XCTAssertEqual(perKind["M08/penalty"], 5)
         XCTAssertEqual(perKind["M08/disc"], 5)
-        XCTAssertEqual(perFamily["M08"], 103, "63 before the router fix-wave kinds, 14 with them, 19 with the r4 padding, interpolation, no-body and ASC01 vectors, 7 with ERR-FX3-TP-1/-2/-4")
+        XCTAssertEqual(perFamily["M08"], 104, "63 before the router fix-wave kinds, 14 with them, 19 with the r4 padding, interpolation, no-body and ASC01 vectors, 7 with ERR-FX3-TP-1/-2/-4, 1 with M08-109 (kbps 0, ERR-FX4-RT-10)")
         XCTAssertGreaterThanOrEqual(perFamily["M03"] ?? 0, 70)
         XCTAssertGreaterThanOrEqual(perFamily["M01"] ?? 0, 100)
     }

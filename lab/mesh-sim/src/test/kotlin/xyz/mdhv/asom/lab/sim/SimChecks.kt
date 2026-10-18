@@ -151,7 +151,38 @@ object SimChecks {
         }
         t.add("RL18", cases, v, ctx)
         t.add("RL18/returned-after-cooldown", returned)
+        rl18ServesAgain(run, t, ctx)
     }
+
+    /**
+     * RL18, the other half: a peer that was useful (it served before its first outage) and is alive again serves again. A plan that merely lists the peer behind a working
+     * device is not enough (RP-2): every quiet stretch of at least [QUIET_MS] after an outage, with the peer back, must hold at least one request it served.
+     */
+    fun rl18ServesAgain(run: SimRun, t: Tally, ctx: String) {
+        var cases = 0
+        val v = ArrayList<String>()
+        for (peer in run.sc.peers.map { it.id }) {
+            val out = run.sc.faults.filter { it.node == peer && (it.kind == "peer-vanish" || it.kind == "decline-storm") }.sortedBy { it.atMs }
+                .map { it.atMs to it.atMs + (it.durationMs ?: 0L) }
+            if (out.isEmpty()) continue
+            val firstOutage = out.first().first
+            val servedBefore = run.res.requests.count { it.status == 200 && it.servedBy == peer && it.startT < firstOutage }
+            if (servedBefore == 0) continue
+            val merged = ArrayList<Pair<Long, Long>>()
+            for (o in out) if (merged.isNotEmpty() && o.first <= merged.last().second) merged[merged.lastIndex] = merged.last().first to maxOf(merged.last().second, o.second) else merged += o
+            for ((i, o) in merged.withIndex()) {
+                val from = o.second
+                val to = if (i + 1 < merged.size) merged[i + 1].first else run.sc.durationMs
+                if (to - from < QUIET_MS) continue
+                cases++
+                val n = run.res.requests.count { it.status == 200 && it.servedBy == peer && it.startT >= from && it.startT < to }
+                if (n == 0) v += "$peer was back at $from and never served again before $to (served $servedBefore requests before its first outage)"
+            }
+        }
+        t.add("RL18/serves-again", cases, v, ctx)
+    }
+
+    private const val QUIET_MS = 180_000L
 
     /**
      * RL19: Jain's index over the apps' on-time completion, in permille and integer arithmetic, one case per time window of the run (the requests that ARRIVED in it). A window

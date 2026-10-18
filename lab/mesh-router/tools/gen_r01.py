@@ -203,4 +203,18 @@ r01("F9 still reads the digest fields when only the power fields are EXPIRED (LT
 r01("a power freshness better than the digest's is ignored: the digest is STALE, so the 50-79 band still reads one lower (LTQ-06)",
     base_world(peers=[base_peer(state=ST(src="battery", band="50-79"), design=40000, rx=NOW - 100000, power_freshness="FRESH")]), [E("peer-a", "F11_POWER")], [SELF_A])
 
+# review fixes RP-3, RP-5, RP-9, RP-11 (ERR-FX4-RT-*): appended so that every earlier id keeps its number
+r01("F10: a STALE lender at thermal band 1 reads band 2 (R4-L-17, min(2, last + 1)) and is excluded (RP-3)", base_world(peers=[base_peer(state=ST(tb=1), rx=NOW - 100000)]),
+    [E("peer-a", "F10_THERMAL")], [SELF_A])
+r01("F10 control: the same band-1 lender WARM passes the received value (RP-3)", base_world(peers=[base_peer(state=ST(tb=1), rx=NOW - 10000)]), [], [SELF_A, PEER_A])
+r01("F10: the same band-1 lender EXPIRED is kept, probe-only, because the fast fields are unknown (RP-11: a STALE lender is excluded, an older one is probed)",
+    base_world(peers=[base_peer(state=ST(tb=1), rx=NOW - 400000)]), [], [SELF_A, PEER_A])
+r01("error: a cloud-banned app, no engine, mesh on, the only peer draining: LOCAL_ENGINE_ABSENT, never NO_PROVIDER_KEY (RP-5)",
+    WORLD(no_engine, [PEER("peer-a", state=ST(fsm="DRAINING"))], q=Q(model="qwen3-8b", app=dict(APP, cloudBanned=True))), [E("peer-a", "F9_AVAILABILITY")], [], reject="LOCAL_ENGINE_ABSENT")
+r01("F5: one sha listed twice with contexts 512 and 32,768 (small row first): the smaller context survives (RP-9)",
+    base_world(peers=[base_peer(files=[F(ctx=512), F(ctx=32768)])]), [E("peer-a", "F5_CONTEXT")], [SELF_A])
+r01("F5: the same two rows in the other order give the same answer (RP-9)", base_world(peers=[base_peer(files=[F(ctx=32768), F(ctx=512)])]), [E("peer-a", "F5_CONTEXT")], [SELF_A])
+r01("a node id listed twice among the peers is ambiguous and receives nothing, whichever row comes first (RP-9)",
+    base_world(peers=[base_peer(), base_peer(prior=PR(prefill=20000, decode=5000))]), [], [SELF_A])
+
 write("R01-hard-filter.json", "R01", ["LAB_SPEC.md 6.3", "LAB_SPEC.md 6.2", "LAB_SPEC.md 6.7 (errors)", "docs/design/mesh/REVIEW_ROUND3.md R3-CLOSURE-5"], R01)

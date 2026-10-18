@@ -130,4 +130,18 @@ r03("cap: counters on two backends of one file add up (metal 2/1 and vulkan 1/0 
     [un("p1", backend="vulkan"), sv("PEER", "p2", terms=(20, 0, 0, 0, 0, 0))], caps=[cap("p1", "a", 2, 1, backend="metal"), cap("p1", "a", 1, 0, backend="vulkan")], order=[P2, P1], swapped=True,
     delta=[dict(nodeId="p1", fileSha256=SHA["a"], backend="vulkan", wouldWinInc=1, wonInc=0, swapped=True)])
 
+# review fix RP-1 (ERR-FX4-RT-1): appended so that every earlier id keeps its number. The cap counts per NODE and its partner is a verified candidate of another node.
+P1B = "PEER:p1/b2b2b2b2"
+r03("cap: a second file of the SAME node is no partner (RP-1): the swap goes to the best usable verified candidate of another node", "auto",
+    [un("p1"), sv("PEER", "p1", sha="b", terms=(15, 0, 0, 0, 0, 0)), sv("PEER", "p2", terms=(20, 0, 0, 0, 0, 0))], caps=[cap("p1", "a", 1, 1)], order=[P2, P1B, P1], swapped=True,
+    delta=[dict(nodeId="p1", fileSha256=SHA["a"], backend="metal", wouldWinInc=1, wonInc=0, swapped=True)])
+r03("cap: an UNVERIFIED candidate of another node is no partner (RP-1): the swap goes past it to the verified one", "auto",
+    [un("p1"), un("p2", terms=(20, 0, 0, 0, 0, 0)), sv("PEER", "p3", terms=(30, 0, 0, 0, 0, 0))], caps=[cap("p1", "a", 1, 1)], order=[P3, P2, P1], swapped=True,
+    delta=[dict(nodeId="p1", fileSha256=SHA["a"], backend="metal", wouldWinInc=1, wonInc=0, swapped=True)])
+r03("cap: with no verified usable candidate of another node there is nothing to protect and no counter moves (RP-1)", "auto",
+    [un("p1"), un("p2", terms=(20, 0, 0, 0, 0, 0))], caps=[cap("p1", "a", 9, 9)], order=[P1, P2], swapped=False, delta=[])
+r03("cap: the counters of two files of one node add up (RP-1): file a 3/1, so the 4th would-win of file b has ceilDiv(4, 4) = 1 <= 1 and swaps", "auto",
+    [un("p1", sha="b"), sv("PEER", "p2", terms=(20, 0, 0, 0, 0, 0))], caps=[cap("p1", "a", 3, 1)], order=[P2, P1B], swapped=True,
+    delta=[dict(nodeId="p1", fileSha256=SHA["b"], backend="metal", wouldWinInc=1, wonInc=0, swapped=True)])
+
 write("R03-ordering.json", "R03", ["LAB_SPEC.md 6.7 (merge per policy, cap)", "LAB_SPEC.md 6.8 (RL9, RL10, RL11, RL13 exceptions)", "docs/design/mesh/router.md 5.4, 5.5"], R03)

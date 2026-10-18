@@ -85,25 +85,25 @@
   },
   {
     "path": "router/M08-claim-tracker.json",
-    "sha256": "ac3ddd71d6ebbaa32f443d1b846cc9b3d7bc637730e45cdbc6e8d9a88c5dfb4a",
+    "sha256": "0cdcb83f2120403e4d9b63f8988186d7636c2a6913bddaa1e4da99f1353c5fd7",
     "family": "M08",
     "status": "normative"
   },
   {
     "path": "router/R01-hard-filter.json",
-    "sha256": "279cf68c2597ccdc4c57af8b670b57e58cd60e0a8893fd9c5ca895ccd23e7bf6",
+    "sha256": "fb40d3df40cab477f5a16fb815adaa04ebf45b97a0441f08ff06d6e214f3a30a",
     "family": "R01",
     "status": "normative"
   },
   {
     "path": "router/R02-scoring.json",
-    "sha256": "17a6f3c2e3db282535dbdb2f78e1b1385cffda1808cf6b2eedcd561cf32296c7",
+    "sha256": "4aea818e7f79898b8daf7e46812f48bbe7d6d8fc79e9d8ba78efb9794f668051",
     "family": "R02",
     "status": "normative"
   },
   {
     "path": "router/R03-ordering.json",
-    "sha256": "2d08a4bd10d7313a971deb79491007f9d6af84c249c24fab00a02dc974cfe015",
+    "sha256": "463c81b2390d08d1b79601c8e58e92e7a7bc4ad581462a286f48bd44300f8e83",
     "family": "R03",
     "status": "normative"
   },

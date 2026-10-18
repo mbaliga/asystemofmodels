@@ -248,7 +248,11 @@ data class PlannedAttempt(
     val claimState: ClaimState? = null,
 )
 
-data class MeshPlan(val attempts: List<PlannedAttempt>, val excluded: List<Exclusion>, val capDelta: CapDelta, val detail: String = "")
+/**
+ * [probeIndex] (additive, ERR-FX4-RT-2): the index of the one probe-only peer attempt whose score beats the first non-probe usable sovereign attempt. The order of
+ * [attempts] never changes (RL13); the executor sends that peer an offer without content and, if it is accepted, moves the attempt to the front.
+ */
+data class MeshPlan(val attempts: List<PlannedAttempt>, val excluded: List<Exclusion>, val capDelta: CapDelta, val detail: String = "", val probeIndex: Int? = null)
 
 /** No new code: the four v1 names come from `AsomErrorCode`; the three v2 names (roadmap v2 contract delta) are not in the frozen enum, and a test says so. */
 class MeshPlanException(val code: String, message: String, val excluded: List<Exclusion> = emptyList()) : Exception(message)

@@ -60,6 +60,10 @@ data class MeshConfig(
     val outTokensMax: Long = 32_768,
     val memorySlackBytes: Long = 268_435_456,
     val cloudEwmaRoundsUp: Boolean = true,
+    /** PROVISIONAL (ERR-FX4-RT-4): the design capacity charged to THIS device on battery when it did not supply one. Small on purpose: an unknown battery is never cheaper than a known one. */
+    val unknownSelfDesignMilliWh: Long = 10_000,
+    /** PROVISIONAL (ERR-FX4-RT-2): a peer is sent an offer-only probe at most once per interval. */
+    val probeIntervalMs: Long = 30_000,
 ) {
     fun bpt(fileSha256: String): Bpt = bptByFile[fileSha256] ?: defaultBpt
 

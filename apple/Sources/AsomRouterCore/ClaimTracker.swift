@@ -27,6 +27,21 @@ public enum TrackerConstants {
     public static let repeatedDiscPermille: Int64 = 400
     public static let bytesPerTokenDefault: Int64 = 4000
     public static let bytesPerTokenCapDefault: Int64 = 8000
+    /// The path defaults of E1 (LAB_SPEC 6.4, `path kbps default`): used while the requester has not measured a transfer of at least 256 KiB (ERR-FX4-RT-10).
+    public static let pathKbpsLan: Int64 = 100_000
+    public static let pathKbpsOverlay: Int64 = 20_000
+}
+
+public enum LinkPath: String, Sendable, Equatable {
+    case lan = "LAN"
+    case overlay = "OVERLAY"
+
+    public var defaultKbps: Int64 {
+        switch self {
+        case .lan: return TrackerConstants.pathKbpsLan
+        case .overlay: return TrackerConstants.pathKbpsOverlay
+        }
+    }
 }
 
 public struct DecodePoint: Sendable, Equatable {
@@ -76,14 +91,17 @@ public struct ClaimRow: Sendable, Equatable {
 
 public struct LinkEstimate: Sendable, Equatable {
     public var rttMs: Int64
+    /// The requester's own measurement; 0 (or less) means unmeasured and E1 uses the default of [path] (ERR-FX4-RT-10, as `Estimator.netMs` of the JVM router does).
     public var kbps: Int64
     /// Carried as the spec's `LinkStats` has it; the tracker's prediction does not read it (ERRATA E-38).
     public var sessionWarm: Bool
+    public var path: LinkPath
 
-    public init(rttMs: Int64, kbps: Int64, sessionWarm: Bool) {
+    public init(rttMs: Int64, kbps: Int64, sessionWarm: Bool, path: LinkPath = .lan) {
         self.rttMs = rttMs
         self.kbps = kbps
         self.sessionWarm = sessionWarm
+        self.path = path
     }
 }
 
@@ -262,10 +280,10 @@ public enum AttemptEvaluator {
         return a / b + (a % b == 0 ? 0 : 1)
     }
 
-    /// E1 on the warm path only: `rtt + ceilDiv(B * 8, kbps)`. `tBody` is taken after the handshake, so the cold-path term of E1 would raise the ratio
+    /// E1 on the warm path only: `rtt + ceilDiv(B * 8, kbps)`, with the path default for an unmeasured `kbps`. `tBody` is taken after the handshake, so the cold-path term of E1 would raise the ratio
     /// in the peer's favour (R3-CLOSURE-5 item 11, ERRATA E-38); `link.sessionWarm` is therefore not read here.
     static func netMs(_ link: LinkEstimate, bytes: Int64) throws -> Int64 {
-        try Checked.add(link.rttMs, try ceilDiv(try Checked.mul(bytes, 8), link.kbps))
+        try Checked.add(link.rttMs, try ceilDiv(try Checked.mul(bytes, 8), link.kbps > 0 ? link.kbps : link.path.defaultKbps))
     }
 
     /// `thermalAwareDecode` with the claim row only: busy 0, queue 0, hot false.

@@ -2540,6 +2540,391 @@
           "cappedSwap": true
         }
       }
+    },
+    {
+      "id": "R03-034",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap: a second file of the SAME node is no partner (RP-1): the swap goes to the best usable verified candidate of another node",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "UNVERIFIED",
+            "rank": null,
+            "key": {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal"
+            }
+          },
+          {
+            "id": "PEER:p1/b2b2b2b2",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+            "terms": [
+              15,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              20,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": [
+          {
+            "nodeId": "p1",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "wouldWin": 1,
+            "won": 1
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p2/a1a1a1a1",
+            "PEER:p1/b2b2b2b2",
+            "PEER:p1/a1a1a1a1"
+          ],
+          "capDelta": [
+            {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal",
+              "wouldWinInc": 1,
+              "wonInc": 0,
+              "swapped": true
+            }
+          ],
+          "cappedSwap": true
+        }
+      }
+    },
+    {
+      "id": "R03-035",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap: an UNVERIFIED candidate of another node is no partner (RP-1): the swap goes past it to the verified one",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "UNVERIFIED",
+            "rank": null,
+            "key": {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal"
+            }
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              20,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "UNVERIFIED",
+            "rank": null,
+            "key": {
+              "nodeId": "p2",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal"
+            }
+          },
+          {
+            "id": "PEER:p3/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p3",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              30,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": [
+          {
+            "nodeId": "p1",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "wouldWin": 1,
+            "won": 1
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p3/a1a1a1a1",
+            "PEER:p2/a1a1a1a1",
+            "PEER:p1/a1a1a1a1"
+          ],
+          "capDelta": [
+            {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal",
+              "wouldWinInc": 1,
+              "wonInc": 0,
+              "swapped": true
+            }
+          ],
+          "cappedSwap": true
+        }
+      }
+    },
+    {
+      "id": "R03-036",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap: with no verified usable candidate of another node there is nothing to protect and no counter moves (RP-1)",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "UNVERIFIED",
+            "rank": null,
+            "key": {
+              "nodeId": "p1",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal"
+            }
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              20,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "UNVERIFIED",
+            "rank": null,
+            "key": {
+              "nodeId": "p2",
+              "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+              "backend": "metal"
+            }
+          }
+        ],
+        "cloud": [],
+        "caps": [
+          {
+            "nodeId": "p1",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "wouldWin": 9,
+            "won": 9
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p1/a1a1a1a1",
+            "PEER:p2/a1a1a1a1"
+          ],
+          "capDelta": [],
+          "cappedSwap": false
+        }
+      }
+    },
+    {
+      "id": "R03-037",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cap: the counters of two files of one node add up (RP-1): file a 3/1, so the 4th would-win of file b has ceilDiv(4, 4) = 1 <= 1 and swaps",
+      "input": {
+        "policy": "auto",
+        "neverCloud": false,
+        "sovereign": [
+          {
+            "id": "PEER:p1/b2b2b2b2",
+            "tier": "PEER",
+            "nodeId": "p1",
+            "modelId": "m",
+            "sha": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+            "terms": [
+              10,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "UNVERIFIED",
+            "rank": null,
+            "key": {
+              "nodeId": "p1",
+              "fileSha256": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "backend": "metal"
+            }
+          },
+          {
+            "id": "PEER:p2/a1a1a1a1",
+            "tier": "PEER",
+            "nodeId": "p2",
+            "modelId": "m",
+            "sha": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "terms": [
+              20,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "usable": true,
+            "probe": false,
+            "claim": "CORROBORATED",
+            "rank": null,
+            "key": null
+          }
+        ],
+        "cloud": [],
+        "caps": [
+          {
+            "nodeId": "p1",
+            "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "backend": "metal",
+            "wouldWin": 3,
+            "won": 1
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "order": [
+            "PEER:p2/a1a1a1a1",
+            "PEER:p1/b2b2b2b2"
+          ],
+          "capDelta": [
+            {
+              "nodeId": "p1",
+              "fileSha256": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+              "backend": "metal",
+              "wouldWinInc": 1,
+              "wonInc": 0,
+              "swapped": true
+            }
+          ],
+          "cappedSwap": true
+        }
+      }
     }
   ]
 }
