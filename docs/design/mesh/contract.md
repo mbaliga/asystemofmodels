@@ -1,6 +1,7 @@
 # Contract, invariants, ledger, privacy and roadmap reconciliation
 
 **Section of:** the ASOM multi-device ("mesh") design session, 2026-09-29.
+**Revision 4.1 (2026-10-18; `REVISION_4_1.md`):** §4.3, §4.10 and §4.12 carry inline r4.1 corrections, each with the old text kept. `ASOM_MESH_DESIGN.md` §8.4 and `LAB_SPEC.md` §10 and §11 win over this section wherever they differ.
 **Status:** DESIGN PROPOSAL. Nothing here is approved, frozen or executable. v1 device validation is still open (`PROGRESS.md`, "v1 build status"), and roadmap versions are strictly sequential with entry criteria (roadmap §0, §2). Every contract addition and every invariant change below needs owner sign-off, and several are owner decisions in their own right (§8).
 **Siblings:** `platforms.md` (roles per OS, code strategy, conformance suite), `trust.md` (node identity, pairing, `asom-mesh/1`, scopes, revocation), `manifest.md` (signed capability manifest, attestation, subscribers), `benchmark.md` (benchmark core and shells), `router.md` (placement, live state, simulator; not yet written when this section was drafted, so references to it are to its assignment).
 **This section owns:** how the owner's three requirements map onto the frozen v1 brief and the roadmap; the complete list of invariant changes with exact wording and a third-amendment judgment for each; the single contract delta registry (every sibling proposal is admitted, deferred, rejected or withdrawn here); the cross-node ledger; the privacy and threat analysis for sending prompts to other devices, including the data-classification model; the phased plan; the risk register; the consolidated owner decisions.
@@ -429,6 +430,8 @@ Intent rows always have `bytesOut = 0`, `bytesIn = null`, `tokens*` null, `costE
 |---|---|---|
 | Inference attempt, declined at offer | intent (before `INFER_OFFER`), outcome 503 + `meshCode` | one outcome row (503 + code). No intent: no content was processed |
 | Inference attempt, accepted and served | intent (before `INFER_OFFER`), outcome | intent (after `INFER_BODY` arrives, before the engine reads it), outcome (before `INFER_END` is written) |
+| (r4.1; ERR-FX4-LG-3) Inference attempt, accepted, ended before its body | intent (before `INFER_OFFER`), outcome (`CANCELLED_BEFORE_BODY` after its `CANCEL`, or 599 when it gives up) | one outcome row, **no intent** (no content was processed), durable before `INFER_END`: 499 `CANCELLED` after a `CANCEL`, 408 on body-wait expiry (L02-024). Old: no row was stated for this case |
+| (r4.1; ERR-FX4-LG-3) Session closed with an accepted attempt still open | outcome 599 `PEER_UNREACHABLE` at the close | outcome 499 `INTERRUPTED` at the close, carrying every byte it saw (L02-025) |
 | Dial failure (TCP, TLS pin mismatch, timeout) | outcome 599 `PEER_UNREACHABLE` on the attempt or session that dialled | none (nothing was authenticated) |
 | Control session (`HELLO`, `STATE`, `PING`) | intent at dial; an **interval** outcome row hourly and at close, with the bytes since the previous row | the same, on its side |
 | Capability manifest presented or received | one `manifest-sent` row per presentation (bytes excluded from the session interval rows, so nothing is counted twice) | one `manifest-received` row |
@@ -586,7 +589,7 @@ peerPath(socket) =
 
 ### 4.10 Desktop ledger
 
-`$XDG_STATE_HOME/asom/ledger.jsonl` (macOS: `~/Library/Application Support/asom/ledger.jsonl`), mode 0600, one `RouteRecord` JSON per line, append-only, monthly rotation to `ledger-YYYY-MM.jsonl`. **Not guaranteed:** Linux and macOS users often back up their home directories with tools asom does not control [CA4]. A backup tool that uploads the state directory is an egress asom cannot see. The documentation says so, and the CLI prints the ledger path on first mesh enable.
+`$XDG_STATE_HOME/asom/ledger.jsonl` (macOS: `~/Library/Application Support/asom/ledger.jsonl`), mode 0600, one `RouteRecord` JSON per line, append-only, monthly rotation to `ledger-YYYY-MM.jsonl`. **r4.1 (ERR-FX4-LG-2, desktop ERR-FX4-LG-2D; design §8.4):** "mode 0600" also binds a file that already exists: opening it sets `0600` where POSIX permissions exist, and the open fails if it cannot (old: an existing 0666 file stayed 0666); on Windows the file is owner-only by its ACL (UNVERIFIED until a Windows run); a path that is not a regular file is refused and links are not followed. **Not guaranteed:** Linux and macOS users often back up their home directories with tools asom does not control [CA4]. A backup tool that uploads the state directory is an egress asom cannot see. The documentation says so, and the CLI prints the ledger path on first mesh enable.
 
 ### 4.11 The v1 residual gap, and the v1.1 proposal
 
@@ -608,10 +611,12 @@ peerPath(socket) =
 | L-L6 | Rows are never updated or deleted (verbose-table TTL purges are unaffected: that is a different table) |
 | L-L7 | `requestId` appears in no encoded frame (structural test over every frame type) |
 | L-L8 | No row contains a substring of the request body of length ≥ 8 (fuzzed bodies), a key, an IP address, or a device display name |
-| L-L9 | Summing `bytesOut`, `bytesIn`, tokens and cost over all rows equals summing them over outcome rows only |
+| L-L9 | Summing `bytesOut`, `bytesIn`, tokens and cost over all rows equals summing them over outcome rows only (r4 `LAB_SPEC.md` R4-L-26, restated in r4.1: intent rows carry no bytes, tokens or cost; the old equality is false once per-frame rows exist) |
 | L-L10 | `peerPath` equals the kind of the socket's local interface in the simulated network |
 | L-L11 | Under injected process death at every step of §4.4, the set of rows on each node matches the table in §4.3 truncated at the death point: never a missing intent for content that moved, never an outcome for an attempt that did not reach it |
-| L-L12 | `INFER_HEAD`/`INFER_END` metadata and the provider's outcome row agree field by field (Invariant 9 on the peer channel) |
+| L-L12 | `INFER_HEAD`/`INFER_END` metadata and the provider's outcome row agree field by field (Invariant 9 on the peer channel). **r4.1 (ERR-FX4-LG-9), corrected:** `INFER_END` agrees with the lender's outcome row on `status` and `terminal`; `INFER_HEAD` agrees on `servedModel`, and its `status` equals the row's status or is 200, the status of a stream that began (the head is the commit-time view; the row is finalised afterwards, `trust.md` §11.4). A real lender commits the head with 200 and may then end 499 or 500, which "field by field" could not accept; an attempt that ends before its body sends no head (design §8.4) |
+
+(r4.1) L-L13 to L-L19 are design §8.4's laws (L-L17 to L-L19 new in r4.1), as `LAB_SPEC.md` §7.7, R4-L-26 and R41-L-10 state them.
 
 ### 4.13 What the ledger does NOT guarantee
 

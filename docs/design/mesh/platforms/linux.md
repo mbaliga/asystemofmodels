@@ -1,6 +1,7 @@
 # Platform section: Linux desktop/server and Steam Deck (SteamOS)
 
 **Revision 4 (2026-10-07):** §12 amends this section; where they differ, §12 wins (`../REVISION_4.md`).
+**Revision 4.1 (2026-10-18):** §10.3's total row is corrected in place (`../REVISION_4_1.md`; `../PLATFORM_PLAN.md` R41-P-01).
 
 **Date:** 2026-09-30 · **Grade:** DIRECTION (an input to the roadmap v4 design session and to D-v2; nothing here authorises execution) · **Scope:** the Linux node (a desktop or server such as "the Dell", OS assumed Ubuntu or Fedora) and the Steam Deck on SteamOS 3.x · **Target directories:** `desktop/` (shared JVM node) and `desktop/packaging/linux/`.
 **Reads with:** `OWNER_DIRECTIVES_2026-09-30.md` (D-A…D-F, AD-1…AD-6, all treated as decided), `ASOM_MESH_DESIGN.md` r2 (§2 roles, §3 platform matrix, §4 T17, §7.4 LP-1/LP-2, §8.4 ledger, §8.6 quiescence, §9.3 D-v2/M1), `REVIEW_ROUND2.md`.
@@ -667,9 +668,9 @@ Gates follow brief §12: the real command output is pasted into `PROGRESS.md`; C
 | **DL5** benchmark inside the node | v2 P6; `bench-core` promoted; LD-8 | `asom bench` subcommand only | `asom bench --plan ci --allow-virtual --yes=ci` → writes an `asom.bench/1` document with the banner `VIRTUALIZED — NOT DEVICE EVIDENCE`; M04/M05 vectors pass on the packaged runtime | 0.5–1 |
 | **DL6** mesh-1 desktop integration | D2, D3, D5; lab mesh modules promoted (D23); M1 | `net/*`, listener wiring, `netns-weakhost.sh`, `mesh-netns` job | 1. design M1 gate (3) in network namespaces, with row counts per node incl. L-L15/L-L16.<br>2. `netns-weakhost.sh` → `without rule: connected (certificate received)` / `with rule: timeout` → `PASS`.<br>3. W08 against the packaged node in both roles → all vectors pass.<br>4. desktop quiescence in CI: CLI idle 3 min, `tcpdump -i any` in the node's namespace → `0 packets captured` on port 11436 (the 30-min run is the device gate) | 2–3 |
 | **DL7** device validation support | each phase | `docs/DEVICE_CHECKLIST_LINUX.md` | the owner's pasted outputs; every item stays NEEDS-DEVICE-VALIDATION until confirmed | 0.5–1 |
-| **Total** | | | | **≈ 12–19 engineer-weeks** |
+| **Total** | | | | **≈ 11.5–18.5 engineer-weeks** (r4.1: the sum of the rows above, 6–9.5 + 3–5 + 2–3 + 0.5–1; old "≈ 12–19") |
 
-**Estimate assumptions.** One engineer fluent in Kotlin and Linux; the v2 engine and its JNI exist (DL4 reuses them); the lab's mesh modules exist and are promoted (DL6); the owner runs device checks. DL0–DL5 (9–14.5) sits inside the design's §9.4 D-v2 figure for Linux/Deck (9–16), minus the standalone `asom-bench` CLI that LD-8 drops, plus the in-house D-Bus reader, the distro matrix and the Deck-specific rules. DL6 (2–3) is Linux's share of M1 (7–11 across platforms); DL7 adds 0.5–1. These are estimates, not measurements.
+**Estimate assumptions.** One engineer fluent in Kotlin and Linux; the v2 engine and its JNI exist (DL4 reuses them); the lab's mesh modules exist and are promoted (DL6); the owner runs device checks. DL0–DL5 (9–14.5) sits inside the design's §9.4 D-v2 figure for Linux/Deck (9–16; r4.1: the design's §9.4 now gives exactly 9–14.5), minus the standalone `asom-bench` CLI that LD-8 drops, plus the in-house D-Bus reader, the distro matrix and the Deck-specific rules. DL6 (2–3) is Linux's share of M1 (7–11 across platforms); DL7 adds 0.5–1. These are estimates, not measurements.
 
 #### 10.4 Device checklist (exact commands; all NEEDS-DEVICE-VALIDATION)
 

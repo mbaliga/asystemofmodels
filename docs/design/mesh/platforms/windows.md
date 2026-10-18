@@ -1,6 +1,7 @@
 # Platform section: Windows 10/11 (asom-desktop node on Windows)
 
 **Date:** 2026-09-30 · **Status:** design input for the reviser. Nothing here is approved, frozen or executable.
+**Revision 4.1 (2026-10-18):** §4.1's interface eligibility is amended by `../trust.md` R41-T-05 (`../REVISION_4_1.md`); where they differ, R41-T-05 wins.
 **Scope:** directive D-E put Windows in scope. `ASOM_MESH_DESIGN.md` r2 §3.1 still says "Windows is out of scope"; that sentence is superseded by D-E and this section is its replacement for Windows. Sequencing follows AD-1 (v2, then mesh-1 with asom-desktop) and every entry criterion of the design (§9.3), including the v4 design session (R2-CONFORMANCE-3).
 **Target implementation directory:** `desktop/packaging/windows/`.
 **Tags:** `[FWnn]` = verified Windows fact (§1.1, with source URL and fetch date). `[AWnn]` = assumption (§1.2). `[Fnn]`/`[Ann]` = facts and assumptions of the integrated brief. `S-Wn` = spike that settles an assumption. `NDV` = NEEDS-DEVICE-VALIDATION. `NOV` = NEEDS-OWNER-VALIDATION.
@@ -205,6 +206,7 @@ While SERVING, the node holds one power request created with the reason string *
   - `asom mesh listen --interface "<alias>"` records the interface's name, index and the addresses at selection time.
   - Overlay eligibility needs the alias the user picked (typically "Tailscale" [AW13]) **and** an address in `100.64.0.0/10` or `fd7a:115c:a1e0::/48`.
   - LAN eligibility needs a user-confirmed interface and an RFC 1918, link-local or ULA address.
+  - **r4.1 (`../trust.md` R41-T-05; desktop ERR-FX4-DK-1):** the alias never decides the interface kind; the adapter's own type does (`MIB_IF_ROW2` `Type` and `PhysicalMediumType`, the row that already gives the alias). The overlay needs a tunnel adapter (IfType 131, 53 or 1), LAN needs Ethernet (6) or Wi-Fi (71), and a cellular adapter (243, 244, PPP 23, or a wireless-WAN physical medium) or any other or unknown type is refused for **both** paths, whatever its address and whatever the user picked or confirmed (refusal `INTERFACE_KIND`). Before r4.1 a Windows adapter aliased "Cellular" at 10.20.30.40 and confirmed as LAN was selected, and one at 100.70.1.2 picked as overlay was selected. The IfType a real Tailscale/Wintun adapter reports is NEEDS-DEVICE-VALIDATION. **The LAN confirmation still names the interface only** (no gateway-and-MAC fingerprint, unlike `linux.md` §4.1): owner item D45.
   - Every (re)bind re-checks eligibility; a change → DRAINING.
   - `peerPath` comes from the accepted or connected socket's local interface, never guessed.
 - **Port squatting:** another process can at most deny service, because peers pin keys (mTLS) and cannot be impersonated. `SO_EXCLUSIVEADDRUSE` behaviour is AW17.

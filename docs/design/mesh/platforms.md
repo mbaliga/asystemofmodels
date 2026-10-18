@@ -1,5 +1,7 @@
 # Platform counterparts and code strategy
 
+**Revision 4.1 (2026-10-18):** §14 amends §2.1; where they differ, §14 wins (`REVISION_4_1.md`).
+
 **Section of:** asom mesh design session (2026-09-29) · **Grade:** DIRECTION (input to the roadmap §7 v4 design session; nothing here authorises execution) · **Siblings:** `trust.md` (identity, pairing, transport), `manifest.md` (signed capability manifest), `benchmark.md` (benchmark core and shells), `router.md` (mesh router), `contract.md` (contract, invariants, phasing).
 
 This section answers four questions:
@@ -113,7 +115,7 @@ IDs are cited throughout as `[Vnn]`. Confidence reflects source quality, not how
 - **ARMED:** the user has enabled lending but a condition fails. There is no listener. The node advertises `availability=armed(reason)` to peers that ask over an outbound session it already has open.
 - **SERVING:** the listener is bound to the configured overlay or LAN address, **never** `0.0.0.0` or `::`.
 - **DRAINING:** the listener is **closed at once**, so new connections are refused by the kernel (per [V01] advice). In-flight requests may finish within `graceMs`. When grace expires, remaining streams are aborted with the router's typed error (defined in `router.md`/`contract.md`, not here).
-- **`graceMs` per platform:**
+- **`graceMs` per platform** (r4.1: corrected by R41-PL-03: the Deck 2,000, iOS none; `user_disable` grace 0, R41-PL-01):
   - Linux/Deck/macOS: 30,000 (configurable).
   - Android: 10,000.
   - iOS: `min(5,000, remaining background task time)`.
@@ -729,6 +731,28 @@ Roadmap law: versions are strictly sequential, and v1 device validation is still
 - **The harness parity check** bounds harness overhead on one Mac for one model. It does not certify cross-device comparability. Thermal state, background load and OS scheduling still differ (`benchmark.md`).
 - **App-layer TLS over the overlay (C3)** protects the transport between paired endpoints. It does not stop a *compromised paired peer* from reading prompts it is sent (`trust.md` data-handling policy).
 - **"Serve while charging" avoids Doze by construction only for Doze's documented trigger** [V14]. OEM battery managers (RedMagic's included) may still kill or restrict the FGS. That remains NEEDS-DEVICE-VALIDATION.
+
+---
+
+## 14. Revision 4.1 amendments (normative; 2026-10-18)
+
+**Status.** This file had no revision 4 section (`REVISION_4.md` §8 item 9 recorded a contradiction here and left the file unedited). Design revision 4.1 (`REVISION_4_1.md`) amends §2.1. **Where this section and §0–§13 differ, this section wins**; `ASOM_MESH_DESIGN.md` §3.2 still wins over both. The readings below are ratified together as acting decision AD-7 (`OWNER_DECISIONS.md` §J). Nothing here is device evidence.
+
+**R41-PL-01 (§2.1 `user_disable`; ERR-FX4-PO-1, desktop ERR-FSM-5).** Old (the diagram): "user_disable (from any state; runs DRAINING with grace = 0 then → OFF)", with no rule for when DRAINING is observable, for a drain already running, or for an enable during the drain; the lab jumped straight to OFF and kept its in-flight count, so a host never saw a DRAINING step to close the listener on, and the lab and the desktop lane disagreed on one law. New, on every platform:
+- **from SERVING:** DRAINING in the step that starts it (the listener closes; the host aborts the remaining streams and reports its in-flight count), then OFF at the first later evaluation (`now > start`), with work in flight and whatever `graceMs` is;
+- **during a drain of any cause:** the drain clock restarts at `now` with grace 0, so the drain ends at the next evaluation, in OFF;
+- **from ARMED or OFF:** OFF at once (there is no listener to drain);
+- **`user_enable` during a drain that has a pending disable** cancels the disable only: a drain is irreversible and ends in ARMED (or SERVING at once if everything allows); it does not clear a PF node's need for a new explicit "Start lending";
+- the FSM never zeroes the in-flight count (it is the host-reported counter, as for a grace-expiry drain), and the pending-disable flag is internal and never on the wire (LP-1: only the state name leaves the node).
+
+Pinned by W07p-008 (regenerated: `ARMED, SERVING, DRAINING, OFF`), W07p-020 (work in flight, grace 30 s), W07p-021 (from ARMED and from OFF), W07p-022 (during a condition drain), W07p-023 (an enable cancels the disable, not the drain), W07p-024 (a PF node: a new explicit start is needed).
+
+**R41-PL-02 (§2.1 states as an input of the lender; design §3.2 rule 1; ERR-FX4-LD-1).** The FSM state is an input of the lender's decision table (`trust.md` R41-T-02, row 6): only SERVING accepts an offer. ARMED and DRAINING may still hold a session (a pairing window or the Peers tab is open; L01-322, L01-323), and such a session declines every offer `PEER_UNAVAILABLE`. Pinned by W07p-226..230.
+
+**R41-PL-03 (§2.1 `graceMs`, the ARMED bullet and the "Proposed live-state field"; design §3.2 rules 1 and 4, §7.4; resolves `REVISION_4.md` §8 item 9).** Stale r0 values, corrected to the design, which wins:
+- `graceMs` on a presence or condition drain: 30,000 ms on Linux desktops and servers, Windows and macOS; **2,000 ms on the Steam Deck** (a Vulkan dispatch cannot be pre-empted by a game; `platforms/linux.md` §2.2); 10,000 ms on Android; **none on iOS** (GPU work must already have stopped at resign-active). Old: "Linux/Deck/macOS: 30,000 (configurable)", "Android: 10,000", "iOS: `min(5,000, remaining background task time)`". `user_disable` always drains with grace 0 (R41-PL-01).
+- ARMED advertises only `availability.fsm = ARMED`, never a reason. Old: "advertises `availability=armed(reason)`".
+- The "proposed live-state field" `availability ∈ {always, when-charging, foreground-only, requester-only}` with "the reason code for the last `condition_lost`" is withdrawn: only `fsm` goes on the wire (design §3.2 rule 1, §7.4).
 
 ---
 

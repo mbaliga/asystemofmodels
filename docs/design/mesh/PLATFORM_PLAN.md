@@ -1,6 +1,6 @@
 # PLATFORM_PLAN: directories, runtimes, CI, gates and build order per platform
 
-**Date:** 2026-09-30; **revision 4 amendments 2026-10-07 (§13 wins over §0–§12)** · **Companion to:** `ASOM_MESH_DESIGN.md` r4 (§3 platform matrix, §9 phases) and `LAB_SPEC.md` (the lab). **Detailed sources:** the six platform sections under `platforms/` (`linux.md`, `windows.md`, `macos.md`, `ios.md`, `ubuntu-touch.md`, `android-mesh.md`), **as amended by the design** (§12.3 lists which of their corrections were taken). Where this plan and a platform section disagree, this plan wins; each disagreement is marked **r3**.
+**Date:** 2026-09-30; **revision 4 amendments 2026-10-07 (§13 wins over §0–§12)**; **revision 4.1 amendments 2026-10-18 (§14 wins over §13 and §0–§12)** · **Companion to:** `ASOM_MESH_DESIGN.md` r4.1 (§3 platform matrix, §9 phases) and `LAB_SPEC.md` (the lab). **Detailed sources:** the six platform sections under `platforms/` (`linux.md`, `windows.md`, `macos.md`, `ios.md`, `ubuntu-touch.md`, `android-mesh.md`), **as amended by the design** (§12.3 lists which of their corrections were taken). Where this plan and a platform section disagree, this plan wins; each disagreement is marked **r3**.
 **Authorised by:** AD-3 (placement), AD-5 (verification honesty), roadmap §14 item 7 (scaffolds gated by hosted CI, shipping nothing), and directive D-F (different agents per platform).
 **Evidence labels (never dropped):** `LAB`, `CI (hosted VM) evidence`, `EMULATOR EVIDENCE`, `SIMULATOR`, `CI-APPROX — NOT DEVICE EVIDENCE`, `SIMULATED — NOT DEVICE EVIDENCE`. Device items stay `NEEDS-DEVICE-VALIDATION` (NDV); items only the owner can judge stay `NEEDS-OWNER-VALIDATION` (NOV).
 
@@ -196,7 +196,7 @@ desktop/docs/{LINUX,STEAM_DECK,DEVICE_CHECKLIST_LINUX}.md
   - DV-L5: 8B decode/prefill.
 - **Both:** real suspend/resume; hwmon labels; thermal thresholds; fan noise.
 
-**Estimate:** 12–19 engineer-weeks (DL0–DL7). The design's §9.4 counts DL0–DL5 (9–14.5) under D-v2 and DL6 (2–3) inside M1.
+**Estimate:** 11.5–18.5 engineer-weeks (DL0–DL7) (r4.1, R41-P-01; old "12–19", which R4-P-10 amended without editing this line). The design's §9.4 counts DL0–DL5 (9–14.5) under D-v2 and DL6 (2–3) inside M1.
 
 ---
 
@@ -698,3 +698,17 @@ The design's §9.4 sums the mesh and platform work, by phase, to **≈ 92–150 
 **R4-P-13 (§10 CI; desktop ERR-DL2-12, desktop ERR-FX-4, desktop ERR-FX-14, desktop ERR-FX-3).** Builder actions on workflows (outside this docs change): run the `desktop-jvm` and `desktop-jvm-arm` jobs with `ASOM_REQUIRE_DBUS=1` so a missing `dbus-daemon` fails instead of skipping; change `desktop-windows.yml` and its pinned copy together (`persist-credentials: false`); add `docs/design/mesh/manifest-vectors/**` (and `conformance-examples/**` if read) to the path filters of `apple-ios.yml`. A workflow that has never run on a hosted runner has not been shown to pass.
 
 **R4-P-14 (§6 iOS M1b scope; R3-CONFORMANCE-7).** Whether the iPhone build of M1b hosts the benchmark shell is a sub-question of D7/D24 (`OWNER_DECISIONS.md`); the recommendation is to drop it from the iPhone and add it to the iPad at M5. §6 is unchanged until ruled.
+
+## 14. Revision 4.1 amendments (normative; 2026-10-18)
+
+**Status.** Design revision 4.1 (`REVISION_4_1.md`). **Where this section and §13 or §0–§12 differ, this section wins**; the design still wins over all of them. Ids of `desktop/ERRATA.md` are that file's. Nothing here is device evidence; every PROVISIONAL number is listed in D43 (`OWNER_DECISIONS.md` §J).
+
+**R41-P-01 (§3 Linux estimate and §11; R3-OVERCLAIM-13; R4-P-10).** R4-P-10 amended §11 to "11.5–18.5 (the sum of the rows)" and said §3's "Estimate: 12–19" reads the same, but left §3's line, `ASOM_MESH_DESIGN.md` §3.4.2 and `platforms/linux.md` §10.3's total row at 12–19. r4.1 corrects all three in place. **Which won:** the design's own itemised figures (§9.4: D-v2 Linux/Deck DL0–DL5 9–14.5, DL6 2–3 inside M1) plus DL7 0.5–1, which sum to 11.5–18.5, the same as R4-P-10; the design's stale headline "12–19" lost to the design's rows, so the design and this plan now agree.
+
+**R41-P-02 (§2 shared node, R4-P-12; desktop ERR-R4B-HC-1, ERR-FX3-HC-1, ERR-FX3-HC-2, ERR-FX3-HC-3).** R4-P-12's strict start is done on all three hosts (Linux, Windows, macOS). Added:
+- **Strict start is unconditional:** every host's governor starts strict whatever the host declares; the `SettlesBeforeServing` marker is informational (a host that forgets it, or a delegating wrapper, cannot get the old start).
+- **Every enable from OFF starts a fresh governor:** the CPU, GPU and memory gates return to their start state, so the whole 60 s quiet dwell is needed after each enable, even if the machine was quiet while the node was disabled (readings taken while OFF are not credit). An enable from ARMED (the presence-first explicit start) keeps the running gates.
+- **GPU counter existence is decided over time:** a counter is taken as absent (the GPU rule off) only after 3 consecutive probe misses, and an absent verdict is asked again every 30 calls (about 60 s at the 2 s tick); until it is decided the governor sees a blind GPU input, on which a strict governor cannot serve. Both numbers are PROVISIONAL (chosen by the builder, not the spec).
+- **DEFERRED (spec gap, ERR-FX3-HC-1):** whether a blind stretch longer than the eligible dwell, or a `RESUMED`, should also un-settle a gate. Today a long blind CPU stretch leaves an eligible gate eligible.
+
+Pinned by desktop tests (`StrictGovernorStartTest` per host, `StrictStartReenableTest`, `GpuExistenceTest`, `GovernorTest`); fake-clock warm-ups are LAB evidence of the rule; no Windows or macOS machine has run them (NEEDS-DEVICE-VALIDATION).
