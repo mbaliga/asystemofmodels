@@ -2607,3 +2607,36 @@ Failing before the fix (run on the unfixed code): SinkRecoveryTest 3 of 4 (poiso
 Mutation checks (each applied, the module suite run, the file restored): M01 sink poison removed, KILLED (1); M02 no owner-only tighten, KILLED (1); M03 explicit regular-file check removed, SURVIVED, and M03b with the tail scan's NOFOLLOW removed as well, SURVIVED (layered defences, see ERR-FX4-LG-2); M04 lender abort a no-op, KILLED (6); M05 close row drops the uncovered bytes, KILLED (2); M06 L-L16 frame-driven clause off, KILLED (2); M07 requester send after outcome allowed, KILLED (1); M08 DIAL connection leaked, KILLED (2); M09 any DIAL code accepted, KILLED (1); M10 attemptIndex a world counter, KILLED (3); M11 terminal servedClass always local, KILLED (3, mesh-sim too: M22, 7); M12 PeerPathRule overlay to lan, KILLED (2); M13 provider error text copied into routeDetail, KILLED (3); M14 served-by header literal, KILLED (3); M15 L-L12 head status strict, KILLED (2); M16 cloud intent not written, KILLED (5, incl. CrashConsistencyTest); M17 L-L19 closed set too small, KILLED (4); M18 close skips requester attempts, KILLED (1); M19 abort failure not a ledger failure, KILLED (1); M20 sim ignores paired in flight, KILLED (1); M21 sim pulls an unpaired peer, KILLED (1); M23 cloud intent absent in mesh-sim, KILLED (2); M25 desktop no tighten, KILLED (1).
 
 Not done: Windows ACL path unverified; `mesh-proto` `RequesterSide` still writes no `servedProvider`/`servedModel` on its outcome row; `VERSION` bump and the `lab/conformance/README.md` change tables (L02-017, L02-024, L02-025); contract.md 4.3 table row for "accepted, cancelled"; a mesh-proto-level mid-stream revoke scenario; hosted CI was not run.
+## Gate: fix4-json-ci (A-F2, A-F3, A-F4, A-F5, B-F5) - LAB, CI-APPROX, oracle: self, NOT DEVICE EVIDENCE
+
+Worktree base: `git rev-parse HEAD` printed 98ab632 at the start, so `git fetch origin claude/asom-v1-build-brief-vw83oh && git reset --hard 0e8a3e42d87495ff8780329b7fe83b989ec41f6a` was run; HEAD then printed `0e8a3e42d87495ff8780329b7fe83b989ec41f6a` and `docs/design/mesh/LAB_SPEC.md` exists. Nothing committed or pushed. Rows: `lab/ERRATA.md` ERR-FX4-JS-1 to ERR-FX4-JS-6.
+
+Failing before the fix (real runs on the unfixed tree):
+```
+DeepInputTest > millionLevelsAreRejectedWithBoundedTimeAndMemory(): 1,000,000 open arrays: allocated 54586584 bytes for 1000000 input bytes, bound 12582912
+old xcheck_m01.py: 25000 [ 1.5 -> MALFORMED_JSON (lab, Swift: NON_INTEGER_NUMBER); 200000 [ dup -> MALFORMED_JSON (lab, Swift: DUPLICATE_KEY)
+old check_qml_text.py --selftest: 10 of the 12 new negative controls MISSED, PropertyChanges 2 of 4 violations; "check_qml_text selftest: FAILED"
+```
+After the fix:
+```
+$ ./gradlew -p lab :json:cleanTest :json:test      (JDK 21 and JDK 17, both BUILD SUCCESSFUL; 45 tests, 0 failures on each)
+$ ./gradlew -p lab labTest                         (JDK 21 and JDK 17, both BUILD SUCCESSFUL, includes :conformance-runner)
+measured (JDK 21, bytes allocated by the parsing thread): 1M open [ 1440 B 7 ms; 1M closed [] 2576 B 11 ms; 250k open {"a": 2166800 B 22 ms; 250k dup at bottom 6171376 B 22 ms
+$ python3 lab/json/tools/xcheck_m01.py lab/conformance --corpus lab/build/json-fuzz-corpus.tsv
+xcheck M01 corpus: 4000 inputs
+xcheck M01: 4130 agree, 0 disagree
+$ (one-off, 60,000 inputs of which 30,000 deep, then restored)  xcheck M01: 60094 agree, 0 disagree
+$ python3 lab/tools/xcheck.py lab/conformance          every family 0 disagree (M01 130 agree)
+$ python3 lab/tools/xcheck.py lab/conformance --families L01,W07,W07p   L01 56, W07 71, W07p 97 agree, 0 disagree
+$ python3 lab/mesh-router/tools/gen_vectors.py; python3 lab/mesh-proto/tools/trust/gen_vectors.py; python3 lab/mesh-policy/tools/gen_vectors.py; ./gradlew -p lab :bench-core:genBenchVectors (JDK 21 and 17); python3 lab/tools/regen_index.py
+git status --porcelain -- lab/conformance   (empty)
+$ python3 ubuntu-touch/tools/check_qml_text.py --selftest   check_qml_text selftest: OK (29 negative, 11 positive controls)
+$ python3 ubuntu-touch/tools/check_qml_text.py              check_qml_text: 18 Label/Text/TextEdit objects in 13 QML/JS files / OK
+$ python3 lab/tools/isolation.py                            isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 ubuntu-touch/tools/isolation.py                   isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py                            law: OK
+$ python3 lab/tools/check_law.py --selftest                 law selftest OK: 17 mutants caught, 3 clean controls passed
+$ ./gradlew jvmTest                                         BUILD SUCCESSFUL, 140 root tests, 0 failures (from cache)
+```
+Mutation checks (suite must fail, then restored): StrictJson skim, nine mutants (duplicate never reported; a closed object keeps its names; first name not in the set; tooDeep not recorded; skim one level late; array closer accepts `}`; object closer accepts `]`; colon check removed; frame-per-level restored), all failed; the first run of the array-closer mutant SURVIVED and exposed a missing test (the mismatch was above depth 16), which was then added. `check_qml_text.py`, six mutants, all failed the selftest. `xcheck_m01.py` with `MAX_DEPTH = 17`: 4 disagree.
+NOT RUN: the new lab.yml steps on a hosted runner (the commands were run locally); the Swift lane against the corpus; `tests/qml/tst_Text.qml` (no Qt here).

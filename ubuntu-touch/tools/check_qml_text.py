@@ -6,9 +6,17 @@ StyledText loads `<img src>` URLs from the UI process, over the network, with no
 node's row fields are text the app does not control, so no item may ever leave the default. The rule is therefore uniform and does not
 try to judge which bindings are "safe":
 
-  * every `Label`, `Text` and `TextEdit` object in qml/ sets `textFormat: Text.PlainText` itself (as its own property, not in a child);
-  * `textFormat` appears nowhere else in qml/ (no assignment from JS, no other value);
-  * `Text.AutoText`, `Text.RichText`, `Text.StyledText` and `Text.MarkdownText` appear nowhere in qml/.
+  * every `Label`, `Text`, `TextEdit` and `TextArea` object in qml/ sets `textFormat: Text.PlainText` itself (as its own property, not in
+    a child);
+  * `textFormat` appears nowhere else in qml/ (no assignment from JS, no other value), and no string literal is the name `textFormat`
+    (`a["textFormat"] = 1`, `Binding { property: "textFormat" }`, `setProperty`-style access by name);
+  * `Text.AutoText`, `Text.RichText`, `Text.StyledText` and `Text.MarkdownText` appear nowhere in qml/;
+  * no object is built from a string or a computed URL (`createQmlObject`, `createComponent`, `incubateObject`), because the scan could not
+    see what it contains;
+  * every object type in qml/ is on an allow-list (ALLOWED_TYPES, plus the components defined in qml/ itself), so a text-rendering type the
+    scan does not know, or a `Binding` / `PropertyChanges` that could retarget a format, fails closed and must be reviewed before it is added.
+
+Not provable statically: a property name assembled at run time (`a["text" + "Format"]`). `tests/qml/tst_Text.qml` walks the rendered items.
 
 Non-vacuity: the check fails when it finds no Label or Text object at all. `--selftest` runs the negative controls (each must be
 reported) and the positive controls (each must pass) on synthetic sources. Exit 1 on any violation."""
@@ -19,15 +27,22 @@ import tempfile
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 QML = os.path.join(ROOT, "qml")
-TEXT_TYPES = ("Label", "Text", "TextEdit")
+TEXT_TYPES = ("Label", "Text", "TextEdit", "TextArea")
 OBJECT = re.compile(r"(?<![\w.])(?:[A-Za-z_]\w*\.)*(" + "|".join(TEXT_TYPES) + r")\s*\{")
+ANY_OBJECT = re.compile(r"(?<![\w.])((?:[A-Za-z_]\w*\.)*)([A-Z]\w*)\s*\{")
+BUILDERS = re.compile(r"\b(createQmlObject|createComponent|incubateObject)\b")
+ALLOWED_TYPES = frozenset(TEXT_TYPES) | frozenset((
+    "Item", "Column", "Row", "Repeater", "Rectangle", "QtObject", "Loader", "Canvas", "Button", "TextField", "MainView",
+    "NodeProcess", "DisplayKeeper", "LifecycleForwarder",
+))
 FORBIDDEN_FORMAT = re.compile(r"\bText\.(AutoText|RichText|StyledText|MarkdownText)\b")
 TEXTFORMAT = re.compile(r"\btextFormat\b")
 OWN_PROPERTY = re.compile(r"(?:^|[;{\s])textFormat\s*:\s*([^\n;}]*)")
 
 
-def mask(src):
-    """Same length as `src`; comments and the inside of string literals become spaces (newlines are kept)."""
+def mask(src, literals=None):
+    """Same length as `src`; comments and the inside of string literals become spaces (newlines are kept).
+    When `literals` is a list, the (offset, text) of every string literal is appended to it."""
     out = []
     i, n = 0, len(src)
     while i < n:
@@ -46,6 +61,7 @@ def mask(src):
             quote = c
             out.append(quote)
             i += 1
+            begin = i
             while i < n and src[i] != quote:
                 if src[i] == "\\" and i + 1 < n:
                     out.append("  ")
@@ -53,6 +69,8 @@ def mask(src):
                     continue
                 out.append("\n" if src[i] == "\n" else " ")
                 i += 1
+            if literals is not None:
+                literals.append((begin, src[begin:i]))
             if i < n:
                 out.append(quote)
                 i += 1
@@ -85,10 +103,11 @@ def line_of(src, pos):
     return src.count("\n", 0, pos) + 1
 
 
-def check_source(name, src):
-    """Returns (violations, number of Label/Text objects seen)."""
+def check_source(name, src, local=frozenset()):
+    """Returns (violations, number of Label/Text objects seen). `local` names the components defined in qml/ itself."""
     bad = []
-    masked = mask(src)
+    literals = []
+    masked = mask(src, literals)
     objects = 0
     for m in OBJECT.finditer(masked):
         objects += 1
@@ -105,12 +124,21 @@ def check_source(name, src):
         rest = masked[m.start():].split("\n", 1)[0]
         if not re.match(r"textFormat\s*:\s*Text\.PlainText\s*;?\s*(\}.*)?$", rest):
             bad.append(f"{name}:{line_of(src, m.start())}: textFormat may only be declared as `textFormat: Text.PlainText`: {rest.strip()}")
+    for at, text in literals:
+        if text.strip() == "textFormat":
+            bad.append(f"{name}:{line_of(src, at)}: the property name textFormat as a string literal: a format must be declared in the source, not set by name")
+    for m in BUILDERS.finditer(masked):
+        bad.append(f"{name}:{line_of(src, m.start())}: {m.group(1)} builds objects the scan cannot see")
+    for m in ANY_OBJECT.finditer(masked):
+        if m.group(2) not in ALLOWED_TYPES and m.group(2) not in local:
+            bad.append(f"{name}:{line_of(src, m.start())}: {m.group(2)} is not an allow-listed QML type: review whether it renders text or retargets a format, then add it to ALLOWED_TYPES")
     for m in FORBIDDEN_FORMAT.finditer(masked):
         bad.append(f"{name}:{line_of(src, m.start())}: Text.{m.group(1)} is forbidden: the UI shows only plain text")
     return bad, objects
 
 
 def check_tree(qml_dir=QML):
+    local = frozenset(os.path.splitext(n)[0] for _, _, names in os.walk(qml_dir) for n in names if n.endswith(".qml"))
     bad = []
     objects = 0
     files = 0
@@ -120,7 +148,7 @@ def check_tree(qml_dir=QML):
                 files += 1
                 path = os.path.join(root, n)
                 with open(path, encoding="utf-8") as f:
-                    b, k = check_source(os.path.relpath(path, ROOT).replace(os.sep, "/"), f.read())
+                    b, k = check_source(os.path.relpath(path, ROOT).replace(os.sep, "/"), f.read(), local)
                 bad += b
                 objects += k
     if objects == 0:
@@ -148,6 +176,18 @@ SELFTEST = [
     ("one good and one bad label", GOOD + "Label { text: b }\n", 1),
     ("block never closes", "Label { text: a\n", 1),
     ("one-line form", "Label { text: a }\n", 1),
+    ("textFormat set by property name through a Binding", "Label { id: a; text: peer.alias; textFormat: Text.PlainText }\nBinding { target: a; property: \"textFormat\"; value: 2 }\n", 2),
+    ("textFormat set by name from JS, double quotes", GOOD + "Item { Component.onCompleted: a[\"textFormat\"] = 1 }\n", 1),
+    ("textFormat set by name from JS, single quotes", GOOD + "Item { Component.onCompleted: a['textFormat'] = 1 }\n", 1),
+    ("textFormat name with surrounding space", GOOD + "Item { Component.onCompleted: a[\" textFormat \"] = 1 }\n", 1),
+    ("object built from a string", GOOD + "Item { Component.onCompleted: Qt.createQmlObject(\"import QtQuick 2.0; Text { text: peer.alias }\", parent) }\n", 1),
+    ("component built from a computed url", GOOD + "Item { Component.onCompleted: Qt.createComponent(base + name).createObject(parent) }\n", 1),
+    ("incubated object", GOOD + "Item { Component.onCompleted: comp.incubateObject(parent) }\n", 1),
+    ("textarea without textFormat", "TextArea { text: model.answer }\n", 1),
+    ("textarea with the wrong format", "TextArea { textFormat: TextEdit.RichText }\n", 2),
+    ("PropertyChanges switching the format", GOOD + "State { PropertyChanges { target: a; textFormat: Text.RichText } }\n", 4),
+    ("a text-rendering type outside the allow-list", GOOD + "ListItemLayout { title.text: peer.alias }\n", 1),
+    ("Binding without a textFormat name", GOOD + "Binding { target: a; property: prop; value: 2 }\n", 1),
 ]
 SELFTEST_OK = [
     ("plain label", GOOD),
@@ -156,18 +196,25 @@ SELFTEST_OK = [
     ("a property called text is not an object", "Item { property string Text: \"x\"; text: Text.WordWrap }\n"),
     ("braces and URLs inside strings do not confuse the scan", "Label {\n  text: \"} // { http://x\"\n  textFormat: Text.PlainText\n}\n"),
     ("wrapMode uses Text.WordWrap", "Label {\n  wrapMode: Text.WordWrap\n  textFormat: Text.PlainText\n}\n"),
+    ("plain textarea", "TextArea {\n  textFormat: Text.PlainText\n  text: a\n}\n"),
+    ("a local component and allow-listed layout types", GOOD + "Column { Glyph { name: \"x\" } Row { Rectangle { } } }\n"),
+    ("a string that merely mentions the property", "Label {\n  text: \"textFormat: Text.PlainText\"\n  textFormat: Text.PlainText\n}\n"),
+    ("createObject of a fixed component is not createQmlObject", GOOD + "Item { Component.onCompleted: console.log(\"createQmlObject\") }\n"),
 ]
+
+
+SELFTEST_LOCAL = frozenset(("Glyph",))
 
 
 def selftest():
     failures = []
     for name, src, want in SELFTEST:
-        got, objects = check_source("selftest", src)
+        got, objects = check_source("selftest", src, SELFTEST_LOCAL)
         if len(got) != want:
             failures.append(f"negative control '{name}': expected {want} violation(s), got {len(got)}: {got}")
         print(f"selftest: negative control '{name}': {len(got)} violation(s) {'(detected)' if got else '(MISSED)'}")
     for name, src in SELFTEST_OK:
-        got, objects = check_source("selftest", src)
+        got, objects = check_source("selftest", src, SELFTEST_LOCAL)
         if got:
             failures.append(f"positive control rejected: {name}: {got}")
         print(f"selftest: positive control '{name}': {len(got)} violation(s), {objects} object(s)")

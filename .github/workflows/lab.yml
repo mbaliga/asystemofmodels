@@ -62,12 +62,36 @@ jobs:
           # the families xcheck.py can cross-check but does not run by default (HA-09); a family it cannot cover is named, not skipped
           python3 lab/tools/xcheck.py lab/conformance --families L01,W07,W07p
 
-      - name: Router reference (ref.py) regenerates R01, R02, R03, R05, R06 and M08 byte for byte
-        # gen_vectors.py asserts the spec's worked numbers and cross-checks every hand-typed expectation against the independent
-        # lab/mesh-router/tools/ref.py while it writes; the committed vectors must come out unchanged, so a regression on either
-        # side fails here.
+      - name: JSON fuzz corpus (written by PropertyTest) through the Python second implementation
+        # cleanTest: an up-to-date or cached :json:test would skip the run that writes the corpus, and the corpus is a side effect, not
+        # a task output. A missing, empty or short corpus fails here instead of passing with nothing checked.
+        run: |
+          ./gradlew -p lab :json:cleanTest :json:test --tests '*PropertyTest*' --stacktrace
+          test -s lab/build/json-fuzz-corpus.tsv
+          n=$(wc -l < lab/build/json-fuzz-corpus.tsv)
+          echo "fuzz corpus lines: $n"
+          test "$n" -ge 4000
+          python3 lab/json/tools/xcheck_m01.py lab/conformance --corpus lab/build/json-fuzz-corpus.tsv
+
+      - name: Keep the fuzz corpus for the Swift lane
+        if: matrix.jdk == '21'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: json-fuzz-corpus
+          path: lab/build/json-fuzz-corpus.tsv
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Generators regenerate the committed vectors byte for byte (router, M04, M05, W04, W05, L01, L02, W07, W07p)
+        # mesh-router gen_vectors.py asserts the spec's worked numbers and cross-checks every hand-typed expectation against the
+        # independent lab/mesh-router/tools/ref.py while it writes. The trust, policy and bench generators are the only writers of
+        # W04/W05, L01/L02/W07/W07p and M04/M05; a committed vector that no longer equals its generator's output is drift (ERR-FX3-HN-3
+        # was found by hand), so the committed vectors must come out unchanged.
         run: |
           python3 lab/mesh-router/tools/gen_vectors.py
+          python3 lab/mesh-proto/tools/trust/gen_vectors.py
+          python3 lab/mesh-policy/tools/gen_vectors.py
+          ./gradlew -p lab :bench-core:genBenchVectors --stacktrace
           python3 lab/tools/regen_index.py
           test -z "$(git status --porcelain -- lab/conformance)" || { git status --porcelain -- lab/conformance; git diff --stat -- lab/conformance; exit 1; }
 
