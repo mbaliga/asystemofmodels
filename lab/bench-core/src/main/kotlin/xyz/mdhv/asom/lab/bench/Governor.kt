@@ -44,8 +44,9 @@ object Ceilings {
      * Returns the first ceiling that applies; null when none does. Hard before soft; among hard ones thermal, then battery (temperature, then level),
      * then the rest (R4-B-02). A low level is `BATTERY_LOW` and the Apple power switch is `POWER_SAVER` (R4-B-01). [gpuBusyHeldMs] is how long the
      * Deck's other-process GPU load has stayed at or above the limit. Throws [NoCeilingRow] for a platform without a row.
+     * The macOS laptop rule reads "AC lost during the sustained phase" (11.3): a caller outside that phase passes [acLossCounts] false (A-F1, ERR-FX4-BD-1).
      */
-    fun evaluate(platform: String, form: String, t: ThermalReading, p: PowerReading, presence: Presence, gpuBusyHeldMs: Long): Ceiling? {
+    fun evaluate(platform: String, form: String, t: ThermalReading, p: PowerReading, presence: Presence, gpuBusyHeldMs: Long, acLossCounts: Boolean = true): Ceiling? {
         val batt = t.batteryTempDeciC
         val level = p.levelPermille
         when (platform) {
@@ -63,7 +64,7 @@ object Ceilings {
             }
             "macos" -> {
                 if (t.code >= 4) return Ceiling.Hard("THERMAL_HARD")
-                if (form == "laptop" && p.source != "ac") return Ceiling.Hard("CHARGER_REMOVED")
+                if (acLossCounts && form == "laptop" && p.source != "ac") return Ceiling.Hard("CHARGER_REMOVED")
                 if (t.code >= 3) return Ceiling.Soft("THERMAL_SOFT")
             }
             "linux" -> {
@@ -245,7 +246,7 @@ class Governor(
         val heldMs = gpuBusySinceMicros?.let { (now - it) / 1000L } ?: 0L
         var noRow = false
         val ceiling = try {
-            Ceilings.evaluate(dev.platform, dev.form, thermal, power, presence, heldMs)
+            Ceilings.evaluate(dev.platform, dev.form, thermal, power, presence, heldMs, acLossCounts = phase == Phase.SUSTAIN)
         } catch (e: NoCeilingRow) {
             noRow = true
             null

@@ -25,10 +25,13 @@ public struct CeilingInputs: Sendable, Equatable {
     public var batteryLevelPermille: Int64?
     public var lowPowerMode: Bool
     public var gpuBusyHeldMs: Int64
+    /// False outside the sustained phase: the macOS laptop rule reads "AC lost during the sustained phase" (11.3), and 11.5 asks quick runs for no charger (ERR-FX4-BD-1).
+    public var acLossCounts: Bool
 
     public init(
         platform: String, form: String, thermalCode: Int64, headroomPermille: Int64? = nil, batteryTempDeciC: Int64? = nil,
-        powerSource: String, batteryLevelPermille: Int64? = nil, lowPowerMode: Bool = false, gpuBusyHeldMs: Int64 = 0
+        powerSource: String, batteryLevelPermille: Int64? = nil, lowPowerMode: Bool = false, gpuBusyHeldMs: Int64 = 0,
+        acLossCounts: Bool = true
     ) {
         self.platform = platform
         self.form = form
@@ -39,6 +42,7 @@ public struct CeilingInputs: Sendable, Equatable {
         self.batteryLevelPermille = batteryLevelPermille
         self.lowPowerMode = lowPowerMode
         self.gpuBusyHeldMs = gpuBusyHeldMs
+        self.acLossCounts = acLossCounts
     }
 }
 
@@ -74,7 +78,7 @@ public enum Ceilings {
             return .none
         case "macos":
             if i.thermalCode >= 4 { return .hard("THERMAL_HARD") }
-            if i.form == "laptop", i.powerSource != "ac" { return .hard("CHARGER_REMOVED") }
+            if i.acLossCounts, i.form == "laptop", i.powerSource != "ac" { return .hard("CHARGER_REMOVED") }
             if i.thermalCode >= 3 { return .soft("THERMAL_SOFT") }
             return .none
         case "linux":

@@ -2694,3 +2694,32 @@ python3 lab/tools/check_law.py -> law: OK   (a first run flagged the literal wil
 ./gradlew jvmTest -> BUILD SUCCESSFUL in 4s (tasks FROM-CACHE / UP-TO-DATE: the root build is untouched, so this re-confirms the cached 140-test result, it did not re-execute it)
 ```
 Not done / disclosed: Node.kt (GOAWAY-first hook, `dial` eligibility check) is another track; the Swift lane has no `revokeCorrupt`, class-column or write-outcome mirror (apple/ is outside this track); the stale comment in `integration/TlsHarness.kt` about the unsynchronised counter was not edited.
+### Fix wave 4, track fix4-bench-docs (corrections entry; base 0e8a3e4; LAB, CI-APPROX, NOT DEVICE EVIDENCE)
+
+The worktree was created from the wrong commit (`98ab632`); it was reset to the base `0e8a3e4` with `git fetch origin claude/asom-v1-build-brief-vw83oh` and `git reset --hard 0e8a3e4`, and `docs/design/mesh/LAB_SPEC.md` exists. Nothing is committed.
+
+Findings and what the real runs showed (details and readings in `lab/ERRATA.md` ERR-FX4-BD-1..5 and `apple/ERRATA.md` ERR-FX4-BD-1a):
+- A-F1 (macOS laptop off AC is a ceiling only in the sustained phase): FIXED in the JVM lane. Failing before: `FixBenchCeilingTest > aQuickOrCiRunOnAMacLaptopOnBatteryIsNotAbortedForAChargerThatWasNeverRequired() FAILED`, `expected: <completed> but was: <aborted CHARGER_REMOVED>`. The Swift mirror (`Ceilings.swift`, `ProtocolTests.swift`) is written but NOT RUN: no Swift toolchain in this container. No ceilings vector or trace was added and M04-445's description is not corrected (conformance vectors are outside this track and need the VERSION bump, WAIT-OWNER D30 to D32).
+- A-R4X-5 (`disc` outside 0..1000): FIXED in the JVM lane. Failing before: `TrackerDiscRangeTest > aDiscOutsideZeroToOneThousandIsRefusedAndTheEdgesAreAccepted() FAILED` (`trackedRate disc=-1 ... expected IllegalArgumentException ... but was completed successfully`). The Swift lane already refused.
+- A-R4X-3, B-VEC-1, A-F3 (conformance README): FIXED as documentation. Real counts from the files at `0e8a3e4`, compared id by id with `5c4871b`: M04 130 to 131 (M04-431), W07 69 to 71 (W07-083/084), M08 96 to 103 (M08-102..108), W04 443 to 444 (W04-459 added; W04-454 and W04-466 input changed, expectation the same). Third table added, counts corrected, builder action 15 covers all three tables. VERSION still 0.2.0 (not bumped).
+- B-VEC-4 (workflow comment): FIXED, comment only: 42 known disagreements, 33 not implemented (32 traces, 1 consent sheet), counted from `apple/ci/known-disagreements.txt` and `apple/ci/not-implemented.txt`.
+- B-VEC-3 (`xcheck_trust` circularity): DISCLOSED LIMIT in `lab/ERRATA.md` ERR-FX4-BD-5; no code change.
+
+Mutation checks (each applied, suite failed, restored): removing the `acLossCounts = phase == Phase.SUSTAIN` argument in `Governor.check` gave `FixBenchCeilingTest > aQuickOrCiRunOnAMacLaptopOnBatteryIsNotAbortedForAChargerThatWasNeverRequired() FAILED`, `3 tests completed, 1 failed`; deleting the `require(disc in 0..1_000L)` line gave `TrackerDiscRangeTest > aDiscOutsideZeroToOneThousandIsRefusedAndTheEdgesAreAccepted() FAILED`. Both files restored (the tests pass again below). The new tests count their cases and fail on zero (`Counter.requireNonVacuous`, explicit counts).
+
+Gates, run in this container after the change (test totals summed from `build/test-results/test/*.xml`):
+```
+./gradlew -p lab :bench-core:test :mesh-router:test :conformance-runner:test --max-workers=2 --rerun-tasks   (JDK 21)
+  bench-core tests 86 skipped 0 failures 0 errors 0
+  mesh-router tests 70 skipped 0 failures 0 errors 0
+  conformance-runner tests 2320 skipped 7 failures 0 errors 0
+JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab :bench-core:test :mesh-router:test :conformance-runner:test --max-workers=2 --rerun-tasks
+  BUILD SUCCESSFUL in 1m 17s
+  bench-core tests 86 skipped 0 failures 0 errors 0
+  mesh-router tests 70 skipped 0 failures 0 errors 0
+  conformance-runner tests 2320 skipped 7 failures 0 errors 0
+python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+python3 lab/tools/check_law.py -> law: OK
+./gradlew jvmTest --max-workers=2 -> BUILD SUCCESSFUL; 140 tests, 0 failures, 0 errors (from cache)
+```
+Not run: `swift test --package-path apple` (no Swift toolchain here); hosted CI. The JDK 21 run's `BUILD` line was cut off by my output filter; its result is the XML totals above.

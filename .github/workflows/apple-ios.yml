@@ -183,12 +183,12 @@ jobs:
   #   - a disagreement that is not in apple/ci/known-disagreements.txt (an unexplained one),
   #   - an entry of that list that now agrees (a stale list hides regressions),
   #   - a vector the JVM lane prints and the Swift lane does not, unless it is in apple/ci/not-implemented.txt
-  #     (the executor traces, two plans and one consent sheet, BLOCKED in that file),
+  #     (the executor traces and one consent sheet, BLOCKED in that file),
   #   - a vector only the Swift lane prints.
-  # Known disagreements (both lists are explicit files, not a continue-on-error): 37 vectors, all finding LF-1 of
+  # Known disagreements (both lists are explicit files, not a continue-on-error; counts at head 0e8a3e4): 42 vectors, all finding LF-1 of
   # apple/ERRATA.md. The JVM lane emits the row flag `thermal-drift`; benchmark.md 13.3 lists no such flag, so the Swift
-  # lane's step 15a says DERIVATION_MISMATCH before it reaches the step that decides the vector. Not implemented: 29 vectors
-  # (26 executor traces, 2 plans, 1 consent sheet), each BLOCKED with a reason in apple/ci/not-implemented.txt.
+  # lane's step 15a says DERIVATION_MISMATCH before it reaches the step that decides the vector. Not implemented: 33 vectors
+  # (32 executor traces, 1 consent sheet), each BLOCKED with a reason in apple/ci/not-implemented.txt.
   lane-diff:
     name: lane-diff (per vector, JVM against Swift on macOS and on Linux)
     needs: [jvm-lines, apple-swift-lane]

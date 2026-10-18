@@ -295,9 +295,23 @@ final class ProtocolTests: XCTestCase {
     // MARK: Ceilings
 
     private func inputs(_ platform: String, form: String = "phone", code: Int64 = 0, headroom: Int64? = nil, batteryDeciC: Int64? = nil,
-                        source: String = "ac", level: Int64? = 700, lowPower: Bool = false, gpu: Int64 = 0) -> CeilingInputs {
+                        source: String = "ac", level: Int64? = 700, lowPower: Bool = false, gpu: Int64 = 0, acLoss: Bool = true) -> CeilingInputs {
         CeilingInputs(platform: platform, form: form, thermalCode: code, headroomPermille: headroom, batteryTempDeciC: batteryDeciC,
-                      powerSource: source, batteryLevelPermille: level, lowPowerMode: lowPower, gpuBusyHeldMs: gpu)
+                      powerSource: source, batteryLevelPermille: level, lowPowerMode: lowPower, gpuBusyHeldMs: gpu, acLossCounts: acLoss)
+    }
+
+    func testALaptopOffACIsACeilingOnlyInTheSustainedPhase() throws {
+        var hits = 0
+        func check(_ i: CeilingInputs, _ want: Ceiling, _ line: UInt = #line) throws {
+            XCTAssertEqual(try Ceilings.evaluate(i), want, "\(i)", line: line)
+            hits += 1
+        }
+        try check(inputs("macos", form: "laptop", source: "battery", acLoss: true), .hard("CHARGER_REMOVED"))
+        try check(inputs("macos", form: "laptop", source: "battery", acLoss: false), .none)
+        try check(inputs("macos", form: "laptop", source: "ac", acLoss: true), .none)
+        try check(inputs("macos", form: "laptop", code: 4, source: "battery", acLoss: false), .hard("THERMAL_HARD"))
+        try check(inputs("macos", form: "laptop", code: 3, source: "battery", acLoss: false), .soft("THERMAL_SOFT"))
+        XCTAssertEqual(hits, 5, "non-vacuity")
     }
 
     func testCeilingTable() throws {

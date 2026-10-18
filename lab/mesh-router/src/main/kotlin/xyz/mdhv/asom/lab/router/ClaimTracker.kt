@@ -158,6 +158,7 @@ object ClaimTracker {
 
     /** One rate of the claim after tracking (LAB_SPEC 6.6 "use for placement"). Never above [claimRate]. */
     fun trackedRate(claimRate: Long, ts: TrackerState?, capRefRate: Long?, disc: Long): Long {
+        require(disc in 0..1_000L) { "disc $disc outside 0..1000 (R4-L-18)" }
         val x = if (ts == null) emptyList() else sorted(ts)
         val n = x.size
         var rate = if (n >= MIN_KEEP) {
