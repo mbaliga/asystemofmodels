@@ -45,4 +45,32 @@ class StrictJsonTest {
         assertEquals(9007199254740991L, (o["hi"] as JsonPrimitive).longOrNull)
         assertEquals(-9007199254740991L, (o["lo"] as JsonPrimitive).longOrNull)
     }
+
+    @Test
+    fun `unicode escapes take ASCII hex digits only`() {
+        val arabicIndic = "\u0664\u0664\u0664\u0664"
+        val fullwidth = "\uFF10\uFF10\uFF14\uFF21"
+        val mixed = "00\u0664\u0661"
+        val devanagari = "\u0966\u0966\u0966\u0967"
+        var n = 0
+        for (digits in listOf(arabicIndic, fullwidth, mixed, devanagari)) {
+            val text = "\"" + "\\u" + digits + "\""
+            assertFailsWith<StrictJsonException>("accepted non-ASCII hex digits in $text") { StrictJson.parse(text) }
+            n++
+        }
+        assertEquals("A", (StrictJson.parse("\"\\u0041\"") as JsonPrimitive).content)
+        assertEquals("\u00e9", (StrictJson.parse("\"\\u00E9\"") as JsonPrimitive).content)
+        assertEquals("\u00e9", (StrictJson.parse("\"\\u00e9\"") as JsonPrimitive).content)
+        assertEquals(4, n)
+    }
+
+    @Test
+    fun `nesting counts containers and 32 are accepted, 33 are not`() {
+        fun nested(n: Int) = "[".repeat(n) + "]".repeat(n)
+        StrictJson.parse(nested(32))
+        assertFailsWith<StrictJsonException> { StrictJson.parse(nested(33)) }
+        StrictJson.parse("[".repeat(32) + "1" + "]".repeat(32))
+        assertFailsWith<StrictJsonException> { StrictJson.parse("{\"a\":".repeat(33) + "1" + "}".repeat(33)) }
+        StrictJson.parse("{\"a\":".repeat(32) + "1" + "}".repeat(32))
+    }
 }

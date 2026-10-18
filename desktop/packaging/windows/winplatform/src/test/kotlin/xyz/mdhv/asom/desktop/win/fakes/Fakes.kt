@@ -26,6 +26,7 @@ import xyz.mdhv.asom.desktop.win.api.CngProvider
 import xyz.mdhv.asom.desktop.win.api.CounterValue
 import xyz.mdhv.asom.desktop.win.api.CpuLoadSource
 import xyz.mdhv.asom.desktop.win.api.DpapiPort
+import xyz.mdhv.asom.desktop.win.api.InterfaceKind
 import xyz.mdhv.asom.desktop.win.api.InterfaceLister
 import xyz.mdhv.asom.desktop.win.api.InterfaceSnapshot
 import xyz.mdhv.asom.desktop.win.api.KeyScope
@@ -330,8 +331,16 @@ class FakeFiles(val files: MutableMap<String, String> = HashMap()) : TextFiles {
 
 fun addr(text: String): InetAddress = InetAddress.getByName(text)
 
-fun nic(alias: String, index: Int, vararg addresses: String, up: Boolean = true) =
-    InterfaceSnapshot(alias, index, up, addresses.map { addr(it) })
+/** [kind] defaults from the alias the older tests use: "Tailscale" is a tunnel, "Wi-Fi" is Wi-Fi, anything else is Ethernet. */
+fun nic(alias: String, index: Int, vararg addresses: String, up: Boolean = true, kind: InterfaceKind? = null) =
+    InterfaceSnapshot(
+        alias, index, up, addresses.map { addr(it) },
+        kind ?: when {
+            alias.startsWith("Tailscale") -> InterfaceKind.TUNNEL
+            alias.startsWith("Wi-Fi") -> InterfaceKind.WIFI
+            else -> InterfaceKind.ETHERNET
+        },
+    )
 
 /** A fully faked native bundle. Everything can be replaced by name. */
 class FakeNative(

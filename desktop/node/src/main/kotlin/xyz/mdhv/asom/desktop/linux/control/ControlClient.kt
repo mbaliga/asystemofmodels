@@ -28,8 +28,10 @@ class ConfirmationRequiredException(val command: ControlCommand, message: String
 
 /**
  * The CLI side of the control socket. It reads the SERVER's SO_PEERCRED before it sends anything and refuses a server
- * whose user is not [expectedServerUser] (`asom` in SYSTEM mode, the caller itself in USER mode), so a same-uid or
- * other-uid impostor that bound the path first receives no request. A command that needs an owner confirmation
+ * whose user is not [expectedServerUser] (`asom` in SYSTEM mode, the caller itself in USER mode), so an
+ * other-uid impostor that bound the path first receives no request. In USER and FOREGROUND mode the expected user is the caller's
+ * own, so a SAME-uid impostor is NOT detectable and does receive the request, including a TTY-confirmed one (T17(g); the
+ * `shared-uid` label every USER-mode status line carries). A command that needs an owner confirmation
  * (`pair-confirm`, `restore`, `lan-confirm`) is sent only after [confirm] returned true: the caller wires that to
  * `TtyConfirm`, so the confirmation comes from the controlling terminal and never from the socket.
  */

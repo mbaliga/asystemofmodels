@@ -7,19 +7,74 @@ import java.net.NetworkInterface
 import java.net.NoRouteToHostException
 import java.net.SocketTimeoutException
 
-data class InterfaceSnapshot(val name: String, val isUp: Boolean, val addresses: List<InetAddress>)
+/**
+ * What the system calls the hardware behind a BSD name (trust.md 6.6: LAN only on Wi-Fi or Ethernet, never cellular). A BSD name
+ * cannot tell: an iPhone tethered over USB, a Bluetooth PAN and a Thunderbolt bridge are all `enN`. UNKNOWN is what an interface
+ * the system's port list does not mention gets, and it is refused like OTHER.
+ */
+enum class HardwarePort { WIFI, ETHERNET, CELLULAR, OTHER, UNKNOWN }
+
+data class InterfaceSnapshot(val name: String, val isUp: Boolean, val addresses: List<InetAddress>, val port: HardwarePort = HardwarePort.UNKNOWN)
 
 fun interface InterfaceLister {
     fun list(): List<InterfaceSnapshot>
 }
 
-/** Reads the JDK's view of the interfaces. Nothing is bound and nothing is opened. */
+/** Reads the JDK's view of the interfaces. Nothing is bound and nothing is opened. The hardware port is UNKNOWN: the JDK cannot say. */
 object JdkInterfaceLister : InterfaceLister {
     override fun list(): List<InterfaceSnapshot> {
         val all = NetworkInterface.getNetworkInterfaces() ?: return emptyList()
         return all.toList().map { ni ->
             InterfaceSnapshot(ni.name, runCatching { ni.isUp }.getOrDefault(false), ni.inetAddresses.toList())
         }
+    }
+}
+
+/**
+ * Reads the hardware-port names of the system's hardware-port listing (`Hardware Port: Wi-Fi` then `Device: en0`). Nothing here
+ * runs the tool that prints it: this module may not start a process for it (MacSourceHygieneTest), and the wiring is a later step.
+ * Unknown or localised names are OTHER, which is refused: an owner on a system whose port names this table does not know gets
+ * a refusal, never a bind. Tethers (iPhone, iPad, Bluetooth PAN, Thunderbolt Bridge) are checked first because their names
+ * can contain "Ethernet".
+ */
+object HardwarePorts {
+    private val TETHER = Regex("iphone|ipad|bluetooth|bridge|tether", RegexOption.IGNORE_CASE)
+    private val CELL = Regex("cellular|wwan|\\blte\\b|mobile|modem", RegexOption.IGNORE_CASE)
+    private val WIFI = Regex("^(wi-?fi|airport|wlan)\\b", RegexOption.IGNORE_CASE)
+    private val ETH = Regex("ethernet|\\blan\\b", RegexOption.IGNORE_CASE)
+
+    fun classify(portName: String): HardwarePort = when {
+        TETHER.containsMatchIn(portName) -> HardwarePort.OTHER
+        CELL.containsMatchIn(portName) -> HardwarePort.CELLULAR
+        WIFI.containsMatchIn(portName.trim()) -> HardwarePort.WIFI
+        ETH.containsMatchIn(portName) -> HardwarePort.ETHERNET
+        else -> HardwarePort.OTHER
+    }
+
+    fun parse(listing: String): Map<String, HardwarePort> {
+        val out = LinkedHashMap<String, HardwarePort>()
+        var port: String? = null
+        for (raw in listing.lineSequence()) {
+            val line = raw.trim()
+            when {
+                line.startsWith("Hardware Port:") -> port = line.removePrefix("Hardware Port:").trim()
+                line.startsWith("Device:") -> {
+                    val dev = line.removePrefix("Device:").trim()
+                    val p = port
+                    if (p != null && dev.isNotEmpty()) out[dev] = classify(p)
+                    port = null
+                }
+            }
+        }
+        return out
+    }
+}
+
+/** Adds the hardware port to each interface from a port listing; a missing or empty listing leaves every port UNKNOWN. */
+class PortClassifyingLister(private val base: InterfaceLister, private val listing: () -> String?) : InterfaceLister {
+    override fun list(): List<InterfaceSnapshot> {
+        val ports = runCatching { listing() }.getOrNull()?.let(HardwarePorts::parse).orEmpty()
+        return base.list().map { i -> ports[i.name]?.let { i.copy(port = it) } ?: i }
     }
 }
 
@@ -156,12 +211,21 @@ object InterfaceEligibility {
         return Eligibility.Bind(ListenBinding(InterfaceKind.OVERLAY_CANDIDATE, iface.name, address))
     }
 
+    /** Null when the system says this `enN` is Wi-Fi or Ethernet; the BSD name alone is not enough (an iPhone USB tether is an `enN` too). */
+    fun portProblem(i: InterfaceSnapshot): String? = when (i.port) {
+        HardwarePort.WIFI, HardwarePort.ETHERNET -> null
+        HardwarePort.CELLULAR -> "${i.name} is a cellular interface; the peer protocol never runs on one"
+        HardwarePort.OTHER -> "${i.name} is not a Wi-Fi or Ethernet port (a tether, Bluetooth PAN or bridge)"
+        HardwarePort.UNKNOWN -> "the system did not say what hardware ${i.name} is; it is not bound"
+    }
+
     /** A Wi-Fi or Ethernet interface the user confirmed, at a private or link-local address. */
     fun resolveLan(interfaces: List<InterfaceSnapshot>, interfaceName: String, lanConfirmed: Boolean): Eligibility {
         if (!lanConfirmed) return Eligibility.Refuse("this network is not confirmed; confirm the interface, its addresses and the Wi-Fi network name first")
         if (kindOf(interfaceName) != InterfaceKind.LAN_CANDIDATE) return Eligibility.Refuse("$interfaceName is not a Wi-Fi or Ethernet interface (en*)")
         val i = interfaces.firstOrNull { it.name == interfaceName } ?: return Eligibility.Refuse("interface $interfaceName does not exist")
         if (!i.isUp) return Eligibility.Refuse("interface $interfaceName is down")
+        portProblem(i)?.let { return Eligibility.Refuse(it) }
         val addr = i.addresses.filter(::isLanAddress).sortedBy { it !is Inet4Address }.firstOrNull()
             ?: return Eligibility.Refuse("interface $interfaceName has no private or link-local address")
         return Eligibility.Bind(ListenBinding(InterfaceKind.LAN_CANDIDATE, interfaceName, addr))
@@ -178,6 +242,7 @@ object InterfaceEligibility {
             when {
                 i == null || !i.isUp -> Reresolution.Lost("interface ${previous.interfaceName} is gone or down")
                 !lanConfirmed -> Reresolution.Lost("the LAN confirmation was withdrawn")
+                portProblem(i) != null -> Reresolution.Lost(portProblem(i)!!)
                 previous.address !in i.addresses -> Reresolution.Lost("interface ${previous.interfaceName} no longer carries ${previous.address.hostAddress}")
                 !isLanAddress(previous.address) -> Reresolution.Lost("${previous.address.hostAddress} is no longer a private or link-local address")
                 else -> Reresolution.Same

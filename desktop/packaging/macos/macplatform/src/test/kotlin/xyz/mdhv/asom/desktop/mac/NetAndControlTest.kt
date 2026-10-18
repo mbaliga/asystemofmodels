@@ -30,6 +30,7 @@ import xyz.mdhv.asom.desktop.mac.net.ClassifiedDial
 import xyz.mdhv.asom.desktop.mac.net.DialOutcome
 import xyz.mdhv.asom.desktop.mac.net.Eligibility
 import xyz.mdhv.asom.desktop.mac.net.InterfaceEligibility
+import xyz.mdhv.asom.desktop.mac.net.HardwarePort
 import xyz.mdhv.asom.desktop.mac.net.InterfaceKind
 import xyz.mdhv.asom.desktop.mac.net.InterfaceSnapshot
 import xyz.mdhv.asom.desktop.mac.net.ListenBinding
@@ -86,7 +87,8 @@ class NetAndControlTest {
         laws.hit("bindable-table", (never.size + always.size + 2).toLong())
     }
 
-    private fun snap(name: String, vararg addrs: String, up: Boolean = true) = InterfaceSnapshot(name, up, addrs.map(::ip))
+    private fun snap(name: String, vararg addrs: String, up: Boolean = true, port: HardwarePort? = null) =
+        InterfaceSnapshot(name, up, addrs.map(::ip), port ?: if (name.startsWith("en")) HardwarePort.WIFI else HardwarePort.OTHER)
 
     @Test
     fun `the overlay resolves to the one utun that carries an overlay address, and to the selected one when several do`() {
@@ -139,7 +141,7 @@ class NetAndControlTest {
         )
         for ((why, r) in refusals) assertIs<Eligibility.Refuse>(r, why)
         assertTrue(refusals.getValue("unconfirmed").let { (it as Eligibility.Refuse).reason.contains("not confirmed") })
-        val scoped = InterfaceEligibility.resolveLan(listOf(InterfaceSnapshot("en0", true, listOf(ll6("fe80::1", 4)))), "en0", true)
+        val scoped = InterfaceEligibility.resolveLan(listOf(InterfaceSnapshot("en0", true, listOf(ll6("fe80::1", 4)), HardwarePort.ETHERNET)), "en0", true)
         assertIs<Eligibility.Bind>(scoped)
         laws.hit("lan-resolve")
         laws.hit("lan-refuses", refusals.size.toLong())

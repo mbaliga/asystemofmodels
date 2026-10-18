@@ -183,11 +183,18 @@ interface ProcessRunner {
     fun run(executable: String, args: List<String>, timeoutMs: Long): RunResult
 }
 
+/**
+ * What the adapter is (trust.md 6.6: LAN only on Wi-Fi or Ethernet, never cellular, overlay only on a tunnel). UNKNOWN is what a
+ * failed lookup gives, and it is refused like CELLULAR: an adapter the node cannot classify is never bound.
+ */
+enum class InterfaceKind { ETHERNET, WIFI, TUNNEL, CELLULAR, OTHER, UNKNOWN }
+
 data class InterfaceSnapshot(
     val alias: String,
     val index: Int,
     val isUp: Boolean,
     val addresses: List<java.net.InetAddress>,
+    val kind: InterfaceKind = InterfaceKind.UNKNOWN,
 )
 
 interface InterfaceLister {

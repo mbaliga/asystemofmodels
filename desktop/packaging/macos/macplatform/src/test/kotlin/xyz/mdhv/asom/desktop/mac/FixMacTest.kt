@@ -32,6 +32,7 @@ import xyz.mdhv.asom.desktop.mac.keys.MacNikStore
 import xyz.mdhv.asom.desktop.mac.keys.NikUnavailableException
 import xyz.mdhv.asom.desktop.mac.net.Eligibility
 import xyz.mdhv.asom.desktop.mac.net.InterfaceEligibility
+import xyz.mdhv.asom.desktop.mac.net.HardwarePort
 import xyz.mdhv.asom.desktop.mac.net.InterfaceKind
 import xyz.mdhv.asom.desktop.mac.net.InterfaceSnapshot
 import xyz.mdhv.asom.desktop.mac.net.ListenBinding
@@ -90,7 +91,8 @@ class FixMacTest {
 
     // ---- HWM-8: the overlay is the one the user selected, never one chosen silently among several ------------------------------------
 
-    private fun snap(name: String, vararg addrs: String, up: Boolean = true) = InterfaceSnapshot(name, up, addrs.map { InetAddress.getByName(it) })
+    private fun snap(name: String, vararg addrs: String, up: Boolean = true) =
+        InterfaceSnapshot(name, up, addrs.map { InetAddress.getByName(it) }, if (name.startsWith("en")) HardwarePort.WIFI else HardwarePort.OTHER)
 
     @Test
     fun `HWM-8 another CGNAT VPN on a utun is never chosen over the selected overlay, and a lost overlay is lost, not moved`() {

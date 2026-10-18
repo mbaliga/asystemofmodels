@@ -13,8 +13,11 @@ open class DbusProtocolException(message: String) : java.io.IOException(message)
 /** The stream ended inside a message. */
 class DbusTruncatedException(message: String) : DbusProtocolException(message)
 
-/** A message (or its declared length) is over the 1 MiB cap. Checked before any allocation. */
-class DbusOversizeException(message: String) : DbusProtocolException(message)
+/**
+ * A message (or its declared length) is over the 1 MiB cap. Checked before any allocation. [declaredTotal] is the whole wire
+ * length the header claims; [DbusWire.read] has consumed only the 16 fixed bytes when it throws this.
+ */
+class DbusOversizeException(message: String, val declaredTotal: Long = -1) : DbusProtocolException(message)
 
 object DbusType {
     const val METHOD_CALL = 1
@@ -248,7 +251,7 @@ object DbusWire {
         val headerLen = FIXED_HEADER + fieldsLen
         val padded = (headerLen + 7) / 8 * 8
         val total = padded + bodyLen
-        if (total > MAX_MESSAGE_BYTES) throw DbusOversizeException("message of $total bytes is over the ${MAX_MESSAGE_BYTES}-byte cap")
+        if (total > MAX_MESSAGE_BYTES) throw DbusOversizeException("message of $total bytes is over the ${MAX_MESSAGE_BYTES}-byte cap", total)
         return total.toInt()
     }
 

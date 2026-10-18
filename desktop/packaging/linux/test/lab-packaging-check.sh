@@ -295,7 +295,9 @@ st="$(runh "$H" "$root/opt/asom/current/bin/asom-node" --mode=selftest 2>&1)"; r
 pr="$(runh "$H" "$root/opt/asom/current/lib/runtime/bin/java" -cp "$probe/probe.jar" RuntimeProbe "$probe/probe-ec.p12" 2>&1)"; rc=$?
 [ "$rc" = "0" ] && ok "runtime probe from the extracted deb: OK" || bad "deb probe: $pr"
 [ -L "$root/usr/bin/asom" ] && ok "usr/bin/asom is a symlink in the extracted tree" || bad "usr/bin/asom is not a symlink"
-cmp -s "$root/usr/lib/systemd/system/asom.service" "$pkg/systemd/asom.service" && cmp -s "$root/usr/lib/systemd/user/asom.service" "$pkg/systemd/asom-user.service" && ok "the shipped units are byte-identical to desktop/packaging/linux/systemd/" || bad "a shipped unit differs from the committed one"
+"$pkg/package-user-unit.sh" "$pkg/systemd/asom-user.service" "$work/expected-package-user.service"
+cmp -s "$root/usr/lib/systemd/system/asom.service" "$pkg/systemd/asom.service" && cmp -s "$root/usr/lib/systemd/user/asom.service" "$work/expected-package-user.service" && ok "the shipped system unit is byte-identical to systemd/asom.service, and the shipped user unit to asom-user.service with only its two paths rewritten" || bad "a shipped unit differs from the committed one"
+grep -qx 'ExecStart=/opt/asom/current/bin/asom-node --mode=user' "$root/usr/lib/systemd/user/asom.service" && ! grep -q '%h\|\.local/opt' "$root/usr/lib/systemd/user/asom.service" && ok "the packaged user unit runs the root-owned /opt/asom, not a home path (B-LA-4)" || bad "the packaged user unit names a home path or not /opt/asom"
 
 # =====================================================================================================================
 family package-scripts

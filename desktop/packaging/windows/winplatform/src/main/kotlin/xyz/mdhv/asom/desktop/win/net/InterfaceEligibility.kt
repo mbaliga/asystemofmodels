@@ -3,6 +3,7 @@ package xyz.mdhv.asom.desktop.win.net
 import java.net.Inet4Address
 import java.net.Inet6Address
 import java.net.InetAddress
+import xyz.mdhv.asom.desktop.win.api.InterfaceKind
 import xyz.mdhv.asom.desktop.win.api.InterfaceSnapshot
 
 enum class PeerPathKind { OVERLAY, LAN }
@@ -10,6 +11,7 @@ enum class PeerPathKind { OVERLAY, LAN }
 enum class IneligibleReason {
     NO_SELECTION, INTERFACE_MISSING, INTERFACE_DOWN, INDEX_CHANGED, ADDRESS_GONE,
     LOOPBACK, WILDCARD, MULTICAST, PUBLIC_ADDRESS, OUT_OF_OVERLAY_RANGE, LAN_NOT_CONFIRMED, NOT_PRIVATE_LAN, SCOPE_MISSING, NO_ELIGIBLE_ADDRESS,
+    INTERFACE_KIND,
 }
 
 /** The interface and address the owner picked (`asom mesh listen --interface "<alias>"`), recorded at selection time. */
@@ -34,8 +36,11 @@ sealed interface SelectionResult {
 /**
  * Which interface and address the peer listener may bind (windows.md 4.1; IC-1). The node never binds a wildcard, a
  * loopback or a public address.
- *  - OVERLAY: the alias the owner picked (typically "Tailscale", AW13) AND an address in `100.64.0.0/10` or `fd7a:115c:a1e0::/48`.
- *  - LAN: an interface the owner CONFIRMED and an RFC 1918, link-local or ULA address.
+ *  - OVERLAY: the alias the owner picked (typically "Tailscale", AW13) AND an address in `100.64.0.0/10` or `fd7a:115c:a1e0::/48`
+ *    AND a tunnel adapter ([InterfaceKind.TUNNEL]); the same block on a cellular, Wi-Fi or Ethernet adapter is carrier-grade NAT,
+ *    not the overlay (trust.md 6.6).
+ *  - LAN: an interface the owner CONFIRMED, an RFC 1918, link-local or ULA address AND a Wi-Fi or Ethernet adapter.
+ *  - A cellular or unclassified adapter is refused whatever its address and whatever the owner picked or confirmed.
  * Every bind re-checks with [check]; any answer other than Eligible means DRAINING. A change of interface index, or the
  * loss of the bound address, is a change; extra addresses appearing on the interface (DHCP, IPv6 temporary addresses)
  * are not (windows ERRATA WIN-NET-1). A link-local IPv6 address without a scope is refused: it names no interface.
@@ -68,6 +73,21 @@ object InterfaceEligibility {
         }
     }
 
+    /** The adapter-type rule shared by selection and re-check (trust.md 6.6). Null when the adapter may carry [kind]. */
+    fun kindProblem(nic: InterfaceSnapshot, kind: PeerPathKind): String? {
+        val k = nic.kind
+        if (k == InterfaceKind.CELLULAR) return "interface \"${nic.alias}\" is a cellular or dial-up adapter; the peer protocol never runs on one"
+        if (k == InterfaceKind.UNKNOWN) return "interface \"${nic.alias}\" could not be classified; it is not bound"
+        val ok = when (kind) {
+            PeerPathKind.OVERLAY -> k == InterfaceKind.TUNNEL
+            PeerPathKind.LAN -> k == InterfaceKind.WIFI || k == InterfaceKind.ETHERNET
+        }
+        val wanted = if (kind == PeerPathKind.OVERLAY) "tunnel" else "Wi-Fi or Ethernet"
+        return if (ok) null else "interface \"${nic.alias}\" is a ${k.name.lowercase()} adapter, not a $wanted adapter"
+    }
+
+    private fun neverBindable(k: InterfaceKind) = k == InterfaceKind.CELLULAR || k == InterfaceKind.UNKNOWN
+
     fun select(
         alias: String,
         kind: PeerPathKind,
@@ -77,13 +97,17 @@ object InterfaceEligibility {
         val nic = current.firstOrNull { it.alias.equals(alias, ignoreCase = true) }
             ?: return SelectionResult.Refused(IneligibleReason.INTERFACE_MISSING, "no interface named \"$alias\"")
         if (!nic.isUp) return SelectionResult.Refused(IneligibleReason.INTERFACE_DOWN, "interface \"${nic.alias}\" is down")
+        if (neverBindable(nic.kind)) return SelectionResult.Refused(IneligibleReason.INTERFACE_KIND, kindProblem(nic, kind)!!)
         if (kind == PeerPathKind.LAN && lanConfirmedAliases.none { it.equals(nic.alias, ignoreCase = true) }) {
             return SelectionResult.Refused(IneligibleReason.LAN_NOT_CONFIRMED, "interface \"${nic.alias}\" is not confirmed as a LAN (asom lan-confirm)")
         }
         var lastProblem: Pair<IneligibleReason, String>? = null
         for (a in nic.addresses) {
             val p = addressProblem(a, kind)
-            if (p == null) return SelectionResult.Selected(SelectedInterface(nic.alias, nic.index, a, kind, nic.addresses))
+            if (p == null) {
+                kindProblem(nic, kind)?.let { return SelectionResult.Refused(IneligibleReason.INTERFACE_KIND, it) }
+                return SelectionResult.Selected(SelectedInterface(nic.alias, nic.index, a, kind, nic.addresses))
+            }
             lastProblem = p
         }
         return SelectionResult.Refused(
@@ -98,11 +122,13 @@ object InterfaceEligibility {
             ?: return Eligibility.Ineligible(IneligibleReason.INTERFACE_MISSING, "interface \"${sel.alias}\" is gone")
         if (!nic.isUp) return Eligibility.Ineligible(IneligibleReason.INTERFACE_DOWN, "interface \"${sel.alias}\" is down")
         if (nic.index != sel.index) return Eligibility.Ineligible(IneligibleReason.INDEX_CHANGED, "interface \"${sel.alias}\" changed index ${sel.index} -> ${nic.index}")
+        if (neverBindable(nic.kind)) return Eligibility.Ineligible(IneligibleReason.INTERFACE_KIND, kindProblem(nic, sel.kind)!!)
         if (nic.addresses.none { it == sel.bindAddress }) return Eligibility.Ineligible(IneligibleReason.ADDRESS_GONE, "address ${sel.bindAddress} is no longer on \"${sel.alias}\"")
         if (sel.kind == PeerPathKind.LAN && lanConfirmedAliases.none { it.equals(sel.alias, ignoreCase = true) }) {
             return Eligibility.Ineligible(IneligibleReason.LAN_NOT_CONFIRMED, "LAN confirmation for \"${sel.alias}\" was withdrawn")
         }
         addressProblem(sel.bindAddress, sel.kind)?.let { return Eligibility.Ineligible(it.first, it.second) }
+        kindProblem(nic, sel.kind)?.let { return Eligibility.Ineligible(IneligibleReason.INTERFACE_KIND, it) }
         return Eligibility.Eligible(sel.bindAddress)
     }
 

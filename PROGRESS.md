@@ -2640,3 +2640,32 @@ $ ./gradlew jvmTest                                         BUILD SUCCESSFUL, 14
 ```
 Mutation checks (suite must fail, then restored): StrictJson skim, nine mutants (duplicate never reported; a closed object keeps its names; first name not in the set; tooDeep not recorded; skim one level late; array closer accepts `}`; object closer accepts `]`; colon check removed; frame-per-level restored), all failed; the first run of the array-closer mutant SURVIVED and exposed a missing test (the mismatch was above depth 16), which was then added. `check_qml_text.py`, six mutants, all failed the selftest. `xcheck_m01.py` with `MAX_DEPTH = 17`: 4 disagree.
 NOT RUN: the new lab.yml steps on a hosted runner (the commands were run locally); the Swift lane against the corpus; `tests/qml/tst_Text.qml` (no Qt here).
+## fix4-desktop (review findings B-LA-2, B-LA-4, B-LA-6, B-LA-7, A-LA-2, A-LA-3, A-LA-4, A-LA-6, A-LA-7, A-F6, B-F3, B-LA-3), LAB, NOT DEVICE EVIDENCE
+
+Worktree base: HEAD was 98ab632f7460, not 0e8a3e42d874; `git fetch origin claude/asom-v1-build-brief-vw83oh && git reset --hard 0e8a3e42d87495ff8780329b7fe83b989ec41f6a` was run, `git rev-parse HEAD` then printed `0e8a3e42d87495ff8780329b7fe83b989ec41f6a` and `ls docs/design/mesh/LAB_SPEC.md` succeeded. Nothing was committed.
+
+Failing before the fix (real output, JDK 21):
+```
+Windows (alias-only tests written against the old API): ReproCellularTest > repro a cellular interface with a carrier 10 address confirmed as LAN is refused() FAILED  ... selected: SelectionResult$Selected
+                                                         ReproCellularTest > repro a cellular interface with a CGNAT address picked as overlay is refused() FAILED
+macOS:   ReproTetherTest > repro a USB tethered iPhone on en5 at 172 20 10 2 is refused even when confirmed() FAILED  Expected value to be of type <Eligibility.Refuse>, actual <class Eligibility$Bind>
+PackageUserUnitTest: 3 of 3 FAILED (nfpm.yaml installs systemd/asom-user.service system-wide; no package-user-unit.sh)
+ControlStartRaceTest > a start that loses the bind race ... FAILED   (the loser deleted the winner's socket)
+DefaultTtyOpenerTest > forcing the JVM console provider that reads file descriptor 0 ... FAILED   expected: <RESULT NoTty> but was: <RESULT Confirmed>
+ControlFramesTest > a frame body that is not strict UTF-8 ... FAILED ; StrictJsonTest > unicode escapes take ASCII hex digits only FAILED ; StrictJsonTest > nesting counts containers ... FAILED
+SleepWatcherHostileBusTest: 3 of 3 FAILED: "no reply to Hello after 64 messages"; "expected: <SLEEP_IMMINENT> but was: <null>"; "8 dropped sessions left 16 sockets open ==> expected: <2> but was: <18>"
+```
+(The two Repro files were scratch and are deleted; `InterfaceKindTest` and `HardwarePortTest` replace them.)
+
+Gates after the fix:
+```
+$ ./gradlew -p desktop --max-workers=2 --offline desktopTest :packaging:windows:winplatform:test :packaging:macos:macplatform:test      (JDK 21 and, with JAVA_HOME=/opt/jdks/jdk-17, JDK 17)   BUILD SUCCESSFUL both
+    winplatform test summary: 170 tests, 143 passed, 0 failed, 27 skipped (os=Linux)
+    macplatform test summary: 166 tests, 155 passed, 0 failed, 11 skipped (os=Linux)
+    summed from build/test-results (JDK 21): node-core 90 tests, node 139 tests; skipped 0, failures 0, errors 0
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py -> law: OK
+$ ASOM_GRADLE_FLAGS="--max-workers=2 --offline" desktop/tools/isolation.sh -> ISOLATION: all checks passed
+$ ./gradlew jvmTest --max-workers=2 --offline -> BUILD SUCCESSFUL; XML: 140 tests, 0 failures (from cache: no input of core/* or server changed)
+```
+Not run: the real `build-packages.sh` with nfpm (no jlink image here), `lab-packaging-check.sh` and `distro-matrix.sh` (CI-ONLY), any Windows or macOS integration test, a real dbus-daemon test of the hostile-bus cases. See desktop/ERRATA.md ERR-FX4-DK-1 to ERR-FX4-DK-9 for readings taken, partial items (A-LA-6 owner check, A-LA-7 network fingerprint) and the macOS wiring that is still open.

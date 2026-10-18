@@ -11,7 +11,10 @@ class StrictJsonException(message: String, val offset: Int) : IllegalArgumentExc
 /**
  * Integer-profile JSON (design C1) for the node's own config and control frames.
  * Rejected: floats, exponents, `-0`, leading zeros, magnitudes beyond +-(2^53 - 1), duplicate object names,
- * lone surrogates, raw control characters, trailing content, and nesting deeper than [MAX_DEPTH].
+ * lone surrogates, raw control characters, trailing content, and more than [MAX_DEPTH] nested containers, and `\u` escapes
+ * whose digits are not ASCII 0-9, A-F, a-f. The caller decodes bytes to text strictly (see `ControlFrames.read`).
+ * The lab's cap is 16 containers (LAB_SPEC 4.2); this profile keeps 32 (desktop ERRATA ERR-FX4-DK-3): config and control frames
+ * never leave the machine.
  * (The lab has its own tokenizer; the desktop build cannot depend on the lab, so this is a small separate one.)
  */
 object StrictJson {
@@ -37,11 +40,10 @@ object StrictJson {
         fun fail(msg: String): Nothing = throw StrictJsonException(msg, pos)
 
         fun value(depth: Int): JsonElement {
-            if (depth > MAX_DEPTH) fail("nesting too deep")
             if (pos >= s.length) fail("unexpected end")
             return when (val c = s[pos]) {
-                '{' -> obj(depth)
-                '[' -> arr(depth)
+                '{' -> { if (depth >= MAX_DEPTH) fail("nesting too deep"); obj(depth) }
+                '[' -> { if (depth >= MAX_DEPTH) fail("nesting too deep"); arr(depth) }
                 '"' -> JsonPrimitive(str())
                 't' -> lit("true", JsonPrimitive(true))
                 'f' -> lit("false", JsonPrimitive(false))
@@ -80,8 +82,12 @@ object StrictJson {
             if (pos + 4 > s.length) fail("bad unicode escape")
             var v = 0
             repeat(4) {
-                val d = Character.digit(s[pos], 16)
-                if (d < 0) fail("bad unicode escape")
+                val d = when (val h = s[pos]) {
+                    in '0'..'9' -> h - '0'
+                    in 'a'..'f' -> h - 'a' + 10
+                    in 'A'..'F' -> h - 'A' + 10
+                    else -> fail("bad unicode escape")
+                }
                 v = v * 16 + d
                 pos++
             }

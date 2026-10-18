@@ -79,6 +79,7 @@ class ControlServer(
     private val dirMeta: (Path) -> DirMeta?,
     private val peerCreds: PeerCredentialReader = SoPeerCred,
     private val limits: ControlLimits = ControlLimits(),
+    private val beforeBind: () -> Unit = {},
 ) : ControlSocketServer, PartiallyImplemented {
 
     val stats = ControlServerStats()
@@ -96,12 +97,16 @@ class ControlServer(
         clearStaleSocket()
 
         val server = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
+        var bound = false
         try {
+            beforeBind()
             server.bind(UnixDomainSocketAddress.of(path))
+            bound = true
             Files.setPosixFilePermissions(path, socketPermissions)
         } catch (e: Exception) {
             runCatching { server.close() }
-            runCatching { Files.deleteIfExists(path) }
+            // Only a file this call created is its to remove: a failed bind (EADDRINUSE from a start that overlapped this one) leaves the winner's socket.
+            if (bound) runCatching { Files.deleteIfExists(path) }
             throw e
         }
         return Running(server, handler)

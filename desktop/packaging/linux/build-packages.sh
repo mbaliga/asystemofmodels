@@ -65,10 +65,12 @@ if want deb || want rpm; then
   trap 'rm -rf "$stage"' EXIT
   cp -a "$image" "$stage/$name"
   rm -f "$stage/$name/install.sh" "$stage/$name/uninstall.sh"
-  export ASOM_VERSION="$ver" ASOM_ARCH="$deb_arch" ASOM_STAGE="$stage/$name" ASOM_LINUX_DIR="$here"
+  # The package's user unit runs the root-owned /opt/asom, not the tarball's ~/.local/opt/asom (linux.md 3.1; B-LA-4).
+  "$here/package-user-unit.sh" "$here/systemd/asom-user.service" "$stage/asom-user.package.service"
+  export ASOM_VERSION="$ver" ASOM_ARCH="$deb_arch" ASOM_STAGE="$stage/$name" ASOM_LINUX_DIR="$here" ASOM_USER_UNIT="$stage/asom-user.package.service"
   # nfpm 2.41 does not expand ${VAR} in contents src/dst, so every variable is resolved here, before nfpm sees the file.
   yaml="$(cat "$here/nfpm.yaml")"
-  for v in ASOM_VERSION ASOM_ARCH ASOM_STAGE ASOM_LINUX_DIR; do yaml="${yaml//\$\{$v\}/${!v}}"; done
+  for v in ASOM_VERSION ASOM_ARCH ASOM_STAGE ASOM_LINUX_DIR ASOM_USER_UNIT; do yaml="${yaml//\$\{$v\}/${!v}}"; done
   case "$yaml" in *'${'*) die "nfpm.yaml still holds an unresolved \${...} after substitution" 1 ;; esac
   printf '%s\n' "$yaml" > "$stage/nfpm.resolved.yaml"
   for f in deb rpm; do

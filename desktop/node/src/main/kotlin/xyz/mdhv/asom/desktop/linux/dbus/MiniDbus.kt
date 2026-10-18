@@ -18,6 +18,11 @@ import java.util.concurrent.TimeUnit
  * A `PrepareForSleep` is accepted only if it is a BROADCAST (no destination header), from a bus-assigned unique name,
  * on the exact path, interface and member, with a body that is one boolean. A unicast signal is dropped: the bus's
  * match rule only filters broadcasts, so a local process could otherwise address a forged one straight to us.
+ *
+ * Any local user may send a unicast signal to our unique name (the default system-bus policy allows it), so a message
+ * over the 1 MiB cap is read and DISCARDED (the daemon has already validated its framing) and unicast signals do not count
+ * against the handshake's message budget: neither ends the session. A declared length over [MAX_SKIP_BYTES], which the bus
+ * itself refuses, still does.
  */
 class MiniDbus private constructor(
     private val channel: SocketChannel,
@@ -36,7 +41,7 @@ class MiniDbus private constructor(
     fun nextPrepareForSleep(): Boolean? {
         pending.pollFirst()?.let { return it }
         while (true) {
-            val m = DbusWire.read(input) ?: return null
+            val m = readSkippingOversize(input) ?: return null
             accept(m)?.let { return it }
         }
     }
@@ -55,6 +60,21 @@ class MiniDbus private constructor(
         const val DEFAULT_SYSTEM_BUS = "/run/dbus/system_bus_socket"
         private const val MAX_SASL_LINE = 512
         private const val MAX_MESSAGES_BEFORE_REPLY = 64
+        /** The D-Bus specification's own maximum message length. */
+        const val MAX_SKIP_BYTES = 128L shl 20
+
+        /** [DbusWire.read], except that an oversize message is skipped and the next one is read. */
+        internal fun readSkippingOversize(input: InputStream): DbusMessage? {
+            while (true) {
+                try {
+                    return DbusWire.read(input)
+                } catch (e: DbusOversizeException) {
+                    val rest = e.declaredTotal - 16
+                    if (e.declaredTotal < 0 || e.declaredTotal > MAX_SKIP_BYTES) throw e
+                    input.skipNBytes(rest)
+                }
+            }
+        }
 
         /** `AUTH EXTERNAL <hex of the ASCII decimal uid>`, e.g. uid 1000 -> `31303030`. */
         fun saslExternalLine(uid: Int): String {
@@ -96,11 +116,15 @@ class MiniDbus private constructor(
                     output.write(DbusWire.encodeMethodCall(serial, BUS_NAME, BUS_PATH, iface, member, arg))
                     output.flush()
                     sent += "$iface.$member"
-                    repeat(MAX_MESSAGES_BEFORE_REPLY) {
-                        val m = DbusWire.read(input) ?: throw DbusProtocolException("the bus closed the connection before replying to $member")
+                    var counted = 0
+                    while (counted < MAX_MESSAGES_BEFORE_REPLY) {
+                        val m = readSkippingOversize(input) ?: throw DbusProtocolException("the bus closed the connection before replying to $member")
                         if (m.type == DbusType.ERROR && m.replySerial == serial) throw DbusProtocolException("$member failed: ${m.errorName}")
                         if (m.type == DbusType.METHOD_RETURN && m.replySerial == serial) return m
                         accept(m)?.let { pending.addLast(it) }
+                        // A unicast signal (the bus's own NameAcquired, or a local user's noise) is not a reply and not worth a place in the budget;
+                        // the connect watchdog bounds the total time.
+                        if (!(m.type == DbusType.SIGNAL && m.destination != null)) counted++
                     }
                     throw DbusProtocolException("no reply to $member after $MAX_MESSAGES_BEFORE_REPLY messages")
                 }
