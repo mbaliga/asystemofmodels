@@ -2,6 +2,7 @@ package xyz.mdhv.asom.lab.proto.integration
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import org.junit.jupiter.api.Timeout
@@ -11,6 +12,7 @@ import xyz.mdhv.asom.lab.proto.session.Build
 import xyz.mdhv.asom.lab.proto.session.Counts
 import xyz.mdhv.asom.lab.proto.session.EngineEvent
 import xyz.mdhv.asom.lab.proto.session.Refusal
+import xyz.mdhv.asom.lab.proto.session.SessionClosedForSend
 import xyz.mdhv.asom.lab.proto.session.SessionLimits
 import xyz.mdhv.asom.lab.proto.session.StateResult
 import xyz.mdhv.asom.lab.proto.session.attemptIdOf
@@ -119,9 +121,10 @@ class TimersTest {
             val rec = Waiting()
             val id = sa.offer(spec(), "{}".toByteArray(), rec)
             Wait.until("the stream to run") { rec.chunks.get() >= 2 }
-            w.clockA.advance(SessionLimits.MAX_AGE_MS)
+            w.clockA.advance(maxOf(1L, start + SessionLimits.MAX_AGE_MS - w.clockA.peek()))
             sa.tick(w.clockA.peek())
-            assertTrue(!sa.closed, "a session with an open stream was cut for age")
+            assertTrue(!sa.closed, "a session with an open stream was cut for age inside the grace")
+            assertFailsWith<SessionClosedForSend>("a stream was opened on a session past its maximum age") { sa.offer(spec(index = 1), "{}".toByteArray(), Waiting()) }
             sa.cancel(id, CancelReason.CLIENT_GONE)
             rec.await()
             w.b.engine.paceNanos = 0

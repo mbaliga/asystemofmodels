@@ -62,7 +62,12 @@ class FakeEngine(private val node: String, private val log: Log) : EnginePort {
     val opened = ArrayList<EngineRequest>()
     val cancelled = ArrayList<String>()
 
-    override fun offered(model: String): ModelOffer? = models[model]
+    var offeredFault: RuntimeException? = null
+
+    override fun offered(model: String): ModelOffer? {
+        offeredFault?.let { throw it }
+        return models[model]
+    }
 
     override fun open(request: EngineRequest): EngineRun {
         opened += request
@@ -94,17 +99,27 @@ class FakeEngine(private val node: String, private val log: Log) : EnginePort {
 
 /** Live state with every presence signal set to a distinctive value, so a leak into any frame is visible. */
 class FakeLive : LivePort {
-    private var seq = 0L
+    private val seq = java.util.concurrent.atomic.AtomicLong(0)
     var fsm: Fsm = Fsm.SERVING
+    var held: List<String> = listOf("c".repeat(64))
+    var commit: String = "4f1c2ab"
+    var confVersion: String = "1.0.0"
+    var thermalBand: Int = 1
+    var viewFault: RuntimeException? = null
 
-    override fun view(): LenderLocalView = LenderLocalView(
-        fsm = fsm, powerSource = "ac", charging = true, batteryBand = null, batteryPercentExact = 87, thermalBand = 1, governor = Governor.RUN, backend = "vulkan", commit = "4f1c2ab",
-        confVersion = "1.0.0", held = listOf("c".repeat(64)), localQueued = 1, peerQueued = 0, loadedModels = listOf("SECRET-MODEL"), freeMemoryBytes = 123_456_789L,
+    override fun view(): LenderLocalView {
+        viewFault?.let { throw it }
+        return build()
+    }
+
+    private fun build() = LenderLocalView(
+        fsm = fsm, powerSource = "ac", charging = true, batteryBand = null, batteryPercentExact = 87, thermalBand = thermalBand, governor = Governor.RUN, backend = "vulkan", commit = commit,
+        confVersion = confVersion, held = held, localQueued = 1, peerQueued = 0, loadedModels = listOf("SECRET-MODEL"), freeMemoryBytes = 123_456_789L,
         manifestSeq = null, manifestDigest = null,
         presence = PresenceSignals(true, 42, true, "SECRET-APP", true, "SECRET-USER", "SECRET-LOGIN", 777),
     )
 
-    override fun nextSeq(): Long = ++seq
+    override fun nextSeq(): Long = seq.incrementAndGet()
 
     override fun sampledAgeMs(): Long = 800
 }
@@ -180,12 +195,13 @@ class Kit(val name: String, val key: TestOnlyKeys.Entry, val log: Log, seed: Lon
     val ledger = NodeLedger(name, SpySink(name, crash ?: mem, log)) { clock.addAndGet(3) }
     val engine = FakeEngine(name, log)
     val live = FakeLive()
-    var serving = ServingView()
+    var serving = ServingView(servingConditionsOk = true, presenceActive = false)
+    var policyFault: RuntimeException? = null
     val manifest = TestManifestPort(key, peerSpki)
     val node = MeshNode(
         if (limits == null) NodeConfig(pin, "Display Name $name", Platform.LINUX, KeyTier.FILE, "asom-lab/0.0.1", productionKeys = false)
         else NodeConfig(pin, "Display Name $name", Platform.LINUX, KeyTier.FILE, "asom-lab/0.0.1", limits = limits, productionKeys = false),
-        ledger, registry, engine, { serving }, live, manifest, SeededIds(seed),
+        ledger, registry, engine, { policyFault?.let { throw it }; serving }, live, manifest, SeededIds(seed),
         SessionObserver { s, type, stream, payload -> log.add(Ev.Dispatch(name, s, type, stream, payload)) },
     )
 

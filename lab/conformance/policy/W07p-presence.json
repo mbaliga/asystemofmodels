@@ -1642,7 +1642,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -1682,7 +1684,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -1723,7 +1727,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -1764,7 +1770,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -1805,7 +1813,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -1846,7 +1856,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -1887,7 +1899,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -1928,7 +1942,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -1969,7 +1985,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -2009,7 +2027,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -2027,7 +2047,7 @@
       "origin": "hand",
       "status": "normative",
       "oracle": "self",
-      "description": "row 6, LP-1: a presence cause is PEER_UNAVAILABLE with the remaining hold-down as retryAfterMs",
+      "description": "row 6, LP-1, ERR-FX4-LD-2: a presence cause is PEER_UNAVAILABLE with the constant retryAfterMs of a condition, not the remaining hold-down (it would count down to the user's last input)",
       "input": {
         "kind": "lenderDecision",
         "offer": {
@@ -2050,7 +2070,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -2058,8 +2080,8 @@
           "row": "6",
           "reply": "decline",
           "code": "PEER_UNAVAILABLE",
-          "retryAfterMs": 123456,
-          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":123456}"
+          "retryAfterMs": 30000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":30000}"
         }
       }
     },
@@ -2068,7 +2090,7 @@
       "origin": "hand",
       "status": "normative",
       "oracle": "self",
-      "description": "row 6: a presence hold-down below 5,000 ms is raised to 5,000",
+      "description": "row 6, ERR-FX4-LD-2: a presence hold-down of 10 ms gives the same 30,000, not a clamped 5,000",
       "input": {
         "kind": "lenderDecision",
         "offer": {
@@ -2091,7 +2113,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -2099,8 +2123,8 @@
           "row": "6",
           "reply": "decline",
           "code": "PEER_UNAVAILABLE",
-          "retryAfterMs": 5000,
-          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":5000}"
+          "retryAfterMs": 30000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":30000}"
         }
       }
     },
@@ -2109,7 +2133,7 @@
       "origin": "hand",
       "status": "normative",
       "oracle": "self",
-      "description": "row 6: a hold-down above 600,000 ms is lowered to 600,000",
+      "description": "row 6, ERR-FX4-LD-2: a hold-down above 600,000 ms gives the same 30,000, not a clamped 600,000",
       "input": {
         "kind": "lenderDecision",
         "offer": {
@@ -2132,7 +2156,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -2140,8 +2166,8 @@
           "row": "6",
           "reply": "decline",
           "code": "PEER_UNAVAILABLE",
-          "retryAfterMs": 600000,
-          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":600000}"
+          "retryAfterMs": 30000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":30000}"
         }
       }
     },
@@ -2173,7 +2199,9 @@
           "predictedThermalHold": true,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -2214,7 +2242,9 @@
           "predictedThermalHold": false,
           "estStartMs": 60001,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -2255,7 +2285,9 @@
           "predictedThermalHold": false,
           "estStartMs": 60000,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -2295,7 +2327,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 1,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -2336,7 +2370,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 30
+          "requestsThisMinute": 30,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -2377,7 +2413,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 29
+          "requestsThisMinute": 29,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -2417,7 +2455,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -2458,7 +2498,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -2499,7 +2541,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -2517,7 +2561,7 @@
       "origin": "hand",
       "status": "normative",
       "oracle": "self",
-      "description": "order: presence and a failing condition are one row (6); the presence retryAfterMs wins",
+      "description": "order: presence and a failing condition are one row (6) and one answer",
       "input": {
         "kind": "lenderDecision",
         "offer": {
@@ -2540,7 +2584,9 @@
           "predictedThermalHold": false,
           "estStartMs": 0,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -2548,8 +2594,8 @@
           "row": "6",
           "reply": "decline",
           "code": "PEER_UNAVAILABLE",
-          "retryAfterMs": 200000,
-          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":200000}"
+          "retryAfterMs": 30000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":30000}"
         }
       }
     },
@@ -2581,7 +2627,9 @@
           "predictedThermalHold": true,
           "estStartMs": 90000,
           "inflight": 1,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -2622,7 +2670,9 @@
           "predictedThermalHold": true,
           "estStartMs": 90000,
           "inflight": 0,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -2663,7 +2713,9 @@
           "predictedThermalHold": false,
           "estStartMs": 90000,
           "inflight": 1,
-          "requestsThisMinute": 0
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": true
         }
       },
       "expect": {
@@ -2673,6 +2725,350 @@
           "code": "PEER_BUSY",
           "retryAfterMs": 5000,
           "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_BUSY\",\"retryAfterMs\":5000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-226",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX4-LD-1, design 3.2 rule 1: a lender whose availability is OFF declines PEER_UNAVAILABLE even though every other input is fine",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0,
+          "fsm": "OFF",
+          "sessionAcceptsNew": true
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "6",
+          "reply": "decline",
+          "code": "PEER_UNAVAILABLE",
+          "retryAfterMs": 30000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":30000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-227",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX4-LD-1: ARMED (a session exists only because a pairing window or the Peers tab is open) declines PEER_UNAVAILABLE",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0,
+          "fsm": "ARMED",
+          "sessionAcceptsNew": true
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "6",
+          "reply": "decline",
+          "code": "PEER_UNAVAILABLE",
+          "retryAfterMs": 30000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":30000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-228",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX4-LD-1: DRAINING declines PEER_UNAVAILABLE",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0,
+          "fsm": "DRAINING",
+          "sessionAcceptsNew": true
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "6",
+          "reply": "decline",
+          "code": "PEER_UNAVAILABLE",
+          "retryAfterMs": 30000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":30000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-229",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX4-LD-1: authorisation outranks availability (a REVOKED peer is told PEER_NOT_PAIRED even by an OFF lender)",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "REVOKED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0,
+          "fsm": "OFF",
+          "sessionAcceptsNew": true
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "1",
+          "reply": "error",
+          "code": "PEER_NOT_PAIRED",
+          "close": true,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_NOT_PAIRED\"}"
+        }
+      }
+    },
+    {
+      "id": "W07p-230",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX4-LD-1: availability outranks the load rows (6a, 6b, 7)",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": true,
+          "estStartMs": 90000,
+          "inflight": 1,
+          "requestsThisMinute": 0,
+          "fsm": "DRAINING",
+          "sessionAcceptsNew": true
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "6",
+          "reply": "decline",
+          "code": "PEER_UNAVAILABLE",
+          "retryAfterMs": 30000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":30000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-231",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX4-LD-3: a session past its 30-minute maximum age takes no new attempt: PEER_UNAVAILABLE with the shortest retry (the requester dials a fresh session)",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": false
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "6c",
+          "reply": "decline",
+          "code": "PEER_UNAVAILABLE",
+          "retryAfterMs": 5000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":5000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-232",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX4-LD-3: a lender that is not serving says so (row 6) before it says the session is old",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": false,
+          "estStartMs": 0,
+          "inflight": 0,
+          "requestsThisMinute": 0,
+          "fsm": "OFF",
+          "sessionAcceptsNew": false
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "6",
+          "reply": "decline",
+          "code": "PEER_UNAVAILABLE",
+          "retryAfterMs": 30000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":30000}"
+        }
+      }
+    },
+    {
+      "id": "W07p-233",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX4-LD-3: row 6c outranks 6a, 6b and 7",
+      "input": {
+        "kind": "lenderDecision",
+        "offer": {
+          "attemptId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "model": "qwen3-8b",
+          "op": "chat",
+          "promptBytes": 1200,
+          "maxTokens": 512,
+          "deadlineMs": 60000,
+          "stream": true
+        },
+        "situation": {
+          "registryStatus": "PAIRED",
+          "inferScopeGranted": true,
+          "attemptSeenWithin24h": false,
+          "modelAllowedAndLoadable": true,
+          "servingConditionsOk": true,
+          "presenceActive": false,
+          "presenceHoldRemainingMs": 0,
+          "predictedThermalHold": true,
+          "estStartMs": 90000,
+          "inflight": 1,
+          "requestsThisMinute": 0,
+          "fsm": "SERVING",
+          "sessionAcceptsNew": false
+        }
+      },
+      "expect": {
+        "ok": {
+          "row": "6c",
+          "reply": "decline",
+          "code": "PEER_UNAVAILABLE",
+          "retryAfterMs": 5000,
+          "wire": "{\"attemptId\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"code\":\"PEER_UNAVAILABLE\",\"retryAfterMs\":5000}"
         }
       }
     },

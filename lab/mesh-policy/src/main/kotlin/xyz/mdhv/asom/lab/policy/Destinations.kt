@@ -108,6 +108,19 @@ object Quiescence {
     /** A lender accepts inbound connections only while SERVING, or while a pairing window or the Peers tab is open. */
     fun mayAcceptInbound(fsm: Fsm, pairingWindowOpen: Boolean, peersTabOpen: Boolean): Boolean = fsm == Fsm.SERVING || pairingWindowOpen || peersTabOpen
 
-    /** Sessions close after 5 minutes without an open stream and after 30 minutes of age (design 8.6). */
-    fun sessionShouldClose(idleMs: Long, ageMs: Long, openStreams: Int): Boolean = (openStreams == 0 && idleMs >= 300_000) || ageMs >= 1_800_000
+    const val IDLE_MS = 300_000L
+    const val MAX_AGE_MS = 1_800_000L
+
+    /** PROVISIONAL (ERRATA ERR-FX4-LD-3): how long streams that were open at the maximum age may finish before the session cancels them and closes. */
+    const val MAX_AGE_GRACE_MS = 60_000L
+
+    /**
+     * Sessions close after 5 minutes without an open stream, and at 30 minutes of age at the first moment without a stream (design 8.6, T9). The age is a HARD cap:
+     * from [MAX_AGE_MS] the session takes no new attempt ([mayAcceptNewAttempt]); streams still open get [MAX_AGE_GRACE_MS] and are then cancelled with the session.
+     */
+    fun sessionShouldClose(idleMs: Long, ageMs: Long, openStreams: Int): Boolean =
+        ageMs >= MAX_AGE_MS + MAX_AGE_GRACE_MS || (openStreams == 0 && (idleMs >= IDLE_MS || ageMs >= MAX_AGE_MS))
+
+    /** A session at or past its maximum age opens no new stream in either direction. */
+    fun mayAcceptNewAttempt(ageMs: Long): Boolean = ageMs < MAX_AGE_MS
 }

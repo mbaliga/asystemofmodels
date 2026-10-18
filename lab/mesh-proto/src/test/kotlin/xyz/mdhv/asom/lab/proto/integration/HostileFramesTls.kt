@@ -343,7 +343,7 @@ object HostileFramesTls {
             done(w, c)
         }
         clientCase("peer unavailable: serving conditions") { w, c ->
-            w.b.serving = ServingView(servingConditionsOk = false)
+            w.b.serving = ServingView(servingConditionsOk = false, presenceActive = false)
             c.establish()
             val o = Build.offer(attemptIdOf(11), 1)
             c.peer.writeRaw(o)
@@ -354,19 +354,19 @@ object HostileFramesTls {
             refused(w, Refusal.PEER_UNAVAILABLE)
             done(w, c)
         }
-        clientCase("peer unavailable: presence, with the hold-down as retryAfterMs") { w, c ->
-            w.b.serving = ServingView(presenceActive = true, presenceHoldRemainingMs = 123_456)
+        clientCase("peer unavailable: presence, with the constant retryAfterMs of a condition and never the hold-down") { w, c ->
+            w.b.serving = ServingView(servingConditionsOk = true, presenceActive = true, presenceHoldRemainingMs = 123_456)
             c.establish()
             c.peer.writeRaw(Build.offer(attemptIdOf(12), 1))
             val f = c.peer.awaitFrames(1).single()
             assertEquals("PEER_UNAVAILABLE", f.code)
-            assertTrue(f.text.contains("\"retryAfterMs\":123456"))
+            assertTrue(f.text.contains("\"retryAfterMs\":30000") && !f.text.contains("123456"), f.text)
             assertTrue(!f.text.contains("presence") && !f.text.contains("user"))
             W08Tls.rowChecks.incrementAndGet()
             done(w, c)
         }
         clientCase("peer unavailable: predicted thermal hold (row 6a)") { w, c ->
-            w.b.serving = ServingView(predictedThermalHold = true)
+            w.b.serving = ServingView(servingConditionsOk = true, presenceActive = false, predictedThermalHold = true)
             c.establish()
             c.peer.writeRaw(Build.offer(attemptIdOf(13), 1))
             assertEquals("PEER_UNAVAILABLE", c.peer.awaitFrames(1).single().code)
@@ -374,7 +374,7 @@ object HostileFramesTls {
             done(w, c)
         }
         clientCase("peer busy: estimated start after the deadline (row 6b)") { w, c ->
-            w.b.serving = ServingView(estStartMs = 60_001)
+            w.b.serving = ServingView(servingConditionsOk = true, presenceActive = false, estStartMs = 60_001)
             c.establish()
             c.peer.writeRaw(Build.offer(attemptIdOf(14), 1, deadlineMs = 60_000))
             assertEquals("PEER_BUSY", c.peer.awaitFrames(1).single().code)

@@ -389,7 +389,7 @@ class HostileFramesTest {
     @Test
     fun theLenderDeclinesForConditionsPresenceThermalAndBusy() {
         case("peer unavailable: serving conditions") { w ->
-            w.b.serving = ServingView(servingConditionsOk = false)
+            w.b.serving = ServingView(servingConditionsOk = false, presenceActive = false)
             val h = HostileClient(w)
             h.establish()
             h.send(Build.offer(attemptIdOf(11), 1))
@@ -399,19 +399,19 @@ class HostileFramesTest {
             assertRows(h.rows().drop(3), Rw(MeshKind.INFER_SERVED, "PEER_UNAVAILABLE", f.app, Build.offer(attemptIdOf(11), 1).size.toLong(), Phase.OUTCOME))
             refused(w, Refusal.PEER_UNAVAILABLE)
         }
-        case("peer unavailable: presence, with the hold-down as retryAfterMs") { w ->
-            w.b.serving = ServingView(presenceActive = true, presenceHoldRemainingMs = 123_456)
+        case("peer unavailable: presence, with the constant retryAfterMs of a condition and never the hold-down") { w ->
+            w.b.serving = ServingView(servingConditionsOk = true, presenceActive = true, presenceHoldRemainingMs = 123_456)
             val h = HostileClient(w)
             h.establish()
             h.send(Build.offer(attemptIdOf(12), 1))
             val f = h.frames().single()
             assertEquals("PEER_UNAVAILABLE", f.code)
-            assertTrue(f.text.contains("\"retryAfterMs\":123456"))
+            assertTrue(f.text.contains("\"retryAfterMs\":30000") && !f.text.contains("123456"), f.text)
             assertTrue(!f.text.contains("presence") && !f.text.contains("user"))
             W08.rowChecks.incrementAndGet()
         }
         case("peer unavailable: predicted thermal hold (row 6a)") { w ->
-            w.b.serving = ServingView(predictedThermalHold = true)
+            w.b.serving = ServingView(servingConditionsOk = true, presenceActive = false, predictedThermalHold = true)
             val h = HostileClient(w)
             h.establish()
             h.send(Build.offer(attemptIdOf(13), 1))
@@ -419,7 +419,7 @@ class HostileFramesTest {
             W08.rowChecks.incrementAndGet()
         }
         case("peer busy: estimated start after the deadline (row 6b)") { w ->
-            w.b.serving = ServingView(estStartMs = 60_001)
+            w.b.serving = ServingView(servingConditionsOk = true, presenceActive = false, estStartMs = 60_001)
             val h = HostileClient(w)
             h.establish()
             h.send(Build.offer(attemptIdOf(14), 1, deadlineMs = 60_000))

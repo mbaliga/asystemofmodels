@@ -1,5 +1,7 @@
 package xyz.mdhv.asom.lab.proto.session
 
+import xyz.mdhv.asom.lab.policy.Quiescence
+
 /**
  * The timers and limits of an established session. Two numbers come from the spec (trust.md 3.3 "Limits (defaults, per peer)": 4 concurrent streams, idle close after
  * 5 min without a stream); the other two are PROVISIONAL choices recorded in ERRATA (ERR-PI-3, ERR-PI-4), because no document pins them. All time is read from the
@@ -14,9 +16,13 @@ object SessionLimits {
 
     /**
      * trust.md 3.3 as amended by R4-T-08 (design 4.3 and T9): 30 min forces a fresh handshake and the keyguard-bound leaf. It supersedes ERR-PI-3's PROVISIONAL 24 h.
-     * A session with an open stream is never cut for age; it says `GOAWAY max-age` at the first moment it has none.
+     * A HARD cap (ERRATA ERR-FX4-LD-3): from this age the session takes no new attempt and says `GOAWAY max-age` at the first moment it has no stream; streams still open
+     * get [MAX_AGE_GRACE_MS] and are then cancelled with the session. The one source of the figures is `Quiescence`, which the conformance vectors L01 pin.
      */
-    const val MAX_AGE_MS: Long = 1_800_000L
+    const val MAX_AGE_MS: Long = Quiescence.MAX_AGE_MS
+
+    /** PROVISIONAL (ERRATA ERR-FX4-LD-3): how long streams open at [MAX_AGE_MS] may finish. */
+    const val MAX_AGE_GRACE_MS: Long = Quiescence.MAX_AGE_GRACE_MS
 
     /**
      * PROVISIONAL (ERRATA ERR-R4B-ST-2): real milliseconds a `GOAWAY` posted by a registry change may wait for its session's driver before the driver's watchdog closes the

@@ -83,10 +83,13 @@ object NoopEngine : EnginePort {
 
 // ------------------------------------------------------------------------------------------------------------------ policy, live state, manifests
 
-/** The lender's own serving situation for decision rows 6, 6a and 6b. A PRESENCE cause may change a decision, never anything else on the wire (LP-1). */
+/**
+ * The lender's own serving situation for decision rows 6, 6a and 6b. A PRESENCE cause may change a decision, never anything else on the wire (LP-1). The two inputs that
+ * can only deny have no default: a view that does not say they are fine is not built (ERRATA ERR-FX4-LD-1).
+ */
 class ServingView(
-    val servingConditionsOk: Boolean = true,
-    val presenceActive: Boolean = false,
+    val servingConditionsOk: Boolean,
+    val presenceActive: Boolean,
     val presenceHoldRemainingMs: Long = 0,
     val predictedThermalHold: Boolean = false,
     val estStartMs: Long = 0,
@@ -94,10 +97,6 @@ class ServingView(
 
 fun interface LenderPolicyPort {
     fun view(): ServingView
-}
-
-object OpenPolicy : LenderPolicyPort {
-    override fun view(): ServingView = ServingView()
 }
 
 /** Live state for `STATE` and `st` (`:mesh-policy` builds the payload; this only supplies the inputs). */

@@ -40,11 +40,43 @@ class LenderDecisionTest {
     }
 
     @Test
-    fun aPresenceCauseIsAlwaysPeerUnavailableWithTheRemainingHoldDownAsRetryAfter() {
-        val d = decide(fine.copy(presenceActive = true, presenceHoldRemainingMs = 123_456))
-        assertEquals(LenderReply.Decline(DeclineCode.PEER_UNAVAILABLE, 123_456), d.reply)
-        assertEquals(LenderReply.Decline(DeclineCode.PEER_UNAVAILABLE, 5_000), decide(fine.copy(presenceActive = true, presenceHoldRemainingMs = 10)).reply, "clamped up to 5,000")
-        assertEquals(LenderReply.Decline(DeclineCode.PEER_UNAVAILABLE, 600_000), decide(fine.copy(presenceActive = true, presenceHoldRemainingMs = 10_000_000)).reply, "clamped down to 600,000")
+    fun aPresenceCauseIsAlwaysPeerUnavailableWithTheConstantOfAConditionAndNeverTheHoldDown() {
+        val seen = HashSet<Long>()
+        for (hold in listOf(0L, 10L, 123_456L, 599_999L, 10_000_000L)) {
+            val d = decide(fine.copy(presenceActive = true, presenceHoldRemainingMs = hold))
+            assertEquals("6", d.row)
+            assertEquals(LenderReply.Decline(DeclineCode.PEER_UNAVAILABLE, 30_000), d.reply, "hold-down $hold must not shape retryAfterMs")
+            seen += (d.reply as LenderReply.Decline).retryAfterMs
+        }
+        assertEquals(setOf(30_000L), seen, "five different hold-downs, one answer")
+        assertEquals(decide(fine.copy(servingConditionsOk = false)).reply, decide(fine.copy(presenceActive = true, presenceHoldRemainingMs = 123_456)).reply, "a presence cause is indistinguishable from a condition")
+    }
+
+    @Test
+    fun aLenderThatIsNotServingDeclinesPeerUnavailableWhateverElseIsFine() {
+        var checked = 0
+        for (f in listOf(Fsm.OFF, Fsm.ARMED, Fsm.DRAINING)) {
+            val d = decide(fine.copy(fsm = f))
+            assertEquals("6", d.row, "fsm=$f")
+            assertEquals(LenderReply.Decline(DeclineCode.PEER_UNAVAILABLE, 30_000), d.reply)
+            checked++
+        }
+        assertEquals("8", decide(fine.copy(fsm = Fsm.SERVING)).row)
+        assertEquals("1", decide(fine.copy(fsm = Fsm.OFF, registryStatus = PeerStatus.REVOKED)).row, "authorisation rows still come first")
+        assertEquals("4", decide(fine.copy(fsm = Fsm.OFF, modelAllowedAndLoadable = false)).row)
+        assertEquals("7", decide(fine.copy(inflight = 1)).row)
+        assertEquals("6", decide(fine.copy(fsm = Fsm.DRAINING, inflight = 1)).row, "availability outranks the load rows")
+        assertEquals(3, checked)
+    }
+
+    @Test
+    fun aSessionPastItsMaximumAgeDeclinesPeerUnavailableWithTheShortestRetry() {
+        val d = decide(fine.copy(sessionAcceptsNew = false))
+        assertEquals("6c", d.row)
+        assertEquals(LenderReply.Decline(DeclineCode.PEER_UNAVAILABLE, 5_000), d.reply, "the requester may dial a fresh session at once")
+        assertEquals("6", decide(fine.copy(sessionAcceptsNew = false, fsm = Fsm.OFF)).row, "a lender that is not serving says so first")
+        assertEquals("6c", decide(fine.copy(sessionAcceptsNew = false, predictedThermalHold = true, inflight = 1)).row)
+        assertEquals("1", decide(fine.copy(sessionAcceptsNew = false, registryStatus = PeerStatus.REVOKED)).row)
     }
 
     @Test
@@ -58,6 +90,7 @@ class LenderDecisionTest {
                 inferScopeGranted = rng.nextInt(6) != 0, attemptSeenWithin24h = rng.nextInt(8) == 0, modelAllowedAndLoadable = rng.nextInt(6) != 0,
                 limits = LenderLimits(), servingConditionsOk = rng.nextInt(5) != 0, presenceActive = rng.nextInt(5) == 0, presenceHoldRemainingMs = rng.nextLong(0, 700_000),
                 predictedThermalHold = rng.nextInt(6) == 0, estStartMs = rng.nextLong(0, 120_000), inflight = rng.nextInt(2), requestsThisMinute = rng.nextInt(40),
+                fsm = Fsm.entries[rng.nextInt(4)].takeIf { rng.nextInt(4) == 0 } ?: Fsm.SERVING, sessionAcceptsNew = rng.nextInt(7) != 0,
             )
             val o = offer.copy(promptBytes = if (rng.nextInt(10) == 0) 9_000_000 else 1_200, maxTokens = if (rng.nextInt(12) == 0) 5_000 else 512)
             val d = LenderDecisionTable.decide(o, s)
@@ -68,7 +101,8 @@ class LenderDecisionTest {
                 if (s.attemptSeenWithin24h) add("3")
                 if (!s.modelAllowedAndLoadable) add("4")
                 if (o.promptBytes > 8_388_608 || o.maxTokens > 4_096) add("5")
-                if (s.presenceActive || !s.servingConditionsOk) add("6")
+                if (s.presenceActive || !s.servingConditionsOk || s.fsm != Fsm.SERVING) add("6")
+                if (!s.sessionAcceptsNew) add("6c")
                 if (s.predictedThermalHold) add("6a")
                 if (s.estStartMs > o.deadlineMs) add("6b")
                 if (s.inflight >= 1 || s.requestsThisMinute >= 30) add("7")
@@ -80,7 +114,7 @@ class LenderDecisionTest {
             if (r is LenderReply.Decline) assertTrue(r.retryAfterMs in 5_000..600_000, "retryAfterMs ${r.retryAfterMs}")
             if (s.presenceActive && failing.firstOrNull() == "6") assertEquals(DeclineCode.PEER_UNAVAILABLE, (r as LenderReply.Decline).code)
         }
-        val rows = listOf("1", "2", "3", "4", "5", "6", "6a", "6b", "7", "8")
+        val rows = listOf("1", "2", "3", "4", "5", "6", "6c", "6a", "6b", "7", "8")
         assertEquals(emptyList(), rows.filter { (hits[it] ?: 0) == 0 }, "every row of the decision table must be the deciding row in some case")
         println("decision table iterations: $cases random situations; deciding-row counts: ${hits.toSortedMap()}")
     }

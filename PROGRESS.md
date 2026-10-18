@@ -2530,3 +2530,42 @@ $ ./gradlew jvmTest --offline      -> BUILD SUCCESSFUL; XML: 140 tests, 0 failur
 Not done: `VERSION` bump; `LAB_SPEC.md` R4-L-08 list; hosted CI was not run for this change.
 
 Re-verification of the entry above (same track, second pass, LAB, NOT DEVICE EVIDENCE): every figure was re-run. Hosted check-runs re-read through the GitHub API (`044e214` Windows JDK 21 and 17 failure; `08ab72f` Windows JDK 21 failure, JDK 17 success; `5c4871b` both success). The `lockFor` mutation was re-applied (`locks.getOrPut(store) { Any() }` without `synchronized`): `SeqRaceTest > theLockForOneStoreIsTheSameObjectForEveryConcurrentCaller` failed (`4 tests completed, 1 failed`), then restored (`git status` shows no change to `Signer.kt`). Correction made in this pass: the entry said no file other than the listed vector files differs from `2a67003`; the two JSON schemas under `lab/conformance/manifest/schema/` do differ (enum widenings), and README and `ERR-FX3-HN-2` now say so. Counts re-run: JVM `lines` 511, Swift `lines` 478, `lane_diff.py` `jvm=511 swift=478 agree=436 disagree=42 (known 42) jvm-only=33 (not implemented 33)`, `swift test` `Executed 265 tests, with 0 failures`, `test_lane_diff.py` 13 tests OK. `./gradlew -p lab :mesh-policy:test :manifest:test :conformance-runner:test --rerun-tasks` on JDK 21 and on JDK 17.0.12: `BUILD SUCCESSFUL`, mesh-policy 33, manifest 62, conformance-runner 2309 (7 skipped), 0 failures, 0 errors on both. `isolation.py` OK, `check_law.py` OK, root `jvmTest` `BUILD SUCCESSFUL` (140 tests, 0 failures, from cache).
+
+### Fix wave 4, track fix4-lender (LAB, oracle: self, NOT DEVICE EVIDENCE)
+
+Findings A-MP-2, A-MP-5, A-MP-6, A-F1, B-MP-3, B-MP-5, B-MP-8, B-TL-1, A-R4X-1, A-MP-8, B-F2, B-TL-5, B-R5X-1, A-TRUST-3. Readings and choices: `lab/ERRATA.md` ERR-FX4-LD-1 to ERR-FX4-LD-9. Owner decision applied: the 30-minute session age is a HARD cap (no new attempt from the age, 60 s PROVISIONAL grace for streams already open, then `GOAWAY max-age` cancels them).
+
+Failing before (new `LenderFixesTest`, 14 tests, run on the unfixed main sources with only the harness doubles added; `./gradlew -p lab :mesh-proto:test --tests '*LenderFixesTest*'`): `14 tests completed, 13 failed` (the 14th is the sequential control of the race). Messages seen: `fsm=OFF: the offer was not declined (INFER_ACCEPT)`; `ClassCastException: StateParse$Reject cannot be cast to StateParse$Ok` (commit, confVersion, thermal band 3, 65 held files); `IllegalStateException: policy` (offer with a failing host port); `run 1: inflight 2 with maxConcurrent 1`; `run 3: 5 streams of one pin`; `the engine of a revoked lender was opened with the prompt`; `expected: <4> but was: <9>` (live-state seq after five requests by another peer); `an offer after the maximum age was INFER_ACCEPT`; `idle=0 age=1800000 streams=1: Quiescence says true`; `no CANCEL after 590000ms of empty chunks`; `a dripping lender kept the session open for 3600000ms`. One of the 13 (the requester past max age) failed for a reason of the test, not of the code, in that first run (it jumped the clock 30 min in one tick); it was rewritten as a stepped run and its fail-before was shown by mutation instead.
+
+Mutation checks (apply, run, restore; sources verified restored by the next full run), `scratchpad` script, all killed except one equivalent mutant:
+```
+A-MP-2 lender ignores its fsm                      KILLED  LenderFixesTest.aLenderThatIsNotServing...
+A-MP-2 table drops the fsm row                     KILLED  5 failing (ConformanceSuiteTest.vectors, 3 LenderDecisionTest)
+A-MP-5 STATE cast back to Ok                       SURVIVED (equivalent: the guard around stateDoc still catches the ClassCastException)
+A-MP-5 STATE cast back to Ok AND guard narrowed    KILLED  aStateThatTheStrictParserWouldRefuse...
+A-MP-5 held not capped                             KILLED  moreThanSixtyFourHeldFiles...
+A-MP-5 offer ports not guarded                     KILLED  aHostPortThatThrowsDuringAnOffer...
+A-F1 admission lock removed                        KILLED  twoSessionsOfferingAtOnce..., twoSessionsOfOnePin...
+B-TL-1 no recheck before the body                  KILLED  aRevokeInsideTheAcceptedCallback...
+B-MP-8 seq node wide again                         KILLED  theLiveStateSequenceOfOneRequester...
+A-R4X-1 lender takes offers past the age           KILLED  aLenderPastMaxAgeDeclines...
+A-R4X-1 no cap at age plus grace                   KILLED  4 failing (lender, requester, drip, differential)
+A-R4X-1 requester opens streams past the age       KILLED  aRequesterPastMaxAgeOpensNoNewStream...
+B-MP-5 Quiescence without the grace cap            KILLED  ConformanceSuiteTest.vectors, DestinationSetsTest, the differential test
+B-F2 empty chunk counts as activity                KILLED  aLenderThatDripsEmptyChunks...
+A-MP-8 presence leaks the hold-down                KILLED  ConformanceSuiteTest.vectors, LenderDecisionTest
+```
+
+Gates (real output, this worktree, 4 cores shared):
+```
+$ ./gradlew -p lab test --max-workers=2 --offline --continue --rerun-tasks      (JDK 21)   BUILD SUCCESSFUL in 2m 42s
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab test ... --rerun-tasks            (JDK 17.0.12)   BUILD SUCCESSFUL in 3m
+    summed from build/test-results, identical on both JDKs: bench-core 83, conformance-runner 2333 (7 skipped), json 42, ledger-model 98, manifest 76,
+    mesh-policy 36, mesh-proto 340, mesh-router 69, mesh-sim 37; failures 0, errors 0
+$ python3 lab/tools/xcheck.py lab/conformance --families L01,W07,W07p -> xcheck L01: 61 agree, 0 disagree / W07: 71 agree / W07p: 105 agree
+$ python3 lab/tools/regen_index.py -> INDEX.json: 31 entries
+$ python3 lab/tools/isolation.py   -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py   -> law: OK
+$ ./gradlew jvmTest --offline      -> BUILD SUCCESSFUL; XML: 140 tests, 0 failures
+```
+Vectors: L01 56 to 61 (L01-343 changed to the grace reading, L01-345 to L01-349 added), W07p 97 to 105 (W07p-210, -211, -212, -222 now 30,000; W07p-226 to W07p-233 added). Not done: hosted CI was not run; the hard-cap grace of 60 s is PROVISIONAL; a per-attempt total deadline is still the router's (ERR-FX2-PS-10); `docs/design/mesh/*.md` and `trust.md` R4-T-08 were not edited.

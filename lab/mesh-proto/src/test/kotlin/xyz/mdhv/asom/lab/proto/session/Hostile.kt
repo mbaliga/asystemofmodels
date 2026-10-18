@@ -63,8 +63,8 @@ object Build {
  * A hostile TLS client against an honest listener: the hostile end writes raw bytes, the honest session reads and answers, and the test looks at every frame the
  * honest node sent and every row it wrote. The hostile node is the identity of `world.a`, which the registry of `world.b` has paired.
  */
-class HostileClient(val w: World, mode: ConnMode = ConnMode.ESTABLISHED) {
-    private val pair = MemConnection.pair(w.b.pin, w.a.pin, w.log, "H>B", "B<H", mode)
+class HostileClient(val w: World, mode: ConnMode = ConnMode.ESTABLISHED, private val peerPin: Pin = w.a.pin) {
+    private val pair = MemConnection.pair(w.b.pin, peerPin, w.log, "H>B", "B<H", mode)
     val conn: MemConnection = pair.first
     private val honestConn = pair.second
     val honest: Session = w.b.node.accept(pair.second)
@@ -72,7 +72,7 @@ class HostileClient(val w: World, mode: ConnMode = ConnMode.ESTABLISHED) {
     private val received = ArrayList<Fr>()
     private var receivedBytes = 0L
 
-    val hostileNodeId: String get() = w.a.pin.nodeId
+    val hostileNodeId: String get() = peerPin.nodeId
 
     fun drain() {
         while (honest.pumpAvailable(1 shl 20) + (if (autoAdvance) honest.advance() else 0) > 0) Unit

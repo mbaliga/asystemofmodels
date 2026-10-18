@@ -187,7 +187,7 @@ internal class RequesterSide(private val s: Session) {
             is InferAccept -> known(f, msg.attemptId)?.let { accept(it, msg) }
             is InferDecline -> known(f, msg.attemptId)?.let { finish(it, 503, msg.code.wire, decline = msg) }
             is InferHead -> known(f, msg.attemptId)?.let { head(it, msg) }
-            is InferChunk -> known(f, null)?.let { chunk(it, msg) }
+            is InferChunk -> known(f, null, activity = msg.bytes.isNotEmpty())?.let { chunk(it, msg) }
             is InferEnd -> known(f, msg.attemptId)?.let { end(it, msg) }
             is StateMsg -> state(f, msg)
             is ManifestMsg -> manifest(f, msg)
@@ -195,17 +195,19 @@ internal class RequesterSide(private val s: Session) {
         }
     }
 
-    private fun known(f: RawFrame, id: String?): Attempt? {
+    /** [activity] is false for a frame that carries nothing the attempt waits for (an empty chunk): it does not restart the attempt's silence timer (ERRATA ERR-FX4-LD-7). */
+    private fun known(f: RawFrame, id: String?, activity: Boolean = true): Attempt? {
         val a = attempts[f.stream]
         if (a == null || (id != null && a.id != id)) {
             if (a == null) unsolicited(f.stream) else s.fail(Refusal.UNSOLICITED_REPLY)
             return null
         }
         a.bytesIn += appBytes(f)
-        a.lastActivity = s.node.ledger.now()
+        if (activity) a.lastActivity = s.node.ledger.now()
         return a
     }
 
+    /** The registry is read once more just before the body leaves (LAB_SPEC RL4): a revoke that landed during the host's callback ends the session with no body sent. */
     private fun accept(a: Attempt, msg: InferAccept) {
         if (a.stage != Stage.OFFERED) return s.fail(Refusal.UNSOLICITED_REPLY)
         a.stage = Stage.ACCEPTED
@@ -214,6 +216,7 @@ internal class RequesterSide(private val s: Session) {
             if (!a.cancelSent) cancel(a.id, CancelReason.POLICY_CHANGED)
             return
         }
+        if (s.revoked()) return
         val frame = MessageCodec.frame(InferBody(a.body), a.stream)
         a.bytesOut += appBytes(frame)
         a.stage = Stage.BODY_SENT

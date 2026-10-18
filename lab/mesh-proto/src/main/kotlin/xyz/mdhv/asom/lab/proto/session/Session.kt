@@ -4,6 +4,7 @@ import java.io.IOException
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 import xyz.mdhv.asom.lab.ledger.MeshKind
+import xyz.mdhv.asom.lab.policy.Quiescence
 import xyz.mdhv.asom.lab.policy.StateBuilder
 import xyz.mdhv.asom.lab.proto.transport.MeshConnection
 import xyz.mdhv.asom.lab.proto.trust.AuthDecision
@@ -210,21 +211,27 @@ class Session private constructor(
     /**
      * The timers of an established session, on the injected clock: an accepted attempt whose body never came expires (lender), a session with no stream for
      * [SessionLimits.IDLE_MS] says `GOAWAY idle`, and one older than [SessionLimits.MAX_AGE_MS] says `GOAWAY max-age` at the first moment it has no stream.
-     * An open stream keeps the session alive: it is the attempt's own deadline that ends it, not a timer of the session. On the requester the bounds of
-     * [RequesterSide.expire] guarantee that no unanswered request or stalled attempt stays open for ever (ERRATA ERR-FX2-2).
+     * The age is a HARD cap (ERRATA ERR-FX4-LD-3): from that moment neither side opens a new stream, streams still open get [SessionLimits.MAX_AGE_GRACE_MS], and then the
+     * session says `GOAWAY max-age` anyway, which cancels them. Before the age an open stream keeps the session alive: it is the attempt's own deadline that ends it. On
+     * the requester the bounds of [RequesterSide.expire] guarantee that no unanswered request or stalled attempt stays open for ever (ERRATA ERR-FX2-2).
      */
     private fun timers(now: Long) {
         if (role == PeerRole.TLS_SERVER) lender.expireBodies(now) else requester.expire(now)
         if (phase != Phase.ESTABLISHED) return
+        val age = now - establishedAt
+        if (age >= SessionLimits.MAX_AGE_MS) {
+            if (openStreams() == 0 || age >= SessionLimits.MAX_AGE_MS + SessionLimits.MAX_AGE_GRACE_MS) goAway(GoAwayReason.MAX_AGE)
+            return
+        }
         if (openStreams() > 0) {
             lastStreamActivity = now
             return
         }
-        when {
-            now - establishedAt >= SessionLimits.MAX_AGE_MS -> goAway(GoAwayReason.MAX_AGE)
-            now - lastStreamActivity >= SessionLimits.IDLE_MS -> goAway(GoAwayReason.IDLE)
-        }
+        if (now - lastStreamActivity >= SessionLimits.IDLE_MS) goAway(GoAwayReason.IDLE)
     }
+
+    /** False once the session has reached its maximum age: it opens no new stream, and the lender declines new offers. Read on the node's clock. */
+    internal fun acceptsNewAttempts(now: Long): Boolean = phase != Phase.ESTABLISHED || Quiescence.mayAcceptNewAttempt(now - establishedAt)
 
     internal fun openStreams(): Int = lender.openCount() + requester.openCount()
 
@@ -240,6 +247,7 @@ class Session private constructor(
         try {
             if (phase == Phase.CLOSED || revoked()) throw SessionClosedForSend()
             check(phase == Phase.ESTABLISHED && role == PeerRole.TLS_CLIENT) { "offers go from an established requester session" }
+            if (!acceptsNewAttempts(node.ledger.now())) throw SessionClosedForSend()
             requester.offer(spec, body, listener)
         } catch (e: FailClosed) {
             throw SessionClosedForSend()
@@ -260,12 +268,14 @@ class Session private constructor(
     fun requestState(cb: (StateResult) -> Unit) = guarded(Unit) {
         if (phase == Phase.CLOSED || revoked()) return@guarded cb(StateResult.Lost)
         check(phase == Phase.ESTABLISHED && role == PeerRole.TLS_CLIENT)
+        if (!acceptsNewAttempts(node.ledger.now())) return@guarded cb(StateResult.Lost)
         requester.requestState(cb)
     }
 
     fun requestManifest(challenge: ByteArray, cb: (ManifestResult) -> Unit) = guarded(Unit) {
         if (phase == Phase.CLOSED || revoked()) return@guarded cb(ManifestResult.Lost)
         check(phase == Phase.ESTABLISHED && role == PeerRole.TLS_CLIENT)
+        if (!acceptsNewAttempts(node.ledger.now())) return@guarded cb(ManifestResult.Lost)
         requester.requestManifest(challenge, cb)
     }
 
@@ -317,7 +327,7 @@ class Session private constructor(
      * trust.md 8.1 step 4). A posted `GOAWAY` is written now if no driver has yet; a requester also reads [PeerRegistry.sessionDecision] itself, as the lender reads
      * `authorize` per frame, so that a revoke that was never posted (it landed before the session was registered) still ends the session. True when the session closed.
      */
-    private fun revoked(): Boolean {
+    internal fun revoked(): Boolean {
         if (runPosted()) return true
         if (role != PeerRole.TLS_CLIENT || phase == Phase.CLOSED) return false
         val d = node.registry.sessionDecision(peer) as? SessionDecision.Goaway ?: return false
@@ -519,10 +529,16 @@ class Session private constructor(
         return false
     }
 
+    /** The `st` digest for this peer, or none when it holds no `state` scope or the host's live state cannot be read: an omitted `st` is always legal. */
     internal fun stIfGranted(): St? {
         if (node.registry.authorize(peer, "state") !is AuthDecision.Allow) return null
-        val v = node.live.view()
-        return St(v.fsm, v.governor, StateBuilder.queueBucket(v.localQueued, v.peerQueued), node.live.nextSeq(), v.thermalBand)
+        return try {
+            val v = node.live.view()
+            St(v.fsm, v.governor, StateBuilder.queueBucket(v.localQueued, v.peerQueued), node.nextSeqFor(peer), v.thermalBand)
+        } catch (e: RuntimeException) {
+            node.callbackErrors.incrementAndGet()
+            null
+        }
     }
 
     // ------------------------------------------------------------------------------------------------------------ closing
@@ -564,7 +580,7 @@ class Session private constructor(
 
     companion object {
         /** Error codes that answer one stream and leave the session open when they are the reply to a request. */
-        private val STREAM_LEVEL = setOf(MeshError.SCOPE_DENIED, MeshError.MANIFEST_UNAVAILABLE)
+        private val STREAM_LEVEL = setOf(MeshError.SCOPE_DENIED, MeshError.MANIFEST_UNAVAILABLE, MeshError.PEER_UNAVAILABLE)
 
         internal fun listener(node: MeshNode, conn: MeshConnection, peer: Pin, peerPath: xyz.mdhv.asom.lab.ledger.PeerPath?): Session {
             val id = node.ids.b64(16)

@@ -1217,7 +1217,7 @@
       "origin": "hand",
       "status": "normative",
       "oracle": "self",
-      "description": "age 1,800,000 ms closes even with a stream (30 minutes)",
+      "description": "ERR-FX4-LD-3: age 1,800,000 ms with a stream open does not cut it at once: the 60,000 ms grace for open streams has begun",
       "input": {
         "kind": "sessionClose",
         "idleMs": 0,
@@ -1226,7 +1226,7 @@
       },
       "expect": {
         "ok": {
-          "close": true
+          "close": false
         }
       }
     },
@@ -1245,6 +1245,96 @@
       "expect": {
         "ok": {
           "close": false
+        }
+      }
+    },
+    {
+      "id": "L01-345",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX4-LD-3: age 1,800,000 ms with no stream closes at once (GOAWAY max-age at the first moment without a stream)",
+      "input": {
+        "kind": "sessionClose",
+        "idleMs": 0,
+        "ageMs": 1800000,
+        "openStreams": 0
+      },
+      "expect": {
+        "ok": {
+          "close": true
+        }
+      }
+    },
+    {
+      "id": "L01-346",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "age 1,799,999 ms with no stream and no idle time stays open",
+      "input": {
+        "kind": "sessionClose",
+        "idleMs": 0,
+        "ageMs": 1799999,
+        "openStreams": 0
+      },
+      "expect": {
+        "ok": {
+          "close": false
+        }
+      }
+    },
+    {
+      "id": "L01-347",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX4-LD-3: age 1,859,999 ms with a stream open is still inside the grace",
+      "input": {
+        "kind": "sessionClose",
+        "idleMs": 0,
+        "ageMs": 1859999,
+        "openStreams": 1
+      },
+      "expect": {
+        "ok": {
+          "close": false
+        }
+      }
+    },
+    {
+      "id": "L01-348",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX4-LD-3: age 1,860,000 ms (30 minutes plus the 60 s grace) closes the session and cancels the open stream",
+      "input": {
+        "kind": "sessionClose",
+        "idleMs": 0,
+        "ageMs": 1860000,
+        "openStreams": 1
+      },
+      "expect": {
+        "ok": {
+          "close": true
+        }
+      }
+    },
+    {
+      "id": "L01-349",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "ERR-FX4-LD-3: a session far past its age closes whatever is open",
+      "input": {
+        "kind": "sessionClose",
+        "idleMs": 0,
+        "ageMs": 9999999,
+        "openStreams": 4
+      },
+      "expect": {
+        "ok": {
+          "close": true
         }
       }
     }

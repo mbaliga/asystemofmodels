@@ -163,8 +163,13 @@ L01 += [
     vec("L01-340", "idle 299,999 ms with no open stream: stays open", sc(299_999, 10, 0), clo(False)),
     vec("L01-341", "idle 300,000 ms with no open stream: closes (5 minutes)", sc(300_000, 10, 0), clo(True)),
     vec("L01-342", "an open stream keeps the session past 5 idle minutes", sc(400_000, 10, 1), clo(False)),
-    vec("L01-343", "age 1,800,000 ms closes even with a stream (30 minutes)", sc(0, 1_800_000, 1), clo(True)),
+    vec("L01-343", "ERR-FX4-LD-3: age 1,800,000 ms with a stream open does not cut it at once: the 60,000 ms grace for open streams has begun", sc(0, 1_800_000, 1), clo(False)),
     vec("L01-344", "age 1,799,999 ms with a stream stays open", sc(0, 1_799_999, 1), clo(False)),
+    vec("L01-345", "ERR-FX4-LD-3: age 1,800,000 ms with no stream closes at once (GOAWAY max-age at the first moment without a stream)", sc(0, 1_800_000, 0), clo(True)),
+    vec("L01-346", "age 1,799,999 ms with no stream and no idle time stays open", sc(0, 1_799_999, 0), clo(False)),
+    vec("L01-347", "ERR-FX4-LD-3: age 1,859,999 ms with a stream open is still inside the grace", sc(0, 1_859_999, 1), clo(False)),
+    vec("L01-348", "ERR-FX4-LD-3: age 1,860,000 ms (30 minutes plus the 60 s grace) closes the session and cancels the open stream", sc(0, 1_860_000, 1), clo(True)),
+    vec("L01-349", "ERR-FX4-LD-3: a session far past its age closes whatever is open", sc(0, 9_999_999, 4), clo(True)),
 ]
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------
@@ -531,7 +536,7 @@ for name in PF_PRESENCE:
 OFFER = {"attemptId": "AAAAAAAAAAAAAAAAAAAAAA", "model": "qwen3-8b", "op": "chat", "promptBytes": 1_200, "maxTokens": 512, "deadlineMs": 60_000, "stream": True}
 SIT = {
     "registryStatus": "PAIRED", "inferScopeGranted": True, "attemptSeenWithin24h": False, "modelAllowedAndLoadable": True, "servingConditionsOk": True, "presenceActive": False,
-    "presenceHoldRemainingMs": 0, "predictedThermalHold": False, "estStartMs": 0, "inflight": 0, "requestsThisMinute": 0,
+    "presenceHoldRemainingMs": 0, "predictedThermalHold": False, "estStartMs": 0, "inflight": 0, "requestsThisMinute": 0, "fsm": "SERVING", "sessionAcceptsNew": True,
 }
 AID = '"attemptId":"AAAAAAAAAAAAAAAAAAAAAA"'
 
@@ -563,9 +568,9 @@ W07P += [
     dec("W07p-207", "row 5: maxTokens above the limit", offer={"maxTokens": 4_097}, expect=error("5", "FRAME_TOO_LARGE", False)),
     dec("W07p-208", "row 5: promptBytes exactly at the limit passes", offer={"promptBytes": 8_388_608}, expect={"row": "8", "reply": "accept", "retain": "none", "wire": "{" + AID + ',"fileSha256":"' + "a" * 64 + '","servedModel":"qwen3-8b"}'}),
     dec("W07p-209", "row 6: serving conditions fail (charging, battery, thermal): PEER_UNAVAILABLE", sit={"servingConditionsOk": False}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
-    dec("W07p-210", "row 6, LP-1: a presence cause is PEER_UNAVAILABLE with the remaining hold-down as retryAfterMs", sit={"presenceActive": True, "presenceHoldRemainingMs": 123_456}, expect=decline("6", "PEER_UNAVAILABLE", 123_456)),
-    dec("W07p-211", "row 6: a presence hold-down below 5,000 ms is raised to 5,000", sit={"presenceActive": True, "presenceHoldRemainingMs": 10}, expect=decline("6", "PEER_UNAVAILABLE", 5_000)),
-    dec("W07p-212", "row 6: a hold-down above 600,000 ms is lowered to 600,000", sit={"presenceActive": True, "presenceHoldRemainingMs": 10_000_000}, expect=decline("6", "PEER_UNAVAILABLE", 600_000)),
+    dec("W07p-210", "row 6, LP-1, ERR-FX4-LD-2: a presence cause is PEER_UNAVAILABLE with the constant retryAfterMs of a condition, not the remaining hold-down (it would count down to the user's last input)", sit={"presenceActive": True, "presenceHoldRemainingMs": 123_456}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
+    dec("W07p-211", "row 6, ERR-FX4-LD-2: a presence hold-down of 10 ms gives the same 30,000, not a clamped 5,000", sit={"presenceActive": True, "presenceHoldRemainingMs": 10}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
+    dec("W07p-212", "row 6, ERR-FX4-LD-2: a hold-down above 600,000 ms gives the same 30,000, not a clamped 600,000", sit={"presenceActive": True, "presenceHoldRemainingMs": 10_000_000}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
     dec("W07p-213", "row 6a: a predicted thermal hold: PEER_UNAVAILABLE", sit={"predictedThermalHold": True}, expect=decline("6a", "PEER_UNAVAILABLE", 30_000)),
     dec("W07p-214", "row 6b: estStartMs 60,001 > deadlineMs 60,000: PEER_BUSY (the estimate is never sent)", sit={"estStartMs": 60_001}, expect=decline("6b", "PEER_BUSY", 5_000)),
     dec("W07p-215", "row 6b: estStartMs equal to the deadline is accepted", sit={"estStartMs": 60_000}, expect={"row": "8", "reply": "accept", "retain": "none", "wire": "{" + AID + ',"fileSha256":"' + "a" * 64 + '","servedModel":"qwen3-8b"}'}),
@@ -575,10 +580,18 @@ W07P += [
     dec("W07p-219", "order: not PAIRED outranks a missing scope", sit={"registryStatus": "REVOKED", "inferScopeGranted": False}, expect=error("1", "PEER_NOT_PAIRED", True)),
     dec("W07p-220", "order: a missing scope outranks a duplicate", sit={"inferScopeGranted": False, "attemptSeenWithin24h": True}, expect=decline("2", "SCOPE_DENIED", 30_000)),
     dec("W07p-221", "order: a too-large offer outranks a presence cause", sit={"presenceActive": True, "presenceHoldRemainingMs": 100_000}, offer={"promptBytes": 9_000_000}, expect=error("5", "FRAME_TOO_LARGE", False)),
-    dec("W07p-222", "order: presence and a failing condition are one row (6); the presence retryAfterMs wins", sit={"presenceActive": True, "presenceHoldRemainingMs": 200_000, "servingConditionsOk": False}, expect=decline("6", "PEER_UNAVAILABLE", 200_000)),
+    dec("W07p-222", "order: presence and a failing condition are one row (6) and one answer", sit={"presenceActive": True, "presenceHoldRemainingMs": 200_000, "servingConditionsOk": False}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
     dec("W07p-223", "order: row 6 outranks 6a, 6b and 7", sit={"servingConditionsOk": False, "predictedThermalHold": True, "estStartMs": 90_000, "inflight": 1}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
     dec("W07p-224", "order: 6a outranks 6b", sit={"predictedThermalHold": True, "estStartMs": 90_000}, expect=decline("6a", "PEER_UNAVAILABLE", 30_000)),
     dec("W07p-225", "order: 6b outranks 7", sit={"estStartMs": 90_000, "inflight": 1}, expect=decline("6b", "PEER_BUSY", 5_000)),
+    dec("W07p-226", "ERR-FX4-LD-1, design 3.2 rule 1: a lender whose availability is OFF declines PEER_UNAVAILABLE even though every other input is fine", sit={"fsm": "OFF"}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
+    dec("W07p-227", "ERR-FX4-LD-1: ARMED (a session exists only because a pairing window or the Peers tab is open) declines PEER_UNAVAILABLE", sit={"fsm": "ARMED"}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
+    dec("W07p-228", "ERR-FX4-LD-1: DRAINING declines PEER_UNAVAILABLE", sit={"fsm": "DRAINING"}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
+    dec("W07p-229", "ERR-FX4-LD-1: authorisation outranks availability (a REVOKED peer is told PEER_NOT_PAIRED even by an OFF lender)", sit={"fsm": "OFF", "registryStatus": "REVOKED"}, expect=error("1", "PEER_NOT_PAIRED", True)),
+    dec("W07p-230", "ERR-FX4-LD-1: availability outranks the load rows (6a, 6b, 7)", sit={"fsm": "DRAINING", "predictedThermalHold": True, "estStartMs": 90_000, "inflight": 1}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
+    dec("W07p-231", "ERR-FX4-LD-3: a session past its 30-minute maximum age takes no new attempt: PEER_UNAVAILABLE with the shortest retry (the requester dials a fresh session)", sit={"sessionAcceptsNew": False}, expect=decline("6c", "PEER_UNAVAILABLE", 5_000)),
+    dec("W07p-232", "ERR-FX4-LD-3: a lender that is not serving says so (row 6) before it says the session is old", sit={"sessionAcceptsNew": False, "fsm": "OFF"}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
+    dec("W07p-233", "ERR-FX4-LD-3: row 6c outranks 6a, 6b and 7", sit={"sessionAcceptsNew": False, "predictedThermalHold": True, "estStartMs": 90_000, "inflight": 1}, expect=decline("6c", "PEER_UNAVAILABLE", 5_000)),
 ]
 
 

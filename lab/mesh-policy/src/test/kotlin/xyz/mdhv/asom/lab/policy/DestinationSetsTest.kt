@@ -123,7 +123,19 @@ class DestinationSetsTest {
         assertEquals(false, Quiescence.sessionShouldClose(299_999, 10, 0))
         assertEquals(true, Quiescence.sessionShouldClose(300_000, 10, 0))
         assertEquals(false, Quiescence.sessionShouldClose(400_000, 10, 1), "an open stream keeps the session")
-        assertEquals(true, Quiescence.sessionShouldClose(0, 1_800_000, 1), "30 minutes of age")
+        assertEquals(false, Quiescence.sessionShouldClose(0, 1_800_000, 1), "30 minutes of age with a stream open: the grace has begun, nothing is cut yet")
         assertEquals(false, Quiescence.sessionShouldClose(0, 1_799_999, 1))
+    }
+
+    @Test
+    fun theMaximumAgeIsAHardCapWithAGraceForStreamsThatWereOpen() {
+        assertEquals(true, Quiescence.sessionShouldClose(0, 1_800_000, 0), "30 minutes of age at the first moment without a stream")
+        assertEquals(false, Quiescence.sessionShouldClose(0, 1_799_999, 0))
+        assertEquals(false, Quiescence.sessionShouldClose(0, 1_859_999, 1), "one millisecond before the grace ends")
+        assertEquals(true, Quiescence.sessionShouldClose(0, 1_860_000, 1), "the grace ended: the stream is cancelled and the session closes")
+        assertEquals(true, Quiescence.sessionShouldClose(0, 99_999_999, 4))
+        assertEquals(true, Quiescence.mayAcceptNewAttempt(1_799_999))
+        assertEquals(false, Quiescence.mayAcceptNewAttempt(1_800_000), "no new attempt from the maximum age")
+        assertEquals(false, Quiescence.mayAcceptNewAttempt(Long.MAX_VALUE))
     }
 }

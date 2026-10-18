@@ -96,6 +96,13 @@ class MeshNode(
     val callbackErrors = AtomicInteger(0)
 
     private val servedByPin = java.util.concurrent.ConcurrentHashMap<String, AtomicInteger>()
+    private val seqByPin = java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicLong>()
+
+    /**
+     * Held across "read the node-wide and per-peer stream counts, decide, reserve the slot" for every offer on every session of this node (ERRATA ERR-FX4-LD-4): two
+     * sessions driven by their own threads cannot both pass a limit one slot short. Nothing under it takes a session lock or does I/O.
+     */
+    internal val admission = Any()
     private val claimedIds = object : LinkedHashMap<String, Boolean>() {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Boolean>?): Boolean = size > 65_536
     }
@@ -115,6 +122,12 @@ class MeshNode(
 
     /** The open served attempts of one peer across all its sessions: the 4-stream limit of trust.md 3.3 is per peer (ERRATA ERR-FX2-6). */
     internal fun servedOf(pin: Pin): AtomicInteger = servedByPin.getOrPut(pin.nodeId) { AtomicInteger() }
+
+    /**
+     * The `seq` of the next `STATE` or `st` for [pin]: one counter per requester, started from the host's own sequence at first contact, so that the gap between two of a
+     * requester's replies never counts what the lender did for other requesters (ERRATA ERR-FX4-LD-6).
+     */
+    internal fun nextSeqFor(pin: Pin): Long = seqByPin.computeIfAbsent(pin.nodeId) { java.util.concurrent.atomic.AtomicLong(live.nextSeq() - 1) }.incrementAndGet()
 
     /** Records a session id (one this node dialed or minted, or a `HELLO` nonce) and says whether it was new: a session id names the rows of one session on this node. */
     internal fun claimSessionId(id: String): Boolean = synchronized(claimedIds) { claimedIds.put(id, true) == null }

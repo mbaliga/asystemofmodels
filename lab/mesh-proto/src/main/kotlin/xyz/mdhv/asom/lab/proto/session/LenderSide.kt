@@ -11,6 +11,7 @@ import xyz.mdhv.asom.lab.ledger.MeshKind
 import xyz.mdhv.asom.lab.ledger.Phase
 import xyz.mdhv.asom.lab.ledger.ServedRecord
 import xyz.mdhv.asom.lab.policy.DeclineCode
+import xyz.mdhv.asom.lab.policy.Fsm
 import xyz.mdhv.asom.lab.policy.LenderDecisionTable
 import xyz.mdhv.asom.lab.policy.LenderLimits
 import xyz.mdhv.asom.lab.policy.LenderReply
@@ -19,6 +20,7 @@ import xyz.mdhv.asom.lab.policy.MeshErrorCode
 import xyz.mdhv.asom.lab.policy.OfferView
 import xyz.mdhv.asom.lab.policy.PeerStatus
 import xyz.mdhv.asom.lab.policy.StateBuilder
+import xyz.mdhv.asom.lab.policy.StateDoc
 import xyz.mdhv.asom.lab.policy.StateParse
 import xyz.mdhv.asom.lab.policy.StateParser
 import xyz.mdhv.asom.lab.proto.trust.AuthDecision
@@ -50,6 +52,11 @@ import xyz.mdhv.asom.lab.proto.wire.WireRefusal
  * `STATE_REQ` and `MANIFEST_REQ`, never cached.
  */
 internal class LenderSide(private val s: Session) {
+    private companion object {
+        /** The most `held` files a `STATE` may name (the strict parser's own bound). */
+        const val MAX_HELD = 64
+    }
+
     private enum class Stage { ACCEPTED, SERVING, CANCELLING }
 
     private class Served(val stream: Long, val offer: InferOffer, val accept: ModelOffer) {
@@ -97,26 +104,55 @@ internal class LenderSide(private val s: Session) {
         val auth = node.registry.authorize(s.peer, "infer")
         val seen = node.attempts.seenBeforeAndRecord(s.peer, o.attemptId, now)
         val perMinute = node.rpm.countAndRecord(s.peer, now)
-        val model = node.engine.offered(o.model)
-        val view = node.policy.view()
+        var portFailed = false
+
+        fun <T> port(onFailure: T, block: () -> T): T = try {
+            block()
+        } catch (e: FailClosed) {
+            throw e
+        } catch (e: RuntimeException) {
+            node.callbackErrors.incrementAndGet()
+            portFailed = true
+            onFailure
+        }
+
+        val model = port(null) { node.engine.offered(o.model) }
+        val view = port(null) { node.policy.view() }
+        val fsm = port(Fsm.OFF) { node.live.view().fsm }
         val l = node.cfg.limits
         val status = when {
             auth is AuthDecision.Allow -> PeerStatus.PAIRED
             auth is AuthDecision.Deny && (auth.reason == DenyReason.SCOPE_NOT_GRANTED || auth.reason == DenyReason.UNREADABLE_SCOPES) -> PeerStatus.PAIRED
             else -> PeerStatus.SUSPENDED
         }
-        val sit = LenderSituation(
-            registryStatus = status, inferScopeGranted = auth is AuthDecision.Allow, attemptSeenWithin24h = seen, modelAllowedAndLoadable = model != null,
-            limits = LenderLimits(l.maxBodyBytes, l.maxTokens, l.maxConcurrent.toInt(), l.rpm.toInt()), servingConditionsOk = view.servingConditionsOk,
-            presenceActive = view.presenceActive, presenceHoldRemainingMs = view.presenceHoldRemainingMs, predictedThermalHold = view.predictedThermalHold,
-            estStartMs = view.estStartMs, inflight = node.inflight.get(), requestsThisMinute = perMinute,
-        )
-        val decision = LenderDecisionTable.decide(OfferView(o.attemptId, o.model, o.op.wire, o.promptBytes, o.maxTokens, o.deadlineMs, o.stream), sit)
+        val offerView = OfferView(o.attemptId, o.model, o.op.wire, o.promptBytes, o.maxTokens, o.deadlineMs, o.stream)
+        var capped = false
+        var reserved = false
+        val decision = synchronized(node.admission) {
+            val sit = LenderSituation(
+                registryStatus = status, inferScopeGranted = auth is AuthDecision.Allow, attemptSeenWithin24h = seen, modelAllowedAndLoadable = model != null || portFailed,
+                limits = LenderLimits(l.maxBodyBytes, l.maxTokens, l.maxConcurrent.toInt(), l.rpm.toInt()), servingConditionsOk = !portFailed && view != null && view.servingConditionsOk,
+                presenceActive = view?.presenceActive ?: false, presenceHoldRemainingMs = view?.presenceHoldRemainingMs ?: 0, predictedThermalHold = view?.predictedThermalHold ?: false,
+                estStartMs = view?.estStartMs ?: 0, inflight = node.inflight.get(), requestsThisMinute = perMinute, fsm = fsm, sessionAcceptsNew = s.acceptsNewAttempts(now),
+            )
+            LenderDecisionTable.decide(offerView, sit).also { d ->
+                if (d.reply is LenderReply.Accept) {
+                    if (node.servedOf(s.peer).get() >= SessionLimits.MAX_STREAMS) {
+                        capped = true
+                    } else {
+                        node.inflight.incrementAndGet()
+                        node.servedOf(s.peer).incrementAndGet()
+                        reserved = true
+                    }
+                }
+            }
+        }
         val a = Served(f.stream, o, model ?: ModelOffer(o.model, "0".repeat(64)))
+        if (reserved) served[a.stream] = a
         a.bytesIn += appBytes(f)
         a.startTs = now
         when (val r = decision.reply) {
-            is LenderReply.Accept -> if (s.node.servedOf(s.peer).get() >= SessionLimits.MAX_STREAMS) {
+            is LenderReply.Accept -> if (capped) {
                 s.node.counters.count(Refusal.PEER_BUSY)
                 decline(a, DeclineWire.PEER_BUSY, LenderDecisionTable.BUSY_RETRY_MS)
             } else {
@@ -148,13 +184,11 @@ internal class LenderSide(private val s: Session) {
         DeclineCode.DUPLICATE_ATTEMPT -> Refusal.DUPLICATE_ATTEMPT
     }
 
+    /** The slot of [a] was reserved under the node's admission lock and the attempt is already in [served]: a failure from here on is released with the session. */
     private fun accept(a: Served) {
         val frame = MessageCodec.frame(InferAccept(a.offer.attemptId, a.accept.fileSha256, a.accept.servedModel, s.stIfGranted()), a.stream)
         a.bytesOut += appBytes(frame)
         a.acceptedAt = s.node.ledger.now()
-        served[a.stream] = a
-        s.node.inflight.incrementAndGet()
-        s.node.servedOf(s.peer).incrementAndGet()
         s.writeAttemptFrame(frame)
     }
 
@@ -384,17 +418,37 @@ internal class LenderSide(private val s: Session) {
         s.recvControl(f, r)
         when (val auth = s.node.registry.authorize(s.peer, "state")) {
             is AuthDecision.Allow -> {
-                val node = s.node
-                val view = node.live.view()
-                val seq = node.live.nextSeq()
-                val age = node.live.sampledAgeMs().coerceIn(0, 60_000)
-                val payload = Jcs.serialize(StateBuilder.build(view, seq, age))
-                val doc = (StateParser.parse(payload) as StateParse.Ok).doc
+                val doc = try {
+                    stateDoc()
+                } catch (e: FailClosed) {
+                    throw e
+                } catch (e: RuntimeException) {
+                    null
+                }
+                if (doc == null) {
+                    s.node.callbackErrors.incrementAndGet()
+                    s.node.counters.count(Refusal.PEER_UNAVAILABLE)
+                    return s.sendControl(PeerError(MeshError.PEER_UNAVAILABLE), f.stream)
+                }
                 val frame = MessageCodec.frame(StateMsg(doc), f.stream)
                 s.sendControl(frame, StateMsg(doc))
             }
             is AuthDecision.Deny -> deny(f.stream, auth)
         }
+    }
+
+    /**
+     * The `STATE` this lender would send, built from the host's live view and checked by the same strict parser a receiver uses (ERRATA ERR-FX4-LD-5): more than 64 held
+     * files are answered with the first 64 in sorted order (an under-claim, never an over-claim); a view the parser still refuses is null.
+     */
+    private fun stateDoc(): StateDoc? {
+        val node = s.node
+        val raw = node.live.view()
+        val view = if (raw.held.size > MAX_HELD) raw.copy(held = raw.held.sorted().take(MAX_HELD)) else raw
+        val seq = node.nextSeqFor(s.peer)
+        val age = node.live.sampledAgeMs().coerceIn(0, 60_000)
+        val payload = Jcs.serialize(StateBuilder.build(view, seq, age))
+        return (StateParser.parse(payload) as? StateParse.Ok)?.doc
     }
 
     private fun deny(stream: Long, auth: AuthDecision.Deny) {
@@ -418,6 +472,11 @@ internal class LenderSide(private val s: Session) {
                 val container = try {
                     s.node.manifest.present(challenge)?.also { FrameEncoder.encode(RawFrame(xyz.mdhv.asom.lab.proto.wire.FrameTypes.MANIFEST, f.stream, it)) }
                 } catch (e: WireRefusal) {
+                    null
+                } catch (e: FailClosed) {
+                    throw e
+                } catch (e: RuntimeException) {
+                    s.node.callbackErrors.incrementAndGet()
                     null
                 }
                 if (container == null) {

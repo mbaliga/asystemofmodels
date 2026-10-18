@@ -48,7 +48,7 @@ def l01(v):
     if k == "inbound":
         return {"ok": {"mayAccept": i["fsm"] == "SERVING" or i["pairingWindow"] or i["peersTab"]}}
     if k == "sessionClose":
-        return {"ok": {"close": (i["openStreams"] == 0 and i["idleMs"] >= 300000) or i["ageMs"] >= 1800000}}
+        return {"ok": {"close": i["ageMs"] >= 1800000 + 60000 or (i["openStreams"] == 0 and (i["idleMs"] >= 300000 or i["ageMs"] >= 1800000))}}
     raise ValueError(k)
 
 
@@ -369,10 +369,10 @@ def decide(o, s):
         return dec("4", "MODEL_NOT_OFFERED", 30000)
     if o["promptBytes"] > lim["maxBodyBytes"] or o["maxTokens"] > lim["maxTokens"]:
         return err("5", "FRAME_TOO_LARGE", False)
-    if s["presenceActive"]:
-        return dec("6", "PEER_UNAVAILABLE", clamp(s["presenceHoldRemainingMs"]))
-    if not s["servingConditionsOk"]:
+    if s.get("fsm", "SERVING") != "SERVING" or s["presenceActive"] or not s["servingConditionsOk"]:
         return dec("6", "PEER_UNAVAILABLE", 30000)
+    if not s.get("sessionAcceptsNew", True):
+        return dec("6c", "PEER_UNAVAILABLE", 5000)
     if s["predictedThermalHold"]:
         return dec("6a", "PEER_UNAVAILABLE", 30000)
     if s["estStartMs"] > o["deadlineMs"]:

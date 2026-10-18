@@ -271,7 +271,7 @@ class TNode(
     val ledger = NodeLedger(name, probe) { clock.now() }
     val engine = PacedEngine(name, log)
     val live = FakeLive()
-    var serving = ServingView()
+    var serving = ServingView(servingConditionsOk = true, presenceActive = false)
     val manifest = TestManifestPort(key, peerSpkis)
     val tapBook = SessionIdBook()
     val node = MeshNode(

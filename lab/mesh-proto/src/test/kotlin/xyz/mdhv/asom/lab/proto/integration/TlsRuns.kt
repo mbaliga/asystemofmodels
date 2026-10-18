@@ -113,9 +113,9 @@ object TlsRuns {
                 }
                 8 -> Unit
                 else -> w.b.serving = when (rnd.nextInt(3)) {
-                    0 -> ServingView(servingConditionsOk = false)
-                    1 -> ServingView(presenceActive = true, presenceHoldRemainingMs = 60_000)
-                    else -> ServingView()
+                    0 -> ServingView(servingConditionsOk = false, presenceActive = false)
+                    1 -> ServingView(servingConditionsOk = true, presenceActive = true, presenceHoldRemainingMs = 60_000)
+                    else -> ServingView(servingConditionsOk = true, presenceActive = false)
                 }
             }
         }

@@ -25,7 +25,7 @@
   },
   {
     "path": "ledger/L01-destination-sets.json",
-    "sha256": "3b0663b368ff5d0a237c93ea0663d83d1e3c6534c16750b471b07c873a70eda0",
+    "sha256": "43a21b1d64c345c084e51f2487f1b2d1152785f1ff8fa66e07d101fe5e596003",
     "family": "L01",
     "status": "normative"
   },
@@ -79,7 +79,7 @@
   },
   {
     "path": "policy/W07p-presence.json",
-    "sha256": "c031c869a2e7451d598a3da05fecae747188167aef02679c74da29ea20d353a2",
+    "sha256": "f8d04ff762df792ce63da10614e6e371dbcdd309942f13091857fc60cc2450ff",
     "family": "W07p",
     "status": "normative"
   },
