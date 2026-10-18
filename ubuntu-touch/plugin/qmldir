@@ -1,0 +1,2 @@
+module Asom.Bridge
+plugin asom_bridge

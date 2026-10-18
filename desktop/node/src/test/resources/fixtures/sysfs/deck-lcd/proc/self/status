@@ -1,0 +1,5 @@
+Name:	java
+Umask:	0077
+State:	R (running)
+Uid:	1000	1000	1000	1000
+Gid:	1000	1000	1000	1000

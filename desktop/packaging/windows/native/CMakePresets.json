@@ -1,0 +1,11 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "vendor": {
+    "asom": {
+      "status": "NOT-YET-IMPLEMENTED",
+      "note": "PLATFORM_PLAN step W3 (D-v2). No preset builds anything yet. Planned presets (windows.md 10.1): win-x64-cpu, win-x64-vulkan, win-x64-cuda (disabled until the licence check A15/W-D6), win-arm64-cpu, win-arm64-opencl. The llama.cpp commit is pinned by desktop/native/llama.cpp.pin (one commit for every backend, C11), which does not exist yet."
+    }
+  },
+  "configurePresets": []
+}

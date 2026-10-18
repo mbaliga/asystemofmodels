@@ -1,0 +1,8 @@
+# NOT-YET-IMPLEMENTED: PLATFORM_PLAN step W7 (D-v2). A placeholder, NOT a winget manifest and it must never be submitted.
+# The plan: a schema 1.12.0 multi-file manifest (version, installer, defaultLocale), identifier asystemofcells.asom (a new artefact
+# identifier that needs owner sign-off, W-D10), InstallerType wix, Scope machine, InstallerSwitches Custom ADDLOCAL=Node, a direct
+# GitHub-release InstallerUrl, and signed releases only (W-D4: unsigned builds are CI artefacts, never releases or manifests).
+PackageIdentifier: asystemofcells.asom
+PackageVersion: 0.0.0-template
+ManifestType: version
+ManifestVersion: 1.12.0

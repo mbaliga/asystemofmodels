@@ -1,0 +1,54 @@
+# Cross-check transcript (design session 2026-09-29). Real output of the commands shown.
+$ python gen_manifest_vectors.py
+vectors: 37 accept: 9 reject: 28
+payload bytes: 4228 container bytes: 6057 public bytes: 1496
+bodyDigest: q9byxb_XHtIh4tLfwivvuPTg5yq7e2E7H7eCxoz3QwA
+nodeId key1: vaw93hb8yBZTX2LebYgzri1pfOnBlRIILoBLiyK_eN4 fp: XWWD-3XQW-7TEB-MU27
+
+$ openssl dgst -sha256 -verify <(openssl pkey -pubin -inform DER -in test-key1-spki.der) -signature example-sig.der example-pae.bin
+Verified OK
+OpenSSL 3.0.13 30 Jan 2024 (Library: OpenSSL 3.0.13 30 Jan 2024)
+
+$ python <cryptography cross-check: RFC 6979 nonce equality + verify all accept vectors>
+cryptography 50.0.1 RFC 6979 nonce/signature equal to reference: True
+accept vectors verified by cryptography: 9 / 9
+
+$ java -cp . VerifyDsse <per-vector documents>   (independent JCA SHA256withECDSAinP1363Format over an independently built PAE)
+M02-101 sigValidUnderKey1=true
+M02-102 sigValidUnderKey1=true
+M02-103 sigValidUnderKey1=true
+M02-104 sigValidUnderKey1=true
+M02-105 sigValidUnderKey1=true
+M02-106 sigValidUnderKey1=true
+M02-107 sigValidUnderKey1=true
+M02-108 sigValidUnderKey1=true
+M02-109 sigValidUnderKey1=true
+M03-101 sigValidUnderKey1=false
+M03-102 sigValidUnderKey1=false
+M03-103 sigValidUnderKey1=false
+M03-104 sigValidUnderKey1=true
+M03-105 sigValidUnderKey1=true
+M03-106 sigValidUnderKey1=true
+M03-107 sigValidUnderKey1=true
+M03-108 sigValidUnderKey1=true
+M03-109 sigValidUnderKey1=true
+M03-110 sigValidUnderKey1=true
+M03-111 sigValidUnderKey1=true
+M03-112 sigValidUnderKey1=true
+M03-113 sigValidUnderKey1=false
+M03-114 sigValidUnderKey1=true
+M03-115 sigValidUnderKey1=true
+M03-116 sigValidUnderKey1=true
+M03-117 sigValidUnderKey1=true
+M03-118 sigValidUnderKey1=false
+M03-119 sigValidUnderKey1=true
+M03-120 sigValidUnderKey1=true
+M03-121 sigValidUnderKey1=true
+M03-122 sigValidUnderKey1=false
+M03-123 sigValidUnderKey1=true
+M03-124 sigValidUnderKey1=true
+M03-125 sigValidUnderKey1=false
+M03-126 sigValidUnderKey1=true
+M03-127 sigValidUnderKey1=true
+M03-128 sigValidUnderKey1=true
+java 21.0.10

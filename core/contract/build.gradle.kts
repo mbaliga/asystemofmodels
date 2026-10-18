@@ -16,6 +16,8 @@ kotlin {
 
 dependencies {
     api(libs.kotlinx.serialization.json)
+    // Flow appears in the §10A InferenceClient surface.
+    api(libs.kotlinx.coroutines.core)
     testImplementation(libs.kotlin.test)
 }
 

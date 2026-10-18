@@ -1,0 +1,8 @@
+# Byte-exact vectors: the two protocol lanes are pinned by the same bytes, so git must never rewrite their line endings (macos.md 10, 7.5).
+helper-protocol/vectors/** -text
+# Scripts and sources are LF everywhere: a CRLF checkout would break a shebang line.
+*.sh text eol=lf
+*.py text eol=lf
+*.swift text eol=lf
+*.c text eol=lf
+*.yml text eol=lf

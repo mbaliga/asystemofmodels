@@ -1,0 +1,32 @@
+[
+ {
+  "path": "UTC01-framing.json",
+  "sha256": "470b4b708a15153413646edd43fa4a3b622e1de52e4b63a66c1052efd1d221f3",
+  "family": "UTC01",
+  "status": "normative"
+ },
+ {
+  "path": "UTC02-lifecycle.json",
+  "sha256": "a03570938792adf4f93f1e2e66ee95178660e1b653eaa5ece9351fdb1f54c152",
+  "family": "UTC02",
+  "status": "normative"
+ },
+ {
+  "path": "UTC03-projection.json",
+  "sha256": "505b9e2008065e79185b2787f754985bcb5db3315bba4346c80ee2e46ad00942",
+  "family": "UTC03",
+  "status": "normative"
+ },
+ {
+  "path": "UTC04-errors.json",
+  "sha256": "ba0701f7c6b7f6c48722e52b9c656ae33294dd09ac64cdb9cce2df68eac6b74e",
+  "family": "UTC04",
+  "status": "normative"
+ },
+ {
+  "path": "UTC05-hygiene.json",
+  "sha256": "35f3692c0bbd8e74f58981c5a4ccd2a45552a28a6568574784456f8b2ef78a94",
+  "family": "UTC05",
+  "status": "normative"
+ }
+]

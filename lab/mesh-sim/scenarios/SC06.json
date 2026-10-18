@@ -1,0 +1,154 @@
+{
+  "scenario": "SC06",
+  "seed": 6,
+  "durationMs": 14400000,
+  "label": "SIMULATED — NOT DEVICE EVIDENCE",
+  "catalogue": "fixtures/catalogue.v1.json",
+  "nodes": [
+    {
+      "id": "phone",
+      "tier": "SELF",
+      "class": "PHONE",
+      "backend": "cpu",
+      "files": [
+        {
+          "modelId": "qwen3-8b",
+          "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "fileBytes": 5027784832,
+          "quant": "Q4_K_M",
+          "rank": null,
+          "ctx": 32768
+        }
+      ],
+      "truth": {
+        "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": {
+          "prefillMilliTokPerSec": 30000,
+          "decodeMilliTokPerSec": 5000,
+          "ttft0Ms": 200,
+          "steadyMilliTokPerSec": 4000,
+          "throttleOnsetMs": 180000
+        }
+      },
+      "claimScalePermille": 1000,
+      "power": {
+        "source": "battery",
+        "batteryPermille": 900,
+        "designMilliWh": 19000
+      },
+      "presence": []
+    },
+    {
+      "id": "mac",
+      "tier": "PEER",
+      "class": "DESKTOP",
+      "backend": "metal",
+      "files": [
+        {
+          "modelId": "qwen3-8b",
+          "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "fileBytes": 5027784832,
+          "quant": "Q4_K_M",
+          "rank": null,
+          "ctx": 32768
+        }
+      ],
+      "truth": {
+        "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": {
+          "prefillMilliTokPerSec": 800000,
+          "decodeMilliTokPerSec": 35000,
+          "ttft0Ms": 150,
+          "steadyMilliTokPerSec": 35000,
+          "throttleOnsetMs": null
+        }
+      },
+      "claimScalePermille": 1000,
+      "power": {
+        "source": "ac",
+        "batteryPermille": null,
+        "designMilliWh": null
+      },
+      "presence": []
+    },
+    {
+      "id": "liar",
+      "tier": "PEER",
+      "class": "DESKTOP",
+      "backend": "cpu",
+      "files": [
+        {
+          "modelId": "qwen3-8b",
+          "fileSha256": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "fileBytes": 5027784832,
+          "quant": "Q4_K_M",
+          "rank": null,
+          "ctx": 32768
+        }
+      ],
+      "truth": {
+        "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1": {
+          "prefillMilliTokPerSec": 300000,
+          "decodeMilliTokPerSec": 20000,
+          "ttft0Ms": 200,
+          "steadyMilliTokPerSec": 20000,
+          "throttleOnsetMs": null
+        }
+      },
+      "claimScalePermille": 2000,
+      "power": {
+        "source": "ac",
+        "batteryPermille": null,
+        "designMilliWh": null
+      },
+      "presence": []
+    }
+  ],
+  "links": [
+    {
+      "a": "phone",
+      "b": "mac",
+      "path": "LAN",
+      "rttMedianMs": 8,
+      "rttSigmaPermille": 200,
+      "kbps": 200000,
+      "metered": false,
+      "dropsPerHour": 0
+    },
+    {
+      "a": "phone",
+      "b": "liar",
+      "path": "LAN",
+      "rttMedianMs": 10,
+      "rttSigmaPermille": 200,
+      "kbps": 200000,
+      "metered": false,
+      "dropsPerHour": 0
+    }
+  ],
+  "cloud": [],
+  "apps": [
+    {
+      "pkg": "app.chat",
+      "meshAllowed": true,
+      "cloudBanned": false,
+      "deviceOnly": false,
+      "policy": "auto",
+      "arrivalsPerHour": 90,
+      "promptTokensMedian": 300,
+      "outTokensMedian": 60,
+      "sigmaPermille": 300,
+      "streamPermille": 1000,
+      "allowMeshOnMetered": false,
+      "neverCloudWhenDevicesCanAnswer": false,
+      "maxTokensCap": null
+    }
+  ],
+  "faults": [],
+  "expect": {
+    "lawViolations": 0,
+    "minPlacementPermille": {},
+    "minBatteryReductionPermille": null,
+    "maxShareOverHindsightPermille": {
+      "liar": 100
+    }
+  }
+}

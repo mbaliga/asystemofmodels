@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- NOT-YET-IMPLEMENTED: PLATFORM_PLAN step MC5 (D-v2; entry criteria D21, D22, D23, D25, D27 and D28 not met: design 9.3, R3-CONFORMANCE-10, R3-CLOSURE-8). Will hold allow-jit and com.apple.security.application-groups [OWNER-FILL Team ID + .xyz.mdhv.asom], substituted at sign time. disable-library-validation, allow-dyld-environment-variables, get-task-allow and debugger are NEVER granted.
+     This file is a placeholder and is not used by any build. It is deliberately not a valid launchd or bundle file. -->
+<placeholder/>

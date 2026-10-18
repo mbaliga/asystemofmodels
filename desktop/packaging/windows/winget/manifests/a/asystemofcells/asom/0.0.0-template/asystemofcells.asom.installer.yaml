@@ -1,0 +1,9 @@
+# NOT-YET-IMPLEMENTED: PLATFORM_PLAN step W7 (D-v2). A placeholder, NOT a winget manifest and it must never be submitted.
+# It has no installer URL and no hash on purpose: there is no signed release to point at (W-D4, D22 undecided).
+PackageIdentifier: asystemofcells.asom
+PackageVersion: 0.0.0-template
+InstallerType: wix
+Scope: machine
+Installers: []
+ManifestType: installer
+ManifestVersion: 1.12.0

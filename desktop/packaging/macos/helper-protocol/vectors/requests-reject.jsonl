@@ -1,0 +1,125 @@
+{"id":"HP-REQX-001","kind":"request","line":"","verdict":"reject","code":"MALFORMED_JSON","note":"empty line"}
+{"id":"HP-REQX-002","kind":"request","line":"not json","verdict":"reject","code":"MALFORMED_JSON"}
+{"id":"HP-REQX-003","kind":"request","line":"{\"op\":\"hello\",\"v\":1","verdict":"reject","code":"MALFORMED_JSON","note":"unterminated object"}
+{"id":"HP-REQX-004","kind":"request","line":"{\"op\":\"hello\",\"v\":1}}","verdict":"reject","code":"MALFORMED_JSON","note":"trailing content"}
+{"id":"HP-REQX-005","kind":"request","line":"{\"op\":\"hello\",\"v\":1} x","verdict":"reject","code":"MALFORMED_JSON","note":"trailing content after whitespace"}
+{"id":"HP-REQX-006","kind":"request","line":"{\"op\":\"hello\",\"v\":1.0}","verdict":"reject","code":"MALFORMED_JSON","note":"fraction"}
+{"id":"HP-REQX-007","kind":"request","line":"{\"op\":\"hello\",\"v\":1e0}","verdict":"reject","code":"MALFORMED_JSON","note":"exponent"}
+{"id":"HP-REQX-008","kind":"request","line":"{\"op\":\"hello\",\"v\":01}","verdict":"reject","code":"MALFORMED_JSON","note":"leading zero"}
+{"id":"HP-REQX-009","kind":"request","line":"{\"op\":\"hello\",\"v\":-0}","verdict":"reject","code":"MALFORMED_JSON","note":"negative zero"}
+{"id":"HP-REQX-010","kind":"request","line":"{\"op\":\"hello\",\"v\":-}","verdict":"reject","code":"MALFORMED_JSON","note":"bare minus"}
+{"id":"HP-REQX-011","kind":"request","line":"{\"op\":\"hello\",\"v\":9007199254740992}","verdict":"reject","code":"MALFORMED_JSON","note":"2^53 is out of the integer profile"}
+{"id":"HP-REQX-012","kind":"request","line":"{\"op\":\"hello\",\"v\":12345678901234567}","verdict":"reject","code":"MALFORMED_JSON","note":"17 digits"}
+{"id":"HP-REQX-013","kind":"request","line":"{\"op\":\"hello\",\"v\":-9007199254740992}","verdict":"reject","code":"MALFORMED_JSON","note":"below -(2^53-1)"}
+{"id":"HP-REQX-014","kind":"request","line":"{\"op\":\"hello\",\"op\":\"hello\",\"v\":1}","verdict":"reject","code":"MALFORMED_JSON","note":"duplicate member name"}
+{"id":"HP-REQX-015","kind":"request","line":"{\"op\":\"hello\",\"v\":1,\"v\":1}","verdict":"reject","code":"MALFORMED_JSON","note":"duplicate member name, same value"}
+{"id":"HP-REQX-016","kind":"request","line":"{\"op\":\"se.create\",\"x\":\"\\ud800\"}","verdict":"reject","code":"MALFORMED_JSON","note":"lone high surrogate escape (also an unknown field: the JSON layer wins)"}
+{"id":"HP-REQX-017","kind":"request","line":"{\"op\":\"se.create\",\"x\":\"\\udc00\"}","verdict":"reject","code":"MALFORMED_JSON","note":"lone low surrogate escape"}
+{"id":"HP-REQX-018","kind":"request","line":"{\"op\":\"se.create\",\"x\":\"\\ude00\\ud83d\"}","verdict":"reject","code":"MALFORMED_JSON","note":"reversed surrogate pair"}
+{"id":"HP-REQX-019","kind":"request","line":"{\"op\":\"se.create\",\"x\":\"\\ud83dA\"}","verdict":"reject","code":"MALFORMED_JSON","note":"high surrogate not followed by an escape"}
+{"id":"HP-REQX-020","kind":"request","line":"{\"op\":\"se.create\",\"x\":\"\\u\u0660\u0660\u0664\u0661\"}","verdict":"reject","code":"MALFORMED_JSON","note":"non-ASCII digits in a \\u escape (Character.digit would accept them)"}
+{"id":"HP-REQX-021","kind":"request","line":"{\"op\":\"se.create\",\"x\":\"\\u00g0\"}","verdict":"reject","code":"MALFORMED_JSON","note":"non-hex digit in a \\u escape"}
+{"id":"HP-REQX-022","kind":"request","line":"{\"op\":\"se.create\",\"x\":\"\\u00\"}","verdict":"reject","code":"MALFORMED_JSON","note":"short \\u escape"}
+{"id":"HP-REQX-023","kind":"request","line":"{\"op\":\"backup.exclude\",\"path\":\"/a\\xb\"}","verdict":"reject","code":"MALFORMED_JSON","note":"unknown escape"}
+{"id":"HP-REQX-024","kind":"request","line":"{\"op\":\"backup.exclude\",\"path\":\"/a\tb\"}","verdict":"reject","code":"MALFORMED_JSON","note":"raw TAB inside a string"}
+{"id":"HP-REQX-025","kind":"request","line":"{\"op\":\"backup.exclude\",\"path\":\"/a\u0001b\"}","verdict":"reject","code":"MALFORMED_JSON","note":"raw control character inside a string"}
+{"id":"HP-REQX-026","kind":"request","line":"{\"op\":\"hello\",\"v\":1}\r","verdict":"reject","code":"MALFORMED_JSON","note":"CR at the end of a line (CRLF is refused)"}
+{"id":"HP-REQX-027","kind":"request","line":"{\"op\":\"hello\",\r\"v\":1}","verdict":"reject","code":"MALFORMED_JSON","note":"CR between tokens"}
+{"id":"HP-REQX-028","kind":"request","line":"{\"op\":\"hello\",\n\"v\":1}","verdict":"reject","code":"MALFORMED_JSON","note":"LF inside a line cannot occur on the wire"}
+{"id":"HP-REQX-029","kind":"request","line":"\ufeff{\"op\":\"hello\",\"v\":1}","verdict":"reject","code":"MALFORMED_JSON","note":"leading BOM"}
+{"id":"HP-REQX-030","kind":"request","line":"{'op':'hello','v':1}","verdict":"reject","code":"MALFORMED_JSON","note":"single quotes"}
+{"id":"HP-REQX-031","kind":"request","line":"{\"op\":\"hello\",\"v\":TRUE}","verdict":"reject","code":"MALFORMED_JSON","note":"upper-case literal"}
+{"id":"HP-REQX-032","kind":"request","line":"{\"op\":\"hello\",\"v\":1,}","verdict":"reject","code":"MALFORMED_JSON","note":"trailing comma"}
+{"id":"HP-REQX-033","kind":"request","line":"{\"op\":\"hello\" \"v\":1}","verdict":"reject","code":"MALFORMED_JSON","note":"missing comma"}
+{"id":"HP-REQX-034","kind":"request","line":"{op:\"hello\",\"v\":1}","verdict":"reject","code":"MALFORMED_JSON","note":"unquoted name"}
+{"id":"HP-REQX-035","kind":"request","line":"{\"op\":\"se.create\",\"x\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}","verdict":"reject","code":"MALFORMED_JSON","note":"nesting of 33 levels"}
+{"id":"HP-REQX-036","kind":"request","lineHex":"7b226f70223a2268656c6c6f222c2276223a312c2278223a22ff227d","verdict":"reject","code":"MALFORMED_JSON","note":"invalid UTF-8: a lone 0xff byte in a string"}
+{"id":"HP-REQX-037","kind":"request","lineHex":"7b226f70223a2268656c6c6f222c2276223a312c2278223a22c0af227d","verdict":"reject","code":"MALFORMED_JSON","note":"invalid UTF-8: overlong encoding of '/'"}
+{"id":"HP-REQX-038","kind":"request","lineHex":"7b226f70223a2268656c6c6f222c2276223a312c2278223a22eda080227d","verdict":"reject","code":"MALFORMED_JSON","note":"invalid UTF-8: an encoded surrogate"}
+{"id":"HP-REQX-039","kind":"request","lineHex":"7b226f70223a2268656c6c6f222c2276223a312c2278223a22e282227d","verdict":"reject","code":"MALFORMED_JSON","note":"invalid UTF-8: truncated sequence"}
+{"id":"HP-REQX-040","kind":"request","lineHex":"7b226f70223a2268656c6c6f222c2276223a312c2278223a22f4908080227d","verdict":"reject","code":"MALFORMED_JSON","note":"invalid UTF-8: above U+10FFFF"}
+{"id":"HP-REQX-041","kind":"request","lineHex":"7b226f70223a2268656c6c6f222c2276223a312c2278223a2280227d","verdict":"reject","code":"MALFORMED_JSON","note":"invalid UTF-8: a continuation byte with no lead"}
+{"id":"HP-REQX-042","kind":"request","line":"{\"op\":\"backup.exclude\",\"path\":\"/{PAD}\"}","pad":131038,"verdict":"reject","code":"BAD_FIELD","note":"a line of exactly 131072 bytes passes framing; the path is then over 1024 bytes"}
+{"id":"HP-REQX-043","kind":"request","line":"{\"op\":\"backup.exclude\",\"path\":\"/{PAD}\"}","pad":131039,"verdict":"reject","code":"LINE_TOO_LONG","note":"a line of 131073 bytes"}
+{"id":"HP-REQX-044","kind":"request","line":"[]","verdict":"reject","code":"NOT_OBJECT"}
+{"id":"HP-REQX-045","kind":"request","line":"\"hello\"","verdict":"reject","code":"NOT_OBJECT"}
+{"id":"HP-REQX-046","kind":"request","line":"1","verdict":"reject","code":"NOT_OBJECT"}
+{"id":"HP-REQX-047","kind":"request","line":"null","verdict":"reject","code":"NOT_OBJECT"}
+{"id":"HP-REQX-048","kind":"request","line":"true","verdict":"reject","code":"NOT_OBJECT"}
+{"id":"HP-REQX-049","kind":"request","line":"[{\"op\":\"hello\",\"v\":1}]","verdict":"reject","code":"NOT_OBJECT"}
+{"id":"HP-REQX-050","kind":"request","line":"{}","verdict":"reject","code":"MISSING_FIELD","note":"no op"}
+{"id":"HP-REQX-051","kind":"request","line":"{\"v\":1}","verdict":"reject","code":"MISSING_FIELD","note":"no op, only a parameter"}
+{"id":"HP-REQX-052","kind":"request","line":"{\"op\":1}","verdict":"reject","code":"BAD_FIELD","note":"op is not a string"}
+{"id":"HP-REQX-053","kind":"request","line":"{\"op\":null}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-054","kind":"request","line":"{\"op\":[\"hello\"],\"v\":1}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-055","kind":"request","line":"{\"op\":\"nope\"}","verdict":"reject","code":"UNKNOWN_OP"}
+{"id":"HP-REQX-056","kind":"request","line":"{\"op\":\"HELLO\",\"v\":1}","verdict":"reject","code":"UNKNOWN_OP","note":"op names are case sensitive"}
+{"id":"HP-REQX-057","kind":"request","line":"{\"op\":\"\"}","verdict":"reject","code":"UNKNOWN_OP"}
+{"id":"HP-REQX-058","kind":"request","line":"{\"op\":\"se.create \",\"x\":1}","verdict":"reject","code":"UNKNOWN_OP","note":"unknown op is decided before unknown fields"}
+{"id":"HP-REQX-059","kind":"request","line":"{\"op\":\"shutdown\"}","verdict":"reject","code":"UNKNOWN_OP","note":"there is no shutdown op: EOF on stdin is the shutdown"}
+{"id":"HP-REQX-060","kind":"request","line":"{\"op\":\"hello\",\"v\":1,\"x\":1}","verdict":"reject","code":"UNKNOWN_FIELD"}
+{"id":"HP-REQX-061","kind":"request","line":"{\"op\":\"se.create\",\"blob\":\"AAEC\"}","verdict":"reject","code":"UNKNOWN_FIELD"}
+{"id":"HP-REQX-062","kind":"request","line":"{\"op\":\"power.get\",\"id\":1,\"extra\":true}","verdict":"reject","code":"UNKNOWN_FIELD"}
+{"id":"HP-REQX-063","kind":"request","line":"{\"op\":\"hello\",\"x\":1}","verdict":"reject","code":"UNKNOWN_FIELD","note":"unknown field wins over the missing v"}
+{"id":"HP-REQX-064","kind":"request","line":"{\"op\":\"hello\",\"v\":\"1\",\"x\":1}","verdict":"reject","code":"UNKNOWN_FIELD","note":"unknown field wins over the bad v"}
+{"id":"HP-REQX-065","kind":"request","line":"{\"op\":\"se.create\",\"x\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}","verdict":"reject","code":"UNKNOWN_FIELD","note":"32 levels of nesting is legal JSON; the field is unknown"}
+{"id":"HP-REQX-066","kind":"request","line":"{\"op\":\"hello\",\"v\":1,\"ok\":true}","verdict":"reject","code":"UNKNOWN_FIELD","note":"a response discriminator is not a request field"}
+{"id":"HP-REQX-067","kind":"request","line":"{\"op\":\"hello\",\"v\":1,\"ev\":\"wake\"}","verdict":"reject","code":"UNKNOWN_FIELD"}
+{"id":"HP-REQX-068","kind":"request","line":"{\"op\":\"se.create\",\"\u00e9\":1,\"e\u0301\":2}","verdict":"reject","code":"UNKNOWN_FIELD","note":"two names that are canonically equivalent but differ in bytes are NOT duplicates (Swift String equality would say they are)"}
+{"id":"HP-REQX-069","kind":"request","line":"{\"op\":\"hello\"}","verdict":"reject","code":"MISSING_FIELD"}
+{"id":"HP-REQX-070","kind":"request","line":"{\"op\":\"se.sign\",\"blob\":\"AAEC\"}","verdict":"reject","code":"MISSING_FIELD"}
+{"id":"HP-REQX-071","kind":"request","line":"{\"op\":\"se.sign\",\"data\":\"AA==\"}","verdict":"reject","code":"MISSING_FIELD"}
+{"id":"HP-REQX-072","kind":"request","line":"{\"op\":\"se.selftest\"}","verdict":"reject","code":"MISSING_FIELD"}
+{"id":"HP-REQX-073","kind":"request","line":"{\"op\":\"sleep.ack\"}","verdict":"reject","code":"MISSING_FIELD"}
+{"id":"HP-REQX-074","kind":"request","line":"{\"op\":\"svc.status\"}","verdict":"reject","code":"MISSING_FIELD"}
+{"id":"HP-REQX-075","kind":"request","line":"{\"op\":\"backup.exclude\"}","verdict":"reject","code":"MISSING_FIELD"}
+{"id":"HP-REQX-076","kind":"request","line":"{\"op\":\"assert.hold\"}","verdict":"reject","code":"MISSING_FIELD"}
+{"id":"HP-REQX-077","kind":"request","line":"{\"op\":\"se.sign\",\"blob\":\"!!!!\"}","verdict":"reject","code":"MISSING_FIELD","note":"missing data wins over the bad blob"}
+{"id":"HP-REQX-078","kind":"request","line":"{\"op\":\"hello\",\"v\":\"1\"}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-079","kind":"request","line":"{\"op\":\"hello\",\"v\":null}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-080","kind":"request","line":"{\"op\":\"hello\",\"v\":true}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-081","kind":"request","line":"{\"op\":\"hello\",\"v\":-1}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-082","kind":"request","line":"{\"op\":\"hello\",\"v\":[1]}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-083","kind":"request","line":"{\"op\":\"hello\",\"v\":1,\"id\":-1}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-084","kind":"request","line":"{\"op\":\"hello\",\"v\":1,\"id\":\"1\"}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-085","kind":"request","line":"{\"op\":\"hello\",\"v\":1,\"id\":true}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-086","kind":"request","line":"{\"op\":\"hello\",\"v\":1,\"id\":null}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-087","kind":"request","line":"{\"op\":\"se.sign\",\"blob\":\"!!!!\",\"data\":\"AA==\"}","verdict":"reject","code":"BAD_FIELD","note":"not base64"}
+{"id":"HP-REQX-088","kind":"request","line":"{\"op\":\"se.sign\",\"blob\":\"AAE\",\"data\":\"AA==\"}","verdict":"reject","code":"BAD_FIELD","note":"missing padding"}
+{"id":"HP-REQX-089","kind":"request","line":"{\"op\":\"se.sign\",\"blob\":\"AAF=\",\"data\":\"AA==\"}","verdict":"reject","code":"BAD_FIELD","note":"non-zero trailing bits are not canonical"}
+{"id":"HP-REQX-090","kind":"request","line":"{\"op\":\"se.sign\",\"blob\":\"AAEC\",\"data\":\"AA\"}","verdict":"reject","code":"BAD_FIELD","note":"unpadded data"}
+{"id":"HP-REQX-091","kind":"request","line":"{\"op\":\"se.sign\",\"blob\":\"AAEC\",\"data\":\"AA===\"}","verdict":"reject","code":"BAD_FIELD","note":"too much padding"}
+{"id":"HP-REQX-092","kind":"request","line":"{\"op\":\"se.sign\",\"blob\":\"AAEC\",\"data\":\"A=A=\"}","verdict":"reject","code":"BAD_FIELD","note":"padding in the middle"}
+{"id":"HP-REQX-093","kind":"request","line":"{\"op\":\"se.sign\",\"blob\":\"AAEC\",\"data\":\"aGVs bG8=\"}","verdict":"reject","code":"BAD_FIELD","note":"whitespace inside base64"}
+{"id":"HP-REQX-094","kind":"request","line":"{\"op\":\"se.sign\",\"blob\":\"AAEC\",\"data\":\"aG\\nVsbG8=\"}","verdict":"reject","code":"BAD_FIELD","note":"escaped newline inside base64"}
+{"id":"HP-REQX-095","kind":"request","line":"{\"op\":\"se.sign\",\"blob\":\"-_-_\",\"data\":\"AA==\"}","verdict":"reject","code":"BAD_FIELD","note":"URL-safe alphabet"}
+{"id":"HP-REQX-096","kind":"request","line":"{\"op\":\"se.sign\",\"blob\":\"AAEC\",\"data\":1}","verdict":"reject","code":"BAD_FIELD","note":"data is not a string"}
+{"id":"HP-REQX-097","kind":"request","line":"{\"op\":\"se.sign\",\"blob\":\"\",\"data\":\"AA==\"}","verdict":"reject","code":"BAD_FIELD","note":"empty blob (at least one byte)"}
+{"id":"HP-REQX-098","kind":"request","line":"{\"op\":\"se.sign\",\"blob\":\"{ZEROS}\",\"data\":\"AA==\"}","zeros":4097,"verdict":"reject","code":"BAD_FIELD","note":"blob of 4097 bytes"}
+{"id":"HP-REQX-099","kind":"request","line":"{\"op\":\"se.sign\",\"blob\":\"AAEC\",\"data\":\"{ZEROS}\"}","zeros":65537,"verdict":"reject","code":"BAD_FIELD","note":"data of 65537 bytes"}
+{"id":"HP-REQX-100","kind":"request","line":"{\"op\":\"se.selftest\",\"blob\":\"\"}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-101","kind":"request","line":"{\"op\":\"se.selftest\",\"blob\":\"{ZEROS}\"}","zeros":4097,"verdict":"reject","code":"BAD_FIELD","note":"blob of 4097 bytes"}
+{"id":"HP-REQX-102","kind":"request","line":"{\"op\":\"se.selftest\",\"blob\":null}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-103","kind":"request","line":"{\"op\":\"assert.hold\",\"reason\":\"other\"}","verdict":"reject","code":"BAD_FIELD","note":"the reason is fixed"}
+{"id":"HP-REQX-104","kind":"request","line":"{\"op\":\"assert.hold\",\"reason\":\"\"}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-105","kind":"request","line":"{\"op\":\"assert.hold\",\"reason\":\"asom: lending compute to your paired devices \"}","verdict":"reject","code":"BAD_FIELD","note":"one trailing space"}
+{"id":"HP-REQX-106","kind":"request","line":"{\"op\":\"assert.hold\",\"reason\":1}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-107","kind":"request","line":"{\"op\":\"assert.hold\",\"reason\":null}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-108","kind":"request","line":"{\"op\":\"sleep.ack\",\"token\":-1}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-109","kind":"request","line":"{\"op\":\"sleep.ack\",\"token\":\"7\"}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-110","kind":"request","line":"{\"op\":\"sleep.ack\",\"token\":null}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-111","kind":"request","line":"{\"op\":\"sleep.ack\",\"token\":1.5}","verdict":"reject","code":"MALFORMED_JSON","note":"a float is a JSON-profile violation"}
+{"id":"HP-REQX-112","kind":"request","line":"{\"op\":\"svc.status\",\"kind\":\"Agent\"}","verdict":"reject","code":"BAD_FIELD","note":"enum values are case sensitive"}
+{"id":"HP-REQX-113","kind":"request","line":"{\"op\":\"svc.register\",\"kind\":\"user\"}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-114","kind":"request","line":"{\"op\":\"svc.unregister\",\"kind\":1}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-115","kind":"request","line":"{\"op\":\"svc.status\",\"kind\":null}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-116","kind":"request","line":"{\"op\":\"backup.exclude\",\"path\":\"\"}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-117","kind":"request","line":"{\"op\":\"backup.exclude\",\"path\":\"relative/path\"}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-118","kind":"request","line":"{\"op\":\"backup.exclude\",\"path\":\"~/x\"}","verdict":"reject","code":"BAD_FIELD"}
+{"id":"HP-REQX-119","kind":"request","line":"{\"op\":\"backup.exclude\",\"path\":\"/a\\u0000b\"}","verdict":"reject","code":"BAD_FIELD","note":"NUL"}
+{"id":"HP-REQX-120","kind":"request","line":"{\"op\":\"backup.exclude\",\"path\":\"/a\\u0001b\"}","verdict":"reject","code":"BAD_FIELD","note":"escaped control character"}
+{"id":"HP-REQX-121","kind":"request","line":"{\"op\":\"backup.exclude\",\"path\":\"/a\\nb\"}","verdict":"reject","code":"BAD_FIELD","note":"escaped newline"}
+{"id":"HP-REQX-122","kind":"request","line":"{\"op\":\"backup.exclude\",\"path\":\"/a\\u007fb\"}","verdict":"reject","code":"BAD_FIELD","note":"DEL (U+007F) is a control character of the text rule"}
+{"id":"HP-REQX-123","kind":"request","line":"{\"op\":\"backup.exclude\",\"path\":\"/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\"}","verdict":"reject","code":"BAD_FIELD","note":"path of 1025 bytes"}
+{"id":"HP-REQX-124","kind":"request","line":"{\"op\":\"backup.exclude\",\"path\":\"/\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\"}","verdict":"reject","code":"BAD_FIELD","note":"path of 1025 UTF-8 bytes but only 513 characters: limits are on bytes"}
+{"id":"HP-REQX-125","kind":"request","line":"{\"op\":\"backup.exclude\",\"path\":7}","verdict":"reject","code":"BAD_FIELD"}

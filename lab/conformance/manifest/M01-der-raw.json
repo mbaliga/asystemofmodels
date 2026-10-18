@@ -1,0 +1,190 @@
+{
+  "family": "M01",
+  "confVersion": "0.2.0",
+  "specRefs": [
+    "LAB_SPEC.md 4.4",
+    "LAB_SPEC.md 4.9"
+  ],
+  "vectors": [
+    {
+      "id": "M01-201",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "DER to raw: r has a leading zero byte, so its DER integer is 31 bytes; the raw form is padded back to 32.",
+      "input": {
+        "kind": "derToRaw",
+        "derHex": "3043021f1111181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc02203b2a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc"
+      },
+      "expect": {
+        "ok": {
+          "rawHex": "001111181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc3b2a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc"
+        }
+      }
+    },
+    {
+      "id": "M01-202",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "DER to raw: s has a leading zero byte (a 31-byte DER integer).",
+      "input": {
+        "kind": "derToRaw",
+        "derHex": "304302205a3f11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc021f7f11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc"
+      },
+      "expect": {
+        "ok": {
+          "rawHex": "5a3f11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc007f11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc"
+        }
+      }
+    },
+    {
+      "id": "M01-203",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "DER to raw: both integers have the high bit set, so each DER integer is 33 bytes with a 0x00 sign byte.",
+      "input": {
+        "kind": "derToRaw",
+        "derHex": "3046022100ff0011181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc022100e01011181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc"
+      },
+      "expect": {
+        "ok": {
+          "rawHex": "ff0011181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dce01011181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc"
+        }
+      }
+    },
+    {
+      "id": "M01-204",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Low-S normalisation: (r, s) with s > n/2 becomes (r, n - s); r is unchanged.",
+      "input": {
+        "kind": "normaliseLowS",
+        "rawHex": "5a3f11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dcffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2ea2eced9"
+      },
+      "expect": {
+        "ok": {
+          "rawHex": "5a3f11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc0000000000000000000000000000000000000000000000000000000012345678"
+        }
+      }
+    },
+    {
+      "id": "M01-205",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "DER with a long-form length (0x81) where the short form suffices: not minimal, rejected.",
+      "input": {
+        "kind": "derToRaw",
+        "derHex": "30814402205a3f11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc02203b2a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc"
+      },
+      "expect": {
+        "reject": "SIGNATURE_ENCODING"
+      }
+    },
+    {
+      "id": "M01-206",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A raw signature of 63 bytes is rejected.",
+      "input": {
+        "kind": "normaliseLowS",
+        "rawHex": "5a3f11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc3b2a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5"
+      },
+      "expect": {
+        "reject": "SIGNATURE_ENCODING"
+      }
+    },
+    {
+      "id": "M01-207",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A raw signature of 65 bytes is rejected.",
+      "input": {
+        "kind": "rawToDer",
+        "rawHex": "5a3f11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc3b2a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc01"
+      },
+      "expect": {
+        "reject": "SIGNATURE_ENCODING"
+      }
+    },
+    {
+      "id": "M01-208",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A DER integer that is negative (high bit set, no 0x00 sign byte).",
+      "input": {
+        "kind": "derToRaw",
+        "derHex": "302502018002203b2a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc"
+      },
+      "expect": {
+        "reject": "SIGNATURE_ENCODING"
+      }
+    },
+    {
+      "id": "M01-209",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "A DER integer with a redundant leading 0x00.",
+      "input": {
+        "kind": "derToRaw",
+        "derHex": "30260202000102203b2a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc"
+      },
+      "expect": {
+        "reject": "SIGNATURE_ENCODING"
+      }
+    },
+    {
+      "id": "M01-210",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Trailing bytes after the DER sequence.",
+      "input": {
+        "kind": "derToRaw",
+        "derHex": "304402205a3f11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc02203b2a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc00"
+      },
+      "expect": {
+        "reject": "SIGNATURE_ENCODING"
+      }
+    },
+    {
+      "id": "M01-211",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Raw to DER: the minimal DER of a signature with a leading-zero r and a high s.",
+      "input": {
+        "kind": "rawToDer",
+        "rawHex": "001111181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dce01011181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc"
+      },
+      "expect": {
+        "ok": {
+          "derHex": "3044021f1111181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc022100e01011181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc"
+        }
+      }
+    },
+    {
+      "id": "M01-212",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "Low-S normalisation leaves a signature that is already low-S unchanged.",
+      "input": {
+        "kind": "normaliseLowS",
+        "rawHex": "5a3f11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc3b2a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc"
+      },
+      "expect": {
+        "ok": {
+          "rawHex": "5a3f11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc3b2a11181f262d343b424950575e656c737a81888f969da4abb2b9c0c7ced5dc"
+        }
+      }
+    }
+  ]
+}

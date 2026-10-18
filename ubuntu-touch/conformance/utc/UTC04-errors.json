@@ -1,0 +1,466 @@
+{
+ "family": "UTC04",
+ "confVersion": "0.1.0",
+ "specRefs": [
+  "ubuntu-touch.md 7.3 (error mapping)",
+  "ASOM_MESH_DESIGN.md 7.6",
+  "core/routing Router.plan (RL1's oracle)"
+ ],
+ "vectors": [
+  {
+   "id": "UTC04-001",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "no paired peer, a catalogue model: pair a device",
+   "input": {
+    "model": "llama-3.3-70b",
+    "peers": [],
+    "catalogue": "fixture"
+   },
+   "expect": {
+    "ok": {
+     "code": "NO_PROVIDER_KEY"
+    }
+   }
+  },
+  {
+   "id": "UTC04-002",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "no paired peer, a model the catalogue does not have",
+   "input": {
+    "model": "no-such-model",
+    "peers": [],
+    "catalogue": "fixture"
+   },
+   "expect": {
+    "ok": {
+     "code": "MODEL_UNKNOWN"
+    }
+   }
+  },
+  {
+   "id": "UTC04-003",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "local-only is refused whatever the peers",
+   "input": {
+    "model": "local-only",
+    "peers": [],
+    "catalogue": "fixture"
+   },
+   "expect": {
+    "ok": {
+     "code": "LOCAL_ENGINE_ABSENT"
+    }
+   }
+  },
+  {
+   "id": "UTC04-004",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "local-only with a warm peer is still refused",
+   "input": {
+    "model": "local-only",
+    "peers": [
+     {
+      "alias": "deck",
+      "models": [
+       "m"
+      ],
+      "cooling": false
+     }
+    ],
+    "catalogue": null
+   },
+   "expect": {
+    "ok": {
+     "code": "LOCAL_ENGINE_ABSENT"
+    }
+   }
+  },
+  {
+   "id": "UTC04-005",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "policy auto with no paired peer",
+   "input": {
+    "model": "auto",
+    "peers": [],
+    "catalogue": "fixture"
+   },
+   "expect": {
+    "ok": {
+     "code": "NO_PROVIDER_KEY"
+    }
+   }
+  },
+  {
+   "id": "UTC04-006",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "policy cheapest with no paired peer",
+   "input": {
+    "model": "cheapest",
+    "peers": [],
+    "catalogue": "fixture"
+   },
+   "expect": {
+    "ok": {
+     "code": "NO_PROVIDER_KEY"
+    }
+   }
+  },
+  {
+   "id": "UTC04-007",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "policy fastest with no paired peer",
+   "input": {
+    "model": "fastest",
+    "peers": [],
+    "catalogue": "fixture"
+   },
+   "expect": {
+    "ok": {
+     "code": "NO_PROVIDER_KEY"
+    }
+   }
+  },
+  {
+   "id": "UTC04-008",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "policy best-reasoning with no paired peer",
+   "input": {
+    "model": "best-reasoning",
+    "peers": [],
+    "catalogue": "fixture"
+   },
+   "expect": {
+    "ok": {
+     "code": "NO_PROVIDER_KEY"
+    }
+   }
+  },
+  {
+   "id": "UTC04-009",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a concrete model held by a warm peer can be served",
+   "input": {
+    "model": "m",
+    "peers": [
+     {
+      "alias": "deck",
+      "models": [
+       "m"
+      ],
+      "cooling": false
+     }
+    ],
+    "catalogue": null
+   },
+   "expect": {
+    "ok": {
+     "code": null
+    }
+   }
+  },
+  {
+   "id": "UTC04-010",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a concrete model held only by cooling peers",
+   "input": {
+    "model": "m",
+    "peers": [
+     {
+      "alias": "deck",
+      "models": [
+       "m"
+      ],
+      "cooling": true
+     },
+     {
+      "alias": "dell",
+      "models": [
+       "m"
+      ],
+      "cooling": true
+     }
+    ],
+    "catalogue": null
+   },
+   "expect": {
+    "ok": {
+     "code": "ALL_PROVIDERS_COOLING"
+    }
+   }
+  },
+  {
+   "id": "UTC04-011",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "one warm and one cooling holder can be served",
+   "input": {
+    "model": "m",
+    "peers": [
+     {
+      "alias": "deck",
+      "models": [
+       "m"
+      ],
+      "cooling": true
+     },
+     {
+      "alias": "dell",
+      "models": [
+       "m"
+      ],
+      "cooling": false
+     }
+    ],
+    "catalogue": null
+   },
+   "expect": {
+    "ok": {
+     "code": null
+    }
+   }
+  },
+  {
+   "id": "UTC04-012",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "peers exist but none holds the model",
+   "input": {
+    "model": "m",
+    "peers": [
+     {
+      "alias": "deck",
+      "models": [
+       "other"
+      ],
+      "cooling": false
+     }
+    ],
+    "catalogue": null
+   },
+   "expect": {
+    "ok": {
+     "code": "MODEL_UNKNOWN"
+    }
+   }
+  },
+  {
+   "id": "UTC04-013",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a cooling peer that does not hold the model does not make the answer 'cooling'",
+   "input": {
+    "model": "m",
+    "peers": [
+     {
+      "alias": "deck",
+      "models": [
+       "other"
+      ],
+      "cooling": true
+     },
+     {
+      "alias": "dell",
+      "models": [
+       "m"
+      ],
+      "cooling": false
+     }
+    ],
+    "catalogue": null
+   },
+   "expect": {
+    "ok": {
+     "code": null
+    }
+   }
+  },
+  {
+   "id": "UTC04-014",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "policy auto with every peer cooling",
+   "input": {
+    "model": "auto",
+    "peers": [
+     {
+      "alias": "deck",
+      "models": [
+       "m"
+      ],
+      "cooling": true
+     }
+    ],
+    "catalogue": null
+   },
+   "expect": {
+    "ok": {
+     "code": "ALL_PROVIDERS_COOLING"
+    }
+   }
+  },
+  {
+   "id": "UTC04-015",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "policy auto with a warm peer that holds a model",
+   "input": {
+    "model": "auto",
+    "peers": [
+     {
+      "alias": "deck",
+      "models": [
+       "m"
+      ],
+      "cooling": false
+     }
+    ],
+    "catalogue": null
+   },
+   "expect": {
+    "ok": {
+     "code": null
+    }
+   }
+  },
+  {
+   "id": "UTC04-016",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "policy auto with peers that hold nothing",
+   "input": {
+    "model": "auto",
+    "peers": [
+     {
+      "alias": "deck",
+      "models": [],
+      "cooling": false
+     }
+    ],
+    "catalogue": null
+   },
+   "expect": {
+    "ok": {
+     "code": "NO_PROVIDER_KEY"
+    }
+   }
+  },
+  {
+   "id": "UTC04-017",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "catalogue known, model absent from it, a peer claims it: the v1 order (unknown model first) wins",
+   "input": {
+    "model": "ghost",
+    "peers": [
+     {
+      "alias": "deck",
+      "models": [
+       "ghost"
+      ],
+      "cooling": false
+     }
+    ],
+    "catalogue": "fixture"
+   },
+   "expect": {
+    "ok": {
+     "code": "MODEL_UNKNOWN"
+    }
+   }
+  },
+  {
+   "id": "UTC04-018",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "catalogue known, model present, held by a warm peer",
+   "input": {
+    "model": "llama-3.3-70b",
+    "peers": [
+     {
+      "alias": "deck",
+      "models": [
+       "llama-3.3-70b"
+      ],
+      "cooling": false
+     }
+    ],
+    "catalogue": "fixture"
+   },
+   "expect": {
+    "ok": {
+     "code": null
+    }
+   }
+  },
+  {
+   "id": "UTC04-019",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "catalogue known, model present, no peer holds it",
+   "input": {
+    "model": "deepseek-v3",
+    "peers": [
+     {
+      "alias": "deck",
+      "models": [
+       "llama-3.3-70b"
+      ],
+      "cooling": false
+     }
+    ],
+    "catalogue": "fixture"
+   },
+   "expect": {
+    "ok": {
+     "code": "MODEL_UNKNOWN"
+    }
+   }
+  },
+  {
+   "id": "UTC04-020",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "the catalogue is not consulted when it is null (UT-0 has none)",
+   "input": {
+    "model": "llama-3.3-70b",
+    "peers": [],
+    "catalogue": null
+   },
+   "expect": {
+    "ok": {
+     "code": "NO_PROVIDER_KEY"
+    }
+   }
+  }
+ ]
+}

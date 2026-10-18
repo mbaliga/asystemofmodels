@@ -1,0 +1,1219 @@
+{
+  "family": "R05",
+  "confVersion": "0.2.0",
+  "specRefs": [
+    "docs/design/mesh/router.md 8.1, 8.2, 8.4",
+    "LAB_SPEC.md 6.10 (R05)",
+    "LAB_SPEC.md 6.7 (errors, MESH_STREAM_INTERRUPTED)"
+  ],
+  "vectors": [
+    {
+      "id": "R05-001",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 1: a dial or TLS pin failure: next candidate, breaker +1 on the peer transport curve, PEER_UNREACHABLE",
+      "input": {
+        "kind": "decide",
+        "phase": "PLANNED",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "DialFailed"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": false,
+          "rowStatus": "PEER_UNREACHABLE",
+          "breaker": "TRANSPORT_FAILURE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": false
+        }
+      }
+    },
+    {
+      "id": "R05-002",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 1: a connection lost while offering (no content yet) is PEER_UNREACHABLE too",
+      "input": {
+        "kind": "decide",
+        "phase": "OFFERING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "ConnectionLost"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": false,
+          "rowStatus": "PEER_UNREACHABLE",
+          "breaker": "TRANSPORT_FAILURE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": false
+        }
+      }
+    },
+    {
+      "id": "R05-003",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 1: a connection lost after the accept and before the body is PEER_UNREACHABLE too",
+      "input": {
+        "kind": "decide",
+        "phase": "ACCEPTED",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "ConnectionLost"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": false,
+          "rowStatus": "PEER_UNREACHABLE",
+          "breaker": "TRANSPORT_FAILURE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": false
+        }
+      }
+    },
+    {
+      "id": "R05-004",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 2: PEER_BUSY with retryAfterMs 12,000: next, back-off 12,000 ms, no breaker",
+      "input": {
+        "kind": "decide",
+        "phase": "OFFERING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "Decline",
+          "code": "PEER_BUSY",
+          "retryAfterMs": 12000
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": false,
+          "rowStatus": "PEER_BUSY",
+          "breaker": "NONE",
+          "backoffMs": 12000,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": false
+        }
+      }
+    },
+    {
+      "id": "R05-005",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 2: retryAfterMs below the 5,000 minimum is raised to 5,000",
+      "input": {
+        "kind": "decide",
+        "phase": "OFFERING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "Decline",
+          "code": "PEER_BUSY",
+          "retryAfterMs": 100
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": false,
+          "rowStatus": "PEER_BUSY",
+          "breaker": "NONE",
+          "backoffMs": 5000,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": false
+        }
+      }
+    },
+    {
+      "id": "R05-006",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 2: retryAfterMs above 600,000 is capped (the requester never trusts a longer stay-away)",
+      "input": {
+        "kind": "decide",
+        "phase": "OFFERING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "Decline",
+          "code": "PEER_BUSY",
+          "retryAfterMs": 9999999
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": false,
+          "rowStatus": "PEER_BUSY",
+          "breaker": "NONE",
+          "backoffMs": 600000,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": false
+        }
+      }
+    },
+    {
+      "id": "R05-007",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 2 (r3): PEER_UNAVAILABLE stands for a thermal, battery or presence cause alike: next, back-off retryAfterMs",
+      "input": {
+        "kind": "decide",
+        "phase": "OFFERING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "Decline",
+          "code": "PEER_UNAVAILABLE",
+          "retryAfterMs": 600000
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": false,
+          "rowStatus": "PEER_UNAVAILABLE",
+          "breaker": "NONE",
+          "backoffMs": 600000,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": false
+        }
+      }
+    },
+    {
+      "id": "R05-008",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 3: MODEL_NOT_OFFERED feeds the claim tracker as a failed observation",
+      "input": {
+        "kind": "decide",
+        "phase": "OFFERING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "Decline",
+          "code": "MODEL_NOT_OFFERED",
+          "retryAfterMs": 30000
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": false,
+          "rowStatus": "MODEL_NOT_OFFERED",
+          "breaker": "NONE",
+          "backoffMs": 30000,
+          "tracker": "FAILED_OBSERVATION",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": false
+        }
+      }
+    },
+    {
+      "id": "R05-009",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 4: SCOPE_DENIED: next, refresh the registry view, exclude until the session is re-established",
+      "input": {
+        "kind": "decide",
+        "phase": "OFFERING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "Decline",
+          "code": "SCOPE_DENIED",
+          "retryAfterMs": 30000
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": false,
+          "rowStatus": "SCOPE_DENIED",
+          "breaker": "EXCLUDE_UNTIL_SESSION_REESTABLISHED",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": true,
+          "contentLeft": false
+        }
+      }
+    },
+    {
+      "id": "R05-010",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 4: ERROR PEER_NOT_PAIRED: the same",
+      "input": {
+        "kind": "decide",
+        "phase": "OFFERING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "ErrorFrame",
+          "code": "PEER_NOT_PAIRED"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": false,
+          "rowStatus": "PEER_NOT_PAIRED",
+          "breaker": "EXCLUDE_UNTIL_SESSION_REESTABLISHED",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": true,
+          "contentLeft": false
+        }
+      }
+    },
+    {
+      "id": "R05-011",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 5: an offer timeout: CANCEL, next, breaker +1",
+      "input": {
+        "kind": "decide",
+        "phase": "OFFERING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "OfferTimeout"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": true,
+          "rowStatus": "OFFER_TIMEOUT",
+          "breaker": "TRANSPORT_FAILURE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": false
+        }
+      }
+    },
+    {
+      "id": "R05-012",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 6: accepted, then re-evaluated worse than the next candidate: CANCEL before the body, next, no breaker",
+      "input": {
+        "kind": "decide",
+        "phase": "ACCEPTED",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "AcceptedWorse"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": true,
+          "rowStatus": "CANCELLED_BEFORE_BODY",
+          "breaker": "NONE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": false
+        }
+      }
+    },
+    {
+      "id": "R05-013",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 7: the body was sent and no INFER_HEAD came in time: CANCEL, retry allowed, breaker +1, content left",
+      "input": {
+        "kind": "decide",
+        "phase": "BODY_SENT",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "HeadTimeout"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": true,
+          "rowStatus": "PEER_LOST_PRE_HEAD",
+          "breaker": "TRANSPORT_FAILURE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": true
+        }
+      }
+    },
+    {
+      "id": "R05-014",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 7: GOAWAY or a reset after the body and before the head: the same",
+      "input": {
+        "kind": "decide",
+        "phase": "BODY_SENT",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "ConnectionLost"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": true,
+          "rowStatus": "PEER_LOST_PRE_HEAD",
+          "breaker": "TRANSPORT_FAILURE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": true
+        }
+      }
+    },
+    {
+      "id": "R05-015",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 8: non-stream, terminal interrupted (r3: replaces thermal): next, back-off 60,000 ms",
+      "input": {
+        "kind": "decide",
+        "phase": "RECEIVING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "Terminal",
+          "terminal": "interrupted"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": false,
+          "rowStatus": "PEER_INTERRUPTED",
+          "breaker": "NONE",
+          "backoffMs": 60000,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": true
+        }
+      }
+    },
+    {
+      "id": "R05-016",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 8: non-stream, terminal oom: next, the tracker marks the memory claim DISCREPANT",
+      "input": {
+        "kind": "decide",
+        "phase": "RECEIVING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "Terminal",
+          "terminal": "oom"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": false,
+          "rowStatus": "PEER_OOM",
+          "breaker": "NONE",
+          "backoffMs": null,
+          "tracker": "MEMORY_DISCREPANT",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": true
+        }
+      }
+    },
+    {
+      "id": "R05-017",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 8: non-stream, terminal error: next, breaker +1 on the v1 curve",
+      "input": {
+        "kind": "decide",
+        "phase": "RECEIVING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "Terminal",
+          "terminal": "error"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": false,
+          "rowStatus": "PEER_ERROR",
+          "breaker": "FAILURE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": true
+        }
+      }
+    },
+    {
+      "id": "R05-018",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 8: non-stream, terminal cancelled by the lender: next, breaker +1",
+      "input": {
+        "kind": "decide",
+        "phase": "RECEIVING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "Terminal",
+          "terminal": "cancelled"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": false,
+          "rowStatus": "PEER_CANCELLED",
+          "breaker": "FAILURE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": true
+        }
+      }
+    },
+    {
+      "id": "R05-019",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 8: a stream whose INFER_HEAD has not arrived is retried like a non-stream (headers not committed)",
+      "input": {
+        "kind": "decide",
+        "phase": "BODY_SENT",
+        "stream": true,
+        "headersCommitted": false,
+        "event": {
+          "kind": "Terminal",
+          "terminal": "error"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": false,
+          "rowStatus": "PEER_ERROR",
+          "breaker": "FAILURE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": true
+        }
+      }
+    },
+    {
+      "id": "R05-020",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 8: non-stream, connection lost during the answer: next, breaker +1 (status PEER_LOST: the spec names none for a loss without a terminal)",
+      "input": {
+        "kind": "decide",
+        "phase": "RECEIVING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "ConnectionLost"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": false,
+          "rowStatus": "PEER_LOST",
+          "breaker": "TRANSPORT_FAILURE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": true
+        }
+      }
+    },
+    {
+      "id": "R05-021",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 9: stream, loss after INFER_HEAD: no retry; the SSE error event MESH_STREAM_INTERRUPTED reason peer-lost, no [DONE]; breaker +1",
+      "input": {
+        "kind": "decide",
+        "phase": "RECEIVING",
+        "stream": true,
+        "headersCommitted": true,
+        "event": {
+          "kind": "ConnectionLost"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "FAIL_IN_BAND",
+          "cancelFrame": false,
+          "rowStatus": "PEER_LOST_MID_STREAM",
+          "breaker": "TRANSPORT_FAILURE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": "peer-lost",
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": true
+        }
+      }
+    },
+    {
+      "id": "R05-022",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 10 (r3): stream, terminal interrupted after the head: fail in band with the one reason peer-lost, back-off 60,000 ms",
+      "input": {
+        "kind": "decide",
+        "phase": "RECEIVING",
+        "stream": true,
+        "headersCommitted": true,
+        "event": {
+          "kind": "Terminal",
+          "terminal": "interrupted"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "FAIL_IN_BAND",
+          "cancelFrame": false,
+          "rowStatus": "PEER_INTERRUPTED_MID_STREAM",
+          "breaker": "NONE",
+          "backoffMs": 60000,
+          "tracker": "NONE",
+          "sseReason": "peer-lost",
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": true
+        }
+      }
+    },
+    {
+      "id": "R05-023",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 10: stream, terminal oom after the head: fail in band, memory claim DISCREPANT",
+      "input": {
+        "kind": "decide",
+        "phase": "RECEIVING",
+        "stream": true,
+        "headersCommitted": true,
+        "event": {
+          "kind": "Terminal",
+          "terminal": "oom"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "FAIL_IN_BAND",
+          "cancelFrame": false,
+          "rowStatus": "PEER_OOM_MID_STREAM",
+          "breaker": "NONE",
+          "backoffMs": null,
+          "tracker": "MEMORY_DISCREPANT",
+          "sseReason": "peer-lost",
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": true
+        }
+      }
+    },
+    {
+      "id": "R05-024",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 10: stream, terminal error after the head: fail in band, breaker +1",
+      "input": {
+        "kind": "decide",
+        "phase": "RECEIVING",
+        "stream": true,
+        "headersCommitted": true,
+        "event": {
+          "kind": "Terminal",
+          "terminal": "error"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "FAIL_IN_BAND",
+          "cancelFrame": false,
+          "rowStatus": "PEER_ERROR_MID_STREAM",
+          "breaker": "FAILURE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": "peer-lost",
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": true
+        }
+      }
+    },
+    {
+      "id": "R05-025",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "terminal done: return the answer",
+      "input": {
+        "kind": "decide",
+        "phase": "RECEIVING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "Terminal",
+          "terminal": "done"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "RETURN",
+          "cancelFrame": false,
+          "rowStatus": "ok",
+          "breaker": "NONE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": true
+        }
+      }
+    },
+    {
+      "id": "R05-026",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "terminal done before any chunk (an empty answer): return",
+      "input": {
+        "kind": "decide",
+        "phase": "BODY_SENT",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "Terminal",
+          "terminal": "done"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "RETURN",
+          "cancelFrame": false,
+          "rowStatus": "ok",
+          "breaker": "NONE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": true
+        }
+      }
+    },
+    {
+      "id": "R05-027",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 11: this device's governor HOLD mid-stream is the v2 behaviour (no peer effect)",
+      "input": {
+        "kind": "decide",
+        "phase": "RECEIVING",
+        "stream": true,
+        "headersCommitted": true,
+        "event": {
+          "kind": "SelfGovernorHold"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "V2_LOCAL",
+          "cancelFrame": false,
+          "rowStatus": "V2",
+          "breaker": "NONE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": false
+        }
+      }
+    },
+    {
+      "id": "R05-028",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 12: the deadline passed while offering: stop",
+      "input": {
+        "kind": "decide",
+        "phase": "OFFERING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "DeadlinePassed"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "STOP",
+          "cancelFrame": false,
+          "rowStatus": "DEADLINE",
+          "breaker": "NONE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": false
+        }
+      }
+    },
+    {
+      "id": "R05-029",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 12: the deadline passed while the peer holds the body: stop",
+      "input": {
+        "kind": "decide",
+        "phase": "BODY_SENT",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "DeadlinePassed"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "STOP",
+          "cancelFrame": false,
+          "rowStatus": "DEADLINE",
+          "breaker": "NONE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": true
+        }
+      }
+    },
+    {
+      "id": "R05-030",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "row 13: DUPLICATE_ATTEMPT is a bug signal: never retried with the same attemptId; next candidate with a new id",
+      "input": {
+        "kind": "decide",
+        "phase": "OFFERING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "Decline",
+          "code": "DUPLICATE_ATTEMPT",
+          "retryAfterMs": 5000
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "NEXT",
+          "cancelFrame": false,
+          "rowStatus": "DUPLICATE_ATTEMPT",
+          "breaker": "NONE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": true,
+          "refreshRegistry": false,
+          "contentLeft": false
+        }
+      }
+    },
+    {
+      "id": "R05-031",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a client disconnect while offering: CANCEL, both rows CANCELLED, no breaker",
+      "input": {
+        "kind": "decide",
+        "phase": "OFFERING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "ClientDisconnect"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "CLIENT_CANCELLED",
+          "cancelFrame": true,
+          "rowStatus": "CANCELLED",
+          "breaker": "NONE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": false
+        }
+      }
+    },
+    {
+      "id": "R05-032",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a client disconnect while the peer answers: CANCEL, content left",
+      "input": {
+        "kind": "decide",
+        "phase": "RECEIVING",
+        "stream": true,
+        "headersCommitted": true,
+        "event": {
+          "kind": "ClientDisconnect"
+        }
+      },
+      "expect": {
+        "ok": {
+          "action": "CLIENT_CANCELLED",
+          "cancelFrame": true,
+          "rowStatus": "CANCELLED",
+          "breaker": "NONE",
+          "backoffMs": null,
+          "tracker": "NONE",
+          "sseReason": null,
+          "newAttemptId": false,
+          "refreshRegistry": false,
+          "contentLeft": true
+        }
+      }
+    },
+    {
+      "id": "R05-033",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "illegal: a decline can only arrive while offering",
+      "input": {
+        "kind": "decide",
+        "phase": "RECEIVING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "Decline",
+          "code": "PEER_BUSY",
+          "retryAfterMs": 5000
+        }
+      },
+      "expect": {
+        "reject": "ILLEGAL_TRANSITION"
+      }
+    },
+    {
+      "id": "R05-034",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "illegal: a dial failure can only happen before the offer",
+      "input": {
+        "kind": "decide",
+        "phase": "OFFERING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "DialFailed"
+        }
+      },
+      "expect": {
+        "reject": "ILLEGAL_TRANSITION"
+      }
+    },
+    {
+      "id": "R05-035",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "illegal: an offer timeout can only happen while offering",
+      "input": {
+        "kind": "decide",
+        "phase": "ACCEPTED",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "OfferTimeout"
+        }
+      },
+      "expect": {
+        "reject": "ILLEGAL_TRANSITION"
+      }
+    },
+    {
+      "id": "R05-036",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "illegal: a worse accept-time re-evaluation can only follow an accept",
+      "input": {
+        "kind": "decide",
+        "phase": "OFFERING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "AcceptedWorse"
+        }
+      },
+      "expect": {
+        "reject": "ILLEGAL_TRANSITION"
+      }
+    },
+    {
+      "id": "R05-037",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "illegal: a head timeout needs a body that was sent",
+      "input": {
+        "kind": "decide",
+        "phase": "OFFERING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "HeadTimeout"
+        }
+      },
+      "expect": {
+        "reject": "ILLEGAL_TRANSITION"
+      }
+    },
+    {
+      "id": "R05-038",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "illegal: an INFER_END terminal needs the body to have been sent",
+      "input": {
+        "kind": "decide",
+        "phase": "OFFERING",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "Terminal",
+          "terminal": "done"
+        }
+      },
+      "expect": {
+        "reject": "ILLEGAL_TRANSITION"
+      }
+    },
+    {
+      "id": "R05-039",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "illegal: nothing to cancel before the attempt starts",
+      "input": {
+        "kind": "decide",
+        "phase": "PLANNED",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "ClientDisconnect"
+        }
+      },
+      "expect": {
+        "reject": "ILLEGAL_TRANSITION"
+      }
+    },
+    {
+      "id": "R05-040",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "illegal: a lost connection needs an attempt in flight",
+      "input": {
+        "kind": "decide",
+        "phase": "PLANNED",
+        "stream": false,
+        "headersCommitted": false,
+        "event": {
+          "kind": "ConnectionLost"
+        }
+      },
+      "expect": {
+        "reject": "ILLEGAL_TRANSITION"
+      }
+    },
+    {
+      "id": "R05-041",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "re-evaluation: 6,000 against a runner-up of 5,000 is inside max(1,000 ms, 10%): keep",
+      "input": {
+        "kind": "reeval",
+        "acceptedScore": 6000,
+        "runnerUpScore": 5000
+      },
+      "expect": {
+        "ok": {
+          "worse": false
+        }
+      }
+    },
+    {
+      "id": "R05-042",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "re-evaluation: 6,001 against 5,000 is worse by more than 1,000 ms: cancel",
+      "input": {
+        "kind": "reeval",
+        "acceptedScore": 6001,
+        "runnerUpScore": 5000
+      },
+      "expect": {
+        "ok": {
+          "worse": true
+        }
+      }
+    },
+    {
+      "id": "R05-043",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "re-evaluation: at 20,000 the tolerance is 10% = 2,000: 22,000 keeps",
+      "input": {
+        "kind": "reeval",
+        "acceptedScore": 22000,
+        "runnerUpScore": 20000
+      },
+      "expect": {
+        "ok": {
+          "worse": false
+        }
+      }
+    },
+    {
+      "id": "R05-044",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "re-evaluation: 22,001 against 20,000 cancels",
+      "input": {
+        "kind": "reeval",
+        "acceptedScore": 22001,
+        "runnerUpScore": 20000
+      },
+      "expect": {
+        "ok": {
+          "worse": true
+        }
+      }
+    }
+  ]
+}

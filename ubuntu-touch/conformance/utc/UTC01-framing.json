@@ -1,0 +1,1282 @@
+{
+ "family": "UTC01",
+ "confVersion": "0.1.0",
+ "specRefs": [
+  "ubuntu-touch.md 7.3",
+  "ubuntu-touch.md 3.1 (the child emits only frames)"
+ ],
+ "vectors": [
+  {
+   "id": "UTC01-001",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame hello",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"hello\",\"v\":1}"
+   },
+   "expect": {
+    "ok": {
+     "t": "hello",
+     "canonical": "{\"t\":\"hello\",\"v\":1}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-002",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame lifecycle",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"lifecycle\",\"state\":\"active\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "lifecycle",
+     "canonical": "{\"t\":\"lifecycle\",\"state\":\"active\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-003",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame lifecycle",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"lifecycle\",\"state\":\"inactive\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "lifecycle",
+     "canonical": "{\"t\":\"lifecycle\",\"state\":\"inactive\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-004",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame lifecycle",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"lifecycle\",\"state\":\"suspending\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "lifecycle",
+     "canonical": "{\"t\":\"lifecycle\",\"state\":\"suspending\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-005",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame borrow",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"borrow\",\"rid\":\"r-1\",\"model\":\"auto\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"maxTokens\":64,\"stream\":true}"
+   },
+   "expect": {
+    "ok": {
+     "t": "borrow",
+     "canonical": "{\"t\":\"borrow\",\"rid\":\"r-1\",\"model\":\"auto\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"maxTokens\":64,\"stream\":true}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-006",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame cancel",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"cancel\",\"rid\":\"r-1\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "cancel",
+     "canonical": "{\"t\":\"cancel\",\"rid\":\"r-1\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-007",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame peers",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"peers\",\"op\":\"open\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "peers",
+     "canonical": "{\"t\":\"peers\",\"op\":\"open\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-008",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame peers",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"peers\",\"op\":\"close\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "peers",
+     "canonical": "{\"t\":\"peers\",\"op\":\"close\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-009",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame pair",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"pair\",\"op\":\"begin\",\"value\":\"asom://pair?x=1\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "pair",
+     "canonical": "{\"t\":\"pair\",\"op\":\"begin\",\"value\":\"asom://pair?x=1\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-010",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame pair",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"pair\",\"op\":\"confirm\",\"value\":\"865 412\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "pair",
+     "canonical": "{\"t\":\"pair\",\"op\":\"confirm\",\"value\":\"865 412\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-011",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame pair",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"pair\",\"op\":\"approve\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "pair",
+     "canonical": "{\"t\":\"pair\",\"op\":\"approve\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-012",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame revoke",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"revoke\",\"peer\":\"n1abcdefghijklmn\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "revoke",
+     "canonical": "{\"t\":\"revoke\",\"peer\":\"n1abcdefghijklmn\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-013",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame ledger",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"ledger\",\"since\":0,\"limit\":50}"
+   },
+   "expect": {
+    "ok": {
+     "t": "ledger",
+     "canonical": "{\"t\":\"ledger\",\"since\":0,\"limit\":50}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-014",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame export",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"export\",\"kind\":\"ledger\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "export",
+     "canonical": "{\"t\":\"export\",\"kind\":\"ledger\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-015",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame export",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"export\",\"kind\":\"manifest\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "export",
+     "canonical": "{\"t\":\"export\",\"kind\":\"manifest\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-016",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame selftest",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"selftest\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "selftest",
+     "canonical": "{\"t\":\"selftest\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-017",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame shutdown",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"shutdown\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "shutdown",
+     "canonical": "{\"t\":\"shutdown\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-018",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame shutdown",
+   "input": {
+    "kind": "ui-line",
+    "line": "{ \"t\" : \"shutdown\" }"
+   },
+   "expect": {
+    "ok": {
+     "t": "shutdown",
+     "canonical": "{\"t\":\"shutdown\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-019",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame cancel",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"rid\":\"r-1\",\"t\":\"cancel\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "cancel",
+     "canonical": "{\"t\":\"cancel\",\"rid\":\"r-1\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-020",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame hello",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"hello\",\"v\":2}"
+   },
+   "expect": {
+    "ok": {
+     "t": "hello",
+     "canonical": "{\"t\":\"hello\",\"v\":2}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-021",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "UI frame borrow",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"borrow\",\"rid\":\"r-2\",\"model\":\"m\",\"messages\":[{\"role\":\"user\",\"content\":\"\\u00e9\\ud83d\\ude00\\n\"}],\"maxTokens\":1,\"stream\":false}"
+   },
+   "expect": {
+    "ok": {
+     "t": "borrow",
+     "canonical": "{\"t\":\"borrow\",\"rid\":\"r-2\",\"model\":\"m\",\"messages\":[{\"role\":\"user\",\"content\":\"é😀\\n\"}],\"maxTokens\":1,\"stream\":false}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-022",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "truncated object",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"hello\",\"v\":1"
+   },
+   "expect": {
+    "reject": "NOT_JSON"
+   }
+  },
+  {
+   "id": "UTC01-023",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "not JSON at all",
+   "input": {
+    "kind": "ui-line",
+    "line": "hello"
+   },
+   "expect": {
+    "reject": "NOT_JSON"
+   }
+  },
+  {
+   "id": "UTC01-024",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a lone surrogate escape",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"cancel\",\"rid\":\"\\ud800\"}"
+   },
+   "expect": {
+    "reject": "INVALID_UNICODE"
+   }
+  },
+  {
+   "id": "UTC01-025",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "invalid UTF-8 (0xFF)",
+   "input": {
+    "kind": "ui-bytes",
+    "hex": "7b2274223a2263616e63656c222c22726964223a22ff227d"
+   },
+   "expect": {
+    "reject": "INVALID_UNICODE"
+   }
+  },
+  {
+   "id": "UTC01-026",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a fraction where an integer is required",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"borrow\",\"rid\":\"r\",\"model\":\"m\",\"messages\":[{\"role\":\"user\",\"content\":\"x\"}],\"maxTokens\":1.5,\"stream\":true}"
+   },
+   "expect": {
+    "reject": "NON_INTEGER_NUMBER"
+   }
+  },
+  {
+   "id": "UTC01-027",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "an exponent",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"hello\",\"v\":1e0}"
+   },
+   "expect": {
+    "reject": "NON_INTEGER_NUMBER"
+   }
+  },
+  {
+   "id": "UTC01-028",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "negative zero",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"ledger\",\"since\":-0,\"limit\":1}"
+   },
+   "expect": {
+    "reject": "NON_INTEGER_NUMBER"
+   }
+  },
+  {
+   "id": "UTC01-029",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "an integer above 2^53-1",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"hello\",\"v\":9007199254740992}"
+   },
+   "expect": {
+    "reject": "NUMBER_RANGE"
+   }
+  },
+  {
+   "id": "UTC01-030",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a duplicate member name",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"cancel\",\"t\":\"cancel\",\"rid\":\"a\"}"
+   },
+   "expect": {
+    "reject": "DUPLICATE_KEY"
+   }
+  },
+  {
+   "id": "UTC01-031",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "data after the object",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"shutdown\"} x"
+   },
+   "expect": {
+    "reject": "TRAILING_DATA"
+   }
+  },
+  {
+   "id": "UTC01-032",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "an array is not a frame",
+   "input": {
+    "kind": "ui-line",
+    "line": "[]"
+   },
+   "expect": {
+    "reject": "NOT_OBJECT"
+   }
+  },
+  {
+   "id": "UTC01-033",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a string is not a frame",
+   "input": {
+    "kind": "ui-line",
+    "line": "\"hello\""
+   },
+   "expect": {
+    "reject": "NOT_OBJECT"
+   }
+  },
+  {
+   "id": "UTC01-034",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "no type member",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"v\":1}"
+   },
+   "expect": {
+    "reject": "MISSING_TYPE"
+   }
+  },
+  {
+   "id": "UTC01-035",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a node frame type sent by the UI",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"hello_ack\"}"
+   },
+   "expect": {
+    "reject": "UNKNOWN_TYPE"
+   }
+  },
+  {
+   "id": "UTC01-036",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "an invented type",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"exec\"}"
+   },
+   "expect": {
+    "reject": "UNKNOWN_TYPE"
+   }
+  },
+  {
+   "id": "UTC01-037",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "hello without v",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"hello\"}"
+   },
+   "expect": {
+    "reject": "MISSING_FIELD"
+   }
+  },
+  {
+   "id": "UTC01-038",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "borrow without model",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"borrow\",\"rid\":\"r\",\"messages\":[{\"role\":\"user\",\"content\":\"x\"}],\"maxTokens\":1,\"stream\":true}"
+   },
+   "expect": {
+    "reject": "MISSING_FIELD"
+   }
+  },
+  {
+   "id": "UTC01-039",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "pair begin without a value",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"pair\",\"op\":\"begin\"}"
+   },
+   "expect": {
+    "reject": "MISSING_FIELD"
+   }
+  },
+  {
+   "id": "UTC01-040",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "v as a string",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"hello\",\"v\":\"1\"}"
+   },
+   "expect": {
+    "reject": "BAD_FIELD"
+   }
+  },
+  {
+   "id": "UTC01-041",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "an unknown lifecycle state",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"lifecycle\",\"state\":\"sleeping\"}"
+   },
+   "expect": {
+    "reject": "BAD_FIELD"
+   }
+  },
+  {
+   "id": "UTC01-042",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "maxTokens zero",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"borrow\",\"rid\":\"r\",\"model\":\"m\",\"messages\":[{\"role\":\"user\",\"content\":\"x\"}],\"maxTokens\":0,\"stream\":true}"
+   },
+   "expect": {
+    "reject": "BAD_FIELD"
+   }
+  },
+  {
+   "id": "UTC01-043",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "no messages",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"borrow\",\"rid\":\"r\",\"model\":\"m\",\"messages\":[],\"maxTokens\":1,\"stream\":true}"
+   },
+   "expect": {
+    "reject": "BAD_FIELD"
+   }
+  },
+  {
+   "id": "UTC01-044",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a request id with a space",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"cancel\",\"rid\":\"a b\"}"
+   },
+   "expect": {
+    "reject": "BAD_FIELD"
+   }
+  },
+  {
+   "id": "UTC01-045",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "an unknown peers op",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"peers\",\"op\":\"toggle\"}"
+   },
+   "expect": {
+    "reject": "BAD_FIELD"
+   }
+  },
+  {
+   "id": "UTC01-046",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "an unknown export kind",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"export\",\"kind\":\"keys\"}"
+   },
+   "expect": {
+    "reject": "BAD_FIELD"
+   }
+  },
+  {
+   "id": "UTC01-047",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a ledger limit above 500",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"ledger\",\"since\":0,\"limit\":501}"
+   },
+   "expect": {
+    "reject": "BAD_FIELD"
+   }
+  },
+  {
+   "id": "UTC01-048",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a message with an extra member",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"borrow\",\"rid\":\"r\",\"model\":\"m\",\"messages\":[{\"role\":\"user\",\"content\":\"x\",\"name\":\"y\"}],\"maxTokens\":1,\"stream\":true}"
+   },
+   "expect": {
+    "reject": "UNKNOWN_FIELD"
+   }
+  },
+  {
+   "id": "UTC01-049",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "an unknown member on shutdown",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"shutdown\",\"x\":1}"
+   },
+   "expect": {
+    "reject": "UNKNOWN_FIELD"
+   }
+  },
+  {
+   "id": "UTC01-050",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "approve carries no value",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"pair\",\"op\":\"approve\",\"value\":\"x\"}"
+   },
+   "expect": {
+    "reject": "UNKNOWN_FIELD"
+   }
+  },
+  {
+   "id": "UTC01-051",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "an empty line",
+   "input": {
+    "kind": "ui-bytes",
+    "hex": ""
+   },
+   "expect": {
+    "reject": "EMPTY_LINE"
+   }
+  },
+  {
+   "id": "UTC01-052",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a byte order mark",
+   "input": {
+    "kind": "ui-bytes",
+    "hex": "efbbbf7b2274223a2273687574646f776e227d"
+   },
+   "expect": {
+    "reject": "NOT_JSON"
+   }
+  },
+  {
+   "id": "UTC01-053",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "nesting deeper than 16",
+   "input": {
+    "kind": "ui-line",
+    "line": "{\"t\":\"shutdown\",\"a\":[[[[[[[[[[[[[[[[[[[[1]]]]]]]]]]]]]]]]]]]]}"
+   },
+   "expect": {
+    "reject": "NOT_JSON"
+   }
+  },
+  {
+   "id": "UTC01-054",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a borrow line of exactly 1 MiB is accepted",
+   "input": {
+    "kind": "ui-padded",
+    "totalBytes": 1048576
+   },
+   "expect": {
+    "ok": {
+     "t": "borrow"
+    }
+   }
+  },
+  {
+   "id": "UTC01-055",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a borrow line of 1 MiB - 1 is accepted",
+   "input": {
+    "kind": "ui-padded",
+    "totalBytes": 1048575
+   },
+   "expect": {
+    "ok": {
+     "t": "borrow"
+    }
+   }
+  },
+  {
+   "id": "UTC01-056",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a line of 1 MiB + 1 is refused before it is parsed",
+   "input": {
+    "kind": "ui-padded",
+    "totalBytes": 1048577
+   },
+   "expect": {
+    "reject": "TOO_LONG"
+   }
+  },
+  {
+   "id": "UTC01-057",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a line of 4 MiB is refused",
+   "input": {
+    "kind": "ui-padded",
+    "totalBytes": 4194304
+   },
+   "expect": {
+    "reject": "TOO_LONG"
+   }
+  },
+  {
+   "id": "UTC01-058",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "node frame hello_ack, canonical form",
+   "input": {
+    "kind": "node-line",
+    "line": "{\"t\":\"hello_ack\",\"nodeTag\":\"none\",\"keyStorage\":\"unknown\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "hello_ack",
+     "canonical": "{\"t\":\"hello_ack\",\"nodeTag\":\"none\",\"keyStorage\":\"unknown\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-059",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "node frame state, canonical form",
+   "input": {
+    "kind": "node-line",
+    "line": "{\"t\":\"state\",\"node\":\"active\",\"sessions\":2,\"lending\":\"off\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "state",
+     "canonical": "{\"t\":\"state\",\"node\":\"active\",\"sessions\":2,\"lending\":\"off\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-060",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "node frame state, canonical form",
+   "input": {
+    "kind": "node-line",
+    "line": "{ \"sessions\" : 0, \"t\":\"state\",\"lending\":\"off\",\"node\":\"interrupted\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "state",
+     "canonical": "{\"t\":\"state\",\"node\":\"interrupted\",\"sessions\":0,\"lending\":\"off\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-061",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "node frame chunk, canonical form",
+   "input": {
+    "kind": "node-line",
+    "line": "{\"t\":\"chunk\",\"rid\":\"r1\",\"delta\":\"line1\\nline2\\u2028\\u0001 \\ud83d\\ude00\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "chunk",
+     "canonical": "{\"t\":\"chunk\",\"rid\":\"r1\",\"delta\":\"line1\\nline2\\u2028\\u0001 😀\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-062",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "node frame end, canonical form",
+   "input": {
+    "kind": "node-line",
+    "line": "{\"t\":\"end\",\"rid\":\"r1\",\"record\":{\"egress\":\"peer\",\"status\":200}}"
+   },
+   "expect": {
+    "ok": {
+     "t": "end",
+     "canonical": "{\"t\":\"end\",\"rid\":\"r1\",\"record\":{\"egress\":\"peer\",\"status\":200}}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-063",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "node frame error, canonical form",
+   "input": {
+    "kind": "node-line",
+    "line": "{\"t\":\"error\",\"rid\":\"r1\",\"code\":\"NO_PROVIDER_KEY\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "error",
+     "canonical": "{\"t\":\"error\",\"rid\":\"r1\",\"code\":\"NO_PROVIDER_KEY\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-064",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "node frame error, canonical form",
+   "input": {
+    "kind": "node-line",
+    "line": "{\"t\":\"error\",\"rid\":null,\"code\":\"MESH_STREAM_INTERRUPTED\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "error",
+     "canonical": "{\"t\":\"error\",\"rid\":null,\"code\":\"MESH_STREAM_INTERRUPTED\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-065",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "node frame error, canonical form",
+   "input": {
+    "kind": "node-line",
+    "line": "{\"t\":\"error\",\"rid\":\"r1\",\"code\":\"INTERRUPTED_BY_SUSPEND\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "error",
+     "canonical": "{\"t\":\"error\",\"rid\":\"r1\",\"code\":\"INTERRUPTED_BY_SUSPEND\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-066",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "node frame error, canonical form",
+   "input": {
+    "kind": "node-line",
+    "line": "{\"t\":\"error\",\"rid\":\"r1\",\"code\":\"LEDGER_UNAVAILABLE\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "error",
+     "canonical": "{\"t\":\"error\",\"rid\":\"r1\",\"code\":\"LEDGER_UNAVAILABLE\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-067",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "node frame peers, canonical form",
+   "input": {
+    "kind": "node-line",
+    "line": "{\"t\":\"peers\",\"list\":[{\"alias\":\"Deck\"}]}"
+   },
+   "expect": {
+    "ok": {
+     "t": "peers",
+     "canonical": "{\"t\":\"peers\",\"list\":[{\"alias\":\"Deck\"}]}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-068",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "node frame sas, canonical form",
+   "input": {
+    "kind": "node-line",
+    "line": "{\"t\":\"sas\",\"code\":\"865 412\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "sas",
+     "canonical": "{\"t\":\"sas\",\"code\":\"865 412\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-069",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "node frame rows, canonical form",
+   "input": {
+    "kind": "node-line",
+    "line": "{\"t\":\"rows\",\"rows\":[]}"
+   },
+   "expect": {
+    "ok": {
+     "t": "rows",
+     "canonical": "{\"t\":\"rows\",\"rows\":[]}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-070",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "node frame export_ready, canonical form",
+   "input": {
+    "kind": "node-line",
+    "line": "{\"t\":\"export_ready\",\"bytes\":10,\"sha256\":\"abababababababababababababababababababababababababababababababab\"}"
+   },
+   "expect": {
+    "ok": {
+     "t": "export_ready",
+     "canonical": "{\"t\":\"export_ready\",\"bytes\":10,\"sha256\":\"abababababababababababababababababababababababababababababababab\"}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-071",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "node frame selftest, canonical form",
+   "input": {
+    "kind": "node-line",
+    "line": "{\"t\":\"selftest\",\"result\":{\"selftest\":\"ok\"}}"
+   },
+   "expect": {
+    "ok": {
+     "t": "selftest",
+     "canonical": "{\"t\":\"selftest\",\"result\":{\"selftest\":\"ok\"}}"
+    }
+   }
+  },
+  {
+   "id": "UTC01-072",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a node state outside idle|active|interrupted",
+   "input": {
+    "kind": "node-line",
+    "line": "{\"t\":\"state\",\"node\":\"asleep\",\"sessions\":0,\"lending\":\"off\"}"
+   },
+   "expect": {
+    "reject": "BAD_FIELD"
+   }
+  },
+  {
+   "id": "UTC01-073",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a node error code outside the closed set",
+   "input": {
+    "kind": "node-line",
+    "line": "{\"t\":\"error\",\"rid\":\"r1\",\"code\":\"PEER_UNAVAILABLE\"}"
+   },
+   "expect": {
+    "reject": "BAD_FIELD"
+   }
+  },
+  {
+   "id": "UTC01-074",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a node frame with a float",
+   "input": {
+    "kind": "node-line",
+    "line": "{\"t\":\"state\",\"node\":\"idle\",\"sessions\":1.0,\"lending\":\"off\"}"
+   },
+   "expect": {
+    "reject": "NON_INTEGER_NUMBER"
+   }
+  },
+  {
+   "id": "UTC01-075",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a node frame with an unknown member",
+   "input": {
+    "kind": "node-line",
+    "line": "{\"t\":\"sas\",\"code\":\"1\",\"extra\":true}"
+   },
+   "expect": {
+    "reject": "UNKNOWN_FIELD"
+   }
+  },
+  {
+   "id": "UTC01-076",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "three frames delivered one byte at a time",
+   "input": {
+    "kind": "split",
+    "lines": [
+     "{\"t\":\"hello\",\"v\":1}",
+     "{\"t\":\"lifecycle\",\"state\":\"active\"}",
+     "{\"t\":\"shutdown\"}"
+    ],
+    "step": 1
+   },
+   "expect": {
+    "ok": {
+     "types": [
+      "hello",
+      "lifecycle",
+      "shutdown"
+     ]
+    }
+   }
+  },
+  {
+   "id": "UTC01-077",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "three frames delivered seven bytes at a time",
+   "input": {
+    "kind": "split",
+    "lines": [
+     "{\"t\":\"hello\",\"v\":1}",
+     "{\"t\":\"lifecycle\",\"state\":\"active\"}",
+     "{\"t\":\"shutdown\"}"
+    ],
+    "step": 7
+   },
+   "expect": {
+    "ok": {
+     "types": [
+      "hello",
+      "lifecycle",
+      "shutdown"
+     ]
+    }
+   }
+  },
+  {
+   "id": "UTC01-078",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "three frames delivered in one read",
+   "input": {
+    "kind": "split",
+    "lines": [
+     "{\"t\":\"hello\",\"v\":1}",
+     "{\"t\":\"lifecycle\",\"state\":\"active\"}",
+     "{\"t\":\"shutdown\"}"
+    ],
+    "step": 100000
+   },
+   "expect": {
+    "ok": {
+     "types": [
+      "hello",
+      "lifecycle",
+      "shutdown"
+     ]
+    }
+   }
+  },
+  {
+   "id": "UTC01-079",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a multi-byte character split across reads",
+   "input": {
+    "kind": "split",
+    "lines": [
+     "{\"t\":\"borrow\",\"rid\":\"r\",\"model\":\"m\",\"messages\":[{\"role\":\"user\",\"content\":\"é😀€\"}],\"maxTokens\":1,\"stream\":true}"
+    ],
+    "step": 1
+   },
+   "expect": {
+    "ok": {
+     "types": [
+      "borrow"
+     ]
+    }
+   }
+  },
+  {
+   "id": "UTC01-080",
+   "origin": "hand",
+   "status": "normative",
+   "oracle": "self",
+   "description": "a line cut by end of input is never delivered",
+   "input": {
+    "kind": "raw-stream",
+    "text": "{\"t\":\"hello\",\"v\":1}"
+   },
+   "expect": {
+    "ok": {
+     "types": [],
+     "eof": true
+    }
+   }
+  }
+ ]
+}

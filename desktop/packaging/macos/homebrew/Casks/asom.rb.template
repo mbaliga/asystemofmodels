@@ -1,0 +1,6 @@
+# NOT-YET-IMPLEMENTED: PLATFORM_PLAN step MC7 (D-v2; entry criteria D21, D22, D23, D25, D27 and D28 not met: design 9.3, R3-CONFORMANCE-10, R3-CLOSURE-8).
+# A placeholder, NOT a cask: it must never be copied to a tap. The plan (macos.md 8.3): an own tap first (asystemofcells/homebrew-asom, Casks/asom.rb),
+# a notarised pkg from GitHub Releases only (an unsigned build is a CI artefact, never a release or a cask), depends_on arch arm64 and
+# macos >= sequoia, a binary stanza for the asom CLI, an uninstall stanza that runs `asom node disable --yes` then launchctl then pkgutil,
+# and a zap stanza for the group container. The version and the sha256 come from a real release; none exists, so none is written here.
+# Homebrew sends analytics unless the user opts out (macos.md 8.3); that is Homebrew's traffic, not asom's.

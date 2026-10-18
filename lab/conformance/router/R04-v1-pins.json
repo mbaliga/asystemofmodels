@@ -1,0 +1,1182 @@
+{
+  "family": "R04",
+  "confVersion": "0.2.0",
+  "specRefs": [
+    "ASOM_BUILD_BRIEF.md 7",
+    "LAB_SPEC.md 3.9",
+    "core/routing Router.kt (frozen v1)"
+  ],
+  "vectors": [
+    {
+      "id": "R04-001",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "unknown model",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "no-such-model",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "reject": "MODEL_UNKNOWN"
+      }
+    },
+    {
+      "id": "R04-002",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "no key stored",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "llama-3.3-70b",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "reject": "NO_PROVIDER_KEY"
+      }
+    },
+    {
+      "id": "R04-003",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "every keyed serving provider is cooling",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [
+          "openrouter",
+          "groq"
+        ],
+        "query": {
+          "model": "llama-3.3-70b",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "reject": "ALL_PROVIDERS_COOLING"
+      }
+    },
+    {
+      "id": "R04-004",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "local-only as the model",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq",
+          "trainy-ai",
+          "anthropic"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "local-only",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "reject": "LOCAL_ENGINE_ABSENT"
+      }
+    },
+    {
+      "id": "R04-005",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "local-only through X-Asom-Policy on a concrete model",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq",
+          "trainy-ai",
+          "anthropic"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "llama-3.3-70b",
+          "policyHeader": "local-only",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "reject": "LOCAL_ENGINE_ABSENT"
+      }
+    },
+    {
+      "id": "R04-006",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cheapest: blended price ascending across the fixture",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq",
+          "trainy-ai",
+          "anthropic"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "cheapest",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "ok": [
+          "trainy-ai/llama-3.3-70b",
+          "openrouter/llama-3.3-70b",
+          "openrouter/deepseek-v3",
+          "groq/llama-3.3-70b",
+          "anthropic/claude-sonnet-4-5"
+        ]
+      }
+    },
+    {
+      "id": "R04-007",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cheapest with No-Train excludes the training provider",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq",
+          "trainy-ai",
+          "anthropic"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "cheapest",
+          "fallback": [],
+          "noTrain": true
+        }
+      },
+      "expect": {
+        "ok": [
+          "openrouter/llama-3.3-70b",
+          "openrouter/deepseek-v3",
+          "groq/llama-3.3-70b",
+          "anthropic/claude-sonnet-4-5"
+        ]
+      }
+    },
+    {
+      "id": "R04-008",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "cheapest: ties by provider id then model id; the unpriced model last",
+      "input": {
+        "catalogue": {
+          "version": 1,
+          "updatedAt": "2026-09-30T00:00:00Z",
+          "providers": [
+            {
+              "id": "pa",
+              "displayName": "pa",
+              "kind": "openai-compat",
+              "baseUrl": "https://pa.example/v1",
+              "auth": {
+                "type": "bearer"
+              },
+              "trainsOnData": false,
+              "programmaticAllowed": true,
+              "pricing": {
+                "m1": {
+                  "inPerMTok": 1.0,
+                  "outPerMTok": 1.0
+                }
+              },
+              "models": [
+                "m1",
+                "m2"
+              ]
+            },
+            {
+              "id": "pb",
+              "displayName": "pb",
+              "kind": "openai-compat",
+              "baseUrl": "https://pb.example/v1",
+              "auth": {
+                "type": "bearer"
+              },
+              "trainsOnData": false,
+              "programmaticAllowed": true,
+              "pricing": {
+                "m1": {
+                  "inPerMTok": 1.0,
+                  "outPerMTok": 1.0
+                }
+              },
+              "models": [
+                "m1"
+              ]
+            },
+            {
+              "id": "pc",
+              "displayName": "pc",
+              "kind": "openai-compat",
+              "baseUrl": "https://pc.example/v1",
+              "auth": {
+                "type": "bearer"
+              },
+              "trainsOnData": false,
+              "programmaticAllowed": true,
+              "pricing": {
+                "m3": {
+                  "inPerMTok": 0.5,
+                  "outPerMTok": 0.5
+                }
+              },
+              "models": [
+                "m3"
+              ]
+            },
+            {
+              "id": "pd",
+              "displayName": "pd",
+              "kind": "openai-compat",
+              "baseUrl": "https://pd.example/v1",
+              "auth": {
+                "type": "bearer"
+              },
+              "trainsOnData": false,
+              "programmaticAllowed": true,
+              "pricing": {
+                "m0": {
+                  "inPerMTok": 1.0,
+                  "outPerMTok": 1.0
+                },
+                "m9": {
+                  "inPerMTok": 1.0,
+                  "outPerMTok": 1.0
+                }
+              },
+              "models": [
+                "m0",
+                "m9"
+              ]
+            }
+          ],
+          "models": [
+            {
+              "id": "m0",
+              "family": "f",
+              "kind": "chat"
+            },
+            {
+              "id": "m1",
+              "family": "f",
+              "kind": "chat"
+            },
+            {
+              "id": "m2",
+              "family": "f",
+              "kind": "chat"
+            },
+            {
+              "id": "m3",
+              "family": "f",
+              "kind": "chat"
+            },
+            {
+              "id": "m9",
+              "family": "f",
+              "kind": "chat"
+            }
+          ]
+        },
+        "keysPresent": [
+          "pa",
+          "pb",
+          "pc",
+          "pd"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "cheapest",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "ok": [
+          "pc/m3",
+          "pa/m1",
+          "pb/m1",
+          "pd/m0",
+          "pd/m9",
+          "pa/m2"
+        ]
+      }
+    },
+    {
+      "id": "R04-009",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "fastest: EWMA ascending, unmeasured last, price within a provider",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq",
+          "trainy-ai",
+          "anthropic"
+        ],
+        "latencyEwmaMs": {
+          "openrouter": "400.0",
+          "groq": "120.0",
+          "trainy-ai": "300.0"
+        },
+        "cooling": [],
+        "query": {
+          "model": "fastest",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "ok": [
+          "groq/llama-3.3-70b",
+          "trainy-ai/llama-3.3-70b",
+          "openrouter/llama-3.3-70b",
+          "openrouter/deepseek-v3",
+          "anthropic/claude-sonnet-4-5"
+        ]
+      }
+    },
+    {
+      "id": "R04-010",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "best-reasoning: rank ascending, price breaks rank ties",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq",
+          "trainy-ai",
+          "anthropic"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "best-reasoning",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "ok": [
+          "anthropic/claude-sonnet-4-5",
+          "openrouter/deepseek-v3",
+          "trainy-ai/llama-3.3-70b",
+          "openrouter/llama-3.3-70b",
+          "groq/llama-3.3-70b"
+        ]
+      }
+    },
+    {
+      "id": "R04-011",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "best-reasoning: unranked models (no rank, or no catalogue entry) last, then provider id, model id",
+      "input": {
+        "catalogue": {
+          "version": 1,
+          "updatedAt": "2026-09-30T00:00:00Z",
+          "providers": [
+            {
+              "id": "pa",
+              "displayName": "pa",
+              "kind": "openai-compat",
+              "baseUrl": "https://pa.example/v1",
+              "auth": {
+                "type": "bearer"
+              },
+              "trainsOnData": false,
+              "programmaticAllowed": true,
+              "pricing": {},
+              "models": [
+                "m1",
+                "m2",
+                "m4"
+              ]
+            },
+            {
+              "id": "pb",
+              "displayName": "pb",
+              "kind": "openai-compat",
+              "baseUrl": "https://pb.example/v1",
+              "auth": {
+                "type": "bearer"
+              },
+              "trainsOnData": false,
+              "programmaticAllowed": true,
+              "pricing": {},
+              "models": [
+                "m3"
+              ]
+            }
+          ],
+          "models": [
+            {
+              "id": "m1",
+              "family": "f",
+              "kind": "chat",
+              "rank": 2
+            },
+            {
+              "id": "m2",
+              "family": "f",
+              "kind": "chat"
+            },
+            {
+              "id": "m3",
+              "family": "f",
+              "kind": "chat",
+              "rank": 1
+            }
+          ]
+        },
+        "keysPresent": [
+          "pa",
+          "pb"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "best-reasoning",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "ok": [
+          "pb/m3",
+          "pa/m1",
+          "pa/m2",
+          "pa/m4"
+        ]
+      }
+    },
+    {
+      "id": "R04-012",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "auto: the factor-2.0 band is inclusive (200 = 2 x 100), unmeasured is in-band, out-of-band follows",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq",
+          "trainy-ai",
+          "anthropic"
+        ],
+        "latencyEwmaMs": {
+          "openrouter": "100.0",
+          "groq": "200.0",
+          "trainy-ai": "201.0"
+        },
+        "cooling": [],
+        "query": {
+          "model": "auto",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "ok": [
+          "openrouter/llama-3.3-70b",
+          "openrouter/deepseek-v3",
+          "groq/llama-3.3-70b",
+          "anthropic/claude-sonnet-4-5",
+          "trainy-ai/llama-3.3-70b"
+        ]
+      }
+    },
+    {
+      "id": "R04-013",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "auto with no measurements is cheapest order",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq",
+          "trainy-ai",
+          "anthropic"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "auto",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "ok": [
+          "trainy-ai/llama-3.3-70b",
+          "openrouter/llama-3.3-70b",
+          "openrouter/deepseek-v3",
+          "groq/llama-3.3-70b",
+          "anthropic/claude-sonnet-4-5"
+        ]
+      }
+    },
+    {
+      "id": "R04-014",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "X-Asom-Policy fastest overrides the default policy for a concrete model",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq",
+          "trainy-ai"
+        ],
+        "latencyEwmaMs": {
+          "openrouter": "400.0",
+          "groq": "120.0",
+          "trainy-ai": "300.0"
+        },
+        "cooling": [],
+        "query": {
+          "model": "llama-3.3-70b",
+          "policyHeader": "fastest",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "ok": [
+          "groq/llama-3.3-70b",
+          "trainy-ai/llama-3.3-70b",
+          "openrouter/llama-3.3-70b"
+        ]
+      }
+    },
+    {
+      "id": "R04-015",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "X-Asom-Fallback restricts and orders",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq",
+          "trainy-ai",
+          "anthropic"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "llama-3.3-70b",
+          "fallback": [
+            "groq",
+            "openrouter"
+          ],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "ok": [
+          "groq/llama-3.3-70b",
+          "openrouter/llama-3.3-70b"
+        ]
+      }
+    },
+    {
+      "id": "R04-016",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "X-Asom-Fallback: repeated provider ids are deduplicated",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq",
+          "trainy-ai",
+          "anthropic"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "llama-3.3-70b",
+          "fallback": [
+            "groq",
+            "groq",
+            "openrouter",
+            "groq"
+          ],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "ok": [
+          "groq/llama-3.3-70b",
+          "openrouter/llama-3.3-70b"
+        ]
+      }
+    },
+    {
+      "id": "R04-017",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "X-Asom-Fallback naming only a non-programmatic provider",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "webchat-only",
+          "openrouter"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "llama-3.3-70b",
+          "fallback": [
+            "webchat-only"
+          ],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "reject": "NO_PROVIDER_KEY"
+      }
+    },
+    {
+      "id": "R04-018",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "No-Train on a concrete model drops the training provider",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq",
+          "trainy-ai",
+          "anthropic"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "llama-3.3-70b",
+          "fallback": [],
+          "noTrain": true
+        }
+      },
+      "expect": {
+        "ok": [
+          "openrouter/llama-3.3-70b",
+          "groq/llama-3.3-70b"
+        ]
+      }
+    },
+    {
+      "id": "R04-019",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "No-Train with only the training provider keyed",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "trainy-ai"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "llama-3.3-70b",
+          "fallback": [],
+          "noTrain": true
+        }
+      },
+      "expect": {
+        "reject": "NO_PROVIDER_KEY"
+      }
+    },
+    {
+      "id": "R04-020",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a cooling provider is skipped",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq",
+          "trainy-ai"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [
+          "openrouter"
+        ],
+        "query": {
+          "model": "llama-3.3-70b",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "ok": [
+          "trainy-ai/llama-3.3-70b",
+          "groq/llama-3.3-70b"
+        ]
+      }
+    },
+    {
+      "id": "R04-021",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a key for a non-programmatic provider does not count",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "webchat-only"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "llama-3.3-70b",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "reject": "NO_PROVIDER_KEY"
+      }
+    },
+    {
+      "id": "R04-022",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "model 'auto' with no measurements",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq",
+          "trainy-ai",
+          "anthropic"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "auto",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "ok": [
+          "trainy-ai/llama-3.3-70b",
+          "openrouter/llama-3.3-70b",
+          "openrouter/deepseek-v3",
+          "groq/llama-3.3-70b",
+          "anthropic/claude-sonnet-4-5"
+        ]
+      }
+    },
+    {
+      "id": "R04-023",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "fastest with no measurements falls back to cheapest order",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq",
+          "trainy-ai",
+          "anthropic"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "fastest",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "ok": [
+          "trainy-ai/llama-3.3-70b",
+          "openrouter/llama-3.3-70b",
+          "openrouter/deepseek-v3",
+          "groq/llama-3.3-70b",
+          "anthropic/claude-sonnet-4-5"
+        ]
+      }
+    },
+    {
+      "id": "R04-024",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "X-Asom-Fallback restricts a virtual selector too",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq",
+          "trainy-ai",
+          "anthropic"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "cheapest",
+          "fallback": [
+            "anthropic",
+            "groq"
+          ],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "ok": [
+          "anthropic/claude-sonnet-4-5",
+          "groq/llama-3.3-70b"
+        ]
+      }
+    },
+    {
+      "id": "R04-025",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an unknown model is reported before a missing key",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "no-such-model",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "reject": "MODEL_UNKNOWN"
+      }
+    },
+    {
+      "id": "R04-026",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "No-Train with a fallback naming only the training provider",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq",
+          "trainy-ai",
+          "anthropic"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "llama-3.3-70b",
+          "fallback": [
+            "trainy-ai"
+          ],
+          "noTrain": true
+        }
+      },
+      "expect": {
+        "reject": "NO_PROVIDER_KEY"
+      }
+    },
+    {
+      "id": "R04-027",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a virtual model wins over X-Asom-Policy (cheapest beats local-only)",
+      "input": {
+        "catalogue": "fixture",
+        "keysPresent": [
+          "openrouter",
+          "groq",
+          "trainy-ai",
+          "anthropic"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "cheapest",
+          "policyHeader": "local-only",
+          "fallback": [],
+          "noTrain": false
+        }
+      },
+      "expect": {
+        "ok": [
+          "trainy-ai/llama-3.3-70b",
+          "openrouter/llama-3.3-70b",
+          "openrouter/deepseek-v3",
+          "groq/llama-3.3-70b",
+          "anthropic/claude-sonnet-4-5"
+        ]
+      }
+    },
+    {
+      "id": "R04-perm",
+      "origin": "generated",
+      "status": "normative",
+      "oracle": "self",
+      "description": "determinism under catalogue permutation: 50 seeded shuffles of the tie catalogue, same plan",
+      "input": {
+        "catalogue": {
+          "version": 1,
+          "updatedAt": "2026-09-30T00:00:00Z",
+          "providers": [
+            {
+              "id": "pa",
+              "displayName": "pa",
+              "kind": "openai-compat",
+              "baseUrl": "https://pa.example/v1",
+              "auth": {
+                "type": "bearer"
+              },
+              "trainsOnData": false,
+              "programmaticAllowed": true,
+              "pricing": {
+                "m1": {
+                  "inPerMTok": 1.0,
+                  "outPerMTok": 1.0
+                }
+              },
+              "models": [
+                "m1",
+                "m2"
+              ]
+            },
+            {
+              "id": "pb",
+              "displayName": "pb",
+              "kind": "openai-compat",
+              "baseUrl": "https://pb.example/v1",
+              "auth": {
+                "type": "bearer"
+              },
+              "trainsOnData": false,
+              "programmaticAllowed": true,
+              "pricing": {
+                "m1": {
+                  "inPerMTok": 1.0,
+                  "outPerMTok": 1.0
+                }
+              },
+              "models": [
+                "m1"
+              ]
+            },
+            {
+              "id": "pc",
+              "displayName": "pc",
+              "kind": "openai-compat",
+              "baseUrl": "https://pc.example/v1",
+              "auth": {
+                "type": "bearer"
+              },
+              "trainsOnData": false,
+              "programmaticAllowed": true,
+              "pricing": {
+                "m3": {
+                  "inPerMTok": 0.5,
+                  "outPerMTok": 0.5
+                }
+              },
+              "models": [
+                "m3"
+              ]
+            },
+            {
+              "id": "pd",
+              "displayName": "pd",
+              "kind": "openai-compat",
+              "baseUrl": "https://pd.example/v1",
+              "auth": {
+                "type": "bearer"
+              },
+              "trainsOnData": false,
+              "programmaticAllowed": true,
+              "pricing": {
+                "m0": {
+                  "inPerMTok": 1.0,
+                  "outPerMTok": 1.0
+                },
+                "m9": {
+                  "inPerMTok": 1.0,
+                  "outPerMTok": 1.0
+                }
+              },
+              "models": [
+                "m0",
+                "m9"
+              ]
+            }
+          ],
+          "models": [
+            {
+              "id": "m0",
+              "family": "f",
+              "kind": "chat"
+            },
+            {
+              "id": "m1",
+              "family": "f",
+              "kind": "chat"
+            },
+            {
+              "id": "m2",
+              "family": "f",
+              "kind": "chat"
+            },
+            {
+              "id": "m3",
+              "family": "f",
+              "kind": "chat"
+            },
+            {
+              "id": "m9",
+              "family": "f",
+              "kind": "chat"
+            }
+          ]
+        },
+        "keysPresent": [
+          "pa",
+          "pb",
+          "pc",
+          "pd"
+        ],
+        "latencyEwmaMs": {},
+        "cooling": [],
+        "query": {
+          "model": "cheapest",
+          "fallback": [],
+          "noTrain": false
+        },
+        "permutationSeeds": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50
+        ]
+      },
+      "expect": {
+        "ok": [
+          "pc/m3",
+          "pa/m1",
+          "pb/m1",
+          "pd/m0",
+          "pd/m9",
+          "pa/m2"
+        ]
+      }
+    }
+  ]
+}

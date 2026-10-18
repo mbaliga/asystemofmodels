@@ -1,0 +1,393 @@
+{
+  "_comment": "SYNTHETIC ILLUSTRATIVE INPUT. Not a measurement of any real device. Numbers were chosen by hand to exercise every M04/M05 branch used in the worked example of benchmark.md.",
+  "benchProtocol": 1,
+  "benchSet": "qwen3-dense-1",
+  "harness": {
+    "shell": "android-daemon",
+    "coreImpl": "jvm",
+    "coreVersion": "1.0.0",
+    "confVersion": "1.0.0",
+    "timingSource": "host-monotonic",
+    "engine": {
+      "name": "llama.cpp",
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "backend": "opencl",
+      "buildFlags": "GGML_OPENCL=ON",
+      "threads": 6,
+      "gpuLayers": 99,
+      "kvType": "f16",
+      "flashAttn": "auto"
+    }
+  },
+  "device": {
+    "platform": "android",
+    "form": "phone",
+    "maker": "Example",
+    "model": "Phone X1 (synthetic)",
+    "soc": "Example SoC 8",
+    "osVersion": "16",
+    "osBuild": "EXAMPLE.260901.001",
+    "gpu": "Example GPU",
+    "gpuDriver": "example-512.0",
+    "memTotalBytes": 16000000000,
+    "unifiedMemory": true,
+    "virtualized": false
+  },
+  "memory": {
+    "availAtStartBytes": 9600000000,
+    "processLimitBytes": null,
+    "gpuWorkingSetBytes": null,
+    "limitSource": "android-availmem"
+  },
+  "run": {
+    "plan": "standard",
+    "optInTiers": [
+      "T3"
+    ],
+    "startedAtMs": 1790668800000,
+    "endedAtMs": 1790670240000,
+    "powerSource": "ac",
+    "startThermal": "cool",
+    "screenOn": true,
+    "contentionBeforePermille": 12,
+    "contentionAfterPermille": 18,
+    "abort": null,
+    "batteryStartPermille": 740
+  },
+  "tiers": {
+    "T1": {
+      "kvBytesPerToken": 114688,
+      "loadColdMicros": 2400000,
+      "loadColdness": "best-effort",
+      "loadWarmMicros": [
+        620000,
+        640000,
+        615000
+      ],
+      "tests": {
+        "pp512@d0": {
+          "prefill": [
+            1968000,
+            1975000,
+            1961000,
+            1990000,
+            1972000
+          ],
+          "whole": [
+            1969500,
+            1976400,
+            1962300,
+            1991200,
+            1973300
+          ]
+        },
+        "tg128@d0": [
+          6090000,
+          6120000,
+          6101000,
+          6085000,
+          6133000
+        ]
+      },
+      "nll": {
+        "tokens": 1024,
+        "milliNatsPerToken": 2318,
+        "refMilliNatsPerToken": 2310
+      },
+      "startedAtMs": 1790668860000,
+      "availBeforeLoadBytes": 9580000000,
+      "peakFootprintBytes": 2310000000,
+      "nCtx": 4096
+    },
+    "T2": {
+      "kvBytesPerToken": 147456,
+      "loadColdMicros": 4900000,
+      "loadColdness": "best-effort",
+      "loadWarmMicros": [
+        1210000,
+        1195000,
+        1230000
+      ],
+      "tests": {
+        "pp512@d0": {
+          "prefill": [
+            3930000,
+            3951000,
+            3925000,
+            3947000,
+            3940000
+          ],
+          "whole": [
+            3931800,
+            3952700,
+            3926900,
+            3948600,
+            3941700
+          ]
+        },
+        "tg128@d0": [
+          8810000,
+          8850000,
+          8832000,
+          8805000,
+          8861000
+        ]
+      },
+      "nll": {
+        "tokens": 1024,
+        "milliNatsPerToken": 2026,
+        "refMilliNatsPerToken": 2020
+      },
+      "startedAtMs": 1790669010000,
+      "availBeforeLoadBytes": 9550000000,
+      "peakFootprintBytes": 3120000000,
+      "nCtx": 4096
+    },
+    "T3": {
+      "kvBytesPerToken": 147456,
+      "loadColdMicros": 9800000,
+      "loadColdness": "best-effort",
+      "loadWarmMicros": [
+        2380000,
+        2410000,
+        2395000
+      ],
+      "tests": {
+        "pp512@d0": {
+          "prefill": [
+            8533000,
+            8611000,
+            8498000,
+            8570000,
+            9950000
+          ],
+          "whole": [
+            8535100,
+            8613000,
+            8500200,
+            8572100,
+            9952300
+          ]
+        },
+        "tg128@d0": [
+          17280000,
+          17350000,
+          17310000,
+          17265000,
+          17420000
+        ],
+        "tg128@d2048": [
+          19380000,
+          19450000,
+          19400000,
+          19372000,
+          19510000
+        ]
+      },
+      "nll": {
+        "tokens": 1024,
+        "milliNatsPerToken": 1893,
+        "refMilliNatsPerToken": 1880
+      },
+      "startedAtMs": 1790669190000,
+      "availBeforeLoadBytes": 9510000000,
+      "peakFootprintBytes": 5980000000,
+      "nCtx": 4096
+    }
+  },
+  "sustained": {
+    "tier": "T3",
+    "windowMs": 15000,
+    "capMs": 600000,
+    "endReason": "PLATEAU",
+    "headroomAtOnsetPermille": 830,
+    "windows": [
+      [
+        0,
+        113,
+        14900000,
+        0
+      ],
+      [
+        15000,
+        112,
+        14900000,
+        0
+      ],
+      [
+        30000,
+        113,
+        14900000,
+        0
+      ],
+      [
+        45000,
+        112,
+        14900000,
+        0
+      ],
+      [
+        60000,
+        112,
+        14900000,
+        1
+      ],
+      [
+        75000,
+        111,
+        14900000,
+        1
+      ],
+      [
+        90000,
+        112,
+        14900000,
+        1
+      ],
+      [
+        105000,
+        111,
+        14900000,
+        1
+      ],
+      [
+        120000,
+        111,
+        14900000,
+        1
+      ],
+      [
+        135000,
+        110,
+        14900000,
+        1
+      ],
+      [
+        150000,
+        110,
+        14900000,
+        1
+      ],
+      [
+        165000,
+        109,
+        14900000,
+        1
+      ],
+      [
+        180000,
+        108,
+        14900000,
+        1
+      ],
+      [
+        195000,
+        99,
+        14900000,
+        2
+      ],
+      [
+        210000,
+        90,
+        14900000,
+        2
+      ],
+      [
+        225000,
+        82,
+        14900000,
+        2
+      ],
+      [
+        240000,
+        78,
+        14900000,
+        2
+      ],
+      [
+        255000,
+        76,
+        14900000,
+        2
+      ],
+      [
+        270000,
+        75,
+        14900000,
+        2
+      ],
+      [
+        285000,
+        75,
+        14900000,
+        2
+      ],
+      [
+        300000,
+        76,
+        14900000,
+        2
+      ],
+      [
+        315000,
+        75,
+        14900000,
+        2
+      ],
+      [
+        330000,
+        74,
+        14900000,
+        2
+      ],
+      [
+        345000,
+        75,
+        14900000,
+        2
+      ],
+      [
+        360000,
+        75,
+        14900000,
+        2
+      ],
+      [
+        375000,
+        76,
+        14900000,
+        2
+      ],
+      [
+        390000,
+        75,
+        14900000,
+        2
+      ],
+      [
+        405000,
+        75,
+        14900000,
+        2
+      ],
+      [
+        420000,
+        74,
+        14900000,
+        2
+      ]
+    ]
+  },
+  "field": [
+    {
+      "tier": "T2",
+      "depthBand": "0-1k",
+      "thermalBand": "cool",
+      "powerSource": "battery",
+      "count": 37,
+      "decodeMtpsEwma": 12900,
+      "prefillMtpsEwma": 121000,
+      "lastDayUtc": "2026-09-27"
+    }
+  ]
+}

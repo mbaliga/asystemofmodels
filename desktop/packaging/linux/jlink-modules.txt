@@ -1,0 +1,28 @@
+# asom-desktop jlink module list (PLATFORM_PLAN 3 DL3; linux.md 7.1 and 8.1). Committed; CI fails on drift.
+# Read by modules.sh (build-app-image.sh, check-jlink-modules.sh). One module per line, `module  # reason`.
+#
+#   [derived]   what `jdeps --multi-release 21 --ignore-missing-deps --print-module-deps` reports for the shipped jars
+#               (desktop/node/build/install/asom-node/lib/*.jar), minus [excluded]. check-jlink-modules.sh requires
+#               derived + excluded == the jdeps output EXACTLY, so a new dependency that needs a new module fails the
+#               check until a human puts it in one of the three sections.
+#   [excluded]  reported by jdeps and deliberately NOT shipped. jdeps over-approximates: it reports a module when any
+#               class of any jar mentions it, whether or not the node can reach that class. Each line says which class.
+#   [added]     modules no static analysis can see: service providers and reflective loads. jlink without --bind-services
+#               drops them silently, and the failure appears only at runtime (linux.md 7.4: "a jlink module list that
+#               drops a crypto provider changes TLS behaviour without failing compilation").
+#
+# The image is `jlink --add-modules <derived + added>`; jlink adds the transitive requires itself.
+
+[derived]
+java.base
+java.logging      # okhttp, okio (java.util.logging)
+java.management   # ktor-utils (ManagementFactory)
+jdk.net           # node.jar: ExtendedSocketOptions.SO_PEERCRED for the control socket (desktop/ERRATA.md ERR-DL2-9). A runtime without it compiles, tests fine and fails with NoClassDefFoundError in the control socket.
+jdk.unsupported   # ktor-server-core (sun.misc)
+
+[excluded]
+java.desktop      # config-1.4.3.jar only: com.typesafe.config.impl.ConfigBeanImpl -> java.beans (ConfigBeanFactory). Nothing in :server, :node or :node-core calls it. Adds AWT, Swing, fonts and about 20 MB.
+java.instrument   # kotlinx-coroutines-core: AgentPremain (`requires static`), loaded only when run with -javaagent.
+
+[added]
+jdk.crypto.ec     # SunEC: ES256 (secp256r1 ECDSA), ECDHE and the TLS 1.3 key-share groups. Loaded through the security provider service. test/probe checks it on the image.

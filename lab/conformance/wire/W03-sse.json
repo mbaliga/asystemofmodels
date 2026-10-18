@@ -1,0 +1,318 @@
+{
+  "family": "W03",
+  "confVersion": "0.2.0",
+  "specRefs": [
+    "ASOM_BUILD_BRIEF.md 5.9",
+    "LAB_SPEC.md 3.8",
+    "docs/design/mesh/conformance-examples/seed-vectors.json"
+  ],
+  "vectors": [
+    {
+      "id": "W03-001",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "seed: events split across reads, a comment line, a CRLF terminator, [DONE]",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": true,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter"
+        ],
+        "driver": {
+          "default": {
+            "kind": "stream",
+            "chunksB64": [
+              "ZGF0YTog",
+              "eyJhIjoxfQoK",
+              "OiBrZWVwLWFsaXZlCgpkYXRhOiB7ImIi",
+              "OjJ9DQoNCmRhdGE6IFtET05FXQoK"
+            ]
+          }
+        }
+      },
+      "expect": {
+        "ok": {
+          "bytesB64": "ZGF0YTogeyJhIjoxfQoKOiBrZWVwLWFsaXZlCgpkYXRhOiB7ImIiOjJ9DQoNCmRhdGE6IFtET05FXQoK",
+          "events": [
+            "{\"a\":1}",
+            "{\"b\":2}"
+          ],
+          "done": true,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "id": "W03-002",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "the same bytes cut into single-byte reads: pass-through bytes and events are unchanged",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": true,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter"
+        ],
+        "driver": {
+          "default": {
+            "kind": "stream",
+            "dataB64": "ZGF0YTogeyJhIjoxfQoKOiBrZWVwLWFsaXZlCgpkYXRhOiB7ImIiOjJ9DQoNCmRhdGE6IFtET05FXQoK",
+            "chunkSize": 1
+          }
+        }
+      },
+      "expect": {
+        "ok": {
+          "bytesB64": "ZGF0YTogeyJhIjoxfQoKOiBrZWVwLWFsaXZlCgpkYXRhOiB7ImIiOjJ9DQoNCmRhdGE6IFtET05FXQoK",
+          "events": [
+            "{\"a\":1}",
+            "{\"b\":2}"
+          ],
+          "done": true,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "id": "W03-003",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a split inside a multi-byte UTF-8 sequence (0xC3 | 0xA9)",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": true,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter"
+        ],
+        "driver": {
+          "default": {
+            "kind": "stream",
+            "chunksB64": [
+              "ZGF0YTogeyJ0Ijoiww==",
+              "qSJ9CgpkYXRhOiBbRE9ORV0KCg=="
+            ]
+          }
+        }
+      },
+      "expect": {
+        "ok": {
+          "bytesB64": "ZGF0YTogeyJ0Ijoiw6kifQoKZGF0YTogW0RPTkVdCgo=",
+          "events": [
+            "{\"t\":\"é\"}"
+          ],
+          "done": true,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "id": "W03-004",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a CR-only stream",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": true,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter"
+        ],
+        "driver": {
+          "default": {
+            "kind": "stream",
+            "chunksB64": [
+              "ZGF0YTogb25lDQ1kYXRhOiB0d28NDWRhdGE6IFtET05FXQ0N"
+            ]
+          }
+        }
+      },
+      "expect": {
+        "ok": {
+          "bytesB64": "ZGF0YTogb25lDQ1kYXRhOiB0d28NDWRhdGE6IFtET05FXQ0N",
+          "events": [
+            "one",
+            "two"
+          ],
+          "done": true,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "id": "W03-005",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a final event without a terminating blank line is dropped and reported TRUNCATED",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": true,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter"
+        ],
+        "driver": {
+          "default": {
+            "kind": "stream",
+            "chunksB64": [
+              "ZGF0YTogeyJhIjoxfQoKZGF0YTogeyJiIjoyfQ=="
+            ]
+          }
+        }
+      },
+      "expect": {
+        "ok": {
+          "bytesB64": "ZGF0YTogeyJhIjoxfQoKZGF0YTogeyJiIjoyfQ==",
+          "events": [
+            "{\"a\":1}"
+          ],
+          "done": false,
+          "truncated": true
+        }
+      }
+    },
+    {
+      "id": "W03-006",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "multi-line data is joined with a newline",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": true,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter"
+        ],
+        "driver": {
+          "default": {
+            "kind": "stream",
+            "chunksB64": [
+              "ZGF0YTogbGluZTEKZGF0YTogbGluZTIKCmRhdGE6IFtET05FXQoK"
+            ]
+          }
+        }
+      },
+      "expect": {
+        "ok": {
+          "bytesB64": "ZGF0YTogbGluZTEKZGF0YTogbGluZTIKCmRhdGE6IFtET05FXQoK",
+          "events": [
+            "line1\nline2"
+          ],
+          "done": true,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "id": "W03-007",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "bytes after [DONE] are passed through but never parsed",
+      "input": {
+        "request": {
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "llama-3.3-70b",
+            "stream": true,
+            "messages": [
+              {
+                "role": "user",
+                "content": "hello lab"
+              }
+            ]
+          }
+        },
+        "keys": [
+          "openrouter"
+        ],
+        "driver": {
+          "default": {
+            "kind": "stream",
+            "chunksB64": [
+              "ZGF0YTogeAoKZGF0YTogW0RPTkVdCgpkYXRhOiBsYXRlCgo="
+            ]
+          }
+        }
+      },
+      "expect": {
+        "ok": {
+          "bytesB64": "ZGF0YTogeAoKZGF0YTogW0RPTkVdCgpkYXRhOiBsYXRlCgo=",
+          "events": [
+            "x"
+          ],
+          "done": true,
+          "truncated": false
+        }
+      }
+    }
+  ]
+}

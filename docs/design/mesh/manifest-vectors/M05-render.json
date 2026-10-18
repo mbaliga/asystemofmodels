@@ -1,0 +1,52 @@
+{
+ "family": "M05",
+ "confVersion": "0.1.0",
+ "specRefs": [
+  "manifest.md#13"
+ ],
+ "vectors": [
+  {
+   "id": "M05-101",
+   "origin": "generated",
+   "status": "illustrative",
+   "description": "Plain text rendered from the verified payload of M02-101 plus the verification result (PINNED, A1, challenge matched).",
+   "input": {
+    "vector": "M02-101",
+    "verification": {
+     "pin": "PINNED",
+     "tier": "A1",
+     "fingerprint": "XWWD-3XQW-7TEB-MU27",
+     "challengeMatched": true,
+     "unknownFields": 0
+    }
+   },
+   "expect": {
+    "ok": {
+     "textUtf8": "ASOM CAPABILITY REPORT\nDevice: Example Phone 1 by ExampleVendor (phone)\nReport 17, signed 2026-09-29 10:00 UTC, valid until 2026-09-29 10:10 UTC\nSigner: node XWWD-3XQW-7TEB-MU27\n\nVERIFICATION (checked by this viewer, not stated by the device)\n- Signature: valid. The report has not changed since this key signed it.\n- Signer key: matches the key you paired with.\n- Key storage: StrongBox secure element (self-reported, not attested).\n- Freshness: signed for your request.\n- Not proven: that the measurements were honest or typical, that the device model is true,\n  or that the benchmark software was unmodified.\n\nDEVICE\n- Chip: ExampleSoC 8 by ExampleSilicon, 8 CPU cores\n- Memory: 17.2 GB\n- Accelerators: GPU ExampleGPU 800 (opencl, vulkan); NPU ExampleNPU (no API used)\n- OS: android 16, security patch 2026-09-01\n- Cooling: fan; power: battery\n- Benchmark: asom-bench 1.0.0, method asom-bench-method/1, llama.cpp 0123abcd\n\nRESULTS\n1. example-3b-instruct Q4_K_M (2.0 GB file) on opencl, measured 2026-09-28 14:02 UTC\n   - Writes about 18.4 tokens/s at 512 tokens of context, 15.1 tokens/s at 3584.\n   - Reads prompts at about 212.0 tokens/s; first token after 2.5 s for a 512-token prompt.\n   - Under sustained load (10 min 0 s): slows down after 3 min 10 s, settles at 11.2 tokens/s (61% of the short-context speed).\n   - Memory: needs about 2.6 GB; 8.3 GB was free before loading, leaving about 5.7 GB.\n   - Power: about 6.1 W (from battery current); on battery, battery 87% at start.\n   - Runs: 5 of 5 completed, 0 discarded.\n2. example-3b-instruct Q8_0 (3.4 GB file) on cpu, measured 2026-09-28 14:40 UTC\n   - Writes about 9.8 tokens/s at 512 tokens of context.\n   - Reads prompts at about 61.0 tokens/s; first token after 8.6 s for a 512-token prompt.\n   - Under sustained load (5 min 0 s): no slowdown detected; settles at 9.1 tokens/s.\n   - Memory: needs about 3.9 GB; 8.1 GB was free before loading, leaving about 4.2 GB.\n   - Power: not measured; charging, battery 64% at start.\n   - Runs: 3 of 5 completed, 1 discarded. Few runs: treat as rough.\n",
+     "sha256": "8bdfd11c26a4b6aa5d93b04da03fb5b31edc097c6f000c4f9f074a8d71176d58"
+    }
+   }
+  },
+  {
+   "id": "M05-102",
+   "origin": "generated",
+   "status": "illustrative",
+   "description": "Rendering of M02-107: identical to M05-101 except the trailing newer-items line.",
+   "input": {
+    "vector": "M02-107",
+    "verification": {
+     "pin": "PINNED",
+     "tier": "A1",
+     "fingerprint": "XWWD-3XQW-7TEB-MU27",
+     "challengeMatched": true,
+     "unknownFields": 1
+    }
+   },
+   "expect": {
+    "ok": {
+     "textUtf8": "ASOM CAPABILITY REPORT\nDevice: Example Phone 1 by ExampleVendor (phone)\nReport 17, signed 2026-09-29 10:00 UTC, valid until 2026-09-29 10:10 UTC\nSigner: node XWWD-3XQW-7TEB-MU27\n\nVERIFICATION (checked by this viewer, not stated by the device)\n- Signature: valid. The report has not changed since this key signed it.\n- Signer key: matches the key you paired with.\n- Key storage: StrongBox secure element (self-reported, not attested).\n- Freshness: signed for your request.\n- Not proven: that the measurements were honest or typical, that the device model is true,\n  or that the benchmark software was unmodified.\n\nDEVICE\n- Chip: ExampleSoC 8 by ExampleSilicon, 8 CPU cores\n- Memory: 17.2 GB\n- Accelerators: GPU ExampleGPU 800 (opencl, vulkan); NPU ExampleNPU (no API used)\n- OS: android 16, security patch 2026-09-01\n- Cooling: fan; power: battery\n- Benchmark: asom-bench 1.0.0, method asom-bench-method/1, llama.cpp 0123abcd\n\nRESULTS\n1. example-3b-instruct Q4_K_M (2.0 GB file) on opencl, measured 2026-09-28 14:02 UTC\n   - Writes about 18.4 tokens/s at 512 tokens of context, 15.1 tokens/s at 3584.\n   - Reads prompts at about 212.0 tokens/s; first token after 2.5 s for a 512-token prompt.\n   - Under sustained load (10 min 0 s): slows down after 3 min 10 s, settles at 11.2 tokens/s (61% of the short-context speed).\n   - Memory: needs about 2.6 GB; 8.3 GB was free before loading, leaving about 5.7 GB.\n   - Power: about 6.1 W (from battery current); on battery, battery 87% at start.\n   - Runs: 5 of 5 completed, 0 discarded.\n2. example-3b-instruct Q8_0 (3.4 GB file) on cpu, measured 2026-09-28 14:40 UTC\n   - Writes about 9.8 tokens/s at 512 tokens of context.\n   - Reads prompts at about 61.0 tokens/s; first token after 8.6 s for a 512-token prompt.\n   - Under sustained load (5 min 0 s): no slowdown detected; settles at 9.1 tokens/s.\n   - Memory: needs about 3.9 GB; 8.1 GB was free before loading, leaving about 4.2 GB.\n   - Power: not measured; charging, battery 64% at start.\n   - Runs: 3 of 5 completed, 1 discarded. Few runs: treat as rough.\n\nThis report has 1 item from a newer format that this viewer does not show.\n"
+    }
+   }
+  }
+ ]
+}
