@@ -1,5 +1,7 @@
 package xyz.mdhv.asom.lab.proto.integration
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 /**
  * The listener limits of trust.md 3.3 ("Limits (defaults, per peer)"): 8 unauthenticated connections in flight per listener, 10 handshakes per minute per source address.
  * [PER_SOURCE_IN_FLIGHT] and [TICKET_TTL_MS] are PROVISIONAL additions (ERRATA ERR-FX2-5): the spec's two numbers alone let one source hold every slot, and a ticket
@@ -20,20 +22,14 @@ object HandshakeLimits {
 sealed interface Admission {
     /** The connection may start its handshake. [release] must be called exactly once when the handshake ended, whatever the outcome (a second call, or one after a reclaim, does nothing). */
     class Admitted(private val onRelease: () -> Unit) : Admission {
-        private var released = false
+        private val released = AtomicBoolean(false)
 
-        @Synchronized
         fun release() {
-            if (!released) {
-                released = true
-                onRelease()
-            }
+            if (released.compareAndSet(false, true)) onRelease()
         }
 
-        @Synchronized
-        internal fun reclaim() {
-            released = true
-        }
+        /** True when this call took the ticket over from a host release that had not started; the limiter then removes it. No monitor is held, so it cannot meet [release] in a lock cycle. */
+        internal fun reclaim(): Boolean = released.compareAndSet(false, true)
     }
 
     /** The connection is closed before any TLS byte is read and counted in the one `INBOUND_REFUSED` row per 10 minutes (LAB_SPEC 7.6); it is never a session. */
@@ -96,8 +92,7 @@ class HandshakeLimiter(
     private fun prune(now: Long) {
         val expired = tickets.filter { now - it.at >= ticketTtlMs }
         for (t in expired) {
-            tickets.remove(t)
-            t.admitted.reclaim()
+            if (t.admitted.reclaim()) tickets.remove(t)
         }
         val it = bySource.entries.iterator()
         while (it.hasNext()) {

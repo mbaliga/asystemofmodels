@@ -2669,3 +2669,28 @@ $ ASOM_GRADLE_FLAGS="--max-workers=2 --offline" desktop/tools/isolation.sh -> IS
 $ ./gradlew jvmTest --max-workers=2 --offline -> BUILD SUCCESSFUL; XML: 140 tests, 0 failures (from cache: no input of core/* or server changed)
 ```
 Not run: the real `build-packages.sh` with nfpm (no jlink image here), `lab-packaging-check.sh` and `distro-matrix.sh` (CI-ONLY), any Windows or macOS integration test, a real dbus-daemon test of the hostile-bus cases. See desktop/ERRATA.md ERR-FX4-DK-1 to ERR-FX4-DK-9 for readings taken, partial items (A-LA-6 owner check, A-LA-7 network fingerprint) and the macOS wiring that is still open.
+
+## Gate: lab fix wave 4, track fix4-trust (HandshakeLimiter, PeerRegistry, InboundRefusedCounter, HELLO endpoint eligibility) - LAB, NOT DEVICE EVIDENCE
+
+Base 0e8a3e4 (worktree reset to it). Findings A-TRUST-1, A-TRUST-4, A-TRUST-5, A-TRUST-6, A-MP-4, B-TL-3, B-TL-4, B-TL-7, B-TL-9, B-R5X-5; readings in `lab/ERRATA.md` ERR-FX4-TR-1 to ERR-FX4-TR-9. `oracle: self`. Linux only: no Windows run, nothing listener-reachable (R5).
+
+Failing before (real output, tests run against the unfixed code):
+```
+HandshakeLimiterRaceTest > aReleaseHoldingTheTicketCannotDeadlockAnAdmitThatReclaimsThatTicket  message="deadlock: admit BLOCKED, release BLOCKED"
+HandshakeLimiterRaceTest > aReleaseAtTheSameInstantAsTheReclaimFreesTheSlotExactlyOnceWithoutAnError  message="threads stuck in 8 of 400 rounds ==> expected: <0> but was: <8>"
+InboundRefusedCounterRaceTest > noRefusalIsLostWhenManyThreadsCountWhileAnotherFlushes  message="expected: <634253> but was: <1189753>"
+InboundRefusedCounterRaceTest > aRefusalCountedWhileTheRowIsBeingWrittenLandsInTheNextRowAndIsNotLost  message="the refusal that arrived while the first row was written has a window of its own ==> expected: not <null>"
+PeerRegistryFixesTest: 15 tests completed, 11 failed (class 'other' status 2: authorize(infer) was Allow; ui listener bug thrown out of revoke; restore reported STORE_WRITE_FAILED after the write took effect; ...)
+```
+After the fix (JDK 21 and JDK 17.0.12, `./gradlew -p lab test --max-workers=2 --offline`, full lab suite): `BUILD SUCCESSFUL in 2m 45s` (JDK 21), `BUILD SUCCESSFUL in 3m 18s` (JDK 17, `JAVA_HOME=/opt/jdks/jdk-17`). After a last test-only edit (the wildcard literal in `HelloEndpointEligibilityTest`, so `check_law.py` stays green) the changed and new classes were re-run on JDK 17: `BUILD SUCCESSFUL in 1m 55s`; HandshakeLimiterRaceTest 2, HandshakeLimiterTest 8, PeerRegistryConcurrencyTest 5, PeerRegistryFixesTest 15, PeerRegistryPropertyTest 3, HelloEndpointEligibilityTest 2, InboundRefusedCounterRaceTest 3, 0 failures. Laws printed non-zero: registry `class-column-denies` 1699, `corrupt-row-revoked` 386; registry-fixes class-column-denies 14, corrupt-row-revoked-then-forgotten 8, listener-contained 6, write-not-applied-refused 3, write-then-throw-unknown 2, write-then-throw-verified 5.
+
+A first attempt at B-TL-9 (the ordinary `revoke` overwriting a corrupt status) broke the committed vector W04-613 (`ConformanceSuiteTest > vectors() > family W04 > W04-613 L5: a status value the code does not know denies everything and closes FAILED`, `2320 tests completed, 1 failed`); it was replaced by a separate `revokeCorrupt` call and the conformance runner is green again in the full run above.
+
+Mutation checks (apply, run, restore; `git status` shows only the intended files): HandshakeLimiter `tickets.remove(t); t.admitted.reclaim()` RED (`aReleaseAtTheSameInstant...`); PeerRegistry class test in `load` disabled RED (`aRowOfAnyClassButOwn...`, property test); listener catch narrowed to `Error` RED (2 tests); a throwing write treated as `false` RED (5 tests); unknown-outcome notification removed RED; `revokeCorrupt` without the corrupt-only guard RED; `HelloEndpoints.eligible` returning true RED (2 tests); InboundRefusedCounter count not taken at flush RED (3 tests); count not restored after a failed append RED (1 test).
+
+```
+python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+python3 lab/tools/check_law.py -> law: OK   (a first run flagged the literal wildcard address in the new test; the test now builds it from parts)
+./gradlew jvmTest -> BUILD SUCCESSFUL in 4s (tasks FROM-CACHE / UP-TO-DATE: the root build is untouched, so this re-confirms the cached 140-test result, it did not re-execute it)
+```
+Not done / disclosed: Node.kt (GOAWAY-first hook, `dial` eligibility check) is another track; the Swift lane has no `revokeCorrupt`, class-column or write-outcome mirror (apple/ is outside this track); the stale comment in `integration/TlsHarness.kt` about the unsynchronised counter was not edited.

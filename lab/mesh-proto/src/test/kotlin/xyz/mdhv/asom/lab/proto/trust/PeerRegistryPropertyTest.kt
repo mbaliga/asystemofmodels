@@ -27,7 +27,7 @@ class PeerRegistryPropertyTest {
         fun done() = laws.finish(
             setOf(
                 "L1-no-row-without-local-and-remote-approval", "L1-network-event-changes-nothing", "L2-authorize-iff-paired-and-granted", "L3-revoked-absorbing", "L4-restore-only-local",
-                "L5-unknown-status-denies", "per-direction-independent", "goaway-on-leaving-paired", "fail-closed-reads", "fail-closed-writes", "revoked-cannot-repair", "re-read-per-frame",
+                "L5-unknown-status-denies", "class-column-denies", "corrupt-row-revoked", "per-direction-independent", "goaway-on-leaving-paired", "fail-closed-reads", "fail-closed-writes", "revoked-cannot-repair", "re-read-per-frame",
             ),
         )
     }
@@ -36,6 +36,7 @@ class PeerRegistryPropertyTest {
         var present = false
         var status = PeerStatus.PAIRED
         var statusCorrupt = false
+        var corruptFrom: PeerStatus? = null
         var scopes: Set<Scope> = emptySet()
         var scopesCorrupt = false
         var route = false
@@ -121,7 +122,7 @@ class PeerRegistryPropertyTest {
                 val canRead = !faultsRead
                 val rowOk = canRead && m.present && !m.statusCorrupt
                 val step = "seq $seq op $opNo"
-                when (rnd.nextInt(14)) {
+                when (rnd.nextInt(15)) {
                     0, 1 -> { // commit, with random approvals and class
                         val local = rnd.nextInt(4) != 0
                         val remote = rnd.nextInt(4) != 0
@@ -203,11 +204,18 @@ class PeerRegistryPropertyTest {
                         if (m.present && m.status == PeerStatus.SUSPENDED) laws.bump("L4-restore-only-local")
                     }
                     10 -> { // plant a row the code must treat as corrupt, or repair it
-                        when (rnd.nextInt(4)) {
+                        when (rnd.nextInt(5)) {
                             0 -> {
                                 val bad = intArrayOf(0, 1, 5, 9, -1, Int.MAX_VALUE)[rnd.nextInt(6)]
                                 store.plant(StoredRow(pin, "peer", "linux", "own", bad, PeerRegistry.encodeScopes(m.scopes), 0, "D1", null, false, "user", 0))
-                                m.present = true; m.statusCorrupt = true
+                                m.present = true; m.statusCorrupt = true; m.corruptFrom = null
+                            }
+                            4 -> {
+                                val cls = arrayOf("other", "OTHER", "garbage", "", "Own", "own ")[rnd.nextInt(6)]
+                                val st = if (rnd.nextBoolean()) PeerStatus.PAIRED else PeerStatus.SUSPENDED
+                                store.plant(StoredRow(pin, "peer", "linux", cls, StatusCodes.encode(st), "[\"infer\",\"state\",\"manifest\"]", 1, "D1", null, false, "user", 0))
+                                m.present = true; m.statusCorrupt = true; m.corruptFrom = st
+                                laws.bump("class-column-denies")
                             }
                             1 -> {
                                 val scopesText = arrayOf("[\"infer\",\"infer\"]", "[\"admin\"]", "{}", "", "[1]")[rnd.nextInt(5)]
@@ -224,6 +232,15 @@ class PeerRegistryPropertyTest {
                     }
                     11 -> store.failReads = rnd.nextInt(3) == 0
                     12 -> store.failWrites = rnd.nextInt(3) == 0
+                    13 -> { // the explicit "remove this unreadable peer": only a row that cannot be trusted, only to REVOKED
+                        val r = reg.revokeCorrupt(pin, 5)
+                        if (canRead && m.present && m.statusCorrupt && !faultsWrite) {
+                            expectChange(r, m.corruptFrom, PeerStatus.REVOKED, if (m.corruptFrom == null || m.corruptFrom == PeerStatus.PAIRED) GoawayReason.REVOKED else null, step)
+                            m.statusCorrupt = false; m.status = PeerStatus.REVOKED; m.corruptFrom = null
+                            changesReturned++
+                            laws.bump("corrupt-row-revoked")
+                        } else assertTrue(r is RegistryResult.Refused, "$step: revokeCorrupt must be refused for a clean, absent or unreadable row, or a failing write")
+                    }
                     else -> { /* only the observation below */ }
                 }
                 // Corrupt rows refuse every mutation; the model must not have moved. (Checked by the observable comparison.)

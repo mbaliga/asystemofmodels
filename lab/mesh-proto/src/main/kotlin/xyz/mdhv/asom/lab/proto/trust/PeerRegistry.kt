@@ -1,6 +1,7 @@
 package xyz.mdhv.asom.lab.proto.trust
 
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import xyz.mdhv.asom.lab.json.JArray
@@ -138,10 +139,17 @@ class PairingCeremony(
 
 enum class RegistryRefusal {
     LOCAL_APPROVAL_REQUIRED, REMOTE_APPROVAL_REQUIRED, PAIR_EXISTS, REVOKED_CANNOT_REPAIR, NOT_FOUND, NOT_PAIRED, NOT_SUSPENDED, NOT_REVOKED,
-    CLASS_OTHER_NOT_IN_MESH1, BAD_TRANSCRIPT, STORE_UNREADABLE, STORE_WRITE_FAILED, CORRUPT_ROW, NETWORK_TRANSITION_RETIRED, REVOKED_ROW,
+    CLASS_OTHER_NOT_IN_MESH1, NOT_CORRUPT, BAD_TRANSCRIPT, STORE_UNREADABLE, STORE_WRITE_FAILED, CORRUPT_ROW, NETWORK_TRANSITION_RETIRED, REVOKED_ROW,
+
+    /** A write threw and the row could not be read back, so it is not known whether the change is in place (ERRATA ERR-FX4-TR-7). Not a plain failure: the caller must not retry as if nothing happened. */
+    STORE_OUTCOME_UNKNOWN,
 }
 
-class StatusChange(val pin: Pin, val from: PeerStatus?, val to: PeerStatus?, val goaway: GoawayReason?)
+/**
+ * One change of a row. [from] is null for a new row and for a row whose status column was unreadable. [outcomeUnknown] is set when the write threw and the row could
+ * not be read back: [to] is then the status the caller asked for, not a status known to be stored, and [goaway] is `suspended` whatever was asked.
+ */
+class StatusChange(val pin: Pin, val from: PeerStatus?, val to: PeerStatus?, val goaway: GoawayReason?, val outcomeUnknown: Boolean = false)
 
 sealed interface RegistryResult {
     class Changed(val change: StatusChange) : RegistryResult
@@ -157,7 +165,7 @@ sealed interface NetworkEvent {
     class PairMessage(val pin: Pin) : NetworkEvent
 }
 
-enum class DenyReason { NO_ROW, UNREADABLE, UNKNOWN_STATUS, NOT_PAIRED, UNREADABLE_SCOPES, UNKNOWN_SCOPE, SCOPE_NOT_GRANTED, ROUTING_DISABLED, UNKNOWN_CEILING }
+enum class DenyReason { NO_ROW, UNREADABLE, UNKNOWN_STATUS, NOT_PAIRED, UNREADABLE_SCOPES, UNKNOWN_SCOPE, SCOPE_NOT_GRANTED, ROUTING_DISABLED, UNKNOWN_CEILING, UNKNOWN_CLASS }
 
 sealed interface AuthDecision {
     data object Allow : AuthDecision
@@ -197,14 +205,23 @@ class PeerRegistry(private val store: PeerStore) {
         class Row(val stored: StoredRow, val status: PeerStatus) : Loaded
         data object Absent : Loaded
         data object Unreadable : Loaded
-        class Corrupt(val raw: Int) : Loaded
+
+        /** A row the code cannot trust: a status value it does not know, or (for a row that is not REVOKED) a class other than exactly `own`. [from] is the status column when it decodes. */
+        class Corrupt(val raw: Int, val stored: StoredRow, val from: PeerStatus?, val badClass: Boolean) : Loaded
     }
 
     private fun load(pin: Pin): Loaded = try {
         when (val r = store.read(pin)) {
             StoreRead.Absent -> Loaded.Absent
             StoreRead.Unreadable -> Loaded.Unreadable
-            is StoreRead.Present -> StatusCodes.decode(r.row.status)?.let { Loaded.Row(r.row, it) } ?: Loaded.Corrupt(r.row.status)
+            is StoreRead.Present -> {
+                val status = StatusCodes.decode(r.row.status)
+                when {
+                    status == null -> Loaded.Corrupt(r.row.status, r.row, null, false)
+                    status != PeerStatus.REVOKED && r.row.clazz != PeerClass.OWN.wire -> Loaded.Corrupt(r.row.status, r.row, status, true)
+                    else -> Loaded.Row(r.row, status)
+                }
+            }
         }
     } catch (e: Exception) {
         Loaded.Unreadable
@@ -212,13 +229,49 @@ class PeerRegistry(private val store: PeerStore) {
 
     private fun refuse(c: RegistryRefusal) = RegistryResult.Refused(c)
 
-    private fun notify(c: StatusChange) = listeners.forEach { it.onChange(c) }
+    /** Listener exceptions caught and counted by [notify]. */
+    val listenerErrors = AtomicInteger(0)
 
-    private fun persist(row: StoredRow): Boolean = try {
-        store.write(row)
-    } catch (e: Exception) {
-        false
+    /** Every listener hears the change, in registration order; one that throws is counted and skipped, so a durable change is never reported as a failure and never hidden from a later listener (ERRATA ERR-FX4-TR-6). */
+    private fun notify(c: StatusChange) {
+        for (l in listeners) {
+            try {
+                l.onChange(c)
+            } catch (e: Exception) {
+                listenerErrors.incrementAndGet()
+            }
+        }
     }
+
+    private enum class Write { DURABLE, NOT_DURABLE, UNKNOWN }
+
+    /** A store that reports a failure is believed. A store that THROWS may have applied the write first, so the row is read back and compared (ERRATA ERR-FX4-TR-7). */
+    private fun persist(row: StoredRow): Write {
+        val reported = try { store.write(row) } catch (e: Exception) { null }
+        if (reported != null) return if (reported) Write.DURABLE else Write.NOT_DURABLE
+        return when (val r = readBack(row.pin)) {
+            StoreRead.Unreadable -> Write.UNKNOWN
+            StoreRead.Absent -> Write.NOT_DURABLE
+            is StoreRead.Present -> if (sameState(r.row, row)) Write.DURABLE else Write.NOT_DURABLE
+        }
+    }
+
+    private fun deletePersisted(pin: Pin): Write {
+        val reported = try { store.delete(pin) } catch (e: Exception) { null }
+        if (reported != null) return if (reported) Write.DURABLE else Write.NOT_DURABLE
+        return when (readBack(pin)) {
+            StoreRead.Unreadable -> Write.UNKNOWN
+            StoreRead.Absent -> Write.DURABLE
+            is StoreRead.Present -> Write.NOT_DURABLE
+        }
+    }
+
+    private fun readBack(pin: Pin): StoreRead = try { store.read(pin) } catch (e: Exception) { StoreRead.Unreadable }
+
+    private fun sameState(a: StoredRow, b: StoredRow): Boolean =
+        a.status == b.status && a.inboundScopesJson == b.inboundScopesJson && a.routeEnabled == b.routeEnabled && a.routeCeiling == b.routeCeiling &&
+            a.statusReason == b.statusReason && a.statusChangedAt == b.statusChangedAt && a.clazz == b.clazz && a.confirmedByPeer == b.confirmedByPeer &&
+            a.label == b.label && a.platform == b.platform && (a.pairTranscript?.contentEquals(b.pairTranscript ?: ByteArray(0)) ?: (b.pairTranscript == null))
 
     fun statusLookup(pin: Pin): StatusLookup = when (val l = load(pin)) {
         Loaded.Absent -> StatusLookup.Absent
@@ -249,26 +302,46 @@ class PeerRegistry(private val store: PeerStore) {
             c.pin, c.label, c.platform, c.clazz.wire, StatusCodes.PAIRED, encodeScopes(c.grantedInbound), 0, RouteCeiling.D1.name,
             c.transcript.copyOf(), false, "user", nowMs,
         )
-        if (!persist(row)) return refuse(RegistryRefusal.STORE_WRITE_FAILED)
+        when (persist(row)) {
+            Write.NOT_DURABLE -> return refuse(RegistryRefusal.STORE_WRITE_FAILED)
+            Write.UNKNOWN -> return refuse(RegistryRefusal.STORE_OUTCOME_UNKNOWN)
+            Write.DURABLE -> Unit
+        }
         val change = StatusChange(c.pin, null, PeerStatus.PAIRED, null)
         notify(change)
         return RegistryResult.Changed(change)
     }
 
-    private fun transition(pin: Pin, from: Set<PeerStatus>, to: PeerStatus, wrong: RegistryRefusal, goaway: GoawayReason?, reason: String, nowMs: Long): RegistryResult =
-        mutation.withLock { transitionLocked(pin, from, to, wrong, goaway, reason, nowMs) }
+    private fun transition(pin: Pin, from: Set<PeerStatus>, to: PeerStatus, wrong: RegistryRefusal, goaway: GoawayReason?, reason: String, nowMs: Long, corruptOnly: Boolean = false): RegistryResult =
+        mutation.withLock { transitionLocked(pin, from, to, wrong, goaway, reason, nowMs, corruptOnly) }
 
-    private fun transitionLocked(pin: Pin, from: Set<PeerStatus>, to: PeerStatus, wrong: RegistryRefusal, goaway: GoawayReason?, reason: String, nowMs: Long): RegistryResult {
-        val l = load(pin)
-        val row = when (l) {
+    private fun transitionLocked(pin: Pin, from: Set<PeerStatus>, to: PeerStatus, wrong: RegistryRefusal, goaway: GoawayReason?, reason: String, nowMs: Long, corruptOnly: Boolean): RegistryResult {
+        var corrupt = false
+        val (stored, was) = when (val l = load(pin)) {
             Loaded.Absent -> return refuse(RegistryRefusal.NOT_FOUND)
             Loaded.Unreadable -> return refuse(RegistryRefusal.STORE_UNREADABLE)
-            is Loaded.Corrupt -> return refuse(RegistryRefusal.CORRUPT_ROW)
-            is Loaded.Row -> l
+            is Loaded.Corrupt -> {
+                if (!corruptOnly) return refuse(RegistryRefusal.CORRUPT_ROW)
+                corrupt = true
+                l.stored to l.from
+            }
+            is Loaded.Row -> {
+                if (corruptOnly) return refuse(RegistryRefusal.NOT_CORRUPT)
+                if (l.status !in from) return refuse(wrong)
+                l.stored to l.status
+            }
         }
-        if (row.status !in from) return refuse(wrong)
-        if (!persist(row.stored.copy(status = StatusCodes.encode(to), statusReason = reason, statusChangedAt = nowMs))) return refuse(RegistryRefusal.STORE_WRITE_FAILED)
-        val change = StatusChange(pin, row.status, to, if (row.status == PeerStatus.PAIRED) goaway else null)
+        val leaving = was == PeerStatus.PAIRED || (corrupt && was == null)
+        val row = stored.copy(status = StatusCodes.encode(to), statusReason = if (corrupt) "user-corrupt" else reason, statusChangedAt = nowMs)
+        when (persist(row)) {
+            Write.NOT_DURABLE -> return refuse(RegistryRefusal.STORE_WRITE_FAILED)
+            Write.UNKNOWN -> {
+                if (leaving && to != PeerStatus.PAIRED) notify(StatusChange(pin, was, to, GoawayReason.SUSPENDED, outcomeUnknown = true))
+                return refuse(RegistryRefusal.STORE_OUTCOME_UNKNOWN)
+            }
+            Write.DURABLE -> Unit
+        }
+        val change = StatusChange(pin, was, to, if (leaving) goaway else null)
         notify(change)
         return RegistryResult.Changed(change)
     }
@@ -283,6 +356,14 @@ class PeerRegistry(private val store: PeerStore) {
     fun revoke(pin: Pin, nowMs: Long): RegistryResult =
         transition(pin, setOf(PeerStatus.PAIRED, PeerStatus.SUSPENDED), PeerStatus.REVOKED, RegistryRefusal.REVOKED_ROW, GoawayReason.REVOKED, "user", nowMs)
 
+    /**
+     * A row that cannot be trusted (an unknown status value, or a class other than `own` on a row that is not REVOKED) to REVOKED: the user's explicit "Remove this unreadable
+     * peer". It only ever lowers trust and only a local call makes it. [revoke] on such a row stays refused (`CORRUPT_ROW`, vector W04-613), so no existing caller changes
+     * behaviour; after this the row is an ordinary REVOKED row and [forget] works (ERRATA ERR-FX4-TR-5).
+     */
+    fun revokeCorrupt(pin: Pin, nowMs: Long): RegistryResult =
+        transition(pin, emptySet(), PeerStatus.REVOKED, RegistryRefusal.REVOKED_ROW, GoawayReason.REVOKED, "user", nowMs, corruptOnly = true)
+
     /** REVOKED to absent: only the user's Forget, and only for a revoked row. */
     fun forget(pin: Pin): RegistryResult = mutation.withLock { forgetLocked(pin) }
 
@@ -294,8 +375,11 @@ class PeerRegistry(private val store: PeerStore) {
             is Loaded.Row -> l
         }
         if (row.status != PeerStatus.REVOKED) return refuse(RegistryRefusal.NOT_REVOKED)
-        val ok = try { store.delete(pin) } catch (e: Exception) { false }
-        if (!ok) return refuse(RegistryRefusal.STORE_WRITE_FAILED)
+        when (deletePersisted(pin)) {
+            Write.NOT_DURABLE -> return refuse(RegistryRefusal.STORE_WRITE_FAILED)
+            Write.UNKNOWN -> return refuse(RegistryRefusal.STORE_OUTCOME_UNKNOWN)
+            Write.DURABLE -> Unit
+        }
         val change = StatusChange(pin, PeerStatus.REVOKED, null, null)
         notify(change)
         return RegistryResult.Changed(change)
@@ -317,7 +401,11 @@ class PeerRegistry(private val store: PeerStore) {
             is Loaded.Row -> l
         }
         if (row.status == PeerStatus.REVOKED) return refuse(RegistryRefusal.REVOKED_ROW)
-        return if (persist(f(row.stored))) RegistryResult.Updated else refuse(RegistryRefusal.STORE_WRITE_FAILED)
+        return when (persist(f(row.stored))) {
+            Write.DURABLE -> RegistryResult.Updated
+            Write.NOT_DURABLE -> refuse(RegistryRefusal.STORE_WRITE_FAILED)
+            Write.UNKNOWN -> refuse(RegistryRefusal.STORE_OUTCOME_UNKNOWN)
+        }
     }
 
     /** No message reaches PAIRED or any other status (R3). A revoke notice is only noted: it cannot change trust in either direction. */
@@ -333,7 +421,7 @@ class PeerRegistry(private val store: PeerStore) {
         val row = when (val l = load(pin)) {
             Loaded.Absent -> return AuthDecision.Deny(DenyReason.NO_ROW)
             Loaded.Unreadable -> return AuthDecision.Deny(DenyReason.UNREADABLE)
-            is Loaded.Corrupt -> return AuthDecision.Deny(DenyReason.UNKNOWN_STATUS)
+            is Loaded.Corrupt -> return AuthDecision.Deny(if (l.badClass) DenyReason.UNKNOWN_CLASS else DenyReason.UNKNOWN_STATUS)
             is Loaded.Row -> l
         }
         if (row.status != PeerStatus.PAIRED) return AuthDecision.Deny(DenyReason.NOT_PAIRED)
@@ -347,7 +435,7 @@ class PeerRegistry(private val store: PeerStore) {
         val row = when (val l = load(pin)) {
             Loaded.Absent -> return OutboundDecision.Deny(DenyReason.NO_ROW)
             Loaded.Unreadable -> return OutboundDecision.Deny(DenyReason.UNREADABLE)
-            is Loaded.Corrupt -> return OutboundDecision.Deny(DenyReason.UNKNOWN_STATUS)
+            is Loaded.Corrupt -> return OutboundDecision.Deny(if (l.badClass) DenyReason.UNKNOWN_CLASS else DenyReason.UNKNOWN_STATUS)
             is Loaded.Row -> l
         }
         if (row.status != PeerStatus.PAIRED) return OutboundDecision.Deny(DenyReason.NOT_PAIRED)

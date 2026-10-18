@@ -13,6 +13,8 @@ import xyz.mdhv.asom.lab.json.StrictJson
 import xyz.mdhv.asom.lab.policy.ProducerStrict
 import xyz.mdhv.asom.lab.policy.StateParse
 import xyz.mdhv.asom.lab.policy.StateParser
+import xyz.mdhv.asom.lab.proto.pairing.AddrPolicy
+import xyz.mdhv.asom.lab.proto.pairing.Endpoints
 
 sealed interface Parsed {
     class Ok(val message: Message) : Parsed
@@ -288,4 +290,19 @@ object MessageCodec {
             if (int("v") != 1L) bad(Reason.BAD_VERSION)
         }
     }
+}
+
+/**
+ * The address test of trust.md 6.6 for locators learned from `HELLO` and `HELLO_ACK` (6.2: an authenticated source, but still only a hint). Decoding stays syntax-only
+ * (any IP literal and a port, as the W06 vectors pin, ERRATA ERR-FX4-TR-8); a host merges only what [eligibleOnly] returns and never dials, stores or shows an
+ * address that fails [eligible]: public, wildcard, multicast, loopback (outside tests), IPv4-mapped and unrecognised forms are dropped, as a QR payload would refuse them.
+ */
+object HelloEndpoints {
+    fun eligible(e: Endpoint, policy: AddrPolicy = AddrPolicy.MESH): Boolean {
+        val item = if (e.addr.contains(':')) "[${e.addr}]:${e.port}" else "${e.addr}:${e.port}"
+        val parsed = Endpoints.parse(item) ?: return false
+        return Endpoints.eligible(parsed, policy)
+    }
+
+    fun eligibleOnly(list: List<Endpoint>, policy: AddrPolicy = AddrPolicy.MESH): List<Endpoint> = list.filter { eligible(it, policy) }
 }
