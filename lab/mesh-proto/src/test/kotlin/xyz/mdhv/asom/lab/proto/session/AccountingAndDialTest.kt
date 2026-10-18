@@ -128,7 +128,9 @@ class AccountingAndDialTest {
                 val conn: TlsMeshConnection = at.end.value
                 val wire = Wire(conn)
                 serverWire = wire
-                val before = at.tap.bytesRead
+                // not the tap: the socket may already have delivered the dialler's first application records together with its Finished flight
+                // (TCP coalescing on a slow runner), so a tap snapshot taken here can include application bytes; the engine's own count is consumption
+                val before = conn.counters().networkBytesIn
                 val buf = ByteArray(65_536)
                 var got = 0L
                 while (got < total) {
