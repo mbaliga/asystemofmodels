@@ -73,13 +73,14 @@
   },
   {
     "path": "policy/W07-live-state.json",
-    "sha256": "8459573a49087568ed5e8c31f0d4527fc29dcd1d3a26a2064ed622a8877038cd",
+    "sha256": "50fb9ca3f30da58303e45d4c8e61a22751a5b4461f565793d62dfd4db77439b2",
     "family": "W07",
     "status": "normative"
   },
   {
     "path": "policy/W07p-presence.json",
     "sha256": "f8d04ff762df792ce63da10614e6e371dbcdd309942f13091857fc60cc2450ff",
+    "sha256": "e0af94db412346b58fbbc772551beb61abce513f2c4019ffe36661c0177f2f99",
     "family": "W07p",
     "status": "normative"
   },

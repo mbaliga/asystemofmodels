@@ -274,14 +274,28 @@ object ProducerStrict {
             is ParseResult.Ok -> r.value as? JObject ?: return "WRONG_TYPE"
         }
         var unknown = false
+
+        // A container where the schema has a scalar is itself unknown, and a presence name anywhere inside it is still a presence field.
+        fun scan(v: JValue): String? {
+            val inside = memberNames(v)
+            if (inside.any { it in StateSchema.PRESENCE_NAMES }) return "PRESENCE_FIELD"
+            if (v is JObject || v is JArray) unknown = true
+            return null
+        }
+
         fun walk(o: JObject, path: String): String? {
             val allowed = StateSchema.MEMBERS[path] ?: return null
             for ((name, value) in o.members) {
                 if (name !in allowed) {
                     if (name in StateSchema.PRESENCE_NAMES) return "PRESENCE_FIELD"
                     unknown = true
-                } else if (value is JObject) {
-                    walk(value, name)?.let { return it }
+                    scan(value)?.let { return it }
+                } else if (name in StateSchema.MEMBERS) {
+                    if (value is JObject) walk(value, name)?.let { return it } else if (value is JArray) scan(value)?.let { return it }
+                } else if (path == "engine" && name == "held" && value is JArray) {
+                    for (item in value.items) scan(item)?.let { return it }
+                } else if (value is JObject || value is JArray) {
+                    scan(value)?.let { return it }
                 }
             }
             return null

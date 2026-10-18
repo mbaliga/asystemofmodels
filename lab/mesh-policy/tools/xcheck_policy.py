@@ -218,23 +218,42 @@ def producer_check(text):
     d = strict_json(text)
     if not isinstance(d, dict):
         raise Reject("WRONG_TYPE")
-    unknown = False
+    flags = {"presence": False, "unknown": False}
+
+    def all_names(v):
+        if isinstance(v, dict):
+            for k, x in v.items():
+                yield k
+                yield from all_names(x)
+        elif isinstance(v, list):
+            for x in v:
+                yield from all_names(x)
+
+    def hide(v):
+        if any(n in PRESENCE_NAMES for n in all_names(v)):
+            flags["presence"] = True
+        if isinstance(v, (dict, list)):
+            flags["unknown"] = True
 
     def walk(o, path):
-        nonlocal unknown
-        allowed = MEMBERS.get(path)
-        if allowed is None:
-            return
         for name, value in o.items():
-            if name not in allowed:
+            if name not in MEMBERS[path]:
                 if name in PRESENCE_NAMES:
-                    raise Reject("PRESENCE_FIELD")
-                unknown = True
-            elif isinstance(value, dict):
+                    flags["presence"] = True
+                flags["unknown"] = True
+                hide(value)
+            elif name in MEMBERS and isinstance(value, dict):
                 walk(value, name)
+            elif path == "engine" and name == "held" and isinstance(value, list):
+                for item in value:
+                    hide(item)
+            else:
+                hide(value)
 
     walk(d, "")
-    if unknown:
+    if flags["presence"]:
+        raise Reject("PRESENCE_FIELD")
+    if flags["unknown"]:
         raise Reject("UNKNOWN_MEMBER")
 
 
@@ -259,7 +278,7 @@ def fast_fields(c, s):
     if c == "EXPIRED":
         return None
     band = s["batteryBand"]
-    if s["powerSource"] == "battery" and band is not None:
+    if s["powerSource"] != "ac" and band is not None:
         band = BANDS[min(BANDS.index(band) + 1, 3)]
     return {"thermalBand": min(2, s["thermalBand"] + 1) if s["thermalBand"] >= 1 else s["thermalBand"], "queueBucket": min(2, s["queueBucket"] + 1) if s["queueBucket"] >= 1 else s["queueBucket"], "batteryBand": band}
 
@@ -313,15 +332,20 @@ def classify(name, pf):
 
 def fsm_trace(i):
     pf, grace, hold = i["pf"], i["graceMs"], i.get("holdDownMs", 600000)
-    fsm, last_p, cond, need, drain_start, inflight = "OFF", None, False, False, None, 0
+    fsm, last_p, cond, need, drain_start, inflight, dis = "OFF", None, False, False, None, 0, False
     out = []
     for e in i["events"]:
         now, ev = e["t"], e["e"]
         if ev == "enable":
             if fsm == "OFF":
                 fsm, need = "ARMED", pf
+            elif fsm == "DRAINING":
+                dis = False
         elif ev == "disable":
-            fsm, drain_start = "OFF", None
+            if fsm in ("SERVING", "DRAINING"):
+                fsm, drain_start, dis = "DRAINING", now, True
+            else:
+                fsm, drain_start, dis = "OFF", None, False
         elif ev == "start":
             need = False
         elif ev == "inflight":
@@ -337,8 +361,9 @@ def fsm_trace(i):
                 cond = e["ok"]
                 if not cond and fsm == "SERVING":
                     fsm, drain_start = "DRAINING", now
-        if fsm == "DRAINING" and now > drain_start and (inflight == 0 or now - drain_start >= grace):
-            fsm, drain_start = "ARMED", None
+        if fsm == "DRAINING" and now > drain_start and (inflight == 0 or now - drain_start >= (0 if dis else grace)):
+            fsm, drain_start = ("OFF" if dis else "ARMED"), None
+            dis = False
         if fsm == "ARMED" and cond and not need and (last_p is None or now >= last_p + hold):
             fsm = "SERVING"
         out.append(fsm)

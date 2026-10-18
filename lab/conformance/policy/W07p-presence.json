@@ -368,7 +368,7 @@
       "origin": "hand",
       "status": "normative",
       "oracle": "self",
-      "description": "user_disable from SERVING: OFF at once",
+      "description": "user_disable from SERVING runs DRAINING with grace 0 (platforms.md 2.1, ERR-FX4-PO-1): DRAINING in that step, OFF at the first later evaluation",
       "input": {
         "kind": "fsmTrace",
         "pf": false,
@@ -387,6 +387,10 @@
           {
             "t": 500,
             "e": "disable"
+          },
+          {
+            "t": 501,
+            "e": "tick"
           }
         ]
       },
@@ -395,6 +399,7 @@
           "fsm": [
             "ARMED",
             "SERVING",
+            "DRAINING",
             "OFF"
           ]
         }
@@ -920,6 +925,253 @@
             "ARMED",
             "ARMED",
             "SERVING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-020",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "user_disable with a request in flight: grace 0 ends the drain at the first later evaluation although the work has not finished (the host aborts it); OFF, not ARMED",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": false,
+        "graceMs": 30000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 100,
+            "e": "inflight",
+            "n": 1
+          },
+          {
+            "t": 500,
+            "e": "disable"
+          },
+          {
+            "t": 500,
+            "e": "tick"
+          },
+          {
+            "t": 501,
+            "e": "tick"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "SERVING",
+            "SERVING",
+            "DRAINING",
+            "DRAINING",
+            "OFF"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-021",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "user_disable from ARMED and from OFF: OFF at once (there is no listener to drain)",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": false,
+        "graceMs": 30000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 10,
+            "e": "disable"
+          },
+          {
+            "t": 20,
+            "e": "disable"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "OFF",
+            "OFF"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-022",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "user_disable during a condition drain with work in flight: the drain is shortened to grace 0 and ends in OFF, not after the remaining grace",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": false,
+        "graceMs": 30000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 100,
+            "e": "inflight",
+            "n": 1
+          },
+          {
+            "t": 1000,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": false
+          },
+          {
+            "t": 2000,
+            "e": "disable"
+          },
+          {
+            "t": 2001,
+            "e": "tick"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "SERVING",
+            "SERVING",
+            "DRAINING",
+            "DRAINING",
+            "OFF"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-023",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "user_enable during a user_disable drain cancels the disable but not the drain: it finishes into ARMED (and SERVING when conditions allow), never OFF",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": false,
+        "graceMs": 30000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 500,
+            "e": "disable"
+          },
+          {
+            "t": 500,
+            "e": "enable"
+          },
+          {
+            "t": 501,
+            "e": "tick"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "SERVING",
+            "DRAINING",
+            "DRAINING",
+            "SERVING"
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07p-024",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a PF node: user_disable from SERVING is DRAINING then OFF, and re-enabling needs a new explicit Start lending",
+      "input": {
+        "kind": "fsmTrace",
+        "pf": true,
+        "graceMs": 2000,
+        "events": [
+          {
+            "t": 0,
+            "e": "enable"
+          },
+          {
+            "t": 0,
+            "e": "start"
+          },
+          {
+            "t": 0,
+            "e": "input",
+            "input": "THERMAL_BAND",
+            "ok": true
+          },
+          {
+            "t": 500,
+            "e": "disable"
+          },
+          {
+            "t": 501,
+            "e": "tick"
+          },
+          {
+            "t": 502,
+            "e": "enable"
+          },
+          {
+            "t": 503,
+            "e": "tick"
+          }
+        ]
+      },
+      "expect": {
+        "ok": {
+          "fsm": [
+            "ARMED",
+            "ARMED",
+            "SERVING",
+            "DRAINING",
+            "OFF",
+            "ARMED",
+            "ARMED"
           ]
         }
       }

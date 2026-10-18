@@ -311,6 +311,27 @@ W07.append(vec("W07-049", "producer-strict: a float is refused by the JSON profi
 W07.append(vec("W07-050", "producer-strict: `queuePos` (removed from INFER_ACCEPT and never a STATE member)", prod(EXAMPLE_TEXT.replace('"bucket":0', '"bucket":0,"queuePos":1')), rej("PRESENCE_FIELD")))
 
 
+def prod_mut(fn):
+    import copy
+
+    d = copy.deepcopy(EXAMPLE)
+    fn(d)
+    return prod(jcs(d))
+
+
+W07 += [
+    vec("W07-051", "producer-strict: presence fields nested under a scalar-named member (`availability.fsm`) are found (ERR-FX4-PO-2)", prod_mut(lambda d: d["availability"].update(fsm={"user": True, "inflight": 2})), rej("PRESENCE_FIELD")),
+    vec("W07-052", "producer-strict: a presence field inside an element of `held` is found", prod_mut(lambda d: d["engine"].update(held=[{"loaded": ["SECRET"]}])), rej("PRESENCE_FIELD")),
+    vec("W07-053", "producer-strict: a presence field under `queue.bucket` is found", prod_mut(lambda d: d["queue"].update(bucket={"busyForMs": 5})), rej("PRESENCE_FIELD")),
+    vec("W07-054", "producer-strict: a presence field in an array where `engine.backend` is a scalar is found", prod_mut(lambda d: d["engine"].update(backend=[{"idle": True}])), rej("PRESENCE_FIELD")),
+    vec("W07-055", "producer-strict: a presence field nested inside an unknown member is a presence field, not just unknown", prod_mut(lambda d: d.update(zzz={"user": {"active": True}})), rej("PRESENCE_FIELD")),
+    vec("W07-056", "producer-strict: an object where `queue.bucket` is a scalar is an unknown member", prod_mut(lambda d: d["queue"].update(bucket={"x": 1})), rej("UNKNOWN_MEMBER")),
+    vec("W07-057", "producer-strict: `held` holds strings only; an object element is an unknown member", prod_mut(lambda d: d["engine"].update(held=[{"x": 1}])), rej("UNKNOWN_MEMBER")),
+    vec("W07-058", "producer-strict: an array where `seq` is a scalar is an unknown member", prod_mut(lambda d: d.update(seq=[4711])), rej("UNKNOWN_MEMBER")),
+    vec("W07-059", "producer-strict: an empty `held` and a null `manifest` conform (control)", prod_mut(lambda d: (d["engine"].update(held=[]), d.update(manifest=None))), ok({"conforms": True})),
+]
+
+
 def stale(now, rx, sampled, closed=False, seq=5, last=None, goaway=False, state=None, extra=None):
     d = {"kind": "staleness", "nowMonoMs": now, "rxMonoMs": rx, "sampledAgeMs": sampled, "sessionClosed": closed, "seq": seq, "lastSeq": last, "goaway": goaway}
     if state is not None:
@@ -391,6 +412,24 @@ W07 += [
     ),
 ]
 
+W07 += [
+    vec(
+        "W07-085", "STALE, an unknown power source is treated as battery (fail closed, ERR-FX4-PO-3): the band is one lower",
+        stale(R + 40_000, R, 0, state={"thermalBand": 0, "queueBucket": 0, "batteryBand": "ge80", "powerSource": "unknown"}),
+        cls("STALE", 40_000, False, {"thermalBand": 0, "queueBucket": 0, "batteryBand": "50-79"}),
+    ),
+    vec(
+        "W07-086", "STALE, a known ac source keeps the band (contrast with W07-085)",
+        stale(R + 40_000, R, 0, state={"thermalBand": 0, "queueBucket": 0, "batteryBand": "20-49", "powerSource": "ac"}),
+        cls("STALE", 40_000, False, {"thermalBand": 0, "queueBucket": 0, "batteryBand": "20-49"}),
+    ),
+    vec(
+        "W07-087", "WARM, an unknown power source passes the received band: only STALE substitutes",
+        stale(R + 20_000, R, 0, state={"thermalBand": 0, "queueBucket": 0, "batteryBand": "20-49", "powerSource": "unknown"}),
+        cls("WARM", 20_000, False, {"thermalBand": 0, "queueBucket": 0, "batteryBand": "20-49"}),
+    ),
+]
+
 SKEW = [-600_000, -1, 0, 1, 600_000]
 for n, (desc, now, samp, expect) in enumerate(
     [
@@ -456,7 +495,10 @@ W07P = [
         "W07p-007", "the drain completes as soon as the in-flight work finishes", False, 30_000,
         [ev(0, "enable"), cond(0, True), ev(100, "inflight", n=1), pres(1_000, "INPUT_ACTIVITY"), ev(1_500, "inflight", n=0)], ["ARMED", "SERVING", "SERVING", "DRAINING", "ARMED"],
     ),
-    fsm_vec("W07p-008", "user_disable from SERVING: OFF at once", False, 30_000, [ev(0, "enable"), cond(0, True), ev(500, "disable")], ["ARMED", "SERVING", "OFF"]),
+    fsm_vec(
+        "W07p-008", "user_disable from SERVING runs DRAINING with grace 0 (platforms.md 2.1, ERR-FX4-PO-1): DRAINING in that step, OFF at the first later evaluation", False, 30_000,
+        [ev(0, "enable"), cond(0, True), ev(500, "disable"), ev(501, "tick")], ["ARMED", "SERVING", "DRAINING", "OFF"],
+    ),
     fsm_vec(
         "W07p-009", "conditions fail while ARMED: stays ARMED; a game (heavy foreground process) while SERVING drains", False, 2_000,
         [ev(0, "enable"), cond(0, False), cond(1_000, True), pres(2_000, "HEAVY_FOREGROUND_PROCESS")], ["ARMED", "ARMED", "SERVING", "DRAINING"],
@@ -504,6 +546,30 @@ W07P = [
         "W07p-019", "a presence event while ARMED extends the hold-down even though nothing was serving", False, 30_000,
         [ev(0, "enable"), cond(0, False), pres(1_000, "CONSOLE_USER"), cond(2_000, True), ev(600_999, "tick"), ev(601_000, "tick")],
         ["ARMED", "ARMED", "ARMED", "ARMED", "ARMED", "SERVING"],
+    ),
+]
+
+W07P += [
+    fsm_vec(
+        "W07p-020", "user_disable with a request in flight: grace 0 ends the drain at the first later evaluation although the work has not finished (the host aborts it); OFF, not ARMED", False, 30_000,
+        [ev(0, "enable"), cond(0, True), ev(100, "inflight", n=1), ev(500, "disable"), ev(500, "tick"), ev(501, "tick")], ["ARMED", "SERVING", "SERVING", "DRAINING", "DRAINING", "OFF"],
+    ),
+    fsm_vec(
+        "W07p-021", "user_disable from ARMED and from OFF: OFF at once (there is no listener to drain)", False, 30_000,
+        [ev(0, "enable"), ev(10, "disable"), ev(20, "disable")], ["ARMED", "OFF", "OFF"],
+    ),
+    fsm_vec(
+        "W07p-022", "user_disable during a condition drain with work in flight: the drain is shortened to grace 0 and ends in OFF, not after the remaining grace", False, 30_000,
+        [ev(0, "enable"), cond(0, True), ev(100, "inflight", n=1), cond(1_000, False), ev(2_000, "disable"), ev(2_001, "tick")], ["ARMED", "SERVING", "SERVING", "DRAINING", "DRAINING", "OFF"],
+    ),
+    fsm_vec(
+        "W07p-023", "user_enable during a user_disable drain cancels the disable but not the drain: it finishes into ARMED (and SERVING when conditions allow), never OFF", False, 30_000,
+        [ev(0, "enable"), cond(0, True), ev(500, "disable"), ev(500, "enable"), ev(501, "tick")], ["ARMED", "SERVING", "DRAINING", "DRAINING", "SERVING"],
+    ),
+    fsm_vec(
+        "W07p-024", "a PF node: user_disable from SERVING is DRAINING then OFF, and re-enabling needs a new explicit Start lending", True, 2_000,
+        [ev(0, "enable"), ev(0, "start"), cond(0, True), ev(500, "disable"), ev(501, "tick"), ev(502, "enable"), ev(503, "tick")],
+        ["ARMED", "ARMED", "SERVING", "DRAINING", "OFF", "ARMED", "ARMED"],
     ),
 ]
 

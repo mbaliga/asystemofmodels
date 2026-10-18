@@ -116,6 +116,38 @@ class LiveStateTest {
         (parse(goodText) as StateParse.Ok).doc.copy(thermalBand = tb, queueBucket = qb, batteryBand = band, powerSource = source)
 
     @Test
+    fun producerStrictWalksByFullPathAndIntoArraysSoNothingHidesUnderAScalarMember() {
+        val cases = listOf(
+            goodText.replace("\"fsm\":\"SERVING\"", "\"fsm\":{\"user\":true,\"inflight\":2}") to "PRESENCE_FIELD",
+            goodText.replace("\"held\":[\"${"a".repeat(64)}\"]", "\"held\":[{\"loaded\":[\"SECRET\"]}]") to "PRESENCE_FIELD",
+            goodText.replace("\"bucket\":0", "\"bucket\":{\"busyForMs\":5}") to "PRESENCE_FIELD",
+            goodText.replace("\"backend\":\"vulkan\"", "\"backend\":[{\"idle\":true}]") to "PRESENCE_FIELD",
+            goodText.replace("\"v\":1", "\"v\":1,\"zzz\":{\"user\":{\"active\":true}}") to "PRESENCE_FIELD",
+            goodText.replace("\"bucket\":0", "\"bucket\":{\"x\":1}") to "UNKNOWN_MEMBER",
+            goodText.replace("\"held\":[\"${"a".repeat(64)}\"]", "\"held\":[{\"x\":1}]") to "UNKNOWN_MEMBER",
+            goodText.replace("\"held\":[\"${"a".repeat(64)}\"]", "\"held\":[[\"${"a".repeat(64)}\"]]") to "UNKNOWN_MEMBER",
+            goodText.replace("\"seq\":4711", "\"seq\":[4711]") to "UNKNOWN_MEMBER",
+            goodText.replace("\"sampledAgeMs\":800", "\"sampledAgeMs\":{}") to "UNKNOWN_MEMBER",
+        )
+        for ((text, want) in cases) assertEquals(want, ProducerStrict.check(text.toByteArray()), text)
+        assertNull(ProducerStrict.check(goodText.replace("\"held\":[\"${"a".repeat(64)}\"]", "\"held\":[]").toByteArray()), "an empty held list conforms")
+        assertNull(ProducerStrict.check(goodText.replace("\"held\":[\"${"a".repeat(64)}\"]", "\"held\":[\"${"a".repeat(64)}\",\"${"b".repeat(64)}\"]").toByteArray()), "held digests are strings")
+        assertNull(ProducerStrict.check(goodText.replace("\"manifest\":{\"bodyDigest\":\"${"A".repeat(43)}\",\"seq\":17}", "\"manifest\":null").toByteArray()), "a null manifest conforms")
+        println("producer-strict nested iterations: ${cases.size + 3}")
+    }
+
+    @Test
+    fun anUnknownPowerSourceIsTreatedAsBatteryNotAsAcInTheStaleSubstitution() {
+        val stale = Freshness.STALE
+        assertEquals(Staleness.Fast(0, 0, BatteryBand.B50_79), Staleness.fastFields(stale, doc(0, 0, BatteryBand.GE80, "unknown")), "fail closed: not AC means on battery")
+        assertEquals(Staleness.Fast(0, 0, BatteryBand.LT20), Staleness.fastFields(stale, doc(0, 0, BatteryBand.LT20, "unknown")))
+        assertEquals(Staleness.Fast(0, 0, BatteryBand.GE80), Staleness.fastFields(stale, doc(0, 0, BatteryBand.GE80, "ac")), "only a known AC source keeps the band")
+        assertEquals(Staleness.Fast(0, 0, BatteryBand.B20_49), Staleness.fastFields(Freshness.WARM, doc(0, 0, BatteryBand.B20_49, "unknown")), "WARM passes the received band")
+        assertTrue(Staleness.onBattery("unknown") && Staleness.onBattery("battery") && !Staleness.onBattery("ac"))
+        println("STALE power source iterations: 7 (unknown is battery, ac is not)")
+    }
+
+    @Test
     fun theStaleSubstitutionAppliedLiterally() {
         val stale = Freshness.STALE
         assertEquals(Staleness.Fast(0, 0, BatteryBand.GE80), Staleness.fastFields(stale, doc(0, 0, BatteryBand.GE80, "ac")))

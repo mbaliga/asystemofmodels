@@ -816,6 +816,134 @@
       }
     },
     {
+      "id": "W07-051",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: presence fields nested under a scalar-named member (`availability.fsm`) are found (ERR-FX4-PO-2)",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":{\"inflight\":2,\"user\":true}},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-052",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: a presence field inside an element of `held` is found",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[{\"loaded\":[\"SECRET\"]}]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-053",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: a presence field under `queue.bucket` is found",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":{\"busyForMs\":5}},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-054",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: a presence field in an array where `engine.backend` is a scalar is found",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":[{\"idle\":true}],\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-055",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: a presence field nested inside an unknown member is a presence field, not just unknown",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1,\"zzz\":{\"user\":{\"active\":true}}}"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-056",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: an object where `queue.bucket` is a scalar is an unknown member",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":{\"x\":1}},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+      },
+      "expect": {
+        "reject": "UNKNOWN_MEMBER"
+      }
+    },
+    {
+      "id": "W07-057",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: `held` holds strings only; an object element is an unknown member",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[{\"x\":1}]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+      },
+      "expect": {
+        "reject": "UNKNOWN_MEMBER"
+      }
+    },
+    {
+      "id": "W07-058",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: an array where `seq` is a scalar is an unknown member",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]},\"manifest\":{\"bodyDigest\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":[4711],\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+      },
+      "expect": {
+        "reject": "UNKNOWN_MEMBER"
+      }
+    },
+    {
+      "id": "W07-059",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: an empty `held` and a null `manifest` conform (control)",
+      "input": {
+        "kind": "producerCheck",
+        "text": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[]},\"manifest\":null,\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+      },
+      "expect": {
+        "ok": {
+          "conforms": true
+        }
+      }
+    },
+    {
       "id": "W07-060",
       "origin": "hand",
       "status": "normative",
@@ -1517,6 +1645,111 @@
             "thermalBand": 1,
             "queueBucket": 1,
             "batteryBand": "ge80"
+          }
+        }
+      }
+    },
+    {
+      "id": "W07-085",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "STALE, an unknown power source is treated as battery (fail closed, ERR-FX4-PO-3): the band is one lower",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 50000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false,
+        "state": {
+          "thermalBand": 0,
+          "queueBucket": 0,
+          "batteryBand": "ge80",
+          "powerSource": "unknown"
+        }
+      },
+      "expect": {
+        "ok": {
+          "class": "STALE",
+          "ageMs": 40000,
+          "probeOnly": false,
+          "fast": {
+            "thermalBand": 0,
+            "queueBucket": 0,
+            "batteryBand": "50-79"
+          }
+        }
+      }
+    },
+    {
+      "id": "W07-086",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "STALE, a known ac source keeps the band (contrast with W07-085)",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 50000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false,
+        "state": {
+          "thermalBand": 0,
+          "queueBucket": 0,
+          "batteryBand": "20-49",
+          "powerSource": "ac"
+        }
+      },
+      "expect": {
+        "ok": {
+          "class": "STALE",
+          "ageMs": 40000,
+          "probeOnly": false,
+          "fast": {
+            "thermalBand": 0,
+            "queueBucket": 0,
+            "batteryBand": "20-49"
+          }
+        }
+      }
+    },
+    {
+      "id": "W07-087",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "WARM, an unknown power source passes the received band: only STALE substitutes",
+      "input": {
+        "kind": "staleness",
+        "nowMonoMs": 30000,
+        "rxMonoMs": 10000,
+        "sampledAgeMs": 0,
+        "sessionClosed": false,
+        "seq": 5,
+        "lastSeq": null,
+        "goaway": false,
+        "state": {
+          "thermalBand": 0,
+          "queueBucket": 0,
+          "batteryBand": "20-49",
+          "powerSource": "unknown"
+        }
+      },
+      "expect": {
+        "ok": {
+          "class": "WARM",
+          "ageMs": 20000,
+          "probeOnly": false,
+          "fast": {
+            "thermalBand": 0,
+            "queueBucket": 0,
+            "batteryBand": "20-49"
           }
         }
       }

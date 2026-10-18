@@ -46,6 +46,9 @@ object Staleness {
         }
     }
 
+    /** Fail closed (ERRATA ERR-FX4-PO-3): only a known `ac` source is not on battery, so `unknown` is treated as battery. */
+    fun onBattery(powerSource: String): Boolean = powerSource != "ac"
+
     /** The fast fields a router may read from a state, after the pessimistic substitution that STALE requires. EXPIRED state yields nothing (probe-only). */
     data class Fast(val thermalBand: Int, val queueBucket: Int, val batteryBand: BatteryBand?)
 
@@ -59,7 +62,7 @@ object Staleness {
         Freshness.STALE -> Fast(
             thermalBand = if (d.thermalBand >= 1) minOf(2, d.thermalBand + 1) else d.thermalBand,
             queueBucket = if (d.queueBucket >= 1) minOf(2, d.queueBucket + 1) else d.queueBucket,
-            batteryBand = if (d.powerSource == "battery") d.batteryBand?.lower() else d.batteryBand,
+            batteryBand = if (onBattery(d.powerSource)) d.batteryBand?.lower() else d.batteryBand,
         )
     }
 
