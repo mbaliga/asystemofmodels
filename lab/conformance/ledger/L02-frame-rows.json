@@ -2143,7 +2143,7 @@
       "origin": "hand",
       "status": "normative",
       "oracle": "self",
-      "description": "FC-5: the lender's outcome append fails: no INFER_END is sent, the session is closed (close:ledger-failure) and the requester records the loss",
+      "description": "FC-5: the lender's outcome append fails: no INFER_END is sent, the session is closed (close:ledger-failure; its row carries the 826 application bytes no other row holds) and the requester records the loss",
       "input": {
         "seed": 1,
         "steps": [
@@ -2344,8 +2344,8 @@
               "k": "session",
               "p": null,
               "c": "close:ledger-failure",
-              "o": 0,
-              "i": 0,
+              "o": 188,
+              "i": 638,
               "st": 503,
               "s": 1,
               "ob": "measured"
@@ -3192,6 +3192,228 @@
               "i": 0,
               "st": 200,
               "s": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "L02-024",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an accepted attempt the requester cancels before it sends the body: the lender ends it with 499 cancelled, an outcome row and no intent (no content was processed), durable before INFER_END, and both outcome rows count every frame (ERRATA ERR-FX4-LG-3)",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "INFER_OFFER",
+            "payload": 120,
+            "attempt": "a1",
+            "request": "r1"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_ACCEPT",
+            "payload": 100,
+            "attempt": "a1"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "CANCEL",
+            "payload": 58,
+            "attempt": "a1"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_END",
+            "payload": 60,
+            "attempt": "a1",
+            "served": {
+              "model": "qwen3-8b",
+              "status": 499,
+              "terminal": "cancelled",
+              "tokensIn": 0
+            }
+          },
+          {
+            "op": "finish",
+            "attempt": "a1",
+            "status": 499,
+            "meshCode": "CANCELLED",
+            "tokensOut": 0
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ],
+        "onlyKinds": [
+          "infer-sent",
+          "infer-served"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "infer-sent",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1,
+              "a": "a1"
+            },
+            {
+              "k": "infer-sent",
+              "p": "outcome",
+              "c": "CANCELLED",
+              "o": 196,
+              "i": 178,
+              "st": 499,
+              "s": 1,
+              "a": "a1"
+            }
+          ],
+          "B": [
+            {
+              "k": "infer-served",
+              "p": "outcome",
+              "c": "CANCELLED",
+              "o": 178,
+              "i": 196,
+              "st": 499,
+              "s": 1,
+              "a": "a1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "L02-025",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "an accepted attempt whose body never comes: the requester gives it up (599), and the lender's attempt ends when the session closes, as 499 INTERRUPTED with every byte it saw; the lender never ends with no row (router.md 8.5, ERRATA ERR-FX4-LG-3)",
+      "input": {
+        "seed": 1,
+        "steps": [
+          {
+            "op": "dial"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "HELLO",
+            "payload": 300,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "HELLO_ACK",
+            "payload": 200,
+            "stream": "0"
+          },
+          {
+            "op": "frame",
+            "from": "A",
+            "kind": "INFER_OFFER",
+            "payload": 120,
+            "attempt": "a1",
+            "request": "r1"
+          },
+          {
+            "op": "frame",
+            "from": "B",
+            "kind": "INFER_ACCEPT",
+            "payload": 100,
+            "attempt": "a1"
+          },
+          {
+            "op": "finish",
+            "attempt": "a1",
+            "status": 599,
+            "meshCode": "PEER_UNREACHABLE",
+            "tokensOut": 0
+          },
+          {
+            "op": "close",
+            "by": "A"
+          }
+        ],
+        "show": [
+          "A",
+          "B"
+        ],
+        "onlyKinds": [
+          "infer-sent",
+          "infer-served"
+        ]
+      },
+      "expect": {
+        "ok": {
+          "A": [
+            {
+              "k": "infer-sent",
+              "p": "intent",
+              "c": null,
+              "o": 0,
+              "i": null,
+              "st": 0,
+              "s": 1,
+              "a": "a1"
+            },
+            {
+              "k": "infer-sent",
+              "p": "outcome",
+              "c": "PEER_UNREACHABLE",
+              "o": 129,
+              "i": 109,
+              "st": 599,
+              "s": 1,
+              "a": "a1"
+            }
+          ],
+          "B": [
+            {
+              "k": "infer-served",
+              "p": "outcome",
+              "c": "INTERRUPTED",
+              "o": 109,
+              "i": 129,
+              "st": 499,
+              "s": 1,
+              "a": "a1"
             }
           ]
         }

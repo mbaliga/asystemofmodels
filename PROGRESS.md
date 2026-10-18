@@ -2585,3 +2585,25 @@ After the fix (real output):
 - Root `./gradlew --offline jvmTest`: `BUILD SUCCESSFUL` (140 tests, 0 failures, partly from cache).
 
 Not done: the router's F11 (`Filters.kt`) still tests `== "battery"` (outside this track; follow-up in ERR-FX4-PO-3); no conformance-runner required-law counter for the disable drain (outside the write set, ERR-FX4-PO-1); no `VERSION` bump (ERR-FX4-PO-4).
+## fix4-ledger (fix wave 4, track fix4-ledger: review findings A-LED-1..11, B-LDG-1..9, B-F4, B-TL-8; base 0e8a3e4)
+
+Evidence label: LAB (a MODEL of TLS record accounting and of the session layer), oracle: self, NOT DEVICE EVIDENCE. Readings and the per-finding story are in `lab/ERRATA.md` ERR-FX4-LG-1 to -15 and `desktop/ERRATA.md` ERR-FX4-LG-2D. Windows: not run (this machine is Linux); the new tests are OS-aware with no skips, so the hosted Windows parity count is the open check.
+
+Gates (real output of this session):
+```
+$ ./gradlew --max-workers=2 -p lab test                                   (JDK 21)   BUILD SUCCESSFUL in 3m 43s
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew --max-workers=2 -p lab test        (JDK 17)   BUILD SUCCESSFUL in 2m 47s
+    summed from build/test-results on JDK 17: ledger-model 132 tests, mesh-sim 39, conformance-runner 2322 (7 skipped, the existing proposed-skipped cases), mesh-proto 326; failures 0, errors 0
+    ledger-model before this track: 98 tests; this track added SinkRecoveryTest 4, AttemptCoverageTest 5, FixTrackLawsTest 25; mesh-sim added LifecycleRevokeTest 2
+    conformance-runner: family L02: 25 vectors, 25 pass, 0 fail (L02-017 expectation changed, L02-024 and L02-025 added, ERR-FX4-LG-14)
+$ ./gradlew --max-workers=2 -p desktop test                               (JDK 21 and JDK 17)   BUILD SUCCESSFUL
+$ python3 lab/mesh-policy/tools/gen_vectors.py && python3 lab/tools/regen_index.py -> L02 25 vectors; only L02-frame-rows.json and INDEX.json differ
+$ python3 lab/tools/isolation.py   -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py   -> law: OK          $ python3 desktop/tools/check_law.py -> law: OK
+$ ./gradlew jvmTest                -> BUILD SUCCESSFUL (test tasks from cache: no input of core/* or server changed)
+```
+Failing before the fix (run on the unfixed code): SinkRecoveryTest 3 of 4 (poison, mode, symlink), AttemptCoverageTest 5 of 5 (lender row after cancel, row at close, send after outcome, DIAL outcome failure, closed DIAL code), desktop JsonlLedgerSinkTest 1 (mode). Tautological oracles reproduced on a pristine copy of the base: with `RequestLedger.terminal` writing `servedClass = LOCAL`, or `PeerPathRule` mapping overlay to lan, `LedgerLawsPropertyTest` stayed 6 of 6 green; with a requester that ignored `paired` (two places) the whole base mesh-sim suite stayed green.
+
+Mutation checks (each applied, the module suite run, the file restored): M01 sink poison removed, KILLED (1); M02 no owner-only tighten, KILLED (1); M03 explicit regular-file check removed, SURVIVED, and M03b with the tail scan's NOFOLLOW removed as well, SURVIVED (layered defences, see ERR-FX4-LG-2); M04 lender abort a no-op, KILLED (6); M05 close row drops the uncovered bytes, KILLED (2); M06 L-L16 frame-driven clause off, KILLED (2); M07 requester send after outcome allowed, KILLED (1); M08 DIAL connection leaked, KILLED (2); M09 any DIAL code accepted, KILLED (1); M10 attemptIndex a world counter, KILLED (3); M11 terminal servedClass always local, KILLED (3, mesh-sim too: M22, 7); M12 PeerPathRule overlay to lan, KILLED (2); M13 provider error text copied into routeDetail, KILLED (3); M14 served-by header literal, KILLED (3); M15 L-L12 head status strict, KILLED (2); M16 cloud intent not written, KILLED (5, incl. CrashConsistencyTest); M17 L-L19 closed set too small, KILLED (4); M18 close skips requester attempts, KILLED (1); M19 abort failure not a ledger failure, KILLED (1); M20 sim ignores paired in flight, KILLED (1); M21 sim pulls an unpaired peer, KILLED (1); M23 cloud intent absent in mesh-sim, KILLED (2); M25 desktop no tighten, KILLED (1).
+
+Not done: Windows ACL path unverified; `mesh-proto` `RequesterSide` still writes no `servedProvider`/`servedModel` on its outcome row; `VERSION` bump and the `lab/conformance/README.md` change tables (L02-017, L02-024, L02-025); contract.md 4.3 table row for "accepted, cancelled"; a mesh-proto-level mid-stream revoke scenario; hosted CI was not run.

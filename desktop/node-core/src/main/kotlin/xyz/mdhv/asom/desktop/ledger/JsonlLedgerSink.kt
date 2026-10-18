@@ -5,6 +5,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.FileSystems
 import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.PosixFilePermissions
@@ -89,7 +90,10 @@ class FileDurableChannel private constructor(private val ch: FileChannel) : Dura
     companion object {
         private val posix = FileSystems.getDefault().supportedFileAttributeViews().contains("posix")
 
-        /** Creates the directory 0700 and the file 0600 where the filesystem has POSIX permissions. */
+        /**
+         * Creates the directory 0700 and the file 0600 where the filesystem has POSIX permissions; an EXISTING file is tightened to 0600 there too (the open
+         * fails if it cannot be), and a symbolic link as the ledger path is refused so that the open-time tail truncation cannot reach its target (ERR-FX4-LG-2).
+         */
         fun open(path: Path): FileDurableChannel {
             val dir = path.toAbsolutePath().parent
             if (dir != null && !Files.exists(dir)) {
@@ -99,7 +103,7 @@ class FileDurableChannel private constructor(private val ch: FileChannel) : Dura
                     Files.createDirectories(dir)
                 }
             }
-            if (!Files.exists(path)) {
+            if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
                 try {
                     if (posix) {
                         Files.createFile(path, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
@@ -109,7 +113,12 @@ class FileDurableChannel private constructor(private val ch: FileChannel) : Dura
                 } catch (_: java.nio.file.FileAlreadyExistsException) {
                 }
             }
-            return FileDurableChannel(FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.READ))
+            if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) throw IOException("the ledger path is not a regular file (a symbolic link or a directory is refused): $path")
+            if (posix) {
+                val ownerOnly = PosixFilePermissions.fromString("rw-------")
+                if (Files.getPosixFilePermissions(path, LinkOption.NOFOLLOW_LINKS) != ownerOnly) Files.setPosixFilePermissions(path, ownerOnly)
+            }
+            return FileDurableChannel(FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS))
         }
     }
 }

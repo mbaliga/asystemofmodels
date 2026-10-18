@@ -34,7 +34,7 @@ class CrashConsistencyTest {
             assertEquals(want.take(got.size), got, "$name death at step $k: $node's durable rows are not a prefix of the failure-free run")
         }
         val t = w.trace.events
-        for (r in listOf(LedgerLaws.l1(t), LedgerLaws.l2(t), LedgerLaws.l3(t), LedgerLaws.l14(t), LedgerLaws.l4(t))) {
+        for (r in listOf(LedgerLaws.l1(t), LedgerLaws.l2(t), LedgerLaws.l3(t), LedgerLaws.l14(t), LedgerLaws.l4(t), LedgerLaws.l17(t))) {
             assertEquals(emptyList(), r.violations, "$name death at step $k: ${r.law}")
         }
         val rows = listOf("A", "B").flatMap { n -> w.rows(n).map { n to it } }

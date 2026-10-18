@@ -5,8 +5,14 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
+import java.nio.file.attribute.AclEntry
+import java.nio.file.attribute.AclEntryPermission
+import java.nio.file.attribute.AclEntryType
+import java.nio.file.attribute.AclFileAttributeView
+import java.nio.file.attribute.PosixFileAttributeView
 import java.nio.file.attribute.PosixFilePermissions
 import xyz.mdhv.asom.lab.json.JObject
 import xyz.mdhv.asom.lab.json.ParseResult
@@ -42,7 +48,9 @@ class MemorySink : RowSink {
  *
  * Opening a file whose last byte is not `\n` truncates the torn tail (a write cut by process death; `append` never returned for it, so it
  * was never reported durable) before the first append, so a new row can never merge onto it. An append that fails after any byte was
- * written truncates the file back to its length before the append (ERRATA ERR-FX-1).
+ * written truncates the file back to its length before the append (ERRATA ERR-FX-1). A rollback that itself fails POISONS the sink: every
+ * later append throws until the file is reopened (LAB_SPEC R4-L-24, ERRATA ERR-FX4-LG-1), because acknowledging a row glued onto torn
+ * bytes would make the whole file unreadable.
  */
 class JsonlSink(
     val path: Path,
@@ -50,10 +58,12 @@ class JsonlSink(
     opener: (Path) -> FileChannel = ::openChannel,
 ) : RowSink, Closeable {
     private val channel: FileChannel = opener(path)
+    private var poisoned: Throwable? = null
 
     @Synchronized
     override fun append(row: LabRouteRecord) {
         row.requireWellFormed()
+        poisoned?.let { throw LedgerWriteException("sink poisoned by an earlier rollback failure: ${it.message}", it) }
         val line = row.toRowBytes() + '\n'.code.toByte()
         var start = -1L
         try {
@@ -65,7 +75,9 @@ class JsonlSink(
             if (start >= 0) {
                 try {
                     channel.truncate(start)
-                } catch (_: IOException) {
+                } catch (t: IOException) {
+                    t.addSuppressed(e)
+                    poisoned = t
                 }
             }
             throw LedgerWriteException("append failed: ${e.message}", e)
@@ -79,9 +91,14 @@ class JsonlSink(
 
         private const val SCAN_BLOCK = 8192
 
-        /** The desktop ledger file is mode 0600 (contract.md 4.10) where the file system has POSIX permissions; an existing file keeps its mode. */
+        /**
+         * The ledger file is owner-only (contract.md 4.10). A new file is created 0600 where the file system has POSIX permissions; an EXISTING
+         * file is tightened to 0600 there too (the open fails if that is not possible), and where the file system has an ACL view instead
+         * (Windows) the file's ACL is replaced by a single entry for its owner. A symbolic link (or anything but a regular file) is refused: the
+         * open-time tail truncation would otherwise be applied to its target (ERRATA ERR-FX4-LG-2).
+         */
         internal fun openChannel(path: Path): FileChannel {
-            if (!Files.exists(path)) {
+            if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
                 try {
                     Files.createFile(path, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
                 } catch (_: UnsupportedOperationException) {
@@ -93,12 +110,26 @@ class JsonlSink(
                 } catch (_: java.nio.file.FileAlreadyExistsException) {
                 }
             }
+            if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) throw IOException("the ledger path is not a regular file (a symbolic link or a directory is refused): $path")
+            ownerOnly(path)
             truncateTornTail(path)
-            return FileChannel.open(path, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND)
+            return FileChannel.open(path, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND, LinkOption.NOFOLLOW_LINKS)
+        }
+
+        private fun ownerOnly(path: Path) {
+            val posix = Files.getFileAttributeView(path, PosixFileAttributeView::class.java, LinkOption.NOFOLLOW_LINKS)
+            if (posix != null) {
+                val want = PosixFilePermissions.fromString("rw-------")
+                if (posix.readAttributes().permissions() != want) posix.setPermissions(want)
+                return
+            }
+            val acl = Files.getFileAttributeView(path, AclFileAttributeView::class.java, LinkOption.NOFOLLOW_LINKS) ?: return
+            val only = AclEntry.newBuilder().setType(AclEntryType.ALLOW).setPrincipal(acl.owner).setPermissions(AclEntryPermission.values().toSet()).build()
+            if (acl.acl != listOf(only)) acl.acl = listOf(only)
         }
 
         private fun truncateTornTail(path: Path) {
-            FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE).use { ch ->
+            FileChannel.open(path, StandardOpenOption.READ, StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS).use { ch ->
                 val size = ch.size()
                 if (size == 0L) return
                 val block = ByteBuffer.allocate(SCAN_BLOCK)

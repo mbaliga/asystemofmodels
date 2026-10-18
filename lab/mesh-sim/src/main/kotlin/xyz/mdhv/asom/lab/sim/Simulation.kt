@@ -39,6 +39,7 @@ import xyz.mdhv.asom.lab.ledger.laws.ServedBy
 import xyz.mdhv.asom.lab.ledger.laws.Syn
 import xyz.mdhv.asom.lab.ledger.laws.Trace
 import xyz.mdhv.asom.lab.ledger.sim.Built
+import xyz.mdhv.asom.lab.ledger.sim.CancelReasonWire
 import xyz.mdhv.asom.lab.ledger.sim.EngineFault
 import xyz.mdhv.asom.lab.ledger.sim.PayloadFactory
 import xyz.mdhv.asom.lab.ledger.sim.SimConnection
@@ -490,7 +491,7 @@ class Simulation(val sc: Scenario, val catalogue: Catalogue, val variant: Varian
             trace.add(Syn(selfName, sid))
             kill.tick()
             if (!ps.alive) {
-                DialResult("unreachable", null)
+                DialResult("timeout", null)
             } else {
                 val c = SimConnection(trace, kill, rnd.ids, selfName, peer, true, EngineFault.NONE, path)
                 c.sidA = sid
@@ -749,7 +750,7 @@ class Simulation(val sc: Scenario, val catalogue: Catalogue, val variant: Varian
                     status, tokensIn = rec.P.toLong(), tokensOut = if (status == 200) tokensOut else null, costEst = if (served?.tier == Tier.CLOUD && status == 200) 0.0000029 else null,
                     costBasis = if (served?.tier == Tier.CLOUD && status == 200) "usage" else "none",
                 )
-                trace.add(ServedBy(selfName, rec.id, row.servedClass))
+                trace.add(ServedBy(selfName, rec.id, served?.takeIf { status == 200 }?.let { classOf(it) }))
                 trace.add(Responded(selfName, rec.id, row.toEchoHeaders()))
             } catch (_: LedgerWriteException) {
                 rec.ledgerUnavailable = true
@@ -759,6 +760,12 @@ class Simulation(val sc: Scenario, val catalogue: Catalogue, val variant: Varian
                 rec.servedBy = servedProvider ?: targetOf(served)
                 emit("app-ewma", "app" to rec.app.pkg, "tokens" to tokensOut)
             }
+        }
+
+        private fun classOf(a: PlannedAttempt): LabEgress = when (a.tier) {
+            Tier.SELF -> LabEgress.LOCAL
+            Tier.PEER -> LabEgress.peerClass
+            Tier.CLOUD -> LabEgress.CLOUD
         }
 
         // ---- this device --------------------------------------------------------------------------------------------------------------------------
@@ -800,11 +807,14 @@ class Simulation(val sc: Scenario, val catalogue: Catalogue, val variant: Varian
             log.attemptId = "cloud"
             log.bodySent = true
             val cid = "cloud-${rec.id}-${idx}"
+            val ca = rl.cloudAttempt(cid, idx, provider)
+            ca.begin()
             trace.add(ContentSent(selfName, rec.id, cid, LabEgress.CLOUD))
             if (failure != null) {
                 loop.after(ttft / 2, "cloud-fail") {
                     log.status = failure
                     log.endedAt = loop.now
+                    ca.finish(if (failure == "429") 429 else 503, rec.B)
                     rl.note(LabEgress.CLOUD, contentSent = true, served = false)
                     emit("cloud-fail", "provider" to provider)
                     next()
@@ -818,6 +828,7 @@ class Simulation(val sc: Scenario, val catalogue: Catalogue, val variant: Varian
                 log.endedAt = loop.now
                 deliver(log)
                 emit("cloud-ok", "provider" to provider, "ms" to ttft)
+                ca.finish(200, rec.B, a.cloud!!.modelId)
                 rl.note(LabEgress.CLOUD, contentSent = true, served = true, provider = provider, model = a.cloud!!.modelId)
                 tokensOut = rec.N.toLong()
                 finish(200, a, "cloud:$provider")
@@ -1003,7 +1014,7 @@ class Simulation(val sc: Scenario, val catalogue: Catalogue, val variant: Varian
 
             private fun onOfferTimeout() {
                 answered = true
-                val cancel = payloads.cancel(attemptId, stream, "timeout")
+                val cancel = payloads.cancel(attemptId, stream, CancelReasonWire.DEADLINE)
                 s.conn.setPayload(cancel.text)
                 try {
                     ra.send(cancel.frame)
@@ -1027,7 +1038,7 @@ class Simulation(val sc: Scenario, val catalogue: Catalogue, val variant: Varian
                 piggybackFrom(f.text!!)
                 emit("link-rtt", "peer" to peerId, "ms" to r)
                 if (worseNow() || !eligibleNow()) {
-                    val cancel = payloads.cancel(attemptId, stream, "reeval")
+                    val cancel = payloads.cancel(attemptId, stream, CancelReasonWire.POLICY_CHANGED)
                     s.conn.setPayload(cancel.text)
                     ra.send(cancel.frame)
                     s.conn.deliver(false, cancel.frame)
@@ -1105,7 +1116,7 @@ class Simulation(val sc: Scenario, val catalogue: Catalogue, val variant: Varian
                 loop.after(r / 2, "head-arrives") {
                     if (finished || aborted || !connectionOk()) return@after
                     s.conn.deliver(true, f.frame)
-                    ra.receive(f.frame)
+                    ra.receive(f.frame, served.servedModel)
                     observer.onHead(loop.now)
                     headSeen = true
                     log.status = "RECEIVING"
@@ -1177,7 +1188,7 @@ class Simulation(val sc: Scenario, val catalogue: Catalogue, val variant: Varian
                 log.status = "ok"
                 log.endedAt = loop.now
                 deliver(log)
-                rl.note(LabEgress.peerClass, contentSent = true, served = true, provider = "peer:${peerId}", model = file.modelId)
+                rl.notePeer(ra, served = true)
                 finish(200, a, peerId)
             }
 
@@ -1194,7 +1205,7 @@ class Simulation(val sc: Scenario, val catalogue: Catalogue, val variant: Varian
 
             private fun onHeadTimeout() {
                 val d = Failover.decide(AttemptPhase.BODY_SENT, ctx, AttemptEvent.HeadTimeout)!!
-                val cancel = payloads.cancel(attemptId, stream, "head-timeout")
+                val cancel = payloads.cancel(attemptId, stream, CancelReasonWire.DEADLINE)
                 s.conn.setPayload(cancel.text)
                 try {
                     ra.send(cancel.frame)

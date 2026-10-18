@@ -20,13 +20,15 @@ object Scenarios {
             out += if (!withPeer) {
                 rng.pick(listOf(AttemptPlan.CloudFail, AttemptPlan.CloudOk, AttemptPlan.LocalOk))
             } else {
-                when (rng.nextInt(7)) {
+                when (rng.nextInt(9)) {
                     0 -> AttemptPlan.PeerDecline(rng.pick(declineCodes))
                     1 -> AttemptPlan.PeerServed(rng.pick(listOf("done", "done", "done", "interrupted", "error", "oom")), rng.nextInt(4), world.fuzzBody(20, 300))
                     2 -> AttemptPlan.PeerServed("done", 1 + rng.nextInt(3), world.fuzzBody(20, 300))
                     3 -> AttemptPlan.PeerCancelled(world.fuzzBody(20, 200))
                     4 -> AttemptPlan.CloudFail
                     5 -> AttemptPlan.CloudOk
+                    6 -> AttemptPlan.PeerCancelledBeforeBody
+                    7 -> AttemptPlan.PeerAcceptedThenLost
                     else -> AttemptPlan.LocalOk
                 }
             }

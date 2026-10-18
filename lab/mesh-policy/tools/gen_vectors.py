@@ -887,14 +887,14 @@ l02(
     show=["A", "B"], onlyKinds=INFER, fail={"node": "B", "at": 3, "mode": "BEFORE_WRITE", "sticky": False},
 )
 l02(
-    "L02-017", "FC-5: the lender's outcome append fails: no INFER_END is sent, the session is closed (close:ledger-failure) and the requester records the loss",
+    "L02-017", "FC-5: the lender's outcome append fails: no INFER_END is sent, the session is closed (close:ledger-failure; its row carries the 826 application bytes no other row holds) and the requester records the loss",
     HS + [
         fr("A", "INFER_OFFER", 120, attempt="a1", request="r1"), fr("B", "INFER_ACCEPT", 100, attempt="a1"), fr("A", "INFER_BODY", 500, attempt="a1"),
         fr("B", "INFER_HEAD", 70, attempt="a1"), fr("B", "INFER_END", 60, attempt="a1", served=SERVED_END), fin("a1", 502, "PEER_LOST"), close("A"),
     ],
     {
         "A": [DIAL_I, DIAL_O] + H_A + [r("infer-sent", "intent", None, 0, None, 0, 1, a="a1"), r("infer-sent", "outcome", "PEER_LOST", 638, 188, 502, 1, a="a1"), CLOSE],
-        "B": [OPEN_B] + H_B + [r("infer-served", "intent", None, 0, None, 0, 1, a="a1"), r("session", None, "close:ledger-failure", 0, 0, 503, 1, ob="measured")],
+        "B": [OPEN_B] + H_B + [r("infer-served", "intent", None, 0, None, 0, 1, a="a1"), r("session", None, "close:ledger-failure", 188, 638, 503, 1, ob="measured")],
         "abort": None,
     },
     show=["A", "B", "abort"], fail={"node": "B", "at": 4, "mode": "BEFORE_WRITE", "sticky": False},
@@ -966,6 +966,27 @@ l02(
         "B": H_B + [r("control", None, "ERROR:UNKNOWN", 39, 0, 200, 1), r("control", None, "GOAWAY:unknown", 26, 0, 200, 1)],
     },
     show=["A", "B"], onlyKinds=["control"],
+)
+l02(
+    "L02-024", "an accepted attempt the requester cancels before it sends the body: the lender ends it with 499 cancelled, an outcome row and no intent (no content was processed), durable before INFER_END, and both outcome rows count every frame (ERRATA ERR-FX4-LG-3)",
+    HS + [
+        fr("A", "INFER_OFFER", 120, attempt="a1", request="r1"), fr("B", "INFER_ACCEPT", 100, attempt="a1"), fr("A", "CANCEL", 58, attempt="a1"),
+        fr("B", "INFER_END", 60, attempt="a1", served=CANCELLED_END), fin("a1", 499, "CANCELLED"), close("A"),
+    ],
+    {
+        "A": [r("infer-sent", "intent", None, 0, None, 0, 1, a="a1"), r("infer-sent", "outcome", "CANCELLED", 196, 178, 499, 1, a="a1")],
+        "B": [r("infer-served", "outcome", "CANCELLED", 178, 196, 499, 1, a="a1")],
+    },
+    show=["A", "B"], onlyKinds=INFER,
+)
+l02(
+    "L02-025", "an accepted attempt whose body never comes: the requester gives it up (599), and the lender's attempt ends when the session closes, as 499 INTERRUPTED with every byte it saw; the lender never ends with no row (router.md 8.5, ERRATA ERR-FX4-LG-3)",
+    HS + [fr("A", "INFER_OFFER", 120, attempt="a1", request="r1"), fr("B", "INFER_ACCEPT", 100, attempt="a1"), fin("a1", 599, "PEER_UNREACHABLE"), close("A")],
+    {
+        "A": [r("infer-sent", "intent", None, 0, None, 0, 1, a="a1"), r("infer-sent", "outcome", "PEER_UNREACHABLE", 129, 109, 599, 1, a="a1")],
+        "B": [r("infer-served", "outcome", "INTERRUPTED", 109, 129, 499, 1, a="a1")],
+    },
+    show=["A", "B"], onlyKinds=INFER,
 )
 
 write(

@@ -179,6 +179,40 @@ class JsonlLedgerSinkTest {
     }
 
     @Test
+    fun `an existing ledger file with a loose mode is tightened to owner-only, and a symlink as the ledger path is refused with its target untouched (ERR-FX4-LG-2)`() {
+        val dir = Files.createTempDirectory("asom-ledger-fx4-")
+        try {
+            val file = dir.resolve("ledger.jsonl")
+            Files.write(file, "{\"a\":1}\n".toByteArray())
+            val posix = java.nio.file.FileSystems.getDefault().supportedFileAttributeViews().contains("posix")
+            if (posix) Files.setPosixFilePermissions(file, java.nio.file.attribute.PosixFilePermissions.fromString("rw-rw-rw-"))
+            JsonlLedgerSink.open(file).use { it.appendLine("{\"a\":2}") }
+            if (posix) {
+                assertEquals(setOf(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE), Files.getPosixFilePermissions(file), "an existing 0666 ledger became 0600")
+            }
+            assertEquals("{\"a\":1}\n{\"a\":2}\n", String(Files.readAllBytes(file)), "the rows already there are kept")
+
+            val victim = dir.resolve("victim.txt")
+            Files.write(victim, "line1\nTAIL-NO-NEWLINE".toByteArray())
+            val link = dir.resolve("link.jsonl")
+            val linked = try {
+                Files.createSymbolicLink(link, victim)
+                true
+            } catch (_: Exception) {
+                false
+            }
+            if (linked) {
+                assertFailsWith<java.io.IOException> { JsonlLedgerSink.open(link) }
+                assertEquals("line1\nTAIL-NO-NEWLINE", String(Files.readAllBytes(victim)), "the tail scan did not touch the symlink target")
+            } else {
+                assertFailsWith<java.io.IOException>("this account cannot create symlinks: a directory as the ledger path is refused instead") { JsonlLedgerSink.open(dir) }
+            }
+        } finally {
+            dir.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
     fun `appending a row writes nothing to stdout or stderr`() {
         val out = ByteArrayOutputStream()
         val err = ByteArrayOutputStream()

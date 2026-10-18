@@ -42,7 +42,7 @@ class LedgerLawsPropertyTest {
     @Test
     fun everyListedLawIsPresent() {
         val names = measuredRun.all().map { it.law }.toSet()
-        for (n in listOf("L-L1", "L-L2", "L-L3", "L-L4", "L-L5", "L-L5b", "L-L7", "L-L8", "L-L9", "L-L10", "L-L12", "L-L14", "L-L15", "L-L16")) assertTrue(n in names, "$n missing")
+        for (n in listOf("L-L1", "L-L2", "L-L3", "L-L4", "L-L5", "L-L5b", "L-L7", "L-L8", "L-L9", "L-L10", "L-L12", "L-L14", "L-L15", "L-L16", "L-L17", "L-L18", "L-L19")) assertTrue(n in names, "$n missing")
     }
 
     @Test

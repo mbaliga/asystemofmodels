@@ -75,6 +75,7 @@ data class LabRouteRecord(
         }
         if (meshKind == MeshKind.DIAL) {
             need(destAddr != null && addrSource in setOf("qr", "hello", "user"), "a DIAL row carries destAddr and addrSource in qr|hello|user")
+            if (phase == Phase.OUTCOME) need(meshCode in DialCodes.ALL, "a DIAL outcome code is one of ${DialCodes.ALL} (LAB_SPEC 7.6)")
         }
         if (overheadBytes != null) {
             need(meshKind == MeshKind.DIAL || meshKind == MeshKind.SESSION, "overhead is recorded on DIAL and SESSION rows only")

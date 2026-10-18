@@ -20,6 +20,7 @@ fun runWorld(seed: Long, cfg: SimConfig = SimConfig(seed = seed)): SimWorld {
 fun traceLaws(t: List<Ev>): List<LawResult> = listOf(
     LedgerLaws.l1(t), LedgerLaws.l2(t), LedgerLaws.l3(t), LedgerLaws.l4(t), LedgerLaws.l5(t), LedgerLaws.l5b(t), LedgerLaws.l7(t), LedgerLaws.l8(t),
     LedgerLaws.l9(t), LedgerLaws.l10(t), LedgerLaws.l12(t), LedgerLaws.l13(t), LedgerLaws.l14(t), LedgerLaws.l15(t).result, LedgerLaws.l16(t).result,
+    LedgerLaws.l17(t), LedgerLaws.l18(t), LedgerLaws.l19(t),
 )
 
 class LawTally {

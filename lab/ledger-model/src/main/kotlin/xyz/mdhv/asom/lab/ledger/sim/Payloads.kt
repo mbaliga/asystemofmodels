@@ -13,6 +13,9 @@ import xyz.mdhv.asom.lab.ledger.FrameKind
 import xyz.mdhv.asom.lab.ledger.FrameSpec
 import xyz.mdhv.asom.lab.ledger.ServedRecord
 
+/** The closed `CANCEL.reason` enum of LAB_SPEC 7.2; the simulators cannot name a value outside it. */
+enum class CancelReasonWire(val wire: String) { CLIENT_GONE("client-gone"), DEADLINE("deadline"), POLICY_CHANGED("policy-changed"), SUPERSEDED("superseded") }
+
 /** A frame plus its JSON payload text (null for raw-byte frames and for frames a vector states only by length). */
 class Built(val frame: FrameSpec, val text: String?)
 
@@ -105,6 +108,6 @@ class PayloadFactory(private val rng: SplittableRandom, private val displayName:
         return Built(FrameSpec(FrameKind.INFER_END, text.toByteArray(Charsets.UTF_8).size, stream, attemptId), text)
     }
 
-    fun cancel(attemptId: String, stream: Int, reason: String): Built =
-        json(FrameKind.CANCEL, listOf("attemptId" to JString(attemptId), "reason" to JString(reason)), stream, attemptId)
+    fun cancel(attemptId: String, stream: Int, reason: CancelReasonWire): Built =
+        json(FrameKind.CANCEL, listOf("attemptId" to JString(attemptId), "reason" to JString(reason.wire)), stream, attemptId)
 }

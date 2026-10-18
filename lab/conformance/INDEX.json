@@ -31,7 +31,7 @@
   },
   {
     "path": "ledger/L02-frame-rows.json",
-    "sha256": "762660d5447fe2894b0c2b3d9b1a50f28e42ca197609ce34d4ce338b27e0a123",
+    "sha256": "e7e57d5ee606e9c3ca424b73994d343004c33358de21686dcbe4d727179539fd",
     "family": "L02",
     "status": "normative"
   },
