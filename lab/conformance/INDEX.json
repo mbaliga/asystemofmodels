@@ -79,8 +79,7 @@
   },
   {
     "path": "policy/W07p-presence.json",
-    "sha256": "f8d04ff762df792ce63da10614e6e371dbcdd309942f13091857fc60cc2450ff",
-    "sha256": "e0af94db412346b58fbbc772551beb61abce513f2c4019ffe36661c0177f2f99",
+    "sha256": "a4779f672734d0f45528454e38c1b8ddc2420a1eb6597207f86f854bcefb0f71",
     "family": "W07p",
     "status": "normative"
   },
