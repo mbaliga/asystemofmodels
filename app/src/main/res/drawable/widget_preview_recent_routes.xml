@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget picker preview for API 29-30 (previewImage); API 31+ draws widget_preview_recent_routes layout instead. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="100dp"
+    android:viewportWidth="220"
+    android:viewportHeight="110">
+    <path
+        android:fillColor="@color/widget_surface"
+        android:pathData="M16,0 L204,0 A16,16 0 0 1 220,16 L220,94 A16,16 0 0 1 204,110 L16,110 A16,16 0 0 1 0,94 L0,16 A16,16 0 0 1 16,0 Z" />
+    <path
+        android:fillColor="@color/widget_ink_dim"
+        android:pathData="M16,14 L106,14 L106,22 L16,22 Z" />
+    <path
+        android:fillColor="@color/widget_violet"
+        android:pathData="M16,48 L23,34 L30,48 Z" />
+    <path
+        android:fillColor="@color/widget_ink"
+        android:pathData="M38,36 L158,36 L158,46 L38,46 Z" />
+    <path
+        android:fillColor="@color/widget_violet"
+        android:pathData="M16,72 L23,58 L30,72 Z" />
+    <path
+        android:fillColor="@color/widget_ink"
+        android:pathData="M38,60 L138,60 L138,70 L38,70 Z" />
+    <path
+        android:fillColor="@color/widget_cyan"
+        android:pathData="M16,82 L30,82 L30,96 L16,96 Z" />
+    <path
+        android:fillColor="@color/widget_ink"
+        android:pathData="M38,84 L168,84 L168,94 L38,94 Z" />
+</vector>

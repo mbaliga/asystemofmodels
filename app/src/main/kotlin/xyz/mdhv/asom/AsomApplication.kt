@@ -1,6 +1,7 @@
 package xyz.mdhv.asom
 
 import android.app.Application
+import xyz.mdhv.asom.widget.WidgetRefresh
 
 class AsomApplication : Application() {
     override fun onCreate() {
@@ -9,5 +10,7 @@ class AsomApplication : Application() {
         // Runs in every process start, including the one WorkManager creates
         // just to finish a queued download (§1.3: no unledgered egress).
         ServiceLocator.installDownloadLedgerSink()
+        // Home-screen widgets: observe asom's data only while a widget is placed.
+        WidgetRefresh.onProcessStart(this)
     }
 }

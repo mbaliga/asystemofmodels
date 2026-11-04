@@ -1,6 +1,7 @@
 package xyz.mdhv.asom.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -17,14 +18,13 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import xyz.mdhv.asom.ui.theme.AsomTheme
+import xyz.mdhv.asom.widget.WidgetLinks
+import xyz.mdhv.asom.widget.model.Destination
 
 /**
  * Placeholder-functional dashboard (invariant §1.7): functional Compose/M3
@@ -33,14 +33,37 @@ import xyz.mdhv.asom.ui.theme.AsomTheme
  */
 class MainActivity : ComponentActivity() {
 
+    /** The open tab. A home-screen widget tap names one via [WidgetLinks.EXTRA_DESTINATION]. */
+    private val selectedTab = mutableIntStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        selectedTab.intValue = savedInstanceState?.getInt(KEY_TAB) ?: widgetTab(intent) ?: 0
         setContent {
             AsomTheme {
                 NotificationPermissionGate()
-                Dashboard()
+                Dashboard(selectedTab.intValue) { selectedTab.intValue = it }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        widgetTab(intent)?.let { selectedTab.intValue = it }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt(KEY_TAB, selectedTab.intValue)
+    }
+
+    /** Only a known destination selects a tab; anything else is ignored. */
+    private fun widgetTab(intent: Intent?): Int? =
+        Destination.fromWire(intent?.getStringExtra(WidgetLinks.EXTRA_DESTINATION))?.tabIndex
+
+    private companion object {
+        const val KEY_TAB = "selected_tab"
     }
 }
 
@@ -62,9 +85,9 @@ private fun NotificationPermissionGate() {
 }
 
 @Composable
-private fun Dashboard() {
+private fun Dashboard(selected: Int, onSelect: (Int) -> Unit) {
+    // Order is load-bearing: widget Destination.tabIndex values point into it.
     val tabs = listOf("Status", "Hotspot", "Models", "Keys", "Ledger")
-    var selected by remember { mutableIntStateOf(0) }
 
     Scaffold { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
@@ -72,7 +95,7 @@ private fun Dashboard() {
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selected == index,
-                        onClick = { selected = index },
+                        onClick = { onSelect(index) },
                         text = { Text(title) },
                     )
                 }

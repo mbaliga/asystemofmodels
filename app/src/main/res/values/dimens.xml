@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Home-screen widgets. API 31+ takes the launcher's own radius (values-v31). -->
+    <dimen name="widget_radius">16dp</dimen>
+    <dimen name="widget_padding_h">12dp</dimen>
+    <dimen name="widget_padding_v">8dp</dimen>
+    <!-- The one-line TINY layout: a 1-row landscape cell is about 51dp tall. -->
+    <dimen name="widget_padding_v_tiny">4dp</dimen>
+</resources>

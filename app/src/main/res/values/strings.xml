@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Home-screen widget copy (docs/widgets.md). The Txt/Cnt keys in
+  xyz.mdhv.asom.widget.model.WidgetCopy map one to one onto the widget_* names below
+  (xyz.mdhv.asom.widget.ResourceCopy). The widget_preview_* strings are sample content
+  for the widget picker preview only; a placed widget never shows them.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="widget_loading">asom — loading…</string>
+    <string name="widget_label_egress">Left the device today</string>
+    <string name="widget_desc_egress">Ledger rows that left this phone today, with the estimated cost where a cost basis exists.</string>
+    <string name="widget_label_daemon">asom daemon</string>
+    <string name="widget_desc_daemon">Whether the daemon is serving on 127.0.0.1:11435, with Start and Stop.</string>
+    <string name="widget_label_last_route">Last route</string>
+    <string name="widget_desc_last_route">Which provider served the last request, and whether anything left the device.</string>
+    <string name="widget_label_recent_routes">Recent routes</string>
+    <string name="widget_desc_recent_routes">The newest routes from the ledger: egress, provider and time.</string>
+    <string name="widget_label_hotspot">AI hotspot</string>
+    <string name="widget_desc_hotspot">How many apps are paired, and any request waiting for your approval. Counts only.</string>
+    <string name="widget_label_downloads">Model downloads</string>
+    <string name="widget_desc_downloads">Model download progress and how much model storage is on this phone.</string>
+
+    <!-- Widget picker preview samples (drawn without data). -->
+    <string name="widget_preview_time">14:05</string>
+    <string name="widget_preview_egress_value">▲ 12</string>
+    <string name="widget_preview_egress_unit">rows</string>
+    <string name="widget_preview_egress_line1">≈ 0.0042 USD estimated</string>
+    <string name="widget_preview_egress_line2">▲ cloud 10 · ■ download 2</string>
+    <string name="widget_preview_daemon_value">● running</string>
+    <string name="widget_preview_daemon_line1">serving on 127.0.0.1:11435</string>
+    <string name="widget_preview_daemon_line2">idle</string>
+    <string name="widget_preview_route_headline">▲ cloud</string>
+    <string name="widget_preview_route_line1" tools:ignore="TypographyDashes">served by openrouter/llama-3.3-70b</string>
+    <string name="widget_preview_route_line2">HTTP 200 · 14:05</string>
+    <string name="widget_preview_recent_row1" tools:ignore="TypographyDashes">▲ openrouter/llama-3.3-70b</string>
+    <string name="widget_preview_recent_row2" tools:ignore="TypographyDashes">▲ groq/llama-3.3-70b · HTTP 429</string>
+    <string name="widget_preview_recent_row3">■ local · not served · HTTP 501</string>
+    <string name="widget_preview_recent_time1">14:05</string>
+    <string name="widget_preview_recent_time2">14:04</string>
+    <string name="widget_preview_recent_time3">13:51</string>
+    <string name="widget_preview_hotspot_value">● 3</string>
+    <string name="widget_preview_hotspot_unit">apps paired</string>
+    <string name="widget_preview_downloads_value">◐ 42%</string>
+    <string name="widget_preview_downloads_unit" tools:ignore="TypographyDashes">llama-3.3-70b</string>
+    <string name="widget_preview_downloads_line1">16.8 GB of 40.0 GB</string>
+
+    <!-- Widget faces: sentences (WidgetCopy.Txt). -->
+    <string name="widget_as_of">as of %1$s</string>
+    <string name="widget_error">Couldn\'t read asom\'s data — open asom to check</string>
+    <string name="widget_opens_ledger">Opens the ledger in asom</string>
+    <string name="widget_opens_status">Opens asom\'s status</string>
+    <string name="widget_opens_hotspot">Opens the AI hotspot in asom</string>
+    <string name="widget_opens_models">Opens models in asom</string>
+    <string name="widget_opens_consent">Opens the waiting pairing request</string>
+    <string name="widget_ledger_degraded">A ledger row could not be written — the ledger is incomplete</string>
+    <string name="widget_no_cost_basis">No cost basis — not estimated</string>
+    <string name="widget_unit_incomplete">%1$s (incomplete)</string>
+    <string name="widget_egress_title">Left the device</string>
+    <string name="widget_egress_nothing">Nothing has left the device today</string>
+    <string name="widget_egress_cost">≈ %1$s USD estimated</string>
+    <string name="widget_egress_part_cloud">cloud %1$s</string>
+    <string name="widget_egress_part_catalogue">catalogue %1$s</string>
+    <string name="widget_egress_part_download">download %1$s</string>
+    <string name="widget_egress_traffic">%1$s sent · tokens %2$s in, %3$s out</string>
+    <string name="widget_egress_footer">Counted from asom\'s ledger; resets at midnight</string>
+    <string name="widget_daemon_title">asom daemon</string>
+    <string name="widget_daemon_running">running</string>
+    <string name="widget_daemon_stopped">stopped</string>
+    <string name="widget_daemon_failed">didn\'t start</string>
+    <string name="widget_daemon_endpoint">serving on %1$s:%2$s</string>
+    <string name="widget_daemon_not_listening">not listening · port %1$s</string>
+    <string name="widget_daemon_port_busy">port %1$s unavailable — asom did not start</string>
+    <string name="widget_daemon_idle">idle</string>
+    <string name="widget_daemon_serving">serving a request…</string>
+    <string name="widget_daemon_streaming">streaming via %1$s…</string>
+    <string name="widget_daemon_verbose">verbose ledger ON — request bodies stored on this device</string>
+    <string name="widget_daemon_v1">v1 has no local engine — every served route is cloud</string>
+    <string name="widget_action_start">Start</string>
+    <string name="widget_action_stop">Stop</string>
+    <string name="widget_action_start_desc">Start the asom daemon</string>
+    <string name="widget_action_stop_desc">Stop the asom daemon</string>
+    <string name="widget_last_route_title">Last route</string>
+    <string name="widget_recent_title">Recent routes</string>
+    <string name="widget_route_cloud">cloud</string>
+    <string name="widget_route_local">local — nothing served, nothing left the device</string>
+    <string name="widget_route_served_by">served by %1$s</string>
+    <string name="widget_route_sent_to">sent to %1$s — not served</string>
+    <string name="widget_route_not_served">not served</string>
+    <string name="widget_route_status">HTTP %1$s · %2$s</string>
+    <string name="widget_route_cost">≈ %1$s USD estimated (%2$s)</string>
+    <string name="widget_route_asked">asked for %1$s</string>
+    <string name="widget_route_detail">tokens %1$s in · %2$s out · %3$s ms · %4$s sent</string>
+    <string name="widget_row_sent">%1$s · HTTP %2$s</string>
+    <string name="widget_row_cloud_not_served">cloud · not served · HTTP %1$s</string>
+    <string name="widget_row_local">local · not served · HTTP %1$s</string>
+    <string name="widget_routes_empty">No routes yet</string>
+    <string name="widget_routes_hint">Start the daemon and send a request.</string>
+    <string name="widget_routes_footer">Metadata only — no prompts, replies or keys</string>
+    <string name="widget_hotspot_title">AI hotspot</string>
+    <string name="widget_hotspot_empty">Apps join via the AI-hotspot pairing flow.</string>
+    <string name="widget_hotspot_last_approved">last approval %1$s</string>
+    <string name="widget_hotspot_withheld">App names stay inside asom</string>
+    <string name="widget_dl_title">Model downloads</string>
+    <string name="widget_dl_percent">%1$s%%</string>
+    <string name="widget_dl_downloading">downloading</string>
+    <string name="widget_dl_verifying">verifying</string>
+    <string name="widget_dl_none">none</string>
+    <string name="widget_dl_detail">%1$s of %2$s</string>
+    <string name="widget_dl_so_far">%1$s so far</string>
+    <string name="widget_dl_on_disk">%1$s of models on disk</string>
+    <string name="widget_dl_nothing_yet">Nothing downloaded yet</string>
+    <string name="widget_dl_no_catalogue">No downloadable models in the catalogue</string>
+
+    <!-- Widget faces: plurals (WidgetCopy.Cnt). -->
+    <plurals name="widget_unit_rows">
+        <item quantity="one">row</item>
+        <item quantity="other">rows</item>
+    </plurals>
+    <plurals name="widget_local_rows">
+        <item quantity="one">%d local row — nothing served, nothing left</item>
+        <item quantity="other">%d local rows — nothing served, nothing left</item>
+    </plurals>
+    <plurals name="widget_cost_partial">
+        <item quantity="one">≈ %1$s USD estimated (%2$d of %3$d cloud row priced)</item>
+        <item quantity="other">≈ %1$s USD estimated (%2$d of %3$d cloud rows priced)</item>
+    </plurals>
+    <plurals name="widget_unit_apps_paired">
+        <item quantity="one">app paired</item>
+        <item quantity="other">apps paired</item>
+    </plurals>
+    <plurals name="widget_pending">
+        <item quantity="one">%d app waiting for your approval</item>
+        <item quantity="other">%d apps waiting for your approval</item>
+    </plurals>
+    <plurals name="widget_pending_short">
+        <item quantity="one">%d waiting</item>
+        <item quantity="other">%d waiting</item>
+    </plurals>
+    <plurals name="widget_revoked">
+        <item quantity="one">%d revoked</item>
+        <item quantity="other">%d revoked</item>
+    </plurals>
+    <plurals name="widget_unit_models_stored">
+        <item quantity="one">model stored</item>
+        <item quantity="other">models stored</item>
+    </plurals>
+    <plurals name="widget_stored">
+        <item quantity="one">%d model stored</item>
+        <item quantity="other">%d models stored</item>
+    </plurals>
+    <plurals name="widget_dl_more">
+        <item quantity="one">+%d more downloading</item>
+        <item quantity="other">+%d more downloading</item>
+    </plurals>
+    <plurals name="widget_dl_failed">
+        <item quantity="one">%d failed</item>
+        <item quantity="other">%d failed</item>
+    </plurals>
+</resources>

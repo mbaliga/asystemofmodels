@@ -60,6 +60,18 @@ interface LedgerDao {
     @Query("SELECT COALESCE(SUM(costEst), 0.0) FROM route_log WHERE costEst IS NOT NULL")
     fun totalCost(): Flow<Double>
 
+    /** Home-screen widgets: every row since [fromTs] (local midnight), newest first. Read-only. */
+    @Query("SELECT * FROM route_log WHERE ts >= :fromTs ORDER BY ts DESC")
+    fun since(fromTs: Long): List<RouteLogEntity>
+
+    /**
+     * Home-screen widgets: the newest request rows. `cloud` and `local` are the
+     * `Egress.wire` values of a routed request; catalogue and download rows are
+     * not routes. Read-only.
+     */
+    @Query("SELECT * FROM route_log WHERE egress IN ('cloud', 'local') ORDER BY ts DESC LIMIT :limit")
+    fun recentRoutes(limit: Int): List<RouteLogEntity>
+
     @Insert
     fun insertVerbose(row: VerboseLogEntity)
 

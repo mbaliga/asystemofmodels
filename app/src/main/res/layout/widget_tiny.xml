@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Every widget's one-line layout (TINY: shorter than the small layout, e.g. a 1-row
+  landscape cell). The stamp is measured first (the weighted row is measured last),
+  then the value, and the title takes what is left, so a narrow widget drops the
+  title before the value or its stamp.
+  Bound by xyz.mdhv.asom.widget.WidgetRenderer.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:clipToOutline="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="@dimen/widget_padding_h"
+    android:paddingTop="@dimen/widget_padding_v_tiny"
+    android:paddingEnd="@dimen/widget_padding_h"
+    android:paddingBottom="@dimen/widget_padding_v_tiny"
+    tools:targetApi="31">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/w_value"
+            style="@style/AsomWidget.Value.Small"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/w_title"
+            style="@style/AsomWidget.Title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/w_asof"
+        style="@style/AsomWidget.Meta"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp" />
+</LinearLayout>

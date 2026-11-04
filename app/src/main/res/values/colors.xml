@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Home-screen widget colours (day). Every value is a Hyle token (vendored in
+  dev/aarso/hyle/tokens/HyleTokens.kt); WidgetResourcesTest checks each one against it
+  (surface and ink against the HyleSeam roles the dashboard uses).
+  asom is dark-only (Hyle is a dark-only system, and the §1.6 pair fails text contrast
+  on a light ground: cyan #35E0FF on white is about 1.6:1), so the day and night files
+  are identical by design. Violet and cyan are the only meaning-bearing hues (§1.6);
+  every toned line also carries a glyph and a word.
+-->
+<resources>
+    <!-- Hyle color.background.surface -->
+    <color name="widget_surface">#FF121212</color>
+    <!-- Hyle color.text.primary -->
+    <color name="widget_ink">#EBECE8E4</color>
+    <!-- Hyle color.palette.material.stone: Hyle's text.secondary (42% ink) is below 4.5:1 at 12sp -->
+    <color name="widget_ink_dim">#FF9B958C</color>
+    <!-- Hyle accent.violet: attention, something left the device, needs you -->
+    <color name="widget_violet">#FF8E7BFF</color>
+    <!-- Hyle provenance.cloud (cold cyan): active, healthy, stayed here -->
+    <color name="widget_cyan">#FF35E0FF</color>
+    <!-- Hyle color.border.strong: button outline and progress track -->
+    <color name="widget_hairline">#24FFFFFF</color>
+</resources>
