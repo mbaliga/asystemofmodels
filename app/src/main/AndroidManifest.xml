@@ -85,6 +85,116 @@
             </intent-filter>
         </receiver>
 
+        <!-- Home-screen widgets (docs/widgets.md). Providers are exported so any
+             launcher can bind them; they show ledger metadata and counts only,
+             never keys, tokens, bodies or paired-app names. TIME_SET,
+             TIMEZONE_CHANGED and LOCALE_CHANGED redraw their times and words. -->
+        <receiver
+            android:name=".widget.EgressTodayWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_label_egress">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_egress" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.DaemonWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_label_daemon">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_daemon" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.LastRouteWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_label_last_route">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_last_route" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.RecentRoutesWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_label_recent_routes">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_recent_routes" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.HotspotWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_label_hotspot">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_hotspot" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.DownloadsWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_label_downloads">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_downloads" />
+        </receiver>
+
+        <!-- Midnight redraw for the widgets' "today"; only asom's own alarm reaches it. -->
+        <receiver
+            android:name=".widget.WidgetTickReceiver"
+            android:exported="false" />
+
+        <!-- The daemon widget's Start/Stop pad: an activity because Android 12+
+             refuses foreground-service starts from the background. Shows
+             nothing and finishes at once. -->
+        <activity
+            android:name=".widget.WidgetActionActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <!-- Quick-settings tile (§11 P8): start/stop from the shade. -->
         <service
             android:name=".service.AsomTileService"

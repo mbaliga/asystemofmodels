@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget picker preview for API 29-30 (previewImage); API 31+ draws widget_preview_hotspot layout instead. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="100dp"
+    android:viewportWidth="220"
+    android:viewportHeight="110">
+    <path
+        android:fillColor="@color/widget_surface"
+        android:pathData="M16,0 L204,0 A16,16 0 0 1 220,16 L220,94 A16,16 0 0 1 204,110 L16,110 A16,16 0 0 1 0,94 L0,16 A16,16 0 0 1 16,0 Z" />
+    <path
+        android:fillColor="@color/widget_ink_dim"
+        android:pathData="M16,24 L86,24 L86,32 L16,32 Z" />
+    <path
+        android:fillColor="@color/widget_cyan"
+        android:pathData="M16,66 A11,11 0 1 1 38,66 A11,11 0 1 1 16,66 Z" />
+    <path
+        android:fillColor="@color/widget_ink"
+        android:pathData="M46,58 L70,58 L70,76 L46,76 Z" />
+    <path
+        android:fillColor="@color/widget_ink"
+        android:pathData="M78,62 L168,62 L168,74 L78,74 Z" />
+</vector>

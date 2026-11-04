@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget picker preview for API 29-30 (previewImage); API 31+ draws widget_preview_downloads layout instead. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="100dp"
+    android:viewportWidth="220"
+    android:viewportHeight="110">
+    <path
+        android:fillColor="@color/widget_surface"
+        android:pathData="M16,0 L204,0 A16,16 0 0 1 220,16 L220,94 A16,16 0 0 1 204,110 L16,110 A16,16 0 0 1 0,94 L0,16 A16,16 0 0 1 16,0 Z" />
+    <path
+        android:fillColor="@color/widget_ink_dim"
+        android:pathData="M16,16 L116,16 L116,24 L16,24 Z" />
+    <path
+        android:fillColor="@color/widget_violet"
+        android:pathData="M16,46 A11,11 0 1 1 38,46 A11,11 0 1 1 16,46 Z" />
+    <path
+        android:fillColor="@color/widget_ink"
+        android:pathData="M46,38 L96,38 L96,54 L46,54 Z" />
+    <path
+        android:fillColor="@color/widget_hairline"
+        android:pathData="M16,68 L204,68 L204,74 L16,74 Z" />
+    <path
+        android:fillColor="@color/widget_violet"
+        android:pathData="M16,68 L96,68 L96,74 L16,74 Z" />
+    <path
+        android:fillColor="@color/widget_ink"
+        android:pathData="M16,86 L146,86 L146,94 L16,94 Z" />
+</vector>

@@ -2781,3 +2781,130 @@ What ran since `2a67003`:
 Hosted-CI failures met on the way and their causes (all fixed): CRLF in spec-reading tests on Windows; a non-atomic `getOrPut` in `ManifestSigner.lockFor` (a production race: two signers could get two locks and sign two bodies under one seq); a tap-snapshot race in a real-TLS accounting test; chunk hooks installed after the offer; the lab reference to a fifth vector file in the UT build; Qt key order in a QML test; an asynchronous self-test frame in `check_fake_nodes.py`; one unexplained Windows JDK 17 failure of the gate class summary (not reproduced locally, did not recur; failure messages are now printed by mesh-proto).
 
 Known open items (none is device evidence, none is hidden): lab VERSION is still 0.2.0 although vectors changed (LAB_SPEC 3.2 broken until the bump; owner D30-D32); the Swift tracker's r4 additions are not independent of the Kotlin (ERR-R4B-TR-4); RP-6 (error code when every attempt failed) and RP-7 (route reasons in the terminal ledger row) are owner-decision / cross-track; the PROVISIONAL constants (60 s max-age grace, 30 s probe interval, 10,000 mWh unknown-battery cost, 30 s write-stall budget) await ratification (D43); Windows ledger permissions are unverified on a real Windows ACL; macOS and every device checklist remain NEEDS-DEVICE-VALIDATION.
+
+## Home-screen widgets (owner override 2026-11-04: widgets only) — 2026-11-04 — JVM-tested and assembled, NOT DEVICE EVIDENCE
+
+The owner lifted "`app/` and the other Android modules stay untouched until v1 device validation" for
+home-screen widgets only. Six standard App Widgets (`AppWidgetProvider` + `RemoteViews`, any launcher),
+each with small, medium and large layouts: **Left the device today** (stat), **asom daemon** (stat with a
+Start/Stop pad), **Last route** (card), **Recent routes** (list), **AI hotspot** (stat, counts only),
+**Model downloads** (progress). Spec, sizes, refresh, taps, privacy and the owner-verify list:
+`docs/widgets.md`.
+
+- [x] Pure widget logic in `app/.../widget/model/` (no `android.*`): size classes, faces, presenters, copy seam
+- [x] Android layer in `app/.../widget/`: providers, RemoteViews renderer (API 31+ size map; options-based below 31), observers on the dashboard's own flows (conflated, 2 s), inexact midnight alarm, explicit immutable taps, translucent non-exported Start/Stop activity
+- [x] Outside `app/`: two read-only `LedgerDao` queries in `:ledger` (`since`, `recentRoutes`); no schema change. Nothing in `:core:*` or `:server` changed (`git diff -- core server` is empty)
+- [x] Invariants: no network/permission/dependency added; keys, tokens, bodies, caller packages and paired-app names never reach a widget; violet/cyan only, always with glyph + word; route widgets print served-by/egress/cost from `RouteRecord.toEchoHeaders()` (§1.9); a `local` row is "nothing served, nothing left the device", never on-device
+- [x] `MainActivity` takes a validated tab destination from widget taps; the selected tab is now held by the activity and survives recreation (no other dashboard change)
+- [x] 61 new JVM tests in `:app` (`:app:testDebugUnitTest`, already in CI)
+- [ ] **Gate: widgets on hardware** — `NEEDS-DEVICE-VALIDATION`, list in `docs/widgets.md` (picker, resize on the stock launcher and Orrery Home, refresh, taps, Start/Stop on Android 12+, TalkBack, OEM battery managers)
+
+Environment for every command below (a session-local helper set it; it is not in the repo): `ANDROID_HOME`
+and `ANDROID_SDK_ROOT` = `/opt/android-sdk`; Gradle given `--init-script maven-mirror.init.gradle` (Maven
+Central answers this container with HTTP 429, so dependencies resolve through Google's Maven Central
+mirror), `-Dorg.gradle.internal.repository.max.retries=8 -Dorg.gradle.internal.repository.initial.backoff=2000`
+and `-Pkotlin.compiler.execution.strategy=in-process`. Those settings change where artifacts download
+from and how the build runs, not what is compiled or tested. The task lists are written out in full.
+
+```
+# Baseline, before any change
+$ ./gradlew --no-daemon --max-workers=2 jvmTest :app:testDebugUnitTest :vault:testDebugUnitTest :pairing:testDebugUnitTest \
+     :ledger:testDebugUnitTest :client:testDebugUnitTest :client-cloud:testDebugUnitTest \
+     :storage:testDebugUnitTest :app:assembleDebug :sample-client:assembleDebug --continue
+BUILD SUCCESSFUL in 5m 26s
+257 actionable tasks: 227 executed, 30 from cache
+# JUnit XML: app 4 · client 11 · client-cloud 11 · core/catalogue 13 · core/contract 13 ·
+#   core/inference-api 2 · core/routing 46 · ledger 8 · pairing 26 · server 66 · storage 8 · vault 9
+#   TOTAL 217 tests, 0 failures, 0 errors
+
+# After, same tasks, every task re-executed
+$ ./gradlew --no-daemon --max-workers=2 jvmTest :app:testDebugUnitTest :vault:testDebugUnitTest :pairing:testDebugUnitTest \
+     :ledger:testDebugUnitTest :client:testDebugUnitTest :client-cloud:testDebugUnitTest \
+     :storage:testDebugUnitTest :app:assembleDebug :sample-client:assembleDebug --rerun-tasks --continue
+BUILD SUCCESSFUL in 4m 18s
+257 actionable tasks: 257 executed
+# JUnit XML: app 65 · client 11 · client-cloud 11 · core/catalogue 13 · core/contract 13 ·
+#   core/inference-api 2 · core/routing 46 · ledger 8 · pairing 26 · server 66 · storage 8 · vault 9
+#   TOTAL 278 tests, 0 failures, 0 errors
+# new in :app: WidgetModelTest 8 · WidgetFormatTest 6 · EgressTodayTest 8 · DaemonWidgetTest 6 ·
+#   RoutesTest 11 · HotspotWidgetTest 4 · DownloadsWidgetTest 6 · WidgetInvariantsTest 5 ·
+#   WidgetResourcesTest 7 (= 61); HyleSeamTest 4 unchanged
+# app-debug.apk and sample-client-debug.apk assembled; the merged manifest lists the six providers
+#   exported=true, WidgetTickReceiver and WidgetActionActivity exported=false
+
+# Lint (not part of the CI gate), before and after
+$ ./gradlew --no-daemon --max-workers=2 :app:lintDebug
+Lint found 1 errors, 56 warnings   # before: the error is pre-existing (ModelsScreen.kt:40 ProduceStateDoesNotAssignValue)
+Lint found 1 errors, 56 warnings   # after: the same set, diffed ignoring line numbers; no widget file flagged
+```
+
+Not run here: `./gradlew jvmTest` in bare-JDK mode (SDK hidden), because this environment always sets
+`ANDROID_HOME` and `local.properties` names the SDK; CI's `jvm-tests` job covers it, and no file under
+`core/` or `server/` changed. The two new DAO queries are checked by Room's compiler at build time but not executed by any test (no
+Robolectric in this repo). Nothing in this entry has run on a device.
+
+### Widget review round (two independent reviewers, 16 findings) — 2026-11-04 — JVM-tested and assembled, NOT DEVICE EVIDENCE
+
+Every finding was checked against the code; all 16 held, two with a different fix than proposed. Spec
+updated in `docs/widgets.md`.
+
+- [x] Sizes: a fourth, one-line **TINY** layout (`widget_tiny.xml`) below 72dp; SMALL 110x72, MEDIUM
+  180x120 (was 110x40 and 180x100), so a 1-row portrait cell (~102dp) is SMALL and a 1-row landscape
+  cell (~51dp) is TINY; vertical padding 8dp; slimmer progress bars. `WidgetResourcesTest` now sums every
+  layout's slot heights at 1.3x font against its breakpoint (all 13 fit)
+- [x] Daemon widget prints the time it was drawn at every size (a 2x1 left "● running" by a killed
+  process now shows its age); verbose-capture and ledger-incomplete lines come before the endpoint, so
+  the medium layout shows them. A running download on a compact widget is stamped too
+- [x] Egress widget: a partial cost estimate carries its coverage in the sentence ("≈ 0.0004 USD estimated
+  (1 of 10 cloud rows priced)"; the separate "cost basis on N of M" line is gone); a compact widget marks
+  the value "⚠ 12 rows (incomplete)" when the ledger is degraded; its stamp is the date at every size
+  (the "as of" date and time left the title ~25dp at 180dp wide). Docs and KDoc now say the count is
+  ledger rows (a request's terminal row after every candidate failed is `cloud` with no bytes), not
+  network events
+- [x] Model downloads default placement: `targetCell` 3x2, matching its 180x110dp legacy size (was 4x1);
+  a test keeps every provider's legacy and target cells in step
+- [x] API 29-30: portrait and landscape layouts sent as one `RemoteViews(landscape, portrait)`
+- [x] Midnight redraw: `AlarmManager.setWindow(RTC, …, 10 min)` instead of `set` (no new permission)
+- [x] Observers re-subscribe after an upstream error (2, 4, 8, 16, 32 s, then every minute) instead of
+  stopping for the life of the process
+- [x] Broadcasts finish at 8 s even when a blocking read has not returned (`finishWithin`)
+- [x] Widget surface and ink asserted against `HyleSeam.Surface` / `OnSurface`; colour-file comments
+  name the real test; the commands above are written out in full
+- [ ] **Gate: widgets on hardware** — still `NEEDS-DEVICE-VALIDATION` (list in `docs/widgets.md`)
+
+```
+$ ./gradlew --no-daemon --max-workers=2 jvmTest :app:testDebugUnitTest :vault:testDebugUnitTest \
+     :pairing:testDebugUnitTest :ledger:testDebugUnitTest :client:testDebugUnitTest \
+     :client-cloud:testDebugUnitTest :storage:testDebugUnitTest :app:assembleDebug \
+     :sample-client:assembleDebug --rerun-tasks --continue
+# run 1 (before two last edits: a layout weight and a KDoc sentence)
+BUILD SUCCESSFUL in 3m 27s
+257 actionable tasks: 257 executed
+# run 2 (final tree)
+AsomServerIntegrationTest > every routed request writes exactly one ledger row() FAILED
+> Task :server:test FAILED
+BUILD FAILED in 5m 24s
+257 actionable tasks: 257 executed
+#   expected: <4> but was: <5> at AsomServerIntegrationTest.kt:520. Pure-JVM :server test; nothing under
+#   server/ or core/ changed (git status is empty there). It counts every ledger row since a snapshot,
+#   so a late async row from an earlier test in the class makes 5 (the same race 79ff5b8 narrowed).
+#   It passed in the baseline, in the first widget after-run and in runs 1 and 3. Not fixed here.
+# run 3 (final tree, unchanged since run 2)
+BUILD SUCCESSFUL in 4m 26s
+257 actionable tasks: 257 executed
+# JUnit XML: app 74 · client 11 · client-cloud 11 · core/catalogue 13 · core/contract 13 ·
+#   core/inference-api 2 · core/routing 46 · ledger 8 · pairing 26 · server 66 · storage 8 · vault 9
+#   TOTAL 287 tests, 0 failures, 0 errors (widget tests 61 -> 70: WidgetModelTest 11 · WidgetFormatTest 6 ·
+#   EgressTodayTest 11 · DaemonWidgetTest 8 · RoutesTest 11 · HotspotWidgetTest 4 · DownloadsWidgetTest 6 ·
+#   WidgetInvariantsTest 5 · WidgetResourcesTest 8)
+# app-debug.apk and sample-client-debug.apk assembled
+
+$ ./gradlew --no-daemon --max-workers=2 :app:lintDebug
+Lint found 1 errors, 59 warnings
+#   The error is the pre-existing ModelsScreen.kt ProduceStateDoesNotAssignValue. Against the baseline
+#   report (ignoring line numbers) the only differences are GradleDependency "newer version available"
+#   notices in gradle/libs.versions.toml (lint looks those up remotely: kotlin 2.3.21 -> 2.4.20, plus
+#   kotlinx-serialization-json 1.11.0 x3). No widget file is flagged.
+```
+
+Nothing in this entry has run on a device.
