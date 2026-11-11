@@ -212,3 +212,15 @@ is `docs/design/mesh/OWNER_DIRECTIVES_2026-09-30.md`.
 8. **Delegation:** "finish everything you can without my intervention; take the most sensible approach; set
    different agents to work on different platforms." Verification honesty (§12 of the build brief) is not
    relaxed: anything not compiled or run is labelled so; device-only items stay `NEEDS-DEVICE-VALIDATION`.
+
+**2026-10-06 — constellation porting program (record by the porting-planning session of 2026-10-06; NOT an owner
+directive, binds nothing).**
+
+The constellation-wide porting program (`Personal-Tracker/PORTING_PROGRAM.md`) lists asom as tier A with its own program
+and does not re-sequence it. That session (planning model Fable, execution model Sonnet — the program's application of AD-6's design/review-versus-implementation split; AD-6 itself names Opus for design and review) added
+`docs/design/mesh/CONSTELLATION_PORTING.md`, a thin delegate to `docs/design/mesh/PLATFORM_PLAN.md`. It records what exists
+per platform, what asom offers other repos and when (the frozen v1 HTTP contract today; no desktop local-app API before
+M2 under D25(b); AsomKit `RemoteMesh` at M4; nothing on Ubuntu Touch), and the owner rulings the program needs (AD-1..AD-6,
+D5, D22, D23, then D25(b), D14 and D24). It changes no decision, sequence, contract or invariant: AD-1's order and the frozen
+v1 contract stand, and its two proposals (CP-1, CP-2) await owner ruling. Wording is the session's and remains subject to
+owner ratification, as for the entries above.
