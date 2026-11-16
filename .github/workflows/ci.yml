@@ -15,7 +15,7 @@ concurrency:
 jobs:
   jvm-tests:
     name: JVM tests (bare JDK — pure-JVM-first law)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       # Hide the runner's Android SDK so this job proves the brief §3 law:
       # :core:* and :server build and test with NO Android SDK present.
@@ -38,7 +38,7 @@ jobs:
 
   android-apk:
     name: Assemble debug APK
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 

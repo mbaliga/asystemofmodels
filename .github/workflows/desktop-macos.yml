@@ -66,7 +66,7 @@ jobs:
   # (its macOS-only sources are inside #if os(macOS), main.swift then says "macOS only"); that half is NOT exercised here.
   helper-protocol-linux:
     name: helper protocol (Swift on Linux)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container: swift:6.1-noble@sha256:3991e5dd5c40b04580c1e56f1ad6042f3173829b1995ffa53b84957371c25876
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
