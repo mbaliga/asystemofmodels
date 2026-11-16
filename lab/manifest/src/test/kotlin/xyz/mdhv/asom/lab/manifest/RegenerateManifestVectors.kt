@@ -37,11 +37,12 @@ class RegenerateManifestVectors {
 
     // ------------------------------------------------------------------------------------------ M02 / M03
 
-    private fun verifierVectors(): Pair<List<Case>, List<Case>> {
+    private fun verifierVectors(): Triple<List<Case>, List<Case>, List<Case>> {
         val accept = ManifestCases.accept()
         val reject = ManifestCases.reject()
+        val fx = ManifestCases.rejectFx()
         val problems = mutableListOf<String>()
-        for (c in accept + reject) {
+        for (c in accept + reject + fx) {
             val actual = Verifier.verify(docOf(c), c.ctx.toVerifyContext(c.nowMs))
             if (c.reject == null && actual !is Verified) problems += "${c.id}: expected accept, got ${(actual as Rejected).code} step ${actual.step} ${actual.detail}"
             if (c.reject != null) {
@@ -50,7 +51,7 @@ class RegenerateManifestVectors {
             }
         }
         check(problems.isEmpty()) { "generator refuses to write:\n" + problems.joinToString("\n") }
-        return accept to reject
+        return Triple(accept, reject, fx)
     }
 
     // ------------------------------------------------------------------------------------------ M05 (manifest text)
@@ -203,9 +204,10 @@ class RegenerateManifestVectors {
     @Test
     fun regenerate() {
         if (System.getProperty("asom.lab.regen") != "true") return
-        val (accept, reject) = verifierVectors()
+        val (accept, reject, fx) = verifierVectors()
         write("manifest/M02-verify-accept.json", VectorJson.envelope("M02", listOf("LAB_SPEC.md 4.6", "LAB_SPEC.md 4.9", "manifest.md 16.2"), accept.map { VectorJson.caseJson(it, Verifier.verify(docOf(it), it.ctx.toVerifyContext(it.nowMs))) }))
         write("manifest/M03-verify-reject.json", VectorJson.envelope("M03", listOf("LAB_SPEC.md 4.6", "LAB_SPEC.md 4.9", "manifest.md 16.2"), reject.map { VectorJson.caseJson(it, Verifier.verify(docOf(it), it.ctx.toVerifyContext(it.nowMs))) }))
+        write("manifest/M03-verify-reject-fx.json", VectorJson.envelope("M03", listOf("LAB_SPEC.md 4.6", "LAB_SPEC.md 4.9", "manifest.md 16.2"), fx.map { VectorJson.caseJson(it, Verifier.verify(docOf(it), it.ctx.toVerifyContext(it.nowMs))) }))
         val acc = accept.associateBy { it.id }
         val rej = reject.associateBy { it.id }
         write("manifest/M05-render.json", VectorJson.envelope("M05", listOf("LAB_SPEC.md 4.8", "manifest.md 14"), textVectors(acc, rej)))

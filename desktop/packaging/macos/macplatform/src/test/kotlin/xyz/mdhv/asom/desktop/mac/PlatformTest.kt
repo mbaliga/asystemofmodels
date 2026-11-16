@@ -151,9 +151,9 @@ class PlatformTest {
         val clock = FakeClock(2_000_000)
         val rt = NodeRuntime(p, HostMode.USER, NodeConfig(), clock)
         rt.enableLending()
-        clock.now += 2_000
         rt.tick()
-        assertEquals(LenderState.SERVING, rt.fsm.state)
+        repeat(31) { clock.now += 2_000; rt.tick() }
+        assertEquals(LenderState.SERVING, rt.fsm.state, "R4-P-12: serving after the 62 s warm-up")
         h.lost = "the helper died"
         clock.now += 2_000
         rt.tick()

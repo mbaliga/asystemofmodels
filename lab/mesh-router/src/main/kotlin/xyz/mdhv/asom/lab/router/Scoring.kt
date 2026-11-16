@@ -34,7 +34,7 @@ internal object Scoring {
         val ttftMs = Sat.add(netMs, loadMs, queueMs, prefillMs, if (self) 0L else Sat.ceilDiv(rtt, 2))
         val totalMs = Sat.add(ttftMs, decodeMs)
         val energy = Estimator.energyMilliJ(powerMilliW(node, claim, cfg), Sat.add(prefillMs, decodeMs))
-        val design = designMilliWh(node)
+        val design = designMilliWh(node)?.takeIf { it > 0 } ?: if (self) cfg.unknownSelfDesignMilliWh else null
         val used = if (onBatteryNotCharging(node, fast) && design != null && design > 0) Estimator.batteryUsedPermille(energy, design) else 0L
         return Estimate(outTokens, netMs, loadMs, queueMs, rates.prefill, prefillMs, rates.decodeAtP, decodeMs, ttftMs, totalMs, energy, used)
     }

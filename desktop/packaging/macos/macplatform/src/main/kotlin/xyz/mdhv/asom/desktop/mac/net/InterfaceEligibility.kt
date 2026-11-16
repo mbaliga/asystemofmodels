@@ -7,19 +7,74 @@ import java.net.NetworkInterface
 import java.net.NoRouteToHostException
 import java.net.SocketTimeoutException
 
-data class InterfaceSnapshot(val name: String, val isUp: Boolean, val addresses: List<InetAddress>)
+/**
+ * What the system calls the hardware behind a BSD name (trust.md 6.6: LAN only on Wi-Fi or Ethernet, never cellular). A BSD name
+ * cannot tell: an iPhone tethered over USB, a Bluetooth PAN and a Thunderbolt bridge are all `enN`. UNKNOWN is what an interface
+ * the system's port list does not mention gets, and it is refused like OTHER.
+ */
+enum class HardwarePort { WIFI, ETHERNET, CELLULAR, OTHER, UNKNOWN }
+
+data class InterfaceSnapshot(val name: String, val isUp: Boolean, val addresses: List<InetAddress>, val port: HardwarePort = HardwarePort.UNKNOWN)
 
 fun interface InterfaceLister {
     fun list(): List<InterfaceSnapshot>
 }
 
-/** Reads the JDK's view of the interfaces. Nothing is bound and nothing is opened. */
+/** Reads the JDK's view of the interfaces. Nothing is bound and nothing is opened. The hardware port is UNKNOWN: the JDK cannot say. */
 object JdkInterfaceLister : InterfaceLister {
     override fun list(): List<InterfaceSnapshot> {
         val all = NetworkInterface.getNetworkInterfaces() ?: return emptyList()
         return all.toList().map { ni ->
             InterfaceSnapshot(ni.name, runCatching { ni.isUp }.getOrDefault(false), ni.inetAddresses.toList())
         }
+    }
+}
+
+/**
+ * Reads the hardware-port names of the system's hardware-port listing (`Hardware Port: Wi-Fi` then `Device: en0`). Nothing here
+ * runs the tool that prints it: this module may not start a process for it (MacSourceHygieneTest), and the wiring is a later step.
+ * Unknown or localised names are OTHER, which is refused: an owner on a system whose port names this table does not know gets
+ * a refusal, never a bind. Tethers (iPhone, iPad, Bluetooth PAN, Thunderbolt Bridge) are checked first because their names
+ * can contain "Ethernet".
+ */
+object HardwarePorts {
+    private val TETHER = Regex("iphone|ipad|bluetooth|bridge|tether", RegexOption.IGNORE_CASE)
+    private val CELL = Regex("cellular|wwan|\\blte\\b|mobile|modem", RegexOption.IGNORE_CASE)
+    private val WIFI = Regex("^(wi-?fi|airport|wlan)\\b", RegexOption.IGNORE_CASE)
+    private val ETH = Regex("ethernet|\\blan\\b", RegexOption.IGNORE_CASE)
+
+    fun classify(portName: String): HardwarePort = when {
+        TETHER.containsMatchIn(portName) -> HardwarePort.OTHER
+        CELL.containsMatchIn(portName) -> HardwarePort.CELLULAR
+        WIFI.containsMatchIn(portName.trim()) -> HardwarePort.WIFI
+        ETH.containsMatchIn(portName) -> HardwarePort.ETHERNET
+        else -> HardwarePort.OTHER
+    }
+
+    fun parse(listing: String): Map<String, HardwarePort> {
+        val out = LinkedHashMap<String, HardwarePort>()
+        var port: String? = null
+        for (raw in listing.lineSequence()) {
+            val line = raw.trim()
+            when {
+                line.startsWith("Hardware Port:") -> port = line.removePrefix("Hardware Port:").trim()
+                line.startsWith("Device:") -> {
+                    val dev = line.removePrefix("Device:").trim()
+                    val p = port
+                    if (p != null && dev.isNotEmpty()) out[dev] = classify(p)
+                    port = null
+                }
+            }
+        }
+        return out
+    }
+}
+
+/** Adds the hardware port to each interface from a port listing; a missing or empty listing leaves every port UNKNOWN. */
+class PortClassifyingLister(private val base: InterfaceLister, private val listing: () -> String?) : InterfaceLister {
+    override fun list(): List<InterfaceSnapshot> {
+        val ports = runCatching { listing() }.getOrNull()?.let(HardwarePorts::parse).orEmpty()
+        return base.list().map { i -> ports[i.name]?.let { i.copy(port = it) } ?: i }
     }
 }
 
@@ -74,8 +129,9 @@ sealed interface Reresolution {
  * network the user confirmed, at private or link-local addresses. NEVER a wildcard, loopback or public address, whatever the
  * caller asks for. This module only decides; it binds nothing.
  *
- * `utun` numbering is not stable, so an overlay selection is recorded as (kind = overlay, address prefix) and is re-resolved on
- * every wake ([reresolve]). If no kernel `utun` carries an overlay address (for example `tailscaled` in userspace-networking mode),
+ * `utun` numbering is not stable, so an overlay selection is recorded as (kind = overlay, the selected ADDRESS) and is re-resolved
+ * on every wake ([reresolve]) only to the `utun` that carries that exact address: a prefix cannot tell Tailscale from another
+ * VPN that uses the same carrier-grade NAT range, so an address that is gone is `Lost` and the user selects again. If no kernel `utun` carries an overlay address (for example `tailscaled` in userspace-networking mode),
  * the answer is "overlay mode unsupported: use a kernel TUN", and loopback is never used as a substitute.
  */
 object InterfaceEligibility {
@@ -124,13 +180,43 @@ object InterfaceEligibility {
         }
     }
 
-    /** Finds a `utun` that carries an overlay address. Prefers IPv4, then the lowest interface name, so the answer is deterministic. */
-    fun resolveOverlay(interfaces: List<InterfaceSnapshot>): Eligibility {
-        val candidates = interfaces.filter { it.isUp && kindOf(it.name) == InterfaceKind.OVERLAY_CANDIDATE }
-            .flatMap { i -> i.addresses.filter(::isOverlayAddress).map { ListenBinding(InterfaceKind.OVERLAY_CANDIDATE, i.name, it) } }
-            .sortedWith(compareBy({ it.address !is Inet4Address }, { it.interfaceName }))
-        return candidates.firstOrNull()?.let { Eligibility.Bind(it) }
-            ?: Eligibility.Refuse("overlay mode unsupported: use a kernel TUN (no utun interface carries an overlay address; a userspace-networking tailscaled is not usable, and loopback is never used instead)")
+    /**
+     * The `utun` the overlay listener may bind. 100.64.0.0/10 is shared carrier-grade NAT space that other VPNs also use
+     * (Cloudflare WARP takes 100.96.0.0/12), so an address inside it does not say WHICH VPN it belongs to, and the node never
+     * picks between interfaces on its own (mac ERRATA ERR-FX-HWM-8):
+     *  - with a [selected] address (the one the user confirmed): only the `utun` that carries exactly that address, else refused;
+     *  - with none: the one `utun` that carries an overlay address, when there is exactly one; two or more are refused and
+     *    named, and the user selects. Within the one interface IPv4 is preferred over IPv6.
+     */
+    fun resolveOverlay(interfaces: List<InterfaceSnapshot>, selected: InetAddress? = null): Eligibility {
+        val carriers = interfaces.filter { it.isUp && kindOf(it.name) == InterfaceKind.OVERLAY_CANDIDATE }
+            .map { i -> i to i.addresses.filter(::isOverlayAddress) }
+            .filter { it.second.isNotEmpty() }
+        if (selected != null) {
+            val owner = carriers.firstOrNull { (_, addrs) -> selected in addrs }
+                ?: return Eligibility.Refuse("no up utun interface carries the selected overlay address ${selected.hostAddress}; select the overlay interface again")
+            return Eligibility.Bind(ListenBinding(InterfaceKind.OVERLAY_CANDIDATE, owner.first.name, selected))
+        }
+        if (carriers.isEmpty()) {
+            return Eligibility.Refuse("overlay mode unsupported: use a kernel TUN (no utun interface carries an overlay address; a userspace-networking tailscaled is not usable, and loopback is never used instead)")
+        }
+        if (carriers.size > 1) {
+            return Eligibility.Refuse(
+                "more than one utun interface carries a 100.64.0.0/10 or Tailscale address (${carriers.map { it.first.name }.sorted().joinToString(", ")}); " +
+                    "another VPN may share that range, so select the overlay interface explicitly",
+            )
+        }
+        val (iface, addrs) = carriers.single()
+        val address = addrs.sortedBy { it !is Inet4Address }.first()
+        return Eligibility.Bind(ListenBinding(InterfaceKind.OVERLAY_CANDIDATE, iface.name, address))
+    }
+
+    /** Null when the system says this `enN` is Wi-Fi or Ethernet; the BSD name alone is not enough (an iPhone USB tether is an `enN` too). */
+    fun portProblem(i: InterfaceSnapshot): String? = when (i.port) {
+        HardwarePort.WIFI, HardwarePort.ETHERNET -> null
+        HardwarePort.CELLULAR -> "${i.name} is a cellular interface; the peer protocol never runs on one"
+        HardwarePort.OTHER -> "${i.name} is not a Wi-Fi or Ethernet port (a tether, Bluetooth PAN or bridge)"
+        HardwarePort.UNKNOWN -> "the system did not say what hardware ${i.name} is; it is not bound"
     }
 
     /** A Wi-Fi or Ethernet interface the user confirmed, at a private or link-local address. */
@@ -139,6 +225,7 @@ object InterfaceEligibility {
         if (kindOf(interfaceName) != InterfaceKind.LAN_CANDIDATE) return Eligibility.Refuse("$interfaceName is not a Wi-Fi or Ethernet interface (en*)")
         val i = interfaces.firstOrNull { it.name == interfaceName } ?: return Eligibility.Refuse("interface $interfaceName does not exist")
         if (!i.isUp) return Eligibility.Refuse("interface $interfaceName is down")
+        portProblem(i)?.let { return Eligibility.Refuse(it) }
         val addr = i.addresses.filter(::isLanAddress).sortedBy { it !is Inet4Address }.firstOrNull()
             ?: return Eligibility.Refuse("interface $interfaceName has no private or link-local address")
         return Eligibility.Bind(ListenBinding(InterfaceKind.LAN_CANDIDATE, interfaceName, addr))
@@ -146,7 +233,7 @@ object InterfaceEligibility {
 
     /** Re-resolves a recorded selection after a wake or a change of network. A change of anything the listener depends on is not "Same". */
     fun reresolve(previous: ListenBinding, interfaces: List<InterfaceSnapshot>, lanConfirmed: Boolean): Reresolution = when (previous.kind) {
-        InterfaceKind.OVERLAY_CANDIDATE -> when (val e = resolveOverlay(interfaces)) {
+        InterfaceKind.OVERLAY_CANDIDATE -> when (val e = resolveOverlay(interfaces, previous.address)) {
             is Eligibility.Refuse -> Reresolution.Lost(e.reason)
             is Eligibility.Bind -> if (e.binding == previous) Reresolution.Same else Reresolution.Moved(e.binding)
         }
@@ -155,6 +242,7 @@ object InterfaceEligibility {
             when {
                 i == null || !i.isUp -> Reresolution.Lost("interface ${previous.interfaceName} is gone or down")
                 !lanConfirmed -> Reresolution.Lost("the LAN confirmation was withdrawn")
+                portProblem(i) != null -> Reresolution.Lost(portProblem(i)!!)
                 previous.address !in i.addresses -> Reresolution.Lost("interface ${previous.interfaceName} no longer carries ${previous.address.hostAddress}")
                 !isLanAddress(previous.address) -> Reresolution.Lost("${previous.address.hostAddress} is no longer a private or link-local address")
                 else -> Reresolution.Same

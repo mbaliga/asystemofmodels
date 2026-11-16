@@ -17,8 +17,6 @@ import os
 import re
 import sys
 
-sys.setrecursionlimit(20000)
-
 MAX_SAFE = 2 ** 53 - 1
 MAX_DEPTH = 16
 CODES = ["MALFORMED_JSON", "INVALID_UNICODE", "NON_INTEGER_NUMBER", "NUMBER_RANGE", "DUPLICATE_KEY", "TRAILING_DATA"]
@@ -43,74 +41,88 @@ class _Scan:
             raise _Syntax("end")
         return self.b[self.i]
 
-    def value(self, level):
-        self.ws()
-        c = self.peek()
-        if c == 0x7B:
-            return self.obj(level + 1)
-        if c == 0x5B:
-            return self.arr(level + 1)
+    def scalar(self, c):
         if c == 0x22:
             return self.string()
         if c == 0x2D or 0x30 <= c <= 0x39:
             return self.number()
-        if chr(c).isascii() and chr(c).isalpha():
+        if c < 0x80 and chr(c).isalpha():
             return self.word(0)
         raise _Syntax("unexpected byte")
 
-    def enter(self, level):
-        if level > MAX_DEPTH:
-            self.deep = True
-
-    def obj(self, level):
-        self.enter(level)
-        self.i += 1
-        out = {}
+    def name(self):
         self.ws()
-        if self.peek() == 0x7D:
-            self.i += 1
-            return out
+        if self.peek() != 0x22:
+            raise _Syntax("member name")
+        k = self.string()
+        self.ws()
+        if self.peek() != 0x3A:
+            raise _Syntax("colon")
+        self.i += 1
+        return k
+
+    def document(self):
+        """One value, scanned with an explicit stack: no Python recursion, so no depth at which a verdict could change.
+        A container deeper than MAX_DEPTH keeps only what the checks need (names for duplicates), never its values."""
+        stack = []
+        pending = True
+        v = None
         while True:
-            self.ws()
-            if self.peek() != 0x22:
-                raise _Syntax("member name")
-            k = self.string()
-            self.ws()
-            if self.peek() != 0x3A:
-                raise _Syntax("colon")
-            self.i += 1
-            v = self.value(level)
-            if k in out:
-                self.dup = True
+            if pending:
+                self.ws()
+                c = self.peek()
+                if c == 0x7B or c == 0x5B:
+                    self.i += 1
+                    level = len(stack) + 1
+                    if level > MAX_DEPTH:
+                        self.deep = True
+                    self.ws()
+                    close = 0x7D if c == 0x7B else 0x5D
+                    if self.peek() == close:
+                        self.i += 1
+                        v = {} if c == 0x7B else []
+                    elif c == 0x7B:
+                        stack.append(["o", {}, self.name(), level <= MAX_DEPTH])
+                        continue
+                    else:
+                        stack.append(["a", [], None, level <= MAX_DEPTH])
+                        continue
+                else:
+                    v = self.scalar(c)
+                pending = False
+            if not stack:
+                return v
+            top = stack[-1]
+            if top[0] == "a":
+                if top[3]:
+                    top[1].append(v)
+                self.ws()
+                c = self.peek()
+                self.i += 1
+                if c == 0x2C:
+                    pending = True
+                elif c == 0x5D:
+                    v = top[1]
+                    stack.pop()
+                else:
+                    raise _Syntax("array separator")
             else:
-                out[k] = v
-            self.ws()
-            c = self.peek()
-            self.i += 1
-            if c == 0x2C:
-                continue
-            if c == 0x7D:
-                return out
-            raise _Syntax("object separator")
-
-    def arr(self, level):
-        self.enter(level)
-        self.i += 1
-        out = []
-        self.ws()
-        if self.peek() == 0x5D:
-            self.i += 1
-            return out
-        while True:
-            out.append(self.value(level))
-            self.ws()
-            c = self.peek()
-            self.i += 1
-            if c == 0x2C:
-                continue
-            if c == 0x5D:
-                return out
-            raise _Syntax("array separator")
+                k = top[2]
+                if k in top[1]:
+                    self.dup = True
+                else:
+                    top[1][k] = v if top[3] else None
+                self.ws()
+                c = self.peek()
+                self.i += 1
+                if c == 0x2C:
+                    top[2] = self.name()
+                    pending = True
+                elif c == 0x7D:
+                    v = top[1]
+                    stack.pop()
+                else:
+                    raise _Syntax("object separator")
 
     def word(self, skip):
         m = re.compile(rb"[A-Za-z]+").match(self.b, self.i + skip)
@@ -196,8 +208,8 @@ def parse(data):
         return "reject", "MALFORMED_JSON"
     s = _Scan(data)
     try:
-        v = s.value(0)
-    except (_Syntax, RecursionError):
+        v = s.document()
+    except _Syntax:
         return "reject", "MALFORMED_JSON"
     s.ws()
     trailing = s.i < len(data)
@@ -313,6 +325,34 @@ def expected_verdict(vec):
     return "ok " + ok["hex"]
 
 
+def deep_cases():
+    """Inputs nested far past MAX_DEPTH, with the verdict R4-L-10.1 gives them (rows 2 to 6 outrank row 7 wherever they sit).
+    The lab and Swift lanes give the same verdicts; this lane has no recursion limit to disagree with them at 20,000 levels."""
+    def around(depth, core, opener="[", closer="]"):
+        return (opener * depth + core + closer * depth).encode("utf-8")
+    return [
+        ("25000 arrays around 1.5", around(25000, "1.5"), "reject NON_INTEGER_NUMBER"),
+        ("200000 arrays around a duplicate", around(200000, '{"a":1,"a":2}'), "reject DUPLICATE_KEY"),
+        ("30000 arrays around a lone surrogate", around(30000, '"\\ud800"'), "reject INVALID_UNICODE"),
+        ("30000 arrays around 2^53", around(30000, "9007199254740992"), "reject NUMBER_RANGE"),
+        ("30000 arrays around NaN", around(30000, "NaN"), "reject NON_INTEGER_NUMBER"),
+        ("30000 arrays then a trailing byte", around(30000, "1") + b" x", "reject MALFORMED_JSON"),
+        ("1000000 open arrays", b"[" * 1000000, "reject MALFORMED_JSON"),
+        ("1000000 closed arrays", around(1000000, ""), "reject MALFORMED_JSON"),
+        ("100000 objects around a duplicate", around(100000, '{"b":1,"c":2,"b":3}', '{"a":', "}"), "reject DUPLICATE_KEY"),
+        ("40000 arrays around an invalid UTF-8 byte", b"[" * 40000 + b'"\xc3"' + b"]" * 40000, "reject INVALID_UNICODE"),
+    ] + [
+        ("minus then letters %s" % t, t.encode("ascii"), "reject MALFORMED_JSON")
+        for t in ("-e", "-E5", "[-e1]", "-e1", "-x", "-true", "-nan", "-infinity", "-Infinityx", "-NaNx", "[-e]", "-e-5", "[-NaN,-e]")
+    ] + [
+        ("minus then NaN or Infinity %s" % t, t.encode("ascii"), "reject NON_INTEGER_NUMBER")
+        for t in ("-NaN", "[-NaN]", "-Infinity", '{"a":-Infinity}', "-", "[-]", "-.5", "-+1", "-1e", "-1.0", "-0")
+    ] + [
+        ("17 arrays", around(17, ""), "reject MALFORMED_JSON"),
+        ("16 arrays", around(16, ""), "ok " + around(16, "").hex()),
+    ]
+
+
 def load_m01(root):
     import json
     path = os.path.join(root, "json", "M01-jcs.json")
@@ -350,6 +390,13 @@ def check_m01(root, corpus=None):
         else:
             disagree += 1
             print("  DISAGREE M01-001 vs the design-session seed", file=sys.stderr)
+    for name, data, want in deep_cases():
+        got = canonicalize(data)
+        if got == want:
+            agree += 1
+        else:
+            disagree += 1
+            print("  DISAGREE deep case %s: python=%s expected=%s" % (name, got[:80], want[:80]), file=sys.stderr)
     if corpus:
         n = 0
         for line in open(corpus, encoding="utf-8"):

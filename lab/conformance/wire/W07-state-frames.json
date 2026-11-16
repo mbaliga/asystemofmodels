@@ -1,0 +1,937 @@
+{
+  "family": "W07",
+  "confVersion": "0.2.0",
+  "specRefs": [
+    "LAB_SPEC.md 7.2 (asom.state/1, STATE frame)",
+    "LAB_SPEC.md 6.5",
+    "ASOM_MESH_DESIGN.md 7.4 (LP-1)"
+  ],
+  "vectors": [
+    {
+      "id": "W07-300",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "the lab's STATE builder, spec example, as a frame on stream 3",
+      "input": {
+        "kind": "wireStateBuild",
+        "stream": 3,
+        "state": {
+          "availability": {
+            "fsm": "SERVING"
+          },
+          "engine": {
+            "backend": "vulkan",
+            "commit": "4f1c2ab",
+            "confVersion": "1.0.0",
+            "held": [
+              "ca56847038f3f329524caec5a86e14865f49918d68094c90dd021a5e67b927f6"
+            ]
+          },
+          "manifest": {
+            "bodyDigest": "E5rhjQ_nTBI7rNXR7uKxhBdCeNQpQQNTh8ZG8jq6_iI",
+            "seq": 17
+          },
+          "power": {
+            "batteryBand": null,
+            "charging": false,
+            "source": "ac"
+          },
+          "queue": {
+            "bucket": 0
+          },
+          "sampledAgeMs": 800,
+          "seq": 4711,
+          "thermal": {
+            "band": 0,
+            "governor": "RUN"
+          },
+          "v": 1
+        }
+      },
+      "expect": {
+        "ok": {
+          "appBytes": 426,
+          "frameSha256": "8a48938f4977f13e9c44da22889d52ca6a0e82fc533d22bc264ed9b08a3dac2c",
+          "hex": "000001a621000000037b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a317d",
+          "payload": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"ca56847038f3f329524caec5a86e14865f49918d68094c90dd021a5e67b927f6\"]},\"manifest\":{\"bodyDigest\":\"E5rhjQ_nTBI7rNXR7uKxhBdCeNQpQQNTh8ZG8jq6_iI\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+        }
+      }
+    },
+    {
+      "id": "W07-301",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: a state document carrying every presence field still builds a frame without any of them (the builder has no way to emit one)",
+      "input": {
+        "kind": "wireStateBuild",
+        "stream": 3,
+        "state": {
+          "availability": {
+            "fsm": "SERVING"
+          },
+          "engine": {
+            "backend": "vulkan",
+            "commit": "4f1c2ab",
+            "confVersion": "1.0.0",
+            "held": [
+              "ca56847038f3f329524caec5a86e14865f49918d68094c90dd021a5e67b927f6"
+            ],
+            "loaded": [
+              "x"
+            ]
+          },
+          "manifest": {
+            "bodyDigest": "E5rhjQ_nTBI7rNXR7uKxhBdCeNQpQQNTh8ZG8jq6_iI",
+            "seq": 17
+          },
+          "power": {
+            "batteryBand": null,
+            "charging": false,
+            "source": "ac"
+          },
+          "queue": {
+            "bucket": 1,
+            "depth": 4,
+            "queuePos": 2
+          },
+          "sampledAgeMs": 800,
+          "seq": 4711,
+          "thermal": {
+            "band": 0,
+            "governor": "RUN"
+          },
+          "v": 1,
+          "user": {
+            "active": true
+          },
+          "inflight": 3,
+          "busyForMs": 1200,
+          "loaded": [
+            "qwen3-8b-q4"
+          ],
+          "estStartS": 4,
+          "reason": "game"
+        }
+      },
+      "expect": {
+        "ok": {
+          "appBytes": 426,
+          "frameSha256": "a102b6060b8f67150396d36ec8f64ad53b012ec8d8efb3937ed6e818194c849b",
+          "hex": "000001a621000000037b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a317d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a317d",
+          "payload": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"ca56847038f3f329524caec5a86e14865f49918d68094c90dd021a5e67b927f6\"]},\"manifest\":{\"bodyDigest\":\"E5rhjQ_nTBI7rNXR7uKxhBdCeNQpQQNTh8ZG8jq6_iI\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":1},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+        }
+      }
+    },
+    {
+      "id": "W07-302",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer-strict: held models are emitted sorted",
+      "input": {
+        "kind": "wireStateBuild",
+        "stream": 1,
+        "state": {
+          "availability": {
+            "fsm": "SERVING"
+          },
+          "engine": {
+            "backend": "vulkan",
+            "commit": "4f1c2ab",
+            "confVersion": "1.0.0",
+            "held": [
+              "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              "0000000000000000000000000000000000000000000000000000000000000000",
+              "ca56847038f3f329524caec5a86e14865f49918d68094c90dd021a5e67b927f6"
+            ]
+          },
+          "manifest": {
+            "bodyDigest": "E5rhjQ_nTBI7rNXR7uKxhBdCeNQpQQNTh8ZG8jq6_iI",
+            "seq": 17
+          },
+          "power": {
+            "batteryBand": null,
+            "charging": false,
+            "source": "ac"
+          },
+          "queue": {
+            "bucket": 0
+          },
+          "sampledAgeMs": 800,
+          "seq": 4711,
+          "thermal": {
+            "band": 0,
+            "governor": "RUN"
+          },
+          "v": 1
+        }
+      },
+      "expect": {
+        "ok": {
+          "appBytes": 560,
+          "frameSha256": "e157e7197f84a1d7b8c50c7bb277ad2a69dbb39f64ffc7cb0cf66e52c3f63a6f",
+          "hex": "0000022c21000000017b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2230303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636222c2266666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a317d",
+          "payload": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"0000000000000000000000000000000000000000000000000000000000000000\",\"ca56847038f3f329524caec5a86e14865f49918d68094c90dd021a5e67b927f6\",\"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\"]},\"manifest\":{\"bodyDigest\":\"E5rhjQ_nTBI7rNXR7uKxhBdCeNQpQQNTh8ZG8jq6_iI\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+        }
+      }
+    },
+    {
+      "id": "W07-303",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "the builder refuses a document the receiver would refuse (seq 0)",
+      "input": {
+        "kind": "wireStateBuild",
+        "stream": 3,
+        "state": {
+          "availability": {
+            "fsm": "SERVING"
+          },
+          "engine": {
+            "backend": "vulkan",
+            "commit": "4f1c2ab",
+            "confVersion": "1.0.0",
+            "held": [
+              "ca56847038f3f329524caec5a86e14865f49918d68094c90dd021a5e67b927f6"
+            ]
+          },
+          "manifest": {
+            "bodyDigest": "E5rhjQ_nTBI7rNXR7uKxhBdCeNQpQQNTh8ZG8jq6_iI",
+            "seq": 17
+          },
+          "power": {
+            "batteryBand": null,
+            "charging": false,
+            "source": "ac"
+          },
+          "queue": {
+            "bucket": 0
+          },
+          "sampledAgeMs": 800,
+          "seq": 0,
+          "thermal": {
+            "band": 0,
+            "governor": "RUN"
+          },
+          "v": 1
+        }
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      },
+      "expectDetail": {
+        "reason": "OUT_OF_RANGE"
+      }
+    },
+    {
+      "id": "W07-304",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "the builder refuses an unknown enum (fsm SLEEPING)",
+      "input": {
+        "kind": "wireStateBuild",
+        "stream": 3,
+        "state": {
+          "availability": {
+            "fsm": "SLEEPING"
+          },
+          "engine": {
+            "backend": "vulkan",
+            "commit": "4f1c2ab",
+            "confVersion": "1.0.0",
+            "held": [
+              "ca56847038f3f329524caec5a86e14865f49918d68094c90dd021a5e67b927f6"
+            ]
+          },
+          "manifest": {
+            "bodyDigest": "E5rhjQ_nTBI7rNXR7uKxhBdCeNQpQQNTh8ZG8jq6_iI",
+            "seq": 17
+          },
+          "power": {
+            "batteryBand": null,
+            "charging": false,
+            "source": "ac"
+          },
+          "queue": {
+            "bucket": 0
+          },
+          "sampledAgeMs": 800,
+          "seq": 4711,
+          "thermal": {
+            "band": 0,
+            "governor": "RUN"
+          },
+          "v": 1
+        }
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      },
+      "expectDetail": {
+        "reason": "UNKNOWN_ENUM"
+      }
+    },
+    {
+      "id": "W07-305",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "the builder clamps nothing silently below the limit and clamps sampledAgeMs to 60000 above it",
+      "input": {
+        "kind": "wireStateBuild",
+        "stream": 3,
+        "state": {
+          "availability": {
+            "fsm": "SERVING"
+          },
+          "engine": {
+            "backend": "vulkan",
+            "commit": "4f1c2ab",
+            "confVersion": "1.0.0",
+            "held": [
+              "ca56847038f3f329524caec5a86e14865f49918d68094c90dd021a5e67b927f6"
+            ]
+          },
+          "manifest": {
+            "bodyDigest": "E5rhjQ_nTBI7rNXR7uKxhBdCeNQpQQNTh8ZG8jq6_iI",
+            "seq": 17
+          },
+          "power": {
+            "batteryBand": null,
+            "charging": false,
+            "source": "ac"
+          },
+          "queue": {
+            "bucket": 0
+          },
+          "sampledAgeMs": 90000,
+          "seq": 4711,
+          "thermal": {
+            "band": 0,
+            "governor": "RUN"
+          },
+          "v": 1
+        }
+      },
+      "expect": {
+        "ok": {
+          "appBytes": 428,
+          "frameSha256": "f49f23c361347abedbd36d1dcef06d561f7b469bd8132d8e69fad7c103c9334d",
+          "hex": "000001a821000000037b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a36303030302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a317d",
+          "payload": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"ca56847038f3f329524caec5a86e14865f49918d68094c90dd021a5e67b927f6\"]},\"manifest\":{\"bodyDigest\":\"E5rhjQ_nTBI7rNXR7uKxhBdCeNQpQQNTh8ZG8jq6_iI\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":60000,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+        }
+      }
+    },
+    {
+      "id": "W07-306",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "STATE goes on an odd stream: stream 2 is refused",
+      "input": {
+        "kind": "wireStateBuild",
+        "stream": 2,
+        "state": {
+          "availability": {
+            "fsm": "SERVING"
+          },
+          "engine": {
+            "backend": "vulkan",
+            "commit": "4f1c2ab",
+            "confVersion": "1.0.0",
+            "held": [
+              "ca56847038f3f329524caec5a86e14865f49918d68094c90dd021a5e67b927f6"
+            ]
+          },
+          "manifest": {
+            "bodyDigest": "E5rhjQ_nTBI7rNXR7uKxhBdCeNQpQQNTh8ZG8jq6_iI",
+            "seq": 17
+          },
+          "power": {
+            "batteryBand": null,
+            "charging": false,
+            "source": "ac"
+          },
+          "queue": {
+            "bucket": 0
+          },
+          "sampledAgeMs": 800,
+          "seq": 4711,
+          "thermal": {
+            "band": 0,
+            "governor": "RUN"
+          },
+          "v": 1
+        }
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      },
+      "expectDetail": {
+        "reason": "STREAM_RULE"
+      }
+    },
+    {
+      "id": "W07-320",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a STATE frame in JCS form decodes to the same normal form",
+      "input": {
+        "kind": "wireStateDecode",
+        "bytes": [
+          {
+            "hex": "000001a6 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a317d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "ok": {
+          "events": [
+            {
+              "kind": "MESSAGE",
+              "type": "STATE",
+              "stream": 3,
+              "appBytes": 426,
+              "normal": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"ca56847038f3f329524caec5a86e14865f49918d68094c90dd021a5e67b927f6\"]},\"manifest\":{\"bodyDigest\":\"E5rhjQ_nTBI7rNXR7uKxhBdCeNQpQQNTh8ZG8jq6_iI\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07-321",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a received STATE with presence fields is accepted and the fields are never stored",
+      "input": {
+        "kind": "wireStateDecode",
+        "bytes": [
+          {
+            "hex": "00000208 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a312c2275736572223a7b22616374697665223a747275657d2c22696e666c69676874223a332c2262757379466f724d73223a313230302c226c6f61646564223a5b2278225d2c22657374537461727453223a342c22726561736f6e223a2267616d65227d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "ok": {
+          "events": [
+            {
+              "kind": "MESSAGE",
+              "type": "STATE",
+              "stream": 3,
+              "appBytes": 524,
+              "normal": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"ca56847038f3f329524caec5a86e14865f49918d68094c90dd021a5e67b927f6\"]},\"manifest\":{\"bodyDigest\":\"E5rhjQ_nTBI7rNXR7uKxhBdCeNQpQQNTh8ZG8jq6_iI\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07-322",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a received STATE with unknown members at every level ignores them",
+      "input": {
+        "kind": "wireStateDecode",
+        "bytes": [
+          {
+            "hex": "000001bc 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163222c2278223a317d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e222c2279223a5b315d7d2c2276223a312c227a7a7a223a317d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "ok": {
+          "events": [
+            {
+              "kind": "MESSAGE",
+              "type": "STATE",
+              "stream": 3,
+              "appBytes": 448,
+              "normal": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"ca56847038f3f329524caec5a86e14865f49918d68094c90dd021a5e67b927f6\"]},\"manifest\":{\"bodyDigest\":\"E5rhjQ_nTBI7rNXR7uKxhBdCeNQpQQNTh8ZG8jq6_iI\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07-323",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a received STATE with a float seq is refused by the JSON profile",
+      "input": {
+        "kind": "wireStateDecode",
+        "bytes": [
+          {
+            "hex": "000001a8 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312e352c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a317d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      },
+      "expectDetail": {
+        "reason": "NON_INTEGER_NUMBER",
+        "framesBefore": 0,
+        "consumed": 428
+      }
+    },
+    {
+      "id": "W07-324",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a received STATE with a float in a nested member",
+      "input": {
+        "kind": "wireStateDecode",
+        "bytes": [
+          {
+            "hex": "000001a8 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302e302c22676f7665726e6f72223a2252554e227d2c2276223a317d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      },
+      "expectDetail": {
+        "reason": "NON_INTEGER_NUMBER",
+        "framesBefore": 0,
+        "consumed": 428
+      }
+    },
+    {
+      "id": "W07-325",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a received STATE with a duplicate member",
+      "input": {
+        "kind": "wireStateDecode",
+        "bytes": [
+          {
+            "hex": "000001ac 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a312c2276223a317d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      },
+      "expectDetail": {
+        "reason": "DUPLICATE_KEY",
+        "framesBefore": 0,
+        "consumed": 432
+      }
+    },
+    {
+      "id": "W07-326",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a received STATE with an unknown enum",
+      "input": {
+        "kind": "wireStateDecode",
+        "bytes": [
+          {
+            "hex": "000001a9 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a22535052494e54227d2c2276223a317d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      },
+      "expectDetail": {
+        "reason": "UNKNOWN_ENUM",
+        "framesBefore": 0,
+        "consumed": 429
+      }
+    },
+    {
+      "id": "W07-327",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a received STATE with v 2",
+      "input": {
+        "kind": "wireStateDecode",
+        "bytes": [
+          {
+            "hex": "000001a6 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a327d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      },
+      "expectDetail": {
+        "reason": "BAD_VERSION",
+        "framesBefore": 0,
+        "consumed": 426
+      }
+    },
+    {
+      "id": "W07-328",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a received STATE with a missing member",
+      "input": {
+        "kind": "wireStateDecode",
+        "bytes": [
+          {
+            "hex": "00000191 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a317d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      },
+      "expectDetail": {
+        "reason": "MISSING_MEMBER",
+        "framesBefore": 0,
+        "consumed": 405
+      }
+    },
+    {
+      "id": "W07-329",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a received STATE with band 3",
+      "input": {
+        "kind": "wireStateDecode",
+        "bytes": [
+          {
+            "hex": "000001a6 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a332c22676f7665726e6f72223a2252554e227d2c2276223a317d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      },
+      "expectDetail": {
+        "reason": "OUT_OF_RANGE",
+        "framesBefore": 0,
+        "consumed": 426
+      }
+    },
+    {
+      "id": "W07-330",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a received STATE with sampledAgeMs above 60000 is accepted and clamped",
+      "input": {
+        "kind": "wireStateDecode",
+        "bytes": [
+          {
+            "hex": "000001a9 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3930303030302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a317d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "ok": {
+          "events": [
+            {
+              "kind": "MESSAGE",
+              "type": "STATE",
+              "stream": 3,
+              "appBytes": 429,
+              "normal": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"ca56847038f3f329524caec5a86e14865f49918d68094c90dd021a5e67b927f6\"]},\"manifest\":{\"bodyDigest\":\"E5rhjQ_nTBI7rNXR7uKxhBdCeNQpQQNTh8ZG8jq6_iI\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":60000,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07-331",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a STATE frame on an even stream",
+      "input": {
+        "kind": "wireStateDecode",
+        "bytes": [
+          {
+            "hex": "000001a6 21 00000002 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a317d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      },
+      "expectDetail": {
+        "reason": "STREAM_RULE",
+        "framesBefore": 0,
+        "consumed": 9
+      }
+    },
+    {
+      "id": "W07-332",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a STATE frame received by a TLS server",
+      "input": {
+        "kind": "wireStateDecode",
+        "bytes": [
+          {
+            "hex": "000001a6 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a317d"
+          }
+        ],
+        "receiver": "server"
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      },
+      "expectDetail": {
+        "reason": "WRONG_DIRECTION",
+        "framesBefore": 0,
+        "consumed": 5
+      }
+    },
+    {
+      "id": "W07-333",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "a STATE_REQ followed by its STATE reply (two directions, two receivers: the reply is read by the client)",
+      "input": {
+        "kind": "wireStateDecode",
+        "bytes": [
+          {
+            "hex": "000001a6 21 00000005 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a317d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "ok": {
+          "events": [
+            {
+              "kind": "MESSAGE",
+              "type": "STATE",
+              "stream": 5,
+              "appBytes": 426,
+              "normal": "{\"availability\":{\"fsm\":\"SERVING\"},\"engine\":{\"backend\":\"vulkan\",\"commit\":\"4f1c2ab\",\"confVersion\":\"1.0.0\",\"held\":[\"ca56847038f3f329524caec5a86e14865f49918d68094c90dd021a5e67b927f6\"]},\"manifest\":{\"bodyDigest\":\"E5rhjQ_nTBI7rNXR7uKxhBdCeNQpQQNTh8ZG8jq6_iI\",\"seq\":17},\"power\":{\"batteryBand\":null,\"charging\":false,\"source\":\"ac\"},\"queue\":{\"bucket\":0},\"sampledAgeMs\":800,\"seq\":4711,\"thermal\":{\"band\":0,\"governor\":\"RUN\"},\"v\":1}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "W07-340",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer check: the lab's own STATE conforms",
+      "input": {
+        "kind": "wireStateProducer",
+        "bytes": [
+          {
+            "hex": "000001a6 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a317d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "ok": {
+          "conforms": true
+        }
+      }
+    },
+    {
+      "id": "W07-341",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer check: user is a presence field",
+      "input": {
+        "kind": "wireStateProducer",
+        "bytes": [
+          {
+            "hex": "000001bd 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a312c2275736572223a7b22616374697665223a747275657d7d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-342",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer check: inflight is a presence field",
+      "input": {
+        "kind": "wireStateProducer",
+        "bytes": [
+          {
+            "hex": "000001b3 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a312c22696e666c69676874223a337d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-343",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer check: busyForMs is a presence field",
+      "input": {
+        "kind": "wireStateProducer",
+        "bytes": [
+          {
+            "hex": "000001b6 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a312c2262757379466f724d73223a3130307d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-344",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer check: loaded inside engine is a presence field",
+      "input": {
+        "kind": "wireStateProducer",
+        "bytes": [
+          {
+            "hex": "000001b5 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d2c226c6f61646564223a5b226d225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a317d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-345",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer check: estStartS is a presence field",
+      "input": {
+        "kind": "wireStateProducer",
+        "bytes": [
+          {
+            "hex": "000001b4 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a312c22657374537461727453223a347d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-346",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer check: reason is a presence field",
+      "input": {
+        "kind": "wireStateProducer",
+        "bytes": [
+          {
+            "hex": "000001b6 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a312c22726561736f6e223a2267616d65227d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-347",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer check: queuePos inside queue is a presence field",
+      "input": {
+        "kind": "wireStateProducer",
+        "bytes": [
+          {
+            "hex": "000001b3 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a302c227175657565506f73223a317d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a317d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "reject": "PRESENCE_FIELD"
+      }
+    },
+    {
+      "id": "W07-348",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer check: any other addition is an unknown member",
+      "input": {
+        "kind": "wireStateProducer",
+        "bytes": [
+          {
+            "hex": "000001ae 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a343731312c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a312c227a7a7a223a317d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "reject": "UNKNOWN_MEMBER"
+      }
+    },
+    {
+      "id": "W07-349",
+      "origin": "hand",
+      "status": "normative",
+      "oracle": "self",
+      "description": "producer check: a float never reaches the check, the frame layer refuses it",
+      "input": {
+        "kind": "wireStateProducer",
+        "bytes": [
+          {
+            "hex": "000001a6 21 00000003 7b22617661696c6162696c697479223a7b2266736d223a2253455256494e47227d2c22656e67696e65223a7b226261636b656e64223a2276756c6b616e222c22636f6d6d6974223a2234663163326162222c22636f6e6656657273696f6e223a22312e302e30222c2268656c64223a5b2263613536383437303338663366333239353234636165633561383665313438363566343939313864363830393463393064643032316135653637623932376636225d7d2c226d616e6966657374223a7b22626f6479446967657374223a22453572686a515f6e54424937724e585237754b7868426443654e517051514e5468385a47386a71365f6949222c22736571223a31377d2c22706f776572223a7b226261747465727942616e64223a6e756c6c2c226368617267696e67223a66616c73652c22736f75726365223a226163227d2c227175657565223a7b226275636b6574223a307d2c2273616d706c65644167654d73223a3830302c22736571223a34372e352c22746865726d616c223a7b2262616e64223a302c22676f7665726e6f72223a2252554e227d2c2276223a317d"
+          }
+        ],
+        "receiver": "client"
+      },
+      "expect": {
+        "reject": "PROTOCOL_ERROR"
+      },
+      "expectDetail": {
+        "reason": "NON_INTEGER_NUMBER",
+        "framesBefore": 0,
+        "consumed": 426
+      }
+    }
+  ]
+}

@@ -112,6 +112,12 @@ class PresenceLawsTest {
             clock.now += ms
             return runtime.tick().map { it.to }
         }
+
+        /** R4-P-12: the first (blind) sample plus 60 s of quiet samples; the next evaluation, 2 s later, is the first that can serve. */
+        fun warmUp() {
+            runtime.tick()
+            repeat(30) { step(2_000) }
+        }
     }
 
     @Test
@@ -142,8 +148,10 @@ class PresenceLawsTest {
         val s = Scenario(clock)
         s.runtime.enableLending()
         s.lastInputAt = clock.now - 3_600_000 // idle for an hour
-        s.step(1_000)
-        // the hold-down has not started (no presence signal yet), so an idle Mac serves at the first tick
+        s.warmUp()
+        assertEquals(LenderState.ARMED, s.runtime.fsm.state, "R4-P-12: still warming up")
+        s.step(2_000)
+        // the hold-down has not started (no presence signal yet), so an idle Mac serves at the first evaluation after the warm-up
         assertEquals(LenderState.SERVING, s.runtime.fsm.state)
         s.lastInputAt = clock.now // the owner touches the keyboard
         val steps = s.runtime.tick()
@@ -169,7 +177,8 @@ class PresenceLawsTest {
         val s = Scenario(clock)
         s.runtime.enableLending()
         s.lastInputAt = clock.now - 3_600_000
-        s.step(1_000)
+        s.warmUp()
+        s.step(2_000)
         assertEquals(LenderState.SERVING, s.runtime.fsm.state)
         s.console = false
         s.step(1_000)

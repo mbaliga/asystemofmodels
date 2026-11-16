@@ -52,7 +52,7 @@ object BJ {
     }
 }
 
-fun mdText(name: String): String = File(Repo.root, "docs/design/mesh/$name").readText(Charsets.UTF_8)
+fun mdText(name: String): String = File(Repo.root, "docs/design/mesh/$name").readText(Charsets.UTF_8).replace("\r\n", "\n")
 
 /** The pins of `benchmark.md` 4.2, the bench-set constants and the editorial switches (LAB_SPEC 5). */
 class BenchPinsTest {

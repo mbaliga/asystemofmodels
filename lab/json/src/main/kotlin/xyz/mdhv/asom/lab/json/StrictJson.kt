@@ -1,5 +1,7 @@
 package xyz.mdhv.asom.lab.json
 
+import java.util.BitSet
+
 /** The reject codes of the strict parser, in the order of the LAB_SPEC 4.2 table (the declaration order is the check order). */
 enum class JsonRejectCode {
     MALFORMED_JSON,
@@ -27,6 +29,9 @@ sealed interface ParseResult {
  * one JSON value; (2) invalid UTF-8 anywhere in the input; (3) a `\u` escape producing a lone surrogate; (4) a number
  * that is not `-?(0|[1-9][0-9]*)` or is `-0`; (5) an integer outside +-(2^53-1); (6) a duplicate member name; (7) nesting
  * deeper than [MAX_DEPTH]; (8) non-whitespace after the value. The scan is iterative, so depth cannot overflow the stack.
+ *
+ * Nothing is built for a container nested deeper than [MAX_DEPTH]: those levels are skimmed with every check of the normal
+ * path but a few bytes of state per level, so a hostile frame of brackets cannot multiply its own size in memory.
  */
 object StrictJson {
     const val MAX_DEPTH: Int = 16
@@ -114,9 +119,10 @@ object StrictJson {
         private fun begin(): JValue? {
             when (val c = peek()) {
                 '{'.code -> {
+                    if (stack.size >= MAX_DEPTH) return skimDeep()
                     i++
                     val f = ObjFrame()
-                    open(f)
+                    stack.add(f)
                     ws()
                     if (peek() == '}'.code) {
                         i++
@@ -127,8 +133,9 @@ object StrictJson {
                     return null
                 }
                 '['.code -> {
+                    if (stack.size >= MAX_DEPTH) return skimDeep()
                     i++
-                    open(ArrFrame())
+                    stack.add(ArrFrame())
                     ws()
                     if (peek() == ']'.code) {
                         i++
@@ -137,19 +144,126 @@ object StrictJson {
                     }
                     return null
                 }
-                '"'.code -> return JString(string())
-                '-'.code -> return if (isLetter(at(i + 1))) word(1) else number()
-                in '0'.code..'9'.code -> return number()
-                else -> {
-                    if (isLetter(c)) return word(0)
-                    fail("unexpected byte 0x${Integer.toHexString(c)}")
-                }
+                else -> return scalar(c)
             }
         }
 
-        private fun open(f: Frame) {
-            stack.add(f)
-            if (stack.size > MAX_DEPTH && tooDeep < 0) tooDeep = i
+        private fun scalar(c: Int): JValue = when {
+            c == '"'.code -> JString(string())
+            c == '-'.code -> if (isLetter(at(i + 1))) word(1) else number()
+            c in '0'.code..'9'.code -> number()
+            isLetter(c) -> word(0)
+            else -> fail("unexpected byte 0x${Integer.toHexString(c)}")
+        }
+
+        /**
+         * Entered at the opening bracket of the container that would be the 17th. Records the depth fault, then scans to the matching
+         * close without building values and applying every check of the normal path, and returns a placeholder that is never used
+         * (the depth fault makes the result a reject). It keeps one bit per open container and, per open object, the offset of its
+         * first name; the names become a set only when a second one arrives, and the first is then decoded again from its offset.
+         */
+        private fun skimDeep(): JValue {
+            if (tooDeep < 0) tooDeep = i + 1
+            val isObject = BitSet()
+            var depth = 0
+            var firstName = IntArray(64)
+            var objects = 0
+            var sets: HashMap<Int, HashSet<String>>? = null
+            val scratch = StringBuilder()
+
+            fun readName() {
+                ws()
+                if (peek() != '"'.code) fail("expected a member name")
+                val at = i
+                scratch.setLength(0)
+                scanString(scratch)
+                val top = objects - 1
+                if (firstName[top] < 0) {
+                    firstName[top] = at
+                } else {
+                    val name = scratch.toString()
+                    val all = sets ?: HashMap<Int, HashSet<String>>().also { sets = it }
+                    val names = all.getOrPut(top) {
+                        val resume = i
+                        i = firstName[top]
+                        scratch.setLength(0)
+                        scanString(scratch)
+                        i = resume
+                        HashSet<String>().also { it.add(scratch.toString()) }
+                    }
+                    if (!names.add(name) && duplicate < 0) duplicate = i
+                }
+                ws()
+                if (peek() != ':'.code) fail("expected ':'")
+                i++
+            }
+
+            while (true) {
+                ws()
+                var completed = true
+                when (val c = peek()) {
+                    '{'.code -> {
+                        i++
+                        ws()
+                        if (peek() == '}'.code) {
+                            i++
+                        } else {
+                            isObject.set(depth++)
+                            if (objects == firstName.size) firstName = firstName.copyOf(objects * 2)
+                            firstName[objects++] = -1
+                            readName()
+                            completed = false
+                        }
+                    }
+                    '['.code -> {
+                        i++
+                        ws()
+                        if (peek() == ']'.code) {
+                            i++
+                        } else {
+                            isObject.clear(depth++)
+                            completed = false
+                        }
+                    }
+                    '"'.code -> {
+                        scratch.setLength(0)
+                        scanString(scratch)
+                    }
+                    else -> scalar(c)
+                }
+                if (!completed) continue
+                while (true) {
+                    if (depth == 0) return JInt(0)
+                    ws()
+                    val closer = peek()
+                    if (isObject.get(depth - 1)) {
+                        if (closer == ','.code) {
+                            i++
+                            readName()
+                            break
+                        }
+                        if (closer == '}'.code) {
+                            i++
+                            sets?.remove(objects - 1)
+                            objects--
+                            depth--
+                            continue
+                        }
+                        fail("expected ',' or '}'")
+                    } else {
+                        if (closer == ','.code) {
+                            i++
+                            break
+                        }
+                        if (closer == ']'.code) {
+                            i++
+                            depth--
+                            continue
+                        }
+                        fail("expected ',' or ']'")
+                    }
+                }
+            }
         }
 
         private fun key(f: ObjFrame) {
@@ -246,14 +360,15 @@ object StrictJson {
          * Bytes of an invalid UTF-8 sequence become U+FFFD here and are reported by the whole-input check in [parse];
          * a lone surrogate escape becomes U+FFFD and is flagged, so a value that is rejected is never built from it.
          */
-        private fun string(): String {
+        private fun string(): String = StringBuilder().also { scanString(it) }.toString()
+
+        private fun scanString(sb: StringBuilder) {
             i++
-            val sb = StringBuilder()
             while (true) {
                 if (i >= b.size) fail("unterminated string")
                 val c = b[i].toInt() and 0xFF
                 when {
-                    c == '"'.code -> { i++; return sb.toString() }
+                    c == '"'.code -> { i++; return }
                     c == '\\'.code -> escape(sb)
                     c < 0x20 -> fail("control character in string")
                     c < 0x80 -> { sb.append(c.toChar()); i++ }

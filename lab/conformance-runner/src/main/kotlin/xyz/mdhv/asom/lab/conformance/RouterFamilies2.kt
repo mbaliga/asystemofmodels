@@ -167,7 +167,7 @@ class R05Checker : FamilyChecker("R05") {
 /** R06: the pure reducers: integer EWMA, cap counters, freshness classes, the `st` digest and the breaker pinned to the real `CooldownRegistry`. Evidence label: LAB, oracle: self. */
 class R06Checker : FamilyChecker("R06") {
     override val requiredLaws = setOf(
-        "ewma", "link", "appEwma", "cap", "capRun", "freshness-FRESH", "freshness-WARM", "freshness-STALE", "freshness-EXPIRED", "stParse", "declineBackoff", "breaker", "breaker-pinned",
+        "ewma", "link", "appEwma", "cap", "capRun", "freshness-FRESH", "freshness-WARM", "freshness-STALE", "freshness-EXPIRED", "powerFreshness-FRESH", "powerFreshness-WARM", "powerFreshness-STALE", "powerFreshness-EXPIRED", "stParse", "declineBackoff", "breaker", "breaker-pinned",
     )
 
     private fun baseDoc(seq: Long, age: Long) = StateDoc(
@@ -251,6 +251,11 @@ class R06Checker : FamilyChecker("R06") {
                     buildJsonObject {
                         put("cls", cls.name)
                         put("regressed", c.regressed)
+                        if (i.bool("power")) {
+                            val pc = LiveStateCache.powerFreshness(c, i.long("now"))
+                            bump("powerFreshness-${pc.name}")
+                            put("powerCls", pc.name)
+                        }
                         if (i.bool("fields")) {
                             val d = c.doc!!
                             put("fsm", d.fsm.name); put("thermalBand", d.thermalBand); put("queueBucket", d.queueBucket); put("governor", d.governor.name); put("seq", d.seq)

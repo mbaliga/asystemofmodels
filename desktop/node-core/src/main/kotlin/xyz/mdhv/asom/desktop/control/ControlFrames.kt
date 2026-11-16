@@ -3,6 +3,9 @@ package xyz.mdhv.asom.desktop.control
 import java.io.EOFException
 import java.io.InputStream
 import java.io.OutputStream
+import java.nio.ByteBuffer
+import java.nio.charset.CharacterCodingException
+import java.nio.charset.CodingErrorAction
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -84,7 +87,17 @@ object ControlFrames {
         if (n < 0 || n > MAX_FRAME_BYTES) throw ControlFrameException(ControlCode.FRAME_TOO_LARGE, "declared length exceeds 1 MiB")
         val body = ByteArray(n)
         readFully(input, body)
-        return String(body, Charsets.UTF_8)
+        return decodeUtf8(body)
+    }
+
+    /** Strict UTF-8 (linux.md 7.3, C1): overlong forms, encoded surrogates, code points above U+10FFFF and stray bytes are refused, never replaced by U+FFFD. */
+    fun decodeUtf8(body: ByteArray): String = try {
+        Charsets.UTF_8.newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT)
+            .decode(ByteBuffer.wrap(body)).toString()
+    } catch (_: CharacterCodingException) {
+        throw ControlFrameException(ControlCode.BAD_REQUEST, "frame body is not valid UTF-8")
     }
 
     private fun readFully(input: InputStream, into: ByteArray) {

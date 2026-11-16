@@ -104,6 +104,46 @@ class PresenceLawsTest {
     }
 
     @Test
+    fun userDisableFromServingRunsDrainingWithGraceZeroThenOffAndAbortsInflightWork() {
+        for (grace in listOf(0L, 2_000L, 30_000L)) {
+            val out = run(
+                FsmConfig(graceMs = grace),
+                listOf(0L to FsmEvent.Enable, 0L to cond(true), 100L to FsmEvent.InflightChanged(1), 500L to FsmEvent.Disable, 500L to FsmEvent.Tick, 501L to FsmEvent.Tick),
+            )
+            assertEquals(Fsm.SERVING, out[2].fsm)
+            assertEquals(Fsm.DRAINING, out[3].fsm, "user_disable is observable as DRAINING for one step (grace $grace)")
+            assertEquals(Fsm.DRAINING, out[4].fsm, "the same instant is still the step that started the drain")
+            assertEquals(Fsm.OFF, out[5].fsm, "grace 0 expires at the first later evaluation although one request is still in flight (grace $grace)")
+            assertEquals(DrainCause.USER, out[3].drainCause)
+        }
+    }
+
+    @Test
+    fun userDisableFromArmedAndOffIsOffAtOnceAndFromADrainItShortensTheDrain() {
+        val armed = run(FsmConfig(), listOf(0L to FsmEvent.Enable, 10L to FsmEvent.Disable))
+        assertEquals(Fsm.OFF, armed[1].fsm)
+        assertEquals(Fsm.OFF, run(FsmConfig(), listOf(0L to FsmEvent.Disable))[0].fsm)
+        val heat = run(
+            FsmConfig(graceMs = 30_000),
+            listOf(0L to FsmEvent.Enable, 0L to cond(true), 100L to FsmEvent.InflightChanged(1), 1_000L to cond(false), 2_000L to FsmEvent.Disable, 2_001L to FsmEvent.Tick),
+        )
+        assertEquals(Fsm.DRAINING, heat[4].fsm)
+        assertEquals(Fsm.OFF, heat[5].fsm, "a disable during a condition drain ends it with grace 0, not after the remaining 29 s")
+    }
+
+    @Test
+    fun anEnableDuringAUserDisableDrainCancelsTheDisableButNotTheDrain() {
+        val out = run(
+            FsmConfig(graceMs = 30_000),
+            listOf(0L to FsmEvent.Enable, 0L to cond(true), 500L to FsmEvent.Disable, 500L to FsmEvent.Enable, 501L to FsmEvent.Tick, 502L to FsmEvent.Tick),
+        )
+        assertEquals(Fsm.DRAINING, out[2].fsm)
+        assertEquals(Fsm.DRAINING, out[3].fsm, "a drain is irreversible: the enable cancels the pending disable only")
+        assertEquals(Fsm.SERVING, out[4].fsm, "the drain finishes into ARMED, not OFF, and conditions still allow SERVING at once")
+        assertEquals(Fsm.SERVING, out[5].fsm)
+    }
+
+    @Test
     fun aConditionDrainReturnsAsSoonAsTheBandDropsWithNoHoldDown() {
         val cfg = FsmConfig(graceMs = 30_000)
         val out = run(
@@ -173,6 +213,8 @@ class PresenceLawsTest {
         var boundaryAt = 0
         var conditionReturns = 0
         var pfNeedsStart = 0
+        var disableDrains = 0
+        var disableEnds = 0
         val rng = SplittableRandom(20260930)
         val presenceInputs = presenceNames.toList()
         val pfOnly = (pfConsentNames + pfPresenceNames).toList()
@@ -185,6 +227,7 @@ class PresenceLawsTest {
             var now = 0L
             var prevFsm = Fsm.OFF
             var lastPresenceSeenAt: Long? = null
+            var disablePending = false
             sequences++
             for (i in 0 until 60) {
                 val dt = when (rng.nextInt(8)) {
@@ -199,7 +242,7 @@ class PresenceLawsTest {
                 }
                 now += dt
                 val e: FsmEvent = when (rng.nextInt(12)) {
-                    0 -> if (s.fsm == Fsm.OFF) FsmEvent.Enable else FsmEvent.Tick
+                    0 -> if (s.fsm == Fsm.OFF || s.fsm == Fsm.DRAINING) FsmEvent.Enable else FsmEvent.Tick
                     1 -> if (rng.nextInt(6) == 0) FsmEvent.Disable else FsmEvent.Tick
                     2 -> FsmEvent.StartLending
                     3, 4, 5 -> FsmEvent.Input(HostInput.valueOf(if (pf && rng.nextBoolean()) (presenceInputs + pfOnly)[rng.nextInt(presenceInputs.size + pfOnly.size)] else presenceInputs[rng.nextInt(presenceInputs.size)]))
@@ -227,7 +270,26 @@ class PresenceLawsTest {
                     assertEquals(Fsm.DRAINING, s.fsm, "presence while SERVING must be DRAINING in the same step (seq $sequences step $i)")
                     presenceWhileServing++
                 }
-                if (e is FsmEvent.Disable) assertEquals(Fsm.OFF, s.fsm)
+                // I6: user_disable runs DRAINING with grace 0 then OFF (platforms.md 2.1): from SERVING or a drain it is DRAINING in that step, otherwise OFF; a
+                // pending disable ends the drain in OFF at the first later evaluation, even with work in flight, unless an Enable cancelled it.
+                if (e is FsmEvent.Disable) {
+                    if (before == Fsm.SERVING || before == Fsm.DRAINING) {
+                        assertEquals(Fsm.DRAINING, s.fsm, "disable from $before must be DRAINING in that step (seq $sequences step $i)")
+                        disablePending = true
+                        disableDrains++
+                    } else {
+                        assertEquals(Fsm.OFF, s.fsm, "disable from $before is OFF at once (seq $sequences step $i)")
+                    }
+                } else if (e is FsmEvent.Enable && before == Fsm.DRAINING) {
+                    disablePending = false
+                } else if (before == Fsm.DRAINING && s.fsm != Fsm.DRAINING) {
+                    if (disablePending) {
+                        assertEquals(Fsm.OFF, s.fsm, "a pending user_disable must end in OFF (seq $sequences step $i)")
+                        disableEnds++
+                    }
+                    disablePending = false
+                }
+                if (s.fsm == Fsm.OFF) disablePending = false
                 // I2: SERVING only when every condition, the hold-down and (PF) the explicit start allow it.
                 if (s.fsm == Fsm.SERVING) {
                     assertTrue(o.lastCondOk, "SERVING with conditions failing (seq $sequences step $i)")
@@ -252,7 +314,8 @@ class PresenceLawsTest {
         assertTrue(presenceWhileServing > 100, "presence while SERVING: $presenceWhileServing")
         assertTrue(boundaryBefore > 5 && boundaryAt > 5, "the 599,999 / 600,000 boundary must be hit: $boundaryBefore, $boundaryAt")
         assertTrue(pfNeedsStart > 50, "PF nodes waiting for Start lending: $pfNeedsStart")
-        println("LP-2 iterations: $steps steps in $sequences random sequences; presence while SERVING: $presenceWhileServing; ticks at t+599,999 (not SERVING): $boundaryBefore; at t+600,000 (SERVING): $boundaryAt; PF waiting for Start lending: $pfNeedsStart")
+        assertTrue(disableDrains > 20 && disableEnds > 5, "user_disable drains: $disableDrains, ended in OFF: $disableEnds")
+        println("LP-2 iterations: $steps steps in $sequences random sequences; presence while SERVING: $presenceWhileServing; ticks at t+599,999 (not SERVING): $boundaryBefore; at t+600,000 (SERVING): $boundaryAt; PF waiting for Start lending: $pfNeedsStart; user_disable drains: $disableDrains, ended in OFF: $disableEnds")
         println("LP-0 (in sequence): every input classified by an independent table on each step")
     }
 
@@ -365,7 +428,7 @@ class PresenceLawsTest {
             repeat(40) {
                 now += rng.nextLong(0, 700_000)
                 val e: FsmEvent = when (rng.nextInt(5)) {
-                    0 -> if (s.fsm == Fsm.OFF) FsmEvent.Enable else FsmEvent.Tick
+                    0 -> if (s.fsm == Fsm.OFF || s.fsm == Fsm.DRAINING) FsmEvent.Enable else FsmEvent.Tick
                     1 -> FsmEvent.Input(HostInput.HEAVY_FOREGROUND_PROCESS)
                     2 -> FsmEvent.Input(HostInput.THERMAL_BAND, rng.nextBoolean())
                     3 -> FsmEvent.StartLending

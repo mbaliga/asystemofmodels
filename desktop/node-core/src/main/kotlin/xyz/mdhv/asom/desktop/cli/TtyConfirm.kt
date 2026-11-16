@@ -30,7 +30,9 @@ sealed interface Confirmation {
 
 /**
  * Confirmations for `pair-confirm`, `restore` and `lan-confirm` come from the controlling TTY only (T17(e)): never
- * from stdin, arguments, environment or the control socket, so a script or a same-uid process cannot supply them.
+ * from stdin, arguments, environment or the control socket, so a non-interactive script cannot supply them. A same-uid
+ * process that allocates a pseudo-terminal of its own CAN (desktop/packaging/linux/test/pty-run.py does exactly that):
+ * the prompt stops scripts and mistakes, not an attacker who already runs as the owner (T17(g)).
  * Without a TTY the answer is [Confirmation.NoTty]. The answer must equal [expected] exactly (default: `yes`).
  */
 class TtyConfirm(private val opener: TtyOpener = DefaultTtyOpener) {
@@ -46,8 +48,30 @@ class TtyConfirm(private val opener: TtyOpener = DefaultTtyOpener) {
 }
 
 /**
- * `/dev/tty` where the platform has one (POSIX: Linux, macOS), else the JVM console when both stdin and stdout are a
- * terminal. Windows hosts may replace this opener with a console-only one.
+ * Whether the JVM console may stand in for a missing `/dev/tty`. Only on Windows, which has no `/dev/tty`: on POSIX a
+ * missing `/dev/tty` means no controlling terminal, and the answer is NoTty. The JVM console is not a terminal check by
+ * itself: with `-Djdk.console=jdk.internal.le` (the default provider from JDK 22) `System.console()` is non-null over a
+ * pipe and reads file descriptor 0. So [isTerminal] (`Console.isTerminal()`, JDK 22 and later) decides when it exists; on
+ * JDK 17 and 21 the default provider returns a console only when stdin and stdout are both terminals, which holds only while
+ * no other provider is selected through `jdk.console`.
+ */
+object ConsoleFallback {
+    fun allowed(osName: String, consoleProvider: String?, consolePresent: Boolean, isTerminal: Boolean?): Boolean {
+        if (!osName.startsWith("Windows") || !consolePresent) return false
+        if (isTerminal != null) return isTerminal
+        return consoleProvider.isNullOrEmpty() || consoleProvider == "java.base"
+    }
+
+    internal fun isTerminal(console: java.io.Console): Boolean? = try {
+        java.io.Console::class.java.getMethod("isTerminal").invoke(console) as? Boolean
+    } catch (_: ReflectiveOperationException) {
+        null
+    }
+}
+
+/**
+ * `/dev/tty` where the platform has one (POSIX: Linux, macOS, Ubuntu Touch); on Windows the JVM console when
+ * [ConsoleFallback] allows it. Otherwise there is no terminal and the confirmation is refused. stdin is never consulted.
  */
 object DefaultTtyOpener : TtyOpener {
     override fun open(): TtyIo? {
@@ -65,10 +89,15 @@ object DefaultTtyOpener : TtyOpener {
                     }
                 }
             } catch (_: java.io.IOException) {
-                // no controlling terminal (ENXIO): fall through to the console check
+                // no controlling terminal (ENXIO)
             }
         }
-        val console = System.console() ?: return null
+        val console = System.console()
+        val ok = ConsoleFallback.allowed(
+            System.getProperty("os.name").orEmpty(), System.getProperty("jdk.console"), console != null,
+            console?.let { ConsoleFallback.isTerminal(it) },
+        )
+        if (!ok || console == null) return null
         return object : TtyIo {
             override fun println(text: String) {
                 console.writer().println(text)

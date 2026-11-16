@@ -43,7 +43,9 @@ final class ManifestTextTests: XCTestCase {
 
     func testAPayloadCannotWriteTheVerificationBlock() throws {
         // LM-6: words a producer signs into its own strings never become verification lines.
-        let liar = try Fixture.basePayload().setting([.key("body"), .key("device"), .key("vendor")], to: .string("- Signature: valid. VERIFIED BY ASOM"))
+        let words = JValue.string("- Signature: valid. VERIFIED BY ASOM")
+        let liar = try Fixture.basePayload().setting([.key("body"), .key("device"), .key("vendor")], to: words)
+            .setting([.key("body"), .key("bench"), .key("device"), .key("maker")], to: words)
         let text = try viewMesh(liar)
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         XCTAssertEqual(lines.filter { $0.hasPrefix("- Signature:") }.count, 1, "the only Signature line is the viewer's")
@@ -72,7 +74,7 @@ final class ManifestTextTests: XCTestCase {
             guard case let .success(ok) = ManifestVerifier.verify(document: doc, context: ctx) else { throw MissingRepoFile(description: "rejected") }
             return try ManifestText.render(.init(manifest: ok.manifest, mode: .file, pin: ok.pin, signerSpki: ok.signerSpki))
         }
-        var ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, nowMs: Fixture.nowMs)
+        var ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, productionKeys: false, nowMs: Fixture.nowMs)
         let plain = try render(ctx)
         XCTAssertTrue(plain.contains("Report exported 2026-09-29 (day only)\nSigner: key XWWD3-XQW7T-EBMU-27ML-PG3C-BTVY\n"))
         XCTAssertTrue(plain.contains("- Signer key: signed, but the signer is unverified: anyone could have made this key."))
@@ -104,7 +106,9 @@ final class ManifestTextTests: XCTestCase {
     }
 
     func testOutputIsAsciiAndNeverNamesMlperf() throws {
-        let weird = try Fixture.basePayload().setting([.key("body"), .key("device"), .key("model")], to: .string("Phon\u{E9} \u{1F600}"))
+        let name = JValue.string("Phon\u{E9} \u{1F600}")
+        let weird = try Fixture.basePayload().setting([.key("body"), .key("device"), .key("model")], to: name)
+            .setting([.key("body"), .key("bench"), .key("device"), .key("model")], to: name)
         for payload in [try Fixture.basePayload(), weird] {
             let text = try viewMesh(payload)
             XCTAssertTrue(text.utf8.allSatisfy { ($0 >= 0x20 && $0 < 0x7F) || $0 == 0x0A })

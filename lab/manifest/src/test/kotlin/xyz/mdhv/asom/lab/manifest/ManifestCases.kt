@@ -6,6 +6,7 @@ import xyz.mdhv.asom.lab.bench.ja
 import xyz.mdhv.asom.lab.bench.ji
 import xyz.mdhv.asom.lab.bench.jo
 import xyz.mdhv.asom.lab.bench.js
+import xyz.mdhv.asom.lab.bench.jsList
 import xyz.mdhv.asom.lab.json.Base64Strict
 import xyz.mdhv.asom.lab.json.Hex
 import xyz.mdhv.asom.lab.json.JArray
@@ -81,16 +82,19 @@ object ManifestCases {
         c += Case("M02-111", "FILE, the export fingerprint typed exactly: PINNED_BY_FINGERPRINT(typed).", fileDoc(), file(key3.exportFingerprint, CompareMethod.TYPED), F.NOW)
         c += Case("M02-112", "FILE, the fingerprint scanned, lowercase with spaces: PINNED_BY_FINGERPRINT(qr).", fileDoc(), file(key3.exportFingerprint.lowercase().replace("-", " "), CompareMethod.QR), F.NOW)
         c += Case(
-            "M02-113", "device.model of exactly 96 astral characters (192 UTF-16 code units): accepted, because lengths are counted in code points.",
-            own(JEdit.set(baseObj, listOf("body", "device", "model"), js(astral(96)))), mesh(), F.NOW,
+            "M02-113", "device.model of exactly 96 astral characters (192 UTF-16 code units), in body.device and in its bench twin: accepted, because lengths are counted in code points.",
+            own(JEdit.set(JEdit.set(baseObj, listOf("body", "device", "model"), js(astral(96))), listOf("body", "bench", "device", "model"), js(astral(96)))), mesh(), F.NOW,
         )
         c += Case("M02-114", "The maxima: every rate 10^9, every byte field 2^50: accepted.", own(F.ownObj(F.ownBody(inputs = F.inputs(maxima())))), mesh(), F.NOW)
         c += Case("M02-115", "FILE, per-export key4, the export fingerprint typed with its hyphens: PINNED_BY_FINGERPRINT(typed).", fileDoc(F.fileObj(F.fileBody(key4)), key4), file(key4.exportFingerprint, CompareMethod.TYPED), F.NOW)
         c += Case("M02-116", "A partial run (aborted at a charger removal): the projected manifest still verifies.", own(F.ownObj(F.ownBody(inputs = F.inputs(partial())))), mesh(), F.NOW)
         c += Case("M02-117", "keyStorage os-keystore: accepted at tier A0 (self-reported, treated like A0).", own(F.ownObj(F.ownBody(storage = "os-keystore"))), mesh(), F.NOW)
-        c += Case("M02-118", "requiredTier A1 with a hardware-claiming key: accepted.", baseDoc, mesh(tier = Tier.A1), F.NOW)
+        c += Case("M02-118", "keyStorage secure-enclave (a self-reported hardware claim) at requiredTier A0: accepted, labelled tier A1; ERR-FX-CV3 retag of the r3 vector that let the claim satisfy requiredTier A1 (see M03-191).", own(F.ownObj(F.ownBody(storage = "secure-enclave"))), mesh(), F.NOW)
         c += Case("M02-119", "Boundary: issuedAtMs == nowMs + 300,000 (exactly the allowed skew) accepts.", baseDoc, mesh(), F.ISSUED - 300_000L)
-        c += Case("M02-120", "keyStorage tee counts as hardware-backed: requiredTier A1 accepts (tier A1).", own(F.ownObj(F.ownBody(storage = "tee"))), mesh(tier = Tier.A1), F.NOW)
+        c += Case("M02-120", "keyStorage tee (a self-reported hardware claim) at requiredTier A0: accepted, labelled tier A1; ERR-FX-CV3 retag (see M03-191).", own(F.ownObj(F.ownBody(storage = "tee"))), mesh(), F.NOW)
+        c += Case("M02-122", "device.class toaster (an open enum value that is not a bench form): accepted, shown by a viewer as other (toaster); body.device.class is not tied to bench.device.form.", own(JEdit.set(baseObj, listOf("body", "device", "class"), js("toaster"))), mesh(), F.NOW)
+        val fileMinor1 = JEdit.set(F.fileObj(), listOf("schemaMinor"), ji(1))
+        c += Case("M02-121", "FILE, schemaMinor 1 and no extra presentation member: accepted as SIGNER_UNVERIFIED (the sibling of M03-193).", fileDoc(fileMinor1), file(), F.NOW)
         return c
     }
 
@@ -151,7 +155,7 @@ object ManifestCases {
         val d0 = listOf<Any>("body", "results", 0, "decode", 0, "milliTokPerSec")
         val bumped = addOne(addOne(baseObj, d0 + "p50", 1), d0 + "p90", 1)
         r("M03-130", "results edited to disagree with derive(bench), consistent in itself, re-signed.", own(bumped), mesh(), RejectCode.DERIVATION_MISMATCH, "15a")
-        r("M03-131", "The bench pins a confVersion (0.1.0) below the verifier's floor (0.2.0).", own(JEdit.set(baseObj, listOf("body", "bench", "harness", "confVersion"), js("0.1.0"))), mesh(), RejectCode.DERIVATION_MISMATCH, "15a")
+        r("M03-131", "The bench pins a confVersion (0.1.0) below the verifier's floor (0.2.0); the producer block says the same, so the one-record rule (M03-179) does not decide first.", own(JEdit.set(JEdit.set(baseObj, listOf("body", "bench", "harness", "confVersion"), js("0.1.0")), listOf("body", "producer", "harness", "confVersion"), js("0.1.0"))), mesh(), RejectCode.DERIVATION_MISMATCH, "15a")
         r("M03-132", "An own-audience document verified in FILE mode.", baseDoc, file(), RejectCode.AUDIENCE_MISMATCH, "15b")
         rs("M03-133", "Three evidence items.", DocSpec(basePayload, evidence = listOf(jo(), jo(), jo())), mesh(), RejectCode.CONTAINER_INVALID, "15c")
         r("M03-134", "A file-audience document carrying seq.", fileDoc(JEdit.set(fileObj, listOf("body", "seq"), ji(1))), file(), RejectCode.SCHEMA_INVALID, "11")
@@ -209,6 +213,71 @@ object ManifestCases {
         val wrapR = jo("p10" to ji(1_000_000_000L), "p50" to ji(1_000_000_000L), "p90" to ji(1_000_000_000L))
         val wrap = JEdit.set(JEdit.set(baseObj, pfx + "ttftMicros", wrapT), pfx + "milliTokPerSec", wrapR)
         r("M03-178", "Checked arithmetic: 1.9e9 microseconds at 1e9 milli-tokens per second wraps a 64-bit product to a POSITIVE number that would pass the consistency test; it is INCONSISTENT, not accepted.", own(wrap), mesh(), RejectCode.INCONSISTENT, "15")
+
+        return c
+    }
+
+    /**
+     * The review-fix vectors (ERR-FX-CV1 .. CV10), M03-179 and up. They live in their own file (`M03-verify-reject-fx.json`, family M03) so that the
+     * count of the original reject file, which the W08 session test pins, does not move.
+     */
+    fun rejectFx(): List<Case> {
+        val c = mutableListOf<Case>()
+        val baseObj = ownObj
+        val basePayload = pay(baseObj)
+        val baseDoc = own(baseObj)
+        val fileObj = F.fileObj()
+        fun r(id: String, desc: String, doc: ByteArray, ctx: VCtx, code: RejectCode, step: String, now: Long = F.NOW) { c += Case(id, desc, doc, ctx, now, code, step) }
+        fun rs(id: String, desc: String, spec: DocSpec, ctx: VCtx, code: RejectCode, step: String, now: Long = F.NOW) = r(id, desc, F.container(spec), ctx, code, step, now)
+
+        // ---- review fixes (ERR-FX-CV1 .. CV10)
+        fun ownEdit(path: List<Any>, v: JValue) = own(JEdit.set(baseObj, path, v))
+        r("M03-179", "One record: body.producer.harness.confVersion says 0.0.1 (below the floor) while body.bench pins 0.2.0; re-signed.", ownEdit(listOf("body", "producer", "harness", "confVersion"), js("0.0.1")), mesh(), RejectCode.INCONSISTENT, "15")
+        r("M03-180", "One record: body.producer.engine.commit is not a prefix of bench.harness.engine.commit.", ownEdit(listOf("body", "producer", "engine", "commit"), js("ffffffff")), mesh(), RejectCode.INCONSISTENT, "15")
+        r("M03-181", "One record: body.producer.engine.name differs from bench.harness.engine.name.", ownEdit(listOf("body", "producer", "engine", "name"), js("other-engine")), mesh(), RejectCode.INCONSISTENT, "15")
+        r("M03-182", "One record: body.producer.engine.buildFlags differs from bench.harness.engine.buildFlags.", ownEdit(listOf("body", "producer", "engine", "buildFlags"), jsList(listOf("X=1"))), mesh(), RejectCode.INCONSISTENT, "15")
+        r("M03-183", "One record: body.device.memory.totalBytes is 64e9 while bench.device.memTotalBytes is 16e9.", ownEdit(listOf("body", "device", "memory", "totalBytes"), ji(64_000_000_000L)), mesh(), RejectCode.INCONSISTENT, "15")
+        r("M03-184", "One record: body.device.os.family is ios while bench.device.platform is android.", ownEdit(listOf("body", "device", "os", "family"), js("ios")), mesh(), RejectCode.INCONSISTENT, "15")
+        r("M03-185", "One record: body.device.os.version differs from bench.device.osVersion.", ownEdit(listOf("body", "device", "os", "version"), js("99")), mesh(), RejectCode.INCONSISTENT, "15")
+        r("M03-186", "One record: body.producer.engine.commit is a full 40-hex commit that the bench commit is not a prefix of (neither is an abbreviation of the other).", ownEdit(listOf("body", "producer", "engine", "commit"), js("0".repeat(40))), mesh(), RejectCode.INCONSISTENT, "15")
+        r("M03-187", "One record: body.device.vendor differs from bench.device.maker.", ownEdit(listOf("body", "device", "vendor"), js("Other")), mesh(), RejectCode.INCONSISTENT, "15")
+        r("M03-188", "One record: body.device.model differs from bench.device.model.", ownEdit(listOf("body", "device", "model"), js("Other Phone")), mesh(), RejectCode.INCONSISTENT, "15")
+        r("M03-189", "One record: body.device.soc.name differs from bench.device.soc.", ownEdit(listOf("body", "device", "soc", "name"), js("Other SoC")), mesh(), RejectCode.INCONSISTENT, "15")
+        r("M03-190", "One record, FILE form: body.device.memory.totalBytes is 64e9 while bench.device.memTotalBytes is 16e9.", fileDoc(JEdit.set(fileObj, listOf("body", "device", "memory", "totalBytes"), ji(64_000_000_000L))), file(), RejectCode.INCONSISTENT, "15")
+        r("M03-191", "A self-reported keyStorage tee satisfies no required tier: requiredTier A1 is TIER_INSUFFICIENT (ERR-FX-CV3; manifest.md 9.1: A1 is treated exactly as A0 for every decision).", own(F.ownObj(F.ownBody(storage = "tee"))), mesh(tier = Tier.A1), RejectCode.TIER_INSUFFICIENT, "18")
+        r("M03-192", "keyStorage strongbox at requiredTier A1: TIER_INSUFFICIENT (the claim is a display label only).", baseDoc, mesh(tier = Tier.A1), RejectCode.TIER_INSUFFICIENT, "18")
+        r("M03-193", "FILE, schemaMinor 1 and one extra member in the presentation: SCHEMA_INVALID, because a FILE presentation is exactly { issuedAtMs } whatever the minor (P3).", fileDoc(JEdit.set(JEdit.set(fileObj, listOf("schemaMinor"), ji(1)), listOf("presentation", "exportedAtMs"), ji(1_790_676_061_234L))), file(), RejectCode.SCHEMA_INVALID, "11")
+        r("M03-194", "FILE: the compared fingerprint is the right 26 characters followed by 256 more (a length that differs by a multiple of 256): FINGERPRINT_MISMATCH.", fileDoc(), file(key3.exportFingerprint + "A".repeat(256), CompareMethod.TYPED), RejectCode.FINGERPRINT_MISMATCH, "7b")
+        r("M03-195", "FILE: the compared fingerprint of key4 with U+017F (long s) in place of every S: FINGERPRINT_MISMATCH (only ASCII letters are upper-cased).", fileDoc(F.fileObj(F.fileBody(key4)), key4), file(key4.exportFingerprint.lowercase().replace('s', 'ſ'), CompareMethod.TYPED), RejectCode.FINGERPRINT_MISMATCH, "7b")
+        r("M03-196", "FILE: the compared fingerprint of key2 with U+0131 (dotless i) in place of every I: FINGERPRINT_MISMATCH.", fileDoc(F.fileObj(F.fileBody(key2)), key2), file(key2.exportFingerprint.lowercase().replace('i', 'ı'), CompareMethod.TYPED), RejectCode.FINGERPRINT_MISMATCH, "7b")
+        val deepOpen = "[".repeat(17)
+        val deepClose = "]".repeat(17)
+        r("M03-197", "A fraction inside a region nested deeper than 16: row 4 outranks row 7, so NON_INTEGER_NUMBER.", (deepOpen + "1.5" + deepClose).toByteArray(), mesh(), RejectCode.NON_INTEGER_NUMBER, "2")
+        r("M03-198", "A duplicate member name AFTER a region nested deeper than 16: row 6 outranks row 7, so DUPLICATE_KEY.", ("[" + "[".repeat(16) + "]".repeat(16) + ",{\"a\":1,\"a\":2}]").toByteArray(), mesh(), RejectCode.DUPLICATE_KEY, "2")
+        r("M03-199", "A lone surrogate escape inside a region nested deeper than 16: row 3 outranks row 7, so INVALID_UNICODE.", (deepOpen + "\"\\ud800\"" + deepClose).toByteArray(), mesh(), RejectCode.INVALID_UNICODE, "2")
+        r("M03-200", "An integer beyond 2^53 - 1 inside a region nested deeper than 16: row 5 outranks row 7, so NUMBER_RANGE.", (deepOpen + "9007199254740992" + deepClose).toByteArray(), mesh(), RejectCode.NUMBER_RANGE, "2")
+        r("M03-201", "Container shape: a top-level array is not an object (CONTAINER_INVALID, not a version problem).", "[]".toByteArray(), mesh(), RejectCode.CONTAINER_INVALID, "3")
+        r("M03-202", "Container shape: a top-level number.", "1".toByteArray(), mesh(), RejectCode.CONTAINER_INVALID, "3")
+        val dsseHead = "{\"asomCapabilityManifest\":1,\"dsse\":{\"payload\":\"\",\"payloadType\":\"application/vnd.asom.manifest.v1+json\","
+        r("M03-203", "Container shape: signatures [1,2]; the shape of signatures[0] is decided at step 3, before the count at step 5.", (dsseHead + "\"signatures\":[1,2]}}").toByteArray(), mesh(), RejectCode.CONTAINER_INVALID, "3")
+        r("M03-204", "Container shape: payloadType x with signatures [1]; signatures[0] is checked before the payload type.", (dsseHead.replace("application/vnd.asom.manifest.v1+json", "x") + "\"signatures\":[1]}}").toByteArray(), mesh(), RejectCode.CONTAINER_INVALID, "3")
+        val spkiNotString = String(fileDoc(fileObj), Charsets.UTF_8).replace(Regex("\"signer\":\\{\"spki\":\"[^\"]*\"\\}"), "\"signer\":{\"spki\":5}")
+        check("\"spki\":5" in spkiNotString)
+        r("M03-205", "Container shape, FILE: signer.spki is the number 5 (not a string).", spkiNotString.toByteArray(), file(), RejectCode.CONTAINER_INVALID, "7")
+        val asDoc = String(baseDoc, Charsets.UTF_8)
+        r("M03-206", "payloadType application/vnd.asom.manifest.v02+json: not a canonical decimal major, so PAYLOAD_TYPE_UNSUPPORTED (v2 is SCHEMA_MAJOR_UNKNOWN, M03-118).", asDoc.replace("application/vnd.asom.manifest.v1+json", "application/vnd.asom.manifest.v02+json").toByteArray(), mesh(), RejectCode.PAYLOAD_TYPE_UNSUPPORTED, "4")
+        r("M03-207", "A signed payload whose schema is asom.manifest/02: not a canonical decimal major, so SCHEMA_INVALID.", ownEdit(listOf("schema"), js("asom.manifest/02")), mesh(), RejectCode.SCHEMA_INVALID, "11")
+        rs("M03-208", "An evidence item whose JCS form exceeds 32,768 bytes (a DER of at most 16 KiB cannot need more): CONTAINER_INVALID.", DocSpec(basePayload, evidence = listOf(jo("x" to js("a".repeat(33_000))))), mesh(), RejectCode.CONTAINER_INVALID, "15c")
+        r("M03-209", "Lexer: truex is one letter run, not the value true followed by data: MALFORMED_JSON.", "truex".toByteArray(), mesh(), RejectCode.MALFORMED_JSON, "2")
+        r("M03-210", "Lexer: nullnull is one letter run: MALFORMED_JSON.", "nullnull".toByteArray(), mesh(), RejectCode.MALFORMED_JSON, "2")
+        r("M03-211", "Lexer: Infinityx is one letter run, not Infinity followed by data: MALFORMED_JSON.", "Infinityx".toByteArray(), mesh(), RejectCode.MALFORMED_JSON, "2")
+        r("M03-212", "Lexer: [1-2] is one number lexeme (the maximal run of digits and signs): NON_INTEGER_NUMBER.", "[1-2]".toByteArray(), mesh(), RejectCode.NON_INTEGER_NUMBER, "2")
+        r("M03-213", "Lexer: a lone minus sign is a number lexeme outside the profile: NON_INTEGER_NUMBER.", "-".toByteArray(), mesh(), RejectCode.NON_INTEGER_NUMBER, "2")
+        r("M03-214", "Lexer: [-NaN] is minus followed by the word NaN, a number outside the profile: NON_INTEGER_NUMBER.", "[-NaN]".toByteArray(), mesh(), RejectCode.NON_INTEGER_NUMBER, "2")
+        val small = NonReducedKeys.smallPoint()
+        val nonReduced = NonReducedKeys.encode(small.first.add(P256.P), small.second)
+        check(Spki.strict(NonReducedKeys.encode(small.first, small.second)) != null)
+        rs("M03-215", "The pinned key is a small-x point encoded with x + p (a non-reduced coordinate: the same point, a second encoding, another node id): ALG_UNSUPPORTED.", DocSpec(basePayload, keyid = null), VCtx(Mode.MESH, nonReduced, F.challenge1), RejectCode.ALG_UNSUPPORTED, "7")
         return c
     }
 

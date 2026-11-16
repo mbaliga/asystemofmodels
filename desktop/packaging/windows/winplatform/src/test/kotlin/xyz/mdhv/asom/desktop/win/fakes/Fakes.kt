@@ -26,6 +26,7 @@ import xyz.mdhv.asom.desktop.win.api.CngProvider
 import xyz.mdhv.asom.desktop.win.api.CounterValue
 import xyz.mdhv.asom.desktop.win.api.CpuLoadSource
 import xyz.mdhv.asom.desktop.win.api.DpapiPort
+import xyz.mdhv.asom.desktop.win.api.InterfaceKind
 import xyz.mdhv.asom.desktop.win.api.InterfaceLister
 import xyz.mdhv.asom.desktop.win.api.InterfaceSnapshot
 import xyz.mdhv.asom.desktop.win.api.KeyScope
@@ -105,6 +106,9 @@ class FakeCng : CngPort {
     val created = ArrayList<String>()
     val deleted = ArrayList<String>()
     var providerMissing = emptySet<CngProvider>()
+
+    /** The provider exists but cannot be opened right now (TBS stopped, TPM not ready): open and create throw, never "no key". */
+    var providerUnavailable = emptySet<CngProvider>()
     var failCreate = emptySet<CngProvider>()
     var badSignatureLength = emptySet<CngProvider>()
     var corruptSignature = emptySet<CngProvider>()
@@ -113,6 +117,7 @@ class FakeCng : CngPort {
 
     override fun createEcdsaP256(provider: CngProvider, name: String, scope: KeyScope, sddl: String?): CngKeyHandle {
         if (provider in providerMissing) throw WinApiException("provider \"${provider.providerName}\" is not available on this machine")
+        if (provider in providerUnavailable) throw WinApiException("NCryptOpenStorageProvider failed (0x80090030)", 0x80090030.toInt())
         if (provider in failCreate) throw WinApiException("NCryptCreatePersistedKey failed (0x80090029)", 0x80090029.toInt())
         check(keys[provider to name] == null) { "key exists" }
         val pair = KeyPairGenerator.getInstance("EC").apply { initialize(ECGenParameterSpec("secp256r1")) }.generateKeyPair()
@@ -123,6 +128,7 @@ class FakeCng : CngPort {
 
     override fun open(provider: CngProvider, name: String, scope: KeyScope): CngKeyHandle? {
         if (provider in providerMissing) return null
+        if (provider in providerUnavailable) throw WinApiException("NCryptOpenStorageProvider failed (0x80090030)", 0x80090030.toInt())
         opened++
         val s = keys[provider to name] ?: return null
         return Handle(provider, name, s.pair)
@@ -271,10 +277,14 @@ class FakeCpu(var system: Double? = 0.1, var process: Double? = 0.05) : CpuLoadS
 }
 
 /** A scripted PDH: each call to `collect` returns the next entry (the last one repeats). */
-class FakePdh(private val scripts: Map<String, List<List<CounterValue>?>> = emptyMap()) : PdhApi {
+class FakePdh(private val scripts: Map<String, List<List<CounterValue>?>> = emptyMap(), private var failFirstOpens: Int = 0, private val failOpensOf: String? = null) : PdhApi {
     val opened = ArrayList<String>()
     override fun open(englishCounterPath: String): PdhCounterSet? {
         opened += englishCounterPath
+        if (failFirstOpens > 0 && englishCounterPath == failOpensOf) {
+            failFirstOpens--
+            return null
+        }
         val script = scripts[englishCounterPath] ?: return null
         return object : PdhCounterSet {
             var i = 0
@@ -321,8 +331,16 @@ class FakeFiles(val files: MutableMap<String, String> = HashMap()) : TextFiles {
 
 fun addr(text: String): InetAddress = InetAddress.getByName(text)
 
-fun nic(alias: String, index: Int, vararg addresses: String, up: Boolean = true) =
-    InterfaceSnapshot(alias, index, up, addresses.map { addr(it) })
+/** [kind] defaults from the alias the older tests use: "Tailscale" is a tunnel, "Wi-Fi" is Wi-Fi, anything else is Ethernet. */
+fun nic(alias: String, index: Int, vararg addresses: String, up: Boolean = true, kind: InterfaceKind? = null) =
+    InterfaceSnapshot(
+        alias, index, up, addresses.map { addr(it) },
+        kind ?: when {
+            alias.startsWith("Tailscale") -> InterfaceKind.TUNNEL
+            alias.startsWith("Wi-Fi") -> InterfaceKind.WIFI
+            else -> InterfaceKind.ETHERNET
+        },
+    )
 
 /** A fully faked native bundle. Everything can be replaced by name. */
 class FakeNative(

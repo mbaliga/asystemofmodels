@@ -6,6 +6,7 @@ import xyz.mdhv.asom.catalogue.CatalogueParser
 import xyz.mdhv.asom.contract.Policy
 import xyz.mdhv.asom.lab.ledger.PeerPath
 import xyz.mdhv.asom.lab.policy.BatteryBand
+import xyz.mdhv.asom.lab.policy.Freshness
 import xyz.mdhv.asom.lab.policy.Fsm
 import xyz.mdhv.asom.lab.policy.Governor
 import xyz.mdhv.asom.lab.policy.StateDoc
@@ -45,13 +46,14 @@ object W {
         priors: Map<ClaimKey, PerfPrior>? = null, state: StateDoc? = state(backend = backend), rxMonoMs: Long? = 1_000_000, link: LinkStats? = link(),
         row: PeerRowView = PeerRowView(true, true, true, false, limits), breaker: BreakerView = BreakerView(null, null),
         lastSame: Map<String, Long> = emptyMap(), reservations: Long = 0, design: Long? = null, sessionOpen: Boolean = true, goaway: Boolean = false,
-        maxCtx: Long? = null, regressed: Boolean = false,
+        maxCtx: Long? = null, regressed: Boolean = false, powerFreshness: Freshness? = null,
     ): NodeView {
         val pri = priors ?: files.mapNotNull { f -> prior?.let { ClaimKey(id, f.fileSha256, backend) to it } }.toMap()
         return NodeView(
             nodeId = id, nodeTag = id.take(8), tier = Tier.PEER, deviceClass = cls, peer = row, files = files, priors = pri, self = null, state = state,
             stateRxMonoMs = if (state == null) null else rxMonoMs, sessionOpen = sessionOpen, goawaySeen = goaway, link = link, breaker = breaker,
             lastSameFileMonoMs = lastSame, ownReservationsMs = reservations, maxContextTokens = maxCtx, batteryDesignMilliWh = design, stateRegressed = regressed,
+            powerFreshness = powerFreshness,
         )
     }
 

@@ -14,6 +14,7 @@ import org.junit.jupiter.api.condition.EnabledOnOs
 import org.junit.jupiter.api.condition.OS
 import xyz.mdhv.asom.desktop.mac.MacPaths
 import xyz.mdhv.asom.desktop.mac.Report
+import xyz.mdhv.asom.desktop.mac.SocketLimitProbe
 import xyz.mdhv.asom.desktop.mac.ctl.MacControlSocket
 import xyz.mdhv.asom.desktop.mac.ctl.SoPeerCred
 
@@ -60,15 +61,12 @@ class ControlSocketIT {
 
     @Test
     fun `the longest socket path this JDK can bind on this Mac is at least the bytes the node allows`() {
-        val tmp = (System.getenv("TMPDIR") ?: "/tmp").trimEnd('/')
-        val dir = Files.createTempDirectory(Path.of(tmp), "asom-len-")
-        var longest = 0
-        try {
-            for (len in 100..110) {
-                val name = "s".repeat(maxOf(1, len - dir.toString().length - 1))
-                val path = dir.resolve(name)
-                if (path.toString().toByteArray().size != len) continue
-                val ok = try {
+        // A short, fixed base: macOS TMPDIR (/var/folders/.../T) alone can be too long for every probed length to be built.
+        val base = Files.createTempDirectory(Path.of("/tmp"), "asom-len-")
+        val lengths = 90..110
+        val result = try {
+            SocketLimitProbe.probe(base, lengths) { path ->
+                try {
                     ServerSocketChannel.open(StandardProtocolFamily.UNIX).use { it.bind(UnixDomainSocketAddress.of(path)) }
                     true
                 } catch (_: Exception) {
@@ -76,12 +74,12 @@ class ControlSocketIT {
                 } finally {
                     Files.deleteIfExists(path)
                 }
-                if (ok) longest = len
             }
         } finally {
-            Files.deleteIfExists(dir)
+            Files.deleteIfExists(base)
         }
-        Report.line("IT ControlSocketIT: longest bindable socket path probed in 100..110 = $longest bytes (the node allows ${MacPaths.MAX_SOCKET_PATH_BYTES})")
-        assertTrue(longest == 0 || longest >= MacPaths.MAX_SOCKET_PATH_BYTES, "the node's limit must not exceed what the JDK can bind")
+        Report.line("IT ControlSocketIT: longest bindable socket path probed in 90..110 = ${result.longest} bytes over ${result.tried.size} lengths (the node allows ${MacPaths.MAX_SOCKET_PATH_BYTES})")
+        val problem = SocketLimitProbe.problem(result, lengths, MacPaths.MAX_SOCKET_PATH_BYTES)
+        assertTrue(problem == null, problem.orEmpty())
     }
 }

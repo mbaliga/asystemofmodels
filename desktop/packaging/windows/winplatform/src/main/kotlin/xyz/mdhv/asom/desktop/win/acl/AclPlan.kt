@@ -13,8 +13,12 @@ object WellKnownSid {
     val BROAD: Set<String> = setOf(EVERYONE, AUTHENTICATED_USERS, USERS, "S-1-5-4", "S-1-5-2", "S-1-2-0", "S-1-5-32-546")
 }
 
-/** Rights as the node reasons about them; `FULL` implies both others. The real mapping from NTFS masks is [AclRights]. */
-enum class AclRight { READ, WRITE, FULL }
+/**
+ * Rights as the node reasons about them. `FULL` implies the others. `CONTROL` is the right to rewrite the DACL, take
+ * ownership or delete (WRITE_DAC, WRITE_OWNER, DELETE, DELETE_CHILD): no plan grants it except through `FULL`. The real
+ * mapping from NTFS masks is [AclRights].
+ */
+enum class AclRight { READ, WRITE, CONTROL, FULL }
 
 data class Ace(val sid: String, val allow: Boolean, val rights: Set<AclRight>, val inherit: Boolean = true)
 
@@ -67,6 +71,18 @@ class AclPlan(
             ),
             setOf(serviceSid, WellKnownSid.ADMINISTRATORS, WellKnownSid.SYSTEM),
         )
+
+        /**
+         * The socket FILE in service mode: the same ACEs as its directory, but the file itself must be OWNED by the service.
+         * A same-user process can add a file to `run\` (the owner has WRITE there), so a directory check alone would pass a
+         * socket the owner planted while the service was stopped.
+         */
+        fun serviceSocketFile(ownerSid: String, serviceSid: String): AclPlan =
+            serviceRunDir(ownerSid, serviceSid).let { AclPlan("service-socket", it.required, setOf(serviceSid)) }
+
+        /** The socket file in user mode: owned by the owner and carrying the owner-only DACL. */
+        fun userSocketFile(ownerSid: String): AclPlan =
+            userState(ownerSid).let { AclPlan("user-socket", it.required, setOf(ownerSid)) }
 
         fun userRunDir(ownerSid: String): AclPlan = userState(ownerSid).let { AclPlan("user-run", it.required, it.allowedOwners) }
     }

@@ -37,9 +37,10 @@ data class TrackedRates(val prefill: Long, val decodeAtP: Long, val steady: Long
  * The claim tracker (LAB_SPEC 6.6, design 5.7) as pure reducers. Observation only LOWERS a claim: every rate this object returns is at most the claim.
  *
  * R3-OVERCLAIM-1: the padding bound "at most about 2x" of the design is NOT what the mechanism gives. An answer is capped only at
- * `maxTokens x bptCap / 1000` bytes, so filler inflates the apparent ratio by up to `maxTokens x bptCap / trueBytes` (6.8x in bytes and 5.4x in predicted time at the spec's own numbers),
+ * `maxTokens x bptCap / 1000` bytes, so VISIBLE filler inflates the apparent ratio by up to `min(RATIO_CAP / 1000, maxTokens x bptCap / trueBytes)` (6.8x in bytes and 5.4x in predicted time at the spec's own numbers),
  * limited by [RATIO_CAP]. That is the stated worst case and it is tested (`ClaimTrackerTest.paddingToTheCapInflatesTheRatioByFarMoreThanTwo`); what the tracker still guarantees is that placement
- * never exceeds the claim (`effRatio = min(1000, ...)`).
+ * never exceeds the claim (`effRatio = min(1000, ...)`). Invisible padding (whitespace, newlines, Cc/Cf and default-ignorable characters such as variation selectors and Hangul fillers; the exact set is
+ * [AnswerText.INVISIBLE]) is removed by counting `outBytes` over [AnswerText.normalizedBytes] (LAB_SPEC R4-L-19, ERR-FX3-TP-1).
  */
 object ClaimTracker {
     const val WIN = 20
@@ -85,6 +86,61 @@ object ClaimTracker {
         return Evaluated(est, predicted, elapsed, ratio, discard)
     }
 
+    private fun sameFile(a: ClaimKey, b: ClaimKey): Boolean = a.nodeId == b.nodeId && a.fileSha256 == b.fileSha256
+
+    private fun badness(s: ClaimState): Int = when (s) {
+        ClaimState.DISCREPANT -> 3
+        ClaimState.WEAK -> 2
+        ClaimState.UNVERIFIED -> 1
+        else -> 0
+    }
+
+    /**
+     * The tracker state of [key], which LAB_SPEC 6.6 keys on `(peerNodeId, fileSha256)`: the backend only picks the claim row. The snapshot's [ClaimKey] still
+     * carries the backend, so every entry of the same peer and file is one state here (ERR-FX-RT-1): the worst state among them wins, the memory mark and the
+     * strikes of any of them apply, and a peer cannot shed DISCREPANT or an out-of-memory exclusion by reporting another `engine.backend`.
+     */
+    fun stateAt(tracker: Map<ClaimKey, TrackerState>, key: ClaimKey): TrackerState? {
+        val own = tracker[key]
+        val siblings = tracker.entries.filter { it.key != key && sameFile(it.key, key) }.sortedBy { it.key.backend }.map { it.value }
+        if (siblings.isEmpty()) return own
+        val all = listOfNotNull(own) + siblings
+        val worst = all.maxByOrNull { badness(stateOf(it)) }!!
+        return worst.copy(memoryDiscrepant = all.any { it.memoryDiscrepant }, strikes = all.maxOf { it.strikes })
+    }
+
+    /** The cap counters of the same peer and file are one counter, for the same reason as [stateAt]. */
+    fun capAt(caps: Map<ClaimKey, CapCounter>, key: ClaimKey): CapCounter {
+        var wouldWin = 0
+        var won = 0
+        for ((k, c) in caps) {
+            if (sameFile(k, key)) {
+                wouldWin += c.wouldWin
+                won += c.won
+            }
+        }
+        return CapCounter(wouldWin, won)
+    }
+
+    /** The cap counters of one node: its files are one counter, so that a second file cannot restart the 1-in-4 bound (ERR-FX4-RT-1). */
+    fun capAtNode(caps: Map<ClaimKey, CapCounter>, nodeId: String): CapCounter {
+        var wouldWin = 0
+        var won = 0
+        for ((k, c) in caps) {
+            if (k.nodeId == nodeId) {
+                wouldWin += c.wouldWin
+                won += c.won
+            }
+        }
+        return CapCounter(wouldWin, won)
+    }
+
+    private fun slotOf(states: Map<ClaimKey, TrackerState>, key: ClaimKey): ClaimKey =
+        if (key in states) key else states.keys.filter { sameFile(it, key) }.minByOrNull { it.backend } ?: key
+
+    private fun discrepantFiles(states: Map<ClaimKey, TrackerState>, nodeId: String): Int =
+        states.keys.filter { it.nodeId == nodeId }.groupBy { it.fileSha256 }.count { (_, keys) -> stateOf(stateAt(states, keys.first())) == ClaimState.DISCREPANT }
+
     private fun sorted(ts: TrackerState): List<Long> = ts.ratios.sorted()
 
     /** `best = x[(3n)/4]`, the upper quartile by nearest rank; null when there is no kept ratio. */
@@ -115,6 +171,7 @@ object ClaimTracker {
 
     /** One rate of the claim after tracking (LAB_SPEC 6.6 "use for placement"). Never above [claimRate]. */
     fun trackedRate(claimRate: Long, ts: TrackerState?, capRefRate: Long?, disc: Long): Long {
+        require(disc in 0..1_000L) { "disc $disc outside 0..1000 (R4-L-18)" }
         val x = if (ts == null) emptyList() else sorted(ts)
         val n = x.size
         var rate = if (n >= MIN_KEEP) {
@@ -156,20 +213,15 @@ object ClaimTracker {
     /** `disc = 700`, or 400 while a penalty is running or while at least two keys of this peer are DISCREPANT. */
     fun disc(nodeId: String, tracker: Map<ClaimKey, TrackerState>, penalties: Map<String, PeerPenalty>, wallNowMs: Long): Long {
         if ((penalties[nodeId]?.untilWallMs ?: 0L) > wallNowMs) return DISC_PENALTY
-        val bad = tracker.count { (k, v) -> k.nodeId == nodeId && stateOf(v) == ClaimState.DISCREPANT }
-        return if (bad >= 2) DISC_PENALTY else DISC_DEFAULT
+        return if (discrepantFiles(tracker, nodeId) >= 2) DISC_PENALTY else DISC_DEFAULT
     }
 
-    private fun strikesOf(book: TrackerBook, key: ClaimKey): Int =
-        book.states.entries.filter { it.key.nodeId == key.nodeId && it.key.fileSha256 == key.fileSha256 }.maxOfOrNull { it.value.strikes } ?: 0
-
-    private fun stateFor(book: TrackerBook, key: ClaimKey): TrackerState = book.states[key] ?: TrackerState(strikes = strikesOf(book, key))
+    private fun stateFor(book: TrackerBook, key: ClaimKey): TrackerState = stateAt(book.states, key) ?: TrackerState()
 
     private fun relatch(book: TrackerBook, nodeId: String, wallNowMs: Long): TrackerBook {
         val active = (book.penalties[nodeId]?.untilWallMs ?: 0L) > wallNowMs
         if (active) return book
-        val bad = book.states.count { (k, v) -> k.nodeId == nodeId && stateOf(v) == ClaimState.DISCREPANT }
-        if (bad < 2) return book
+        if (discrepantFiles(book.states, nodeId) < 2) return book
         val repeats = book.penalties[nodeId]?.repeats ?: 0
         val duration = Sat.mul(PENALTY_BASE_MS, 1L shl minOf(repeats, 20))
         return book.copy(penalties = book.penalties + (nodeId to PeerPenalty(Sat.add(wallNowMs, duration), repeats + 1)))
@@ -192,22 +244,23 @@ object ClaimTracker {
             strikes = prev.strikes + (if (ev.discard == DiscardReason.OVERLONG) 1 else 0),
         )
         next = settleInheritance(next)
-        return relatch(book.copy(states = book.states + (o.key to next)), o.key.nodeId, wallNowMs)
+        return relatch(book.copy(states = book.states + (slotOf(book.states, o.key) to next)), o.key.nodeId, wallNowMs)
     }
 
     /** A declined offer that reflects on the claim (`MODEL_NOT_OFFERED`, router.md 8.2 row 3): a candidate observation that is discarded. */
     fun onFailedAttempt(book: TrackerBook, key: ClaimKey, wallNowMs: Long): TrackerBook {
         val prev = stateFor(book, key)
         val next = prev.copy(recent = (prev.recent + ObsRecord(false, 0, 0, DiscardReason.INCOMPLETE)).takeLast(BUDGET_WINDOW))
-        return relatch(book.copy(states = book.states + (key to next)), key.nodeId, wallNowMs)
+        return relatch(book.copy(states = book.states + (slotOf(book.states, key) to next)), key.nodeId, wallNowMs)
     }
 
     /** A lender's `terminal = oom` marks the memory claim DISCREPANT (router.md 8.2 row 8); F8 then excludes the file on that peer. */
-    fun onMemoryOom(book: TrackerBook, key: ClaimKey): TrackerBook = book.copy(states = book.states + (key to stateFor(book, key).copy(memoryDiscrepant = true)))
+    fun onMemoryOom(book: TrackerBook, key: ClaimKey): TrackerBook = book.copy(states = book.states + (slotOf(book.states, key) to stateFor(book, key).copy(memoryDiscrepant = true)))
 
     /**
-     * A peer's new claim body is accepted for routing at most once per 24 h (M08-022) and only with a higher `seq`. Acceptance restarts the window
-     * (and the discard record) against the new claim, keeps the strikes, and inherits DISCREPANT until ten new observations have `best >= CORR`.
+     * A peer's new claim body is accepted for routing at most once per 24 h (M08-022) and only with a higher `seq`. Acceptance restarts the window W
+     * against the new claim, keeps the strikes and the discard record (a tripped discard budget is not a window, ERR-FX-RT-3), and inherits DISCREPANT until
+     * ten new observations have `best >= CORR`.
      * A new claim body also clears the memory mark (router.md 8.2 row 8 via manifest.md 11.5: "until a manifest with a higher seq").
      */
     fun onClaimBody(book: TrackerBook, key: ClaimKey, claimSeq: Long, wallNowMs: Long): Pair<TrackerBook, Boolean> {
@@ -216,22 +269,29 @@ object ClaimTracker {
         if (old != null && claimSeq <= old) return book to false
         val at = prev.acceptedAtWallMs
         if (at != null && wallNowMs - at < NEW_CLAIM_INTERVAL_MS) return book to false
-        val wasBad = old != null && (stateOf(prev) == ClaimState.DISCREPANT)
+        val wasBad = stateOf(prev) == ClaimState.DISCREPANT
         val next = prev.copy(
-            claimSeq = claimSeq, acceptedAtWallMs = wallNowMs, ratios = emptyList(), recent = emptyList(),
+            claimSeq = claimSeq, acceptedAtWallMs = wallNowMs, ratios = emptyList(),
             inheritedDiscrepant = wasBad || prev.inheritedDiscrepant, memoryDiscrepant = false,
         )
-        return book.copy(states = book.states + (key to next)) to true
+        return book.copy(states = book.states + (slotOf(book.states, key) to next)) to true
     }
 }
 
 /** Parses the answer text the requester itself receives: `choices[0].delta.content` (stream) or `choices[0].message.content` (whole body). */
 class AnswerCollector {
     private val pending = java.io.ByteArrayOutputStream()
-    var outBytes: Long = 0
-        private set
+    private val text = StringBuilder()
+    private var overflowed = false
     var events: Int = 0
         private set
+
+    /**
+     * The normalised UTF-8 length of the answer so far. A stream whose text outgrows [MAX_COLLECT_CHARS] (far above `outTokensMax x bptCap`, so never an honest answer) is
+     * not buffered further and counts as the saturated maximum, which the tracker discards as OVERLONG with a strike (ERR-R4B-TR-3).
+     */
+    val outBytes: Long
+        get() = if (overflowed) Sat.MAX else AnswerText.normalizedBytes(text.toString())
 
     /** Bytes of an SSE stream in any chunking; a partial line waits for its newline. */
     fun feed(bytes: ByteArray) {
@@ -251,26 +311,97 @@ class AnswerCollector {
     }
 
     private fun line(raw: ByteArray) {
-        val text = String(raw, Charsets.UTF_8).trimEnd('\r')
-        if (!text.startsWith("data:")) return
-        val payload = text.removePrefix("data:").trim()
+        val textLine = String(raw, Charsets.UTF_8).trimEnd('\r')
+        if (!textLine.startsWith("data:")) return
+        val payload = textLine.removePrefix("data:").trim()
         if (payload.isEmpty() || payload == "[DONE]") return
-        outBytes = Sat.add(outBytes, contentBytes(payload.toByteArray(Charsets.UTF_8), "delta"))
+        append(content(payload.toByteArray(Charsets.UTF_8), "delta"))
         events++
     }
 
     /** A non-streamed answer body. */
     fun wholeBody(body: ByteArray) {
-        outBytes = Sat.add(outBytes, contentBytes(body, "message"))
+        append(content(body, "message"))
     }
 
-    private fun contentBytes(json: ByteArray, member: String): Long {
-        val root = (StrictJson.parse(json) as? ParseResult.Ok)?.value as? JObject ?: return 0
-        val choice = ((root["choices"] as? JArray)?.items?.firstOrNull() as? JObject) ?: return 0
-        val inner = choice[member] as? JObject ?: return 0
-        val content = (inner["content"] as? JString)?.value ?: return 0
-        return content.toByteArray(Charsets.UTF_8).size.toLong()
+    private fun append(piece: String) {
+        if (overflowed) return
+        if (text.length.toLong() + piece.length > MAX_COLLECT_CHARS) {
+            overflowed = true
+            text.setLength(0)
+            return
+        }
+        text.append(piece)
     }
+
+    private fun content(json: ByteArray, member: String): String {
+        val root = (StrictJson.parse(json) as? ParseResult.Ok)?.value as? JObject ?: return ""
+        val choice = ((root["choices"] as? JArray)?.items?.firstOrNull() as? JObject) ?: return ""
+        val inner = choice[member] as? JObject ?: return ""
+        return (inner["content"] as? JString)?.value ?: ""
+    }
+
+    companion object {
+        const val MAX_COLLECT_CHARS = 4_194_304L
+    }
+}
+
+/**
+ * The answer text as the tracker counts it (LAB_SPEC R4-L-19, ERR-R4B-TR-1, ERR-FX3-TP-1/-2/-4): NFC; every invisible character removed; every run of space
+ * separators (`Zs`, `Zl`, `Zp`) collapsed to one U+0020; trimmed. The spec's order is kept literally, so a tab or a newline (both `Cc`) is removed and never collapsed.
+ *
+ * Invisible means Unicode `Cc` or `Cf` (from the running runtime's tables) or a code point of [INVISIBLE], which is written out here so that JDK 17 (Unicode 13), JDK 21 and the
+ * Swift lane agree: `Default_Ignorable_Code_Point` of Unicode 15.0 (variation selectors, combining grapheme joiner, Hangul fillers, Khmer inherent vowels, Mongolian free variation
+ * selectors, tag characters, ...), U+2800 BRAILLE PATTERN BLANK, and the `Cf` characters assigned after Unicode 13 (U+0890..0891, U+13430..1343F). A lender cannot pad with any
+ * of them. What remains is visible filler, the stated residual of R3-OVERCLAIM-1.
+ *
+ * [normalizedBytes] is what `outBytes` measures: the UTF-8 length of [normalize], but never more than the same text without NFC. NFC can expand (U+0958, U+1D160), and the
+ * count must be monotone in what was sent. The bytes-per-token table (`bptPermille`, `bptCapPermille`) is on this basis: it must be generated by running the reference answers
+ * through [normalizedBytes], not measured on raw output (ERR-FX3-TP-4). The text is the whole answer: a whitespace run, an invisible character or a combining mark may
+ * straddle two chunks.
+ */
+object AnswerText {
+    val INVISIBLE: IntArray = intArrayOf(
+        0x00AD, 0x00AD, 0x034F, 0x034F, 0x061C, 0x061C, 0x0890, 0x0891, 0x115F, 0x1160, 0x17B4, 0x17B5, 0x180B, 0x180F, 0x200B, 0x200F,
+        0x202A, 0x202E, 0x2060, 0x206F, 0x2800, 0x2800, 0x3164, 0x3164, 0xFE00, 0xFE0F, 0xFEFF, 0xFEFF, 0xFFA0, 0xFFA0, 0xFFF0, 0xFFF8,
+        0x13430, 0x1343F, 0x1BCA0, 0x1BCA3, 0x1D173, 0x1D17A, 0xE0000, 0xE0FFF,
+    )
+
+    private fun invisible(cp: Int): Boolean {
+        if (Character.getType(cp) == Character.CONTROL.toInt() || Character.getType(cp) == Character.FORMAT.toInt()) return true
+        var i = 0
+        while (i < INVISIBLE.size) {
+            if (cp >= INVISIBLE[i] && cp <= INVISIBLE[i + 1]) return true
+            i += 2
+        }
+        return false
+    }
+
+    fun strip(text: String): String {
+        val out = StringBuilder(text.length)
+        var pendingSpace = false
+        var i = 0
+        while (i < text.length) {
+            val cp = text.codePointAt(i)
+            i += Character.charCount(cp)
+            if (invisible(cp)) continue
+            when (Character.getType(cp)) {
+                Character.SPACE_SEPARATOR.toInt(), Character.LINE_SEPARATOR.toInt(), Character.PARAGRAPH_SEPARATOR.toInt() -> pendingSpace = true
+                else -> {
+                    if (pendingSpace && out.isNotEmpty()) out.append(' ')
+                    pendingSpace = false
+                    out.appendCodePoint(cp)
+                }
+            }
+        }
+        return out.toString()
+    }
+
+    fun normalize(text: String): String = strip(java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFC))
+
+    fun normalizedBytes(text: String): Long = minOf(utf8Length(normalize(text)), utf8Length(strip(text)))
+
+    private fun utf8Length(s: String): Long = s.toByteArray(Charsets.UTF_8).size.toLong()
 }
 
 /**

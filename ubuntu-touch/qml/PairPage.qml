@@ -15,6 +15,7 @@ Item {
         spacing: Tokens.gu
 
         Label {
+            textFormat: Text.PlainText
             width: parent.width
             wrapMode: Text.WordWrap
             color: Tokens.text
@@ -35,6 +36,7 @@ Item {
         }
         Label {
             objectName: "pairNotice"
+            textFormat: Text.PlainText
             visible: page.model.notice !== ""
             width: parent.width
             wrapMode: Text.WordWrap

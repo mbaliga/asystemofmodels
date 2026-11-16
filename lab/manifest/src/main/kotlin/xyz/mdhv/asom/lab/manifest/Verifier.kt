@@ -111,7 +111,13 @@ object Verifier {
     private const val OWN_MAX_TTL_MS = 600_000L
     private const val EVIDENCE_ITEM_MAX_BYTES = 32_768
 
+    /** The tier a document can PROVE. Evidence is unused in the lab, so nothing above A0 is ever proven (A2 is deferred). */
+    private val ATTESTED_TIER = Tier.A0
+
     private fun reject(code: RejectCode, step: String, detail: String = "", obj: ManifestObj? = null, spki: ByteArray? = null) = Rejected(code, step, detail, obj, spki)
+
+    /** A newer major is a canonical decimal above 1: no leading zero, any length (ERR-FX-CV8, apple E-06). */
+    private fun isNewerMajor(digits: String?): Boolean = digits != null && digits[0] != '0' && digits != "1"
 
     private fun parseCode(c: JsonRejectCode): RejectCode = RejectCode.valueOf(c.name)
 
@@ -125,26 +131,31 @@ object Verifier {
             is ParseResult.Reject -> return reject(parseCode(p.code), "2", p.detail)
         }
         // 3
-        val cont = c as? JObject
-        if (cont == null || (cont["asomCapabilityManifest"] as? JInt)?.value != 1L) return reject(RejectCode.CONTAINER_VERSION_UNKNOWN, "3")
+        if (c !is JObject) return reject(RejectCode.CONTAINER_INVALID, "3", "the container is not an object")
+        val cont = c
+        if ((cont["asomCapabilityManifest"] as? JInt)?.value != 1L) return reject(RejectCode.CONTAINER_VERSION_UNKNOWN, "3")
         val dsse = cont["dsse"] as? JObject
         val payloadType = (dsse?.get("payloadType") as? JString)?.value
         val payloadB64 = (dsse?.get("payload") as? JString)?.value
         val sigs = (dsse?.get("signatures") as? JArray)?.items
         if (dsse == null || payloadType == null || payloadB64 == null || sigs == null) return reject(RejectCode.CONTAINER_INVALID, "3")
+        // the shape of signatures[0] is decided here, before steps 4 and 5 (ERR-FX-CV8, apple E-05)
+        var sigB64 = ""
+        var keyid: String? = null
+        val first = sigs.firstOrNull()
+        if (first != null) {
+            val sig0 = first as? JObject ?: return reject(RejectCode.CONTAINER_INVALID, "3", "signatures[0] is not an object")
+            sigB64 = (sig0["sig"] as? JString)?.value ?: return reject(RejectCode.CONTAINER_INVALID, "3", "signatures[0].sig is not a string")
+            val keyidMember = sig0["keyid"]
+            if (keyidMember != null && keyidMember !is JString) return reject(RejectCode.CONTAINER_INVALID, "3", "signatures[0].keyid is not a string")
+            keyid = (keyidMember as? JString)?.value
+        }
         // 4
         if (payloadType != Dsse.PT_MANIFEST_V1) {
-            val m = manifestTypeRx.matchEntire(payloadType)
-            val major = m?.groupValues?.get(1)?.toBigInteger()
-            return if (major != null && major > java.math.BigInteger.ONE) reject(RejectCode.SCHEMA_MAJOR_UNKNOWN, "4") else reject(RejectCode.PAYLOAD_TYPE_UNSUPPORTED, "4")
+            return if (isNewerMajor(manifestTypeRx.matchEntire(payloadType)?.groupValues?.get(1))) reject(RejectCode.SCHEMA_MAJOR_UNKNOWN, "4") else reject(RejectCode.PAYLOAD_TYPE_UNSUPPORTED, "4")
         }
         // 5
         if (sigs.size != 1) return reject(RejectCode.SIGNATURE_COUNT, "5")
-        val sig0 = sigs[0] as? JObject
-        val sigB64 = (sig0?.get("sig") as? JString)?.value ?: return reject(RejectCode.CONTAINER_INVALID, "5")
-        val keyidMember = sig0["keyid"]
-        if (keyidMember != null && keyidMember !is JString) return reject(RejectCode.CONTAINER_INVALID, "5")
-        val keyid = (keyidMember as? JString)?.value
         // 6
         val payload = when (val r = Base64Strict.decodeEither(payloadB64)) {
             is B64Result.Ok -> r.bytes
@@ -164,8 +175,8 @@ object Verifier {
                 if (keyid != null && keyid != Spki.nodeId(spki)) return reject(RejectCode.KEY_NOT_PINNED, "7", "keyid is not the pinned node")
             }
             Mode.FILE -> {
-                val signer = cont["signer"] as? JObject
-                val spkiB64 = (signer?.get("spki") as? JString)?.value ?: return reject(RejectCode.KEY_NOT_PINNED, "7", "no signer.spki")
+                val spkiMember = (cont["signer"] as? JObject)?.get("spki") ?: return reject(RejectCode.KEY_NOT_PINNED, "7", "no signer.spki")
+                val spkiB64 = (spkiMember as? JString)?.value ?: return reject(RejectCode.CONTAINER_INVALID, "7", "signer.spki is not a string")
                 spki = when (val r = Base64Strict.decodeEither(spkiB64)) {
                     is B64Result.Ok -> r.bytes
                     is B64Result.Reject -> return reject(RejectCode.ENCODING, "7", "signer.spki: ${r.reason}")
@@ -204,8 +215,7 @@ object Verifier {
         // 11
         val schema = ((o as? JObject)?.get("schema") as? JString)?.value ?: return reject(RejectCode.SCHEMA_INVALID, "11", "no schema")
         if (schema != "asom.manifest/1") {
-            val major = schemaRx.matchEntire(schema)?.groupValues?.get(1)?.toBigInteger()
-            return if (major != null && major > java.math.BigInteger.ONE) reject(RejectCode.SCHEMA_MAJOR_UNKNOWN, "11") else reject(RejectCode.SCHEMA_INVALID, "11", "schema $schema")
+            return if (isNewerMajor(schemaRx.matchEntire(schema)?.groupValues?.get(1))) reject(RejectCode.SCHEMA_MAJOR_UNKNOWN, "11") else reject(RejectCode.SCHEMA_INVALID, "11", "schema $schema")
         }
         val obj = try {
             ManifestDecoder.decode(o)
@@ -268,10 +278,10 @@ object Verifier {
             }
             update = RollbackUpdate(nodeId, "own", maxOf(seq, prev?.seq ?: seq), if (prev != null && prev.seq > seq) prev.bodyDigest else digest)
         }
-        // 17
+        // 17: the label is self-reported and only displayed
         val tier = if (body.subject.keyStorage in HW_STORAGE) Tier.A1 else Tier.A0
-        // 18
-        if (tier.ordinal < ctx.requiredTier.ordinal) return reject(RejectCode.TIER_INSUFFICIENT, "18", obj = obj, spki = spki)
+        // 18: manifest.md 9.1 "A1 is treated exactly as A0 for every decision": no unverifiable claim satisfies a requirement (ERR-FX-CV3)
+        if (ATTESTED_TIER.ordinal < ctx.requiredTier.ordinal) return reject(RejectCode.TIER_INSUFFICIENT, "18", obj = obj, spki = spki)
         // 19 (the caller commits `update`; the library default is display-only)
         return Verified(payload, obj, digest, pin, tier, obj.unknownFields, spki, update)
     }

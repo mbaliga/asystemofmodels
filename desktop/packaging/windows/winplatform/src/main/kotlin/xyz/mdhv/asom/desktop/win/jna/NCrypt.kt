@@ -30,9 +30,9 @@ internal interface NCryptApi : StdCallLibrary {
  * Not verified by anything here: that the Platform Crypto Provider holds ECDSA P-256 on a given TPM (AW01), and that the
  * `Security Descr` property with a machine-scope key behaves as written for the service key (AW03).
  */
-class JnaCng : CngPort {
+internal class JnaCng(private val api: () -> NCryptApi = { Libs.ncrypt }) : CngPort {
     override fun createEcdsaP256(provider: CngProvider, name: String, scope: KeyScope, sddl: String?): CngKeyHandle {
-        val lib = Libs.ncrypt
+        val lib = api()
         val prov = openProvider(provider)
             ?: throw WinApiException("provider \"${provider.providerName}\" is not available on this machine")
         val key = PointerByReference()
@@ -59,7 +59,7 @@ class JnaCng : CngPort {
     }
 
     override fun open(provider: CngProvider, name: String, scope: KeyScope): CngKeyHandle? {
-        val lib = Libs.ncrypt
+        val lib = api()
         val prov = openProvider(provider) ?: return null
         val key = PointerByReference()
         val status = lib.NCryptOpenKey(prov, key, name, 0, scopeFlags(scope))
@@ -71,10 +71,16 @@ class JnaCng : CngPort {
         return JnaCngKey(lib, prov, key.value)
     }
 
+    /**
+     * Null only when the provider is definitively not there ([providerAbsent]); any other failure to open it (a stopped TBS
+     * service, a TPM that is not ready, access denied) throws, because it says nothing about whether a key exists under it.
+     */
     private fun openProvider(provider: CngProvider): Pointer? {
         val h = PointerByReference()
-        val status = Libs.ncrypt.NCryptOpenStorageProvider(h, provider.providerName, 0)
-        return if (status == 0) h.value else null
+        val status = api().NCryptOpenStorageProvider(h, provider.providerName, 0)
+        if (status == 0) return h.value
+        if (providerAbsent(status)) return null
+        throw WinApiException("NCryptOpenStorageProvider(\"${provider.providerName}\") failed (0x${Integer.toHexString(status)}); the provider cannot be asked whether a key exists", status)
     }
 
     private fun scopeFlags(scope: KeyScope) = if (scope == KeyScope.MACHINE) NCRYPT_MACHINE_KEY_FLAG else 0
@@ -86,6 +92,21 @@ class JnaCng : CngPort {
         const val DACL_SECURITY_INFORMATION = 0x4
         const val NTE_BAD_KEYSET = 0x80090016.toInt()
         const val NTE_NO_KEY = 0x8009000D.toInt()
+        const val NTE_NOT_FOUND = 0x80090011.toInt()
+        const val NTE_PROV_TYPE_NOT_DEF = 0x80090017.toInt()
+        const val NTE_PROV_DLL_NOT_FOUND = 0x8009001E.toInt()
+        const val NTE_NOT_SUPPORTED = 0x80090029.toInt()
+        const val NTE_DEVICE_NOT_FOUND = 0x80090035.toInt()
+
+        /**
+         * The `NCryptOpenStorageProvider` statuses that mean "this provider is not installed or has no device on this
+         * machine", the only ones read as "no key can exist there". Everything else, `NTE_DEVICE_NOT_READY` included, is
+         * unknown and stops a first enable (windows ERRATA ERR-FX-HWM-1). A TPM disabled in firmware may look the same as
+         * no TPM, which this set cannot tell apart: NEEDS-DEVICE-VALIDATION.
+         */
+        fun providerAbsent(status: Int): Boolean =
+            status == NTE_PROV_TYPE_NOT_DEF || status == NTE_PROV_DLL_NOT_FOUND || status == NTE_NOT_FOUND ||
+                status == NTE_NOT_SUPPORTED || status == NTE_DEVICE_NOT_FOUND
 
         fun dword(v: Int): ByteArray = byteArrayOf(v.toByte(), (v shr 8).toByte(), (v shr 16).toByte(), (v shr 24).toByte())
 

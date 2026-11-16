@@ -203,6 +203,19 @@ class PropertyTest {
         return b
     }
 
+    /** An input nested [depth] containers deep around a small value; the core is then mutated, so the lower rows sit under the depth fault. */
+    private fun deepInput(r: Random, depth: Int): ByteArray {
+        val opens = (0 until depth).map { if (r.nextBoolean()) "[" else "{\"k" + r.nextInt(3) + "\":" }
+        val closes = opens.reversed().map { if (it == "[") "]" else "}" }
+        val core = if (r.nextBoolean()) {
+            pick(r, "1.5", "\"\\ud800\"", "9007199254740992", "-0", "NaN", "{\"a\":1,\"a\":2}", "[1,{\"b\":2,\"c\":3,\"b\":4}]", "{\"e\\u0301\":0,\"\u00e9\":1,\"e\\u0301\":2}")
+        } else {
+            mutate(Jcs.serialize(randomValue(r, 4)), r)
+        }
+        val bytes = cat(opens.joinToString(""), core, closes.joinToString(""))
+        return if (r.nextInt(4) == 0) mutate(bytes, r) else bytes
+    }
+
     private fun pick(r: Random, vararg options: String): ByteArray = options[r.nextInt(options.size)].toByteArray(Charsets.UTF_8)
 
     private fun insertAt(b: ByteArray, r: Random, piece: ByteArray): ByteArray {
@@ -216,10 +229,12 @@ class PropertyTest {
         val counts = java.util.EnumMap<JsonRejectCode, Int>(JsonRejectCode::class.java)
         var accepted = 0
         val corpus = StringBuilder()
+        var deepOutranked = 0
         for (seed in 1L..4000L) {
             val r = Random(seed * 31)
             val base = Jcs.serialize(randomValue(r, 0))
-            val input = mutate(base, r)
+            val deep = seed % 8 == 0L
+            val input = if (deep) deepInput(r, 14 + r.nextInt(30)) else mutate(base, r)
             val res = try {
                 StrictJson.parse(input)
             } catch (t: Throwable) {
@@ -228,6 +243,7 @@ class PropertyTest {
             when (res) {
                 is ParseResult.Reject -> {
                     counts.merge(res.code, 1, Int::plus)
+                    if (deep && res.code != JsonRejectCode.MALFORMED_JSON) deepOutranked++
                     corpus.append(Hex.encode(input)).append('\t').append("reject ").append(res.code.name).append('\n')
                 }
                 is ParseResult.Ok -> {
@@ -241,17 +257,17 @@ class PropertyTest {
         }
         for (code in JsonRejectCode.entries) assertTrue((counts[code] ?: 0) > 0, "the fuzz corpus never produced $code: $counts")
         assertTrue(accepted > 100, "the fuzz corpus accepted only $accepted inputs")
+        assertTrue(deepOutranked > 50, "only $deepOutranked deep inputs were decided by a row that outranks the depth fault")
         c.requireNonVacuous(4000)
         writeCorpus(corpus.toString())
     }
 
     private fun writeCorpus(text: String) {
-        try {
-            val dir = File(repoRoot(), "lab/build")
-            dir.mkdirs()
-            File(dir, "json-fuzz-corpus.tsv").writeText(text, Charsets.UTF_8)
-        } catch (_: Exception) {
-        }
+        val dir = File(repoRoot(), "lab/build")
+        dir.mkdirs()
+        val file = File(dir, "json-fuzz-corpus.tsv")
+        file.writeText(text, Charsets.UTF_8)
+        assertEquals(text.length.toLong(), file.length(), "the fuzz corpus was not written completely")
     }
 
     @Test

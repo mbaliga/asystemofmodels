@@ -79,6 +79,78 @@ class SinkTest {
     }
 
     @Test
+    fun reopeningAfterATornTailTruncatesItInsteadOfMergingOntoItAndKeepsEveryDurableRow_LTQ03() {
+        val f = tmp()
+        JsonlSink(f).use { it.append(row(1)); it.append(row(2)) }
+        val durable = Files.readAllBytes(f)
+        Files.write(f, "{\"ts\":3,\"callerP".toByteArray(), java.nio.file.StandardOpenOption.APPEND)
+        assertEquals(2, JsonlReader.read(f).rows.size)
+        JsonlSink(f).use { it.append(row(4)) }
+        val read = JsonlReader.read(f)
+        assertEquals(listOf(row(1), row(2), row(4)), read.rows, "the rows durable before the kill are still readable and the new row follows them")
+        assertEquals(0, read.tornTailBytes)
+        assertTrue(Files.readAllBytes(f).copyOf(durable.size).contentEquals(durable), "the durable prefix is byte for byte unchanged")
+        Files.delete(f)
+    }
+
+    @Test
+    fun aTornTailThatIsAWholeRowWithoutItsNewlineWasNeverReportedDurableSoItIsDiscardedToo_LTQ03() {
+        val f = tmp()
+        JsonlSink(f).use { it.append(row(1)) }
+        Files.write(f, row(2).toRowBytes(), java.nio.file.StandardOpenOption.APPEND)
+        assertEquals(1, JsonlReader.read(f).rows.size)
+        JsonlSink(f).use { it.append(row(3)) }
+        assertEquals(listOf(row(1), row(3)), JsonlReader.read(f).rows)
+        Files.delete(f)
+    }
+
+    @Test
+    fun aFileWithOnlyATornTailIsEmptiedAndACleanOrEmptyFileIsLeftAlone_LTQ03() {
+        val f = tmp()
+        Files.write(f, "{\"ts\"".toByteArray())
+        JsonlSink(f).use { it.append(row(1)) }
+        assertEquals(listOf(row(1)), JsonlReader.read(f).rows)
+        assertEquals(0, JsonlReader.read(f).tornTailBytes)
+        val clean = Files.readAllBytes(f)
+        JsonlSink(f).close()
+        assertTrue(clean.contentEquals(Files.readAllBytes(f)), "reopening a clean file changes nothing")
+        Files.delete(f)
+        val empty = tmp()
+        JsonlSink(empty).close()
+        assertEquals(0, Files.size(empty))
+        Files.delete(empty)
+    }
+
+    @Test
+    fun aTornTailLongerThanOneScanBlockIsStillTruncatedAtTheLastNewline_LTQ03() {
+        val f = tmp()
+        JsonlSink(f).use { it.append(row(1)) }
+        val keep = Files.readAllBytes(f)
+        Files.write(f, ByteArray(70_000) { 'x'.code.toByte() }, java.nio.file.StandardOpenOption.APPEND)
+        JsonlSink(f).close()
+        assertTrue(keep.contentEquals(Files.readAllBytes(f)))
+        Files.delete(f)
+    }
+
+    @Test
+    fun anIoFailureAfterAWholeRowWasWrittenTruncatesTheRowAwayAndTheNextAppendIsClean_LTQ03() {
+        val f = tmp()
+        Files.delete(f)
+        var fail = false
+        JsonlSink(f, force = { if (fail) throw java.io.IOException("disk gone") }).use { sink ->
+            sink.append(row(1))
+            val size = Files.size(f)
+            fail = true
+            assertFailsWith<LedgerWriteException> { sink.append(row(2)) }
+            assertEquals(size, Files.size(f), "a row whose append failed is not left behind")
+            fail = false
+            sink.append(row(3))
+        }
+        assertEquals(listOf(row(1), row(3)), JsonlReader.read(f).rows)
+        Files.delete(f)
+    }
+
+    @Test
     fun aNewLedgerFileIsCreatedWithMode0600() {
         val f = tmp()
         Files.delete(f)

@@ -5,6 +5,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.FileSystems
 import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.PosixFilePermissions
@@ -33,6 +34,12 @@ fun interface DurabilityHook {
 interface DurableChannel : AutoCloseable {
     fun size(): Long
     fun readTail(maxBytes: Int): ByteArray
+
+    /**
+     * [length] bytes starting at [position], with bounded memory. The default goes through [readTail] and is for in-memory
+     * doubles only; a real file overrides it with a positional read.
+     */
+    fun readRange(position: Long, length: Int): ByteArray = readTail((size() - position).toInt()).copyOf(length)
     fun write(bytes: ByteArray)
     fun force()
     fun truncate(size: Long)
@@ -54,6 +61,17 @@ class FileDurableChannel private constructor(private val ch: FileChannel) : Dura
         return buf.array()
     }
 
+    override fun readRange(position: Long, length: Int): ByteArray {
+        val buf = ByteBuffer.allocate(length)
+        var pos = position
+        while (buf.hasRemaining()) {
+            val r = ch.read(buf, pos)
+            if (r < 0) break
+            pos += r
+        }
+        return buf.array().copyOf(buf.position())
+    }
+
     override fun write(bytes: ByteArray) {
         // Not APPEND (the JDK forbids READ together with APPEND): the sink is the only writer, so it writes at the end.
         ch.position(ch.size())
@@ -72,7 +90,10 @@ class FileDurableChannel private constructor(private val ch: FileChannel) : Dura
     companion object {
         private val posix = FileSystems.getDefault().supportedFileAttributeViews().contains("posix")
 
-        /** Creates the directory 0700 and the file 0600 where the filesystem has POSIX permissions. */
+        /**
+         * Creates the directory 0700 and the file 0600 where the filesystem has POSIX permissions; an EXISTING file is tightened to 0600 there too (the open
+         * fails if it cannot be), and a symbolic link as the ledger path is refused so that the open-time tail truncation cannot reach its target (ERR-FX4-LG-2).
+         */
         fun open(path: Path): FileDurableChannel {
             val dir = path.toAbsolutePath().parent
             if (dir != null && !Files.exists(dir)) {
@@ -82,7 +103,7 @@ class FileDurableChannel private constructor(private val ch: FileChannel) : Dura
                     Files.createDirectories(dir)
                 }
             }
-            if (!Files.exists(path)) {
+            if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
                 try {
                     if (posix) {
                         Files.createFile(path, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
@@ -92,7 +113,12 @@ class FileDurableChannel private constructor(private val ch: FileChannel) : Dura
                 } catch (_: java.nio.file.FileAlreadyExistsException) {
                 }
             }
-            return FileDurableChannel(FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.READ))
+            if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) throw IOException("the ledger path is not a regular file (a symbolic link or a directory is refused): $path")
+            if (posix) {
+                val ownerOnly = PosixFilePermissions.fromString("rw-------")
+                if (Files.getPosixFilePermissions(path, LinkOption.NOFOLLOW_LINKS) != ownerOnly) Files.setPosixFilePermissions(path, ownerOnly)
+            }
+            return FileDurableChannel(FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS))
         }
     }
 }
@@ -133,17 +159,21 @@ class JsonlLedgerSink internal constructor(
         }
     }
 
+    /**
+     * The offset just after the last newline, found by scanning backwards in fixed-size chunks all the way to offset 0, so a
+     * torn tail of any length (a crash can leave a file extended with zeros) is found and removed with bounded memory
+     * (finding HLU-5: a capped window looped for ever on a tail longer than the cap with no newline).
+     */
     private fun lastNewlineEnd(): Long {
-        var window = 8192
-        while (true) {
-            val size = channel.size()
-            val take = minOf(size, window.toLong()).toInt()
-            val tail = channel.readTail(take)
-            val i = tail.lastIndexOf('\n'.code.toByte())
-            if (i >= 0) return size - take + i + 1
-            if (take.toLong() == size) return 0
-            window = minOf(window * 4, 1 shl 26)
+        var end = channel.size()
+        while (end > 0) {
+            val start = maxOf(0L, end - SCAN_CHUNK)
+            val bytes = channel.readRange(start, (end - start).toInt())
+            val i = bytes.lastIndexOf('\n'.code.toByte())
+            if (i >= 0) return start + i + 1
+            end = start
         }
+        return 0
     }
 
     override suspend fun append(record: RouteRecord) {
@@ -186,6 +216,8 @@ class JsonlLedgerSink internal constructor(
     override fun close() = channel.close()
 
     companion object {
+        private const val SCAN_CHUNK = 64L * 1024
+
         /** Explicit defaults so every row carries every field, in a fixed order. */
         val JSON = Json { encodeDefaults = true; explicitNulls = true }
 

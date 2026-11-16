@@ -48,6 +48,18 @@ class WorkflowTest {
     }
 
     @Test
+    fun `every checkout drops its credentials, because no job here pushes (PLATFORM_PLAN R4-P-13)`() {
+        val lines = text().lines()
+        val at = lines.indices.filter { Regex("^\\s*-\\s+uses:\\s*actions/checkout@").containsMatchIn(lines[it]) }
+        assertTrue(at.size >= 5, "found only ${at.size} checkouts")
+        for (i in at) {
+            val indent = lines[i].indexOf('-')
+            val step = lines.drop(i + 1).takeWhile { it.isBlank() || it.trimStart().startsWith("#") || it.length - it.trimStart().length > indent }
+            assertTrue(step.any { it.trim() == "persist-credentials: false" }, "checkout at line ${i + 1} keeps the token in .git/config")
+        }
+    }
+
+    @Test
     fun `nothing in the workflow signs, releases or publishes, and W3 to W7 jobs do not exist yet`() {
         val t = text().lines().filter { !it.trim().startsWith("#") }.joinToString("\n").lowercase()
         for (banned in listOf("signtool", "wix", "msiexec", "winget", "gh release", "softprops", "package-and-smoke", "build-llama-jni", "smoke-install")) {

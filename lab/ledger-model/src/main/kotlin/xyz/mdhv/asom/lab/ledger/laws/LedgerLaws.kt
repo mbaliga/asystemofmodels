@@ -178,6 +178,9 @@ object LedgerLaws {
         secrets.flatMap { it.bodies }.forEach { b -> for (i in 0..b.length - 8) grams += b.substring(i, i + 8) }
         val keys = secrets.flatMap { it.keys }
         val names = secrets.flatMap { it.displayNames }
+        val calls = t.filterIsInstance<ProviderCall>()
+        val keyCarryingCalls = calls.count { c -> keys.any { k -> c.authorization.contains(k) || (c.errorText?.contains(k) == true) } }
+        val keyEchoingErrors = calls.count { c -> keys.any { k -> c.errorText?.contains(k) == true } }
         val v = mutableListOf<String>()
         var cases = 0
         for ((_, a) in rows(t)) {
@@ -192,7 +195,7 @@ object LedgerLaws {
             val stripped = if (a.row.meshKind == MeshKind.DIAL) text.replace(a.row.destAddr!!, "") else text
             if (ipv4.containsMatchIn(stripped) || ipv6.containsMatchIn(stripped)) v += "a ${a.row.meshKind} row holds an IP address outside a DIAL row's destAddr"
         }
-        return LawResult("L-L8", cases, v)
+        return LawResult("L-L8", cases, v, mapOf("providerCallsCarryingAKey" to keyCarryingCalls, "providerErrorsEchoingAKey" to keyEchoingErrors))
     }
 
     /** L-L9: summing bytes, tokens and cost over all rows equals summing over the rows that are not intent rows: intent rows carry nothing. */
@@ -221,7 +224,12 @@ object LedgerLaws {
         return LawResult("L-L10", cases, v)
     }
 
-    /** L-L12: `INFER_HEAD` and `INFER_END` agree field by field with the lender's outcome row. */
+    /**
+     * L-L12: `INFER_END` agrees field by field with the lender's outcome row (status and terminal), and `INFER_HEAD` agrees on the served model.
+     * The head's `status` is the commit-time view (trust.md 11.4: the row is finalised afterwards, as v1 does for a stream): it must equal the row's
+     * status or be `200`, the status line of a stream that began; a head that claims a failure for an attempt whose row says it succeeded is wrong.
+     * ERRATA ERR-FX4-LG-9.
+     */
     fun l12(t: List<Ev>): LawResult {
         val out = rows(t).map { it.second }.filter { it.row.meshKind == MeshKind.INFER_SERVED && it.row.phase == Phase.OUTCOME }.associateBy { it.node to it.row.attemptId }
         val v = mutableListOf<String>()
@@ -236,7 +244,11 @@ object LedgerLaws {
             val p = obj(e.payloadText) ?: run { v += "${e.frame.kind}: payload does not parse"; null } ?: continue
             cases++
             val status = (p["status"] as? JInt)?.value?.toInt()
-            if (status != row.status) v += "${e.frame.kind}: status $status but the row says ${row.status}"
+            if (e.frame.kind == FrameKind.INFER_END) {
+                if (status != row.status) v += "${e.frame.kind}: status $status but the row says ${row.status}"
+            } else if (status != row.status && status != 200) {
+                v += "${e.frame.kind}: status $status is neither the row's ${row.status} nor the commit-time 200"
+            }
             if (e.frame.kind == FrameKind.INFER_HEAD && (p["servedModel"] as? JString)?.value != row.servedModel) v += "INFER_HEAD servedModel differs from the row"
             if (e.frame.kind == FrameKind.INFER_END) {
                 val terminal = (p["terminal"] as? JString)?.value
@@ -250,7 +262,7 @@ object LedgerLaws {
     /**
      * L-L13: after an append fails, nothing that depends on that row reaches the wire: no byte of an attempt whose intent failed, no frame
      * of any kind on a session after a control-row failure, no engine read after a lender intent failure, no INFER_END or INFER_DECLINE
-     * after the outcome row that must precede it failed, no content frame on the session at all, and no SYN after a DIAL intent failure.
+     * after the outcome row that must precede it failed, no content frame on the session at all, no SYN after a DIAL intent failure and no frame on a session whose DIAL outcome failed.
      */
     fun l13(t: List<Ev>): LawResult {
         val v = mutableListOf<String>()
@@ -265,6 +277,7 @@ object LedgerLaws {
             }
             when {
                 r.meshKind == MeshKind.DIAL && r.phase == Phase.INTENT -> scope("DIAL intent failed") { it is Syn && it.node == e.node && it.sessionId == r.sessionId }
+                r.meshKind == MeshKind.DIAL && r.phase == Phase.OUTCOME -> scope("DIAL outcome failed") { it is Sent && it.node == e.node && it.sessionId == r.sessionId }
                 r.meshKind == MeshKind.INFER_SENT && r.phase == Phase.INTENT ->
                     scope("requester intent failed") { it is Sent && it.node == e.node && it.frame.attemptId == r.attemptId }
                 r.meshKind == MeshKind.INFER_SERVED && r.phase == Phase.INTENT ->
@@ -291,6 +304,116 @@ object LedgerLaws {
             if (intent == null || intent > i) v += "session ${e.sessionId}: SYN before a durable DIAL intent"
         }
         return LawResult("L-L14", cases, v)
+    }
+
+    /**
+     * L-L17: content that moved has a row that came first. For every `ContentSent` event (a prompt body to a peer, a prompt to a cloud provider),
+     * the node already held a durable INTENT row of the same request and attempt, naming the same destination class, before the event. A death
+     * between the transmission and the outcome therefore always leaves a row that says content may have moved (contract.md 4.11 H1).
+     */
+    fun l17(t: List<Ev>): LawResult {
+        val intents = HashMap<Pair<String, String>, Pair<Int, LabRouteRecord>>()
+        for ((i, a) in rows(t)) {
+            val id = a.row.attemptId ?: continue
+            if (a.row.phase == Phase.INTENT) intents.putIfAbsent(a.node to id, i to a.row)
+        }
+        val v = mutableListOf<String>()
+        val perClass = HashMap<String, Int>()
+        var cases = 0
+        for ((i, e) in t.withIndex()) {
+            if (e !is ContentSent) continue
+            cases++
+            perClass.merge(e.cls.wire, 1, Int::plus)
+            val intent = intents[e.node to e.attemptId]
+            when {
+                intent == null || intent.first > i -> v += "request ${e.requestId} attempt ${e.attemptId}: content went to ${e.cls.wire} with no durable intent row before it"
+                intent.second.requestId != e.requestId -> v += "attempt ${e.attemptId}: the intent row names request ${intent.second.requestId}, the content belongs to ${e.requestId}"
+                intent.second.egress != e.cls -> v += "attempt ${e.attemptId}: the intent row names ${intent.second.egress.wire}, the content went to ${e.cls.wire}"
+            }
+        }
+        return LawResult("L-L17", cases, v, perClass)
+    }
+
+    /**
+     * L-L18: a request's rows agree with each other. (a) The attempt rows of one request carry one `attemptIndex` per attempt, and the indexes grow in
+     * the order the attempts began (router.md 8.5: 0-based within the request, not a counter of the world). (b) The terminal row's served-by identity is
+     * the serving attempt's own: `servedProvider` is `peer:<nodeTag>` of the peer whose outcome row says 200 (and `servedModel` the model that row
+     * recorded, the peer's INFER_HEAD claim, when it recorded one), or the cloud provider and model of the cloud outcome row that says 200 (trust.md
+     * 11.1, contract.md 4.2, invariant 9).
+     */
+    fun l18(t: List<Ev>): LawResult {
+        val all = rows(t).map { it.second }
+        val v = mutableListOf<String>()
+        var cases = 0
+        val attemptRows = all.filter { it.row.requestId != null && it.row.attemptId != null && it.row.terminal != true && it.row.phase != null }
+        for ((key, group) in attemptRows.groupBy { it.node to it.row.requestId }) {
+            val byAttempt = group.groupBy { it.row.attemptId!! }
+            var last = -1
+            for ((attempt, rs) in byAttempt) {
+                cases++
+                val idx = rs.map { it.row.attemptIndex }.toSet()
+                if (idx.size != 1 || idx.single() == null) {
+                    v += "request ${key.second} on ${key.first}: attempt $attempt has attemptIndex values $idx"
+                    continue
+                }
+                if (idx.single()!! <= last) v += "request ${key.second} on ${key.first}: attempt $attempt has attemptIndex ${idx.single()} after an attempt with $last"
+                last = idx.single()!!
+            }
+        }
+        for (term in all.filter { it.row.terminal == true && it.row.servedClass != null }) {
+            val r = term.row
+            val cls = r.servedClass!!
+            if (cls == LabEgress.LOCAL) continue
+            cases++
+            val serving = all.filter {
+                it.node == term.node && it.row.requestId == r.requestId && it.row.phase == Phase.OUTCOME && it.row.status == 200 &&
+                    if (cls == LabEgress.peerClass) it.row.meshKind == MeshKind.INFER_SENT else (it.row.meshKind == null && it.row.egress == cls)
+            }
+            if (serving.size != 1) {
+                v += "request ${r.requestId}: served by ${cls.wire} but the node holds ${serving.size} serving outcome rows"
+                continue
+            }
+            val o = serving.single().row
+            val wantProvider = if (cls == LabEgress.peerClass) "peer:${o.peerNode}" else o.servedProvider
+            if (r.servedProvider != wantProvider) v += "request ${r.requestId}: servedProvider '${r.servedProvider}' but the serving attempt is '$wantProvider'"
+            if (o.servedModel != null && r.servedModel != o.servedModel) v += "request ${r.requestId}: servedModel '${r.servedModel}' but the serving attempt recorded '${o.servedModel}'"
+            if (cls == LabEgress.peerClass && o.servedModel == null) v += "request ${r.requestId}: the serving peer attempt recorded no INFER_HEAD claim"
+        }
+        return LawResult("L-L18", cases, v)
+    }
+
+    private val CANCEL_REASONS = setOf("client-gone", "deadline", "policy-changed", "superseded")
+    private val DECLINE_CODES = setOf("PEER_BUSY", "PEER_UNAVAILABLE", "MODEL_NOT_OFFERED", "SCOPE_DENIED", "DUPLICATE_ATTEMPT")
+    private val OFFER_OPS = setOf("chat", "completions", "embeddings")
+
+    /**
+     * L-L19: every JSON payload the simulation sends uses only the closed-enum values of LAB_SPEC 7.2 (CANCEL reason, INFER_DECLINE code, INFER_END
+     * terminal, INFER_OFFER op, GOAWAY reason, ERROR code, REVOKE_NOTICE reason). A real peer refuses an unknown value as `PROTOCOL_ERROR` and
+     * closes (R4-L-21), so a simulation that sent one would be modelling a session that no real requester could have kept.
+     */
+    fun l19(t: List<Ev>): LawResult {
+        val v = mutableListOf<String>()
+        val perKind = HashMap<String, Int>()
+        var cases = 0
+        for (e in t) {
+            if (e !is Sent || e.payloadText == null) continue
+            val (member, allowed) = when (e.frame.kind) {
+                FrameKind.CANCEL -> "reason" to CANCEL_REASONS
+                FrameKind.INFER_DECLINE -> "code" to DECLINE_CODES
+                FrameKind.INFER_END -> "terminal" to xyz.mdhv.asom.lab.ledger.ServedRecord.TERMINALS.toSet()
+                FrameKind.INFER_OFFER -> "op" to OFFER_OPS
+                FrameKind.GOAWAY -> "reason" to (xyz.mdhv.asom.lab.ledger.ClosedCodes.GOAWAY_REASONS - xyz.mdhv.asom.lab.ledger.ClosedCodes.UNKNOWN_REASON)
+                FrameKind.ERROR -> "code" to (xyz.mdhv.asom.lab.ledger.ClosedCodes.MESH_ERRORS - xyz.mdhv.asom.lab.ledger.ClosedCodes.UNKNOWN_ERROR)
+                FrameKind.REVOKE_NOTICE -> "reason" to setOf("user")
+                else -> continue
+            }
+            val obj = (StrictJson.parse(e.payloadText.toByteArray()) as? ParseResult.Ok)?.value as? JObject
+            val value = (obj?.get(member) as? JString)?.value
+            cases++
+            perKind.merge(e.frame.kind.name, 1, Int::plus)
+            if (value == null || value !in allowed) v += "${e.frame.kind}.$member '$value' is not one of $allowed"
+        }
+        return LawResult("L-L19", cases, v, perKind)
     }
 
     class L15(val result: LawResult, val measuredSessions: Int, val estimatedSessions: Int, val excludedSessions: Int, val mismatches: Int)
@@ -357,8 +480,11 @@ object LedgerLaws {
 
     /**
      * L-L16: every frame of the "yes" rows has exactly one row of the stated kind (and bytes) on each node that sent or received it, durable
-     * before the send or before any reply; every attempt frame is covered by its attempt's outcome rows (bytes summed per direction). The
-     * per-frame-type counts are returned so that the caller can fail when a listed type was never exercised.
+     * before the send or before any reply; every attempt frame is covered by its attempt's outcome rows (bytes summed per direction). The second
+     * half starts from the FRAMES, not from the outcome rows that exist: every attempt that sent or received an attempt frame on a node whose
+     * session ended in order (a SESSION close row, no ledger failure on it) has an outcome row on that node (router.md 8.5: "accepted, cancelled"
+     * has a peer-side row), so an attempt that crossed bytes and got no row at all cannot pass (ERRATA ERR-FX4-LG-3), and no attempt frame may be sent after the outcome row (a requester's) or after the one frame the lender's row counts (ERR-FX4-LG-4). The per-frame-type counts are
+     * returned so that the caller can fail when a listed type was never exercised.
      */
     fun l16(t: List<Ev>): L16 {
         val v = mutableListOf<String>()
@@ -411,6 +537,38 @@ object LedgerLaws {
                 v += "attempt ${o.row.attemptId} on ${o.node}: frames hold out $out in $inn but the outcome row says out ${o.row.bytesOut} in ${o.row.bytesIn}"
             }
         }
-        return L16(LawResult("L-L16", cases, v, perType), perType)
+        val failedAppends = t.filterIsInstance<AppendFailed>().mapNotNull { f -> f.row.sessionId?.let { f.node to it } }.toSet()
+        val orderlyClose = allRows.filter { it.second.row.meshKind == MeshKind.SESSION && it.second.row.meshCode == "close" }.map { it.second.node to it.second.row.sessionId }.toSet()
+        val attemptSession = LinkedHashMap<Pair<String, String>, String>()
+        for (e in t) {
+            val f = when (e) {
+                is Sent -> e.frame to e.sessionId
+                is Received -> e.frame to e.sessionId
+                else -> continue
+            }
+            if (f.first.ledgerClass != LedgerClass.ATTEMPT || f.first.attemptId == null) continue
+            attemptSession.putIfAbsent(e.node to f.first.attemptId!!, f.second)
+        }
+        var covered = 0
+        for ((key, sid) in attemptSession) {
+            val sessionKey = key.first to sid
+            if (sessionKey in closedByFailure || sessionKey in failedAppends || sessionKey !in orderlyClose) continue
+            covered++
+            if (outcomes.none { it.node == key.first && it.row.attemptId == key.second }) {
+                v += "attempt ${key.second} on ${key.first}: attempt frames crossed on session $sid, which ended in order, but the node holds no outcome row for the attempt"
+            }
+        }
+        cases += covered
+        var afterOutcome = 0
+        for ((i, o) in allRows) {
+            val r = o.row
+            if (r.phase != Phase.OUTCOME || r.attemptId == null || (r.meshKind != MeshKind.INFER_SENT && r.meshKind != MeshKind.INFER_SERVED)) continue
+            val later = t.subList(i + 1, t.size).filterIsInstance<Sent>().filter { it.node == o.node && it.frame.attemptId == r.attemptId && it.frame.ledgerClass == LedgerClass.ATTEMPT }
+            val own = if (r.meshKind == MeshKind.INFER_SERVED) later.take(1).filter { it.frame.kind in setOf(FrameKind.INFER_END, FrameKind.INFER_DECLINE, FrameKind.ERROR) } else emptyList()
+            afterOutcome++
+            if (later.size > own.size) v += "attempt ${r.attemptId} on ${o.node}: ${later.size - own.size} attempt frame(s) were sent after the outcome row, so their bytes are in no attempt row"
+        }
+        cases += afterOutcome
+        return L16(LawResult("L-L16", cases, v, perType + mapOf("attemptsWithFramesChecked" to covered, "outcomesCheckedForLateFrames" to afterOutcome)), perType)
     }
 }

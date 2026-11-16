@@ -8,6 +8,8 @@
 #   ASOM_STAGE      the staged app image (build-packages.sh copies the image without install.sh and uninstall.sh: those
 #                   are the per-user installers and have no place under /opt)
 #   ASOM_LINUX_DIR  desktop/packaging/linux (absolute)
+#   ASOM_USER_UNIT  the user unit for a package: systemd/asom-user.service with its two %h/.local/opt paths rewritten to /opt/asom
+#                   by package-user-unit.sh (the tarball keeps the %h form: install.sh puts the app under ~/.local/opt)
 #
 # Nothing here enables or starts a unit: the files are shipped, the scripts never enable or start (scripts/postinstall.sh).
 name: asom-desktop
@@ -53,7 +55,7 @@ contents:
     dst: /usr/lib/systemd/system/asom.service
     file_info:
       mode: 0644
-  - src: ${ASOM_LINUX_DIR}/systemd/asom-user.service
+  - src: ${ASOM_USER_UNIT}
     dst: /usr/lib/systemd/user/asom.service
     file_info:
       mode: 0644

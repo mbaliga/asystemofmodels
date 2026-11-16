@@ -121,6 +121,55 @@ REF.stat = stat_b7  # bench_ref.derive_test resolves both names in its module gl
 REF.confidence = confidence_9_4
 
 
+def derive_sustained_6_3(s, run):
+    """bench_ref.derive_sustained with the onset threshold of benchmark.md 6.3 and 9.1 taken literally: a smoothed window is below
+    onset when it is < floor(900 * peak / 1000) (ERRATA ERR-FX2-2); the sketch compares against the real-valued 900 * peak / 1000."""
+    w = s["windows"]
+    rates = [REF.rate_mtps(tok, us) for (_, tok, us, _) in w]
+    n = len(rates)
+    sm = [REF.lower_median(rates[max(0, i - 1):min(n, i + 2)]) for i in range(n)]
+    peak_idx = max((i for i in range(n) if w[i][0] < REF.PEAK_WINDOW_MS), key=lambda i: (sm[i], -i))
+    peak = sm[peak_idx]
+    threshold = REF.SMOOTH_ONSET_PERMILLE * peak // 1000
+    onset_i = None
+    for i in range(peak_idx + 1, n - 2):
+        if all(sm[j] < threshold for j in (i, i + 1, i + 2)):
+            onset_i = i
+            break
+    flags = []
+    if onset_i is None:
+        tail = sm[-REF.PLATEAU_WINDOWS:]
+        onset_ms = None
+    else:
+        onset_ms = w[onset_i][0]
+        settled = [sm[i] for i in range(n) if w[i][0] >= onset_ms + REF.SETTLE_MS]
+        if settled:
+            tail = settled[-REF.PLATEAU_WINDOWS:]
+        else:
+            tail = sm[onset_i:]
+            flags.append("PLATEAU_NOT_REACHED")
+    plateau = REF.lower_median(tail)
+    duration = w[-1][0] + s["windowMs"]
+    stability = REF.fdiv(plateau * 1000, peak)
+    if run["startThermal"] != "cool":
+        conf = "low"
+    elif s["endReason"] == "PLATEAU" or (s["endReason"] == "TIME_CAP" and duration >= 480000):
+        conf = "high"
+    elif duration >= 300000:
+        conf = "medium"
+    else:
+        conf = "low"
+    thermal_at_onset = w[onset_i][3] if onset_i is not None else None
+    return {"test": "sustain", "windowMs": s["windowMs"], "capMs": s["capMs"], "windows": [list(x) for x in w],
+            "peakMtps": peak, "plateauMtps": plateau, "onsetMs": onset_ms, "stabilityPermille": stability, "durationMs": duration,
+            "endReason": s["endReason"], "thermalCodeAtOnset": thermal_at_onset,
+            "headroomAtOnsetPermille": s.get("headroomAtOnsetPermille") if onset_i is not None else None,
+            "confidence": conf, "flags": flags}
+
+
+REF.derive_sustained = derive_sustained_6_3  # REF.derive and sustain_result both resolve it through the module
+
+
 def test_result(spec, samples, whole, ctx):
     toks = REF.test_tokens(spec)
     vals = [REF.rate_mtps(toks, us) for us in samples]
@@ -135,7 +184,7 @@ def test_result(spec, samples, whole, ctx):
     return out
 
 
-HARD_REASONS = {"THERMAL_HARD", "BATTERY_TEMP", "MEMORY_PRESSURE", "WALL_CAP"}
+HARD_REASONS = {"THERMAL_HARD", "BATTERY_TEMP", "BATTERY_LOW", "POWER_SAVER", "MEMORY_PRESSURE", "WALL_CAP"}
 
 
 def sustain_result(i):
@@ -144,7 +193,8 @@ def sustain_result(i):
     out = REF.derive_sustained(s, run)
     conf, flags = out["confidence"], list(out["flags"])
     # benchmark.md 6.4: a hard-ceiling abort keeps the windows, adds HARD_CEILING and caps confidence at medium; a user stop is low
-    if i["endReason"] in ("THERMAL_HARD", "BATTERY_TEMP", "MEMORY_PRESSURE", "BACKGROUNDED", "CHARGER_REMOVED", "DEVICE_BUSY"):
+    # r4 (R4-B-01): BATTERY_LOW and POWER_SAVER are hard ceilings like THERMAL_HARD and BATTERY_TEMP; DEVICE_BUSY keeps its treatment and does not set HARD_CEILING
+    if i["endReason"] in ("THERMAL_HARD", "BATTERY_TEMP", "BATTERY_LOW", "POWER_SAVER", "MEMORY_PRESSURE", "BACKGROUNDED", "CHARGER_REMOVED"):
         flags.append("HARD_CEILING")
         conf = min([conf, "medium"], key=lambda x: CONF_RANK[x])
     if i["endReason"] in ("USER_STOP",):
@@ -170,13 +220,19 @@ def spec_pins(md):
     return pins
 
 
-def spec_plan(md):
+def spec_plans(md):
+    """Every ```json block of benchmark.md 5.2, keyed by its `plan` member (r4, R4-B-06: standard, quick and ci)."""
     sec = md[md.index("### 5.2 Run-plan format"):md.index("### 5.3")]
-    txt = sec[sec.index("```json") + 7:]
-    txt = txt[:txt.index("```")]
-    kind, v = M01.parse(txt.encode("utf-8"))
-    assert kind == "ok", v
-    return v
+    plans = {}
+    for m in re.finditer(r"```json\n(.*?)```", sec, re.S):
+        kind, v = M01.parse(m.group(1).encode("utf-8"))
+        assert kind == "ok", v
+        plans[v["plan"]] = v
+    return plans
+
+
+def spec_plan(md):
+    return spec_plans(md)["standard"]
 
 
 def spec_plan_rows(md):
@@ -207,19 +263,31 @@ HARD_ON_DECI_C = {"android": 440, "linux": 450}
 SOFT_ON_DECI_C = {"android": 420}
 
 
+CEILING_ROWS = ("android", "ios", "ipados", "macos", "linux")
+
+
 def ceiling_11_3(i):
+    """The 11.3 table with the r4 names (R4-B-01) and order (R4-B-02: hard before soft; thermal, then battery, then the rest). None: no row (refused)."""
     plat, form, th, pw, pr = i["platform"], i["form"], i["thermal"], i["power"], i["presence"]
     code, head, bt = th["code"], th.get("headroom"), th.get("batteryTempDeciC")
     lvl = pw.get("level")
+    if plat not in CEILING_ROWS:
+        return None
     # hard first
     if plat == "android":
         if code >= 3:
             return "hard THERMAL_HARD"
-        if (bt is not None and bt >= 440) or (lvl is not None and lvl < 200):
+        if bt is not None and bt >= 440:
             return "hard BATTERY_TEMP"
+        if lvl is not None and lvl < 200:
+            return "hard BATTERY_LOW"
     elif plat in ("ios", "ipados"):
-        if code >= 3 or pr.get("lowPowerMode") or (lvl is not None and lvl < 200):
+        if code >= 3:
             return "hard THERMAL_HARD"
+        if lvl is not None and lvl < 200:
+            return "hard BATTERY_LOW"
+        if pr.get("lowPowerMode"):
+            return "hard POWER_SAVER"
     elif plat == "macos":
         if code >= 4:
             return "hard THERMAL_HARD"
@@ -263,7 +331,45 @@ def raw_from_doc(doc):
 
 
 def answers_of(raw):
-    tiers, sustain, derived = REF.derive(raw)
+    """bench_ref.derive plus two readings the sketch predates: a sustain block on a tier whose numerics failed is ignored by the
+    throttle, the role, every plateau estimate and the overall confidence (benchmark.md 4.4, ERRATA ERR-FX2-1), and a sustained
+    phase starts warm when the run or its tier did (ERRATA ERR-FX2-5)."""
+    run = dict(raw["run"])
+    sus = raw["sustained"]
+    tier_start = raw["tiers"].get(sus["tier"], {}).get("startThermal", run["startThermal"])
+    if run["startThermal"] == "cool" and tier_start != "cool":
+        run["startThermal"] = tier_start
+    tiers, sustain, derived = REF.derive(dict(raw, run=run))
+    ok = [t["tier"] for t in tiers if t["numerics"]["verdict"] != "fail"]
+    by = {t["tier"]: t for t in tiers if t["tier"] in ok}
+    used = sustain["tier"] in ok
+    if not used:
+        derived["throttle"] = None
+    stab = sustain["stabilityPermille"]
+
+    def plateau_of(t):
+        if t not in by or not used:
+            return None
+        if sustain["tier"] == t:
+            return sustain["plateauMtps"]
+        r = REF.res(by[t], "tg128@d0")
+        return REF.fdiv(r["value"] * stab, 1000) if r is not None and r["value"] is not None else None
+
+    plat3, plat2 = plateau_of("T3"), plateau_of("T2")
+    form, plat = raw["device"]["form"], raw["device"]["platform"]
+    if plat in ("ios", "ipados"):
+        role = "requester-foreground-helper"
+    elif form in ("desktop", "server") and plat3 is not None and plat3 >= REF.COMFORT_DECODE_MTPS:
+        role = "strong-provider"
+    elif form in ("desktop", "server", "laptop", "handheld") and plat2 is not None and plat2 >= REF.COMFORT_DECODE_MTPS:
+        role = "small-model-provider"
+    elif form in ("phone", "tablet") and plat2 is not None and plat2 >= 8000:
+        role = "occasional-helper"
+    else:
+        role = "requester"
+    derived["role"] = {"code": role, "t2PlateauMtps": plat2, "t3PlateauMtps": plat3}
+    head = by[max(ok, key=REF.ORDER.index)]
+    derived["overallConfidence"] = REF.min_conf([r["confidence"] for r in head["results"]] + ([sustain["confidence"]] if used else []))
     return tiers, sustain, derived
 
 
@@ -280,7 +386,10 @@ def compare_answers(cnt, vid, ans, derived, tiers):
     cnt.ok(ea["tier"] == a["tier"] and ea["depthRatioPermille"] == a["depthRatioPermille"] and ea["micros"] == a["micros"] and ea["thermalModel"] == a["thermalModel"], f"{vid}: answer2000 {ea} vs {a}")
     t = derived["throttle"]
     et = e["throttle"]
-    cnt.ok(et["tier"] == t["tier"] and et["onsetMs"] == t["onsetMs"] and et["stabilityPermille"] == t["stabilityPermille"] and et["testedMs"] == t["testedMs"], f"{vid}: throttle {et} vs {t}")
+    if et is None or t is None:
+        cnt.ok(et is None and t is None, f"{vid}: throttle {et} vs {t}")
+    else:
+        cnt.ok(et["tier"] == t["tier"] and et["onsetMs"] == t["onsetMs"] and et["stabilityPermille"] == t["stabilityPermille"] and et["testedMs"] == t["testedMs"], f"{vid}: throttle {et} vs {t}")
     r = derived["role"]
     cnt.ok(e["role"] == {"code": r["code"], "t2PlateauMtps": r["t2PlateauMtps"], "t3PlateauMtps": r["t3PlateauMtps"]}, f"{vid}: role {e['role']} vs {r}")
     cnt.ok(e["overallConfidence"] == derived["overallConfidence"], f"{vid}: overall confidence {e['overallConfidence']} vs {derived['overallConfidence']}")
@@ -348,6 +457,12 @@ def check_m04(root):
                 row = rows[i["plan"]]
                 cnt.ok(len(ok["planSha256"]) == 43 and ok["jcsBytes"] > 0, f"{vid}: plan hash shape")
                 cnt.ok(row[4] == "3", f"{vid}: the 5.1 table says {row[4]} reps for {i['plan']}")
+                # r4 (R4-B-06): quick and ci are JSON in 5.2 too, so their hashes are checked against the text
+                plans = spec_plans(md)
+                cnt.ok(i["plan"] in plans, f"{vid}: benchmark.md 5.2 has no JSON for plan {i['plan']}")
+                if i["plan"] in plans:
+                    jc = M01.jcs(plans[i["plan"]]).encode("utf-8")
+                    cnt.ok(b64u(hashlib.sha256(jc).digest()) == ok["planSha256"] and len(jc) == ok["jcsBytes"], f"{vid}: the {i['plan']} plan sha256 differs from the plan JSON in benchmark.md 5.2")
         elif k == "pins":
             ok = e["ok"]
             cnt.ok(ok["q1"] == spec_pins(md), f"{vid}: Q1 pins differ from the benchmark.md 4.2 table")
@@ -358,14 +473,23 @@ def check_m04(root):
             cnt.ok(SPEC_EDGES <= edges, f"{vid}: missing spec edges {sorted(SPEC_EDGES - edges)}")
             cnt.ok(edges - SPEC_EDGES <= DOCUMENTED_EXTRA_EDGES, f"{vid}: undocumented edges {sorted(edges - SPEC_EDGES - DOCUMENTED_EXTRA_EDGES)}")
         elif k == "ceilings":
-            cnt.ok(ceiling_11_3(i) == e["ok"]["ceiling"], f"{vid}: expected {e['ok']['ceiling']}, xcheck {ceiling_11_3(i)}")
+            if "reject" in e:
+                cnt.ok(ceiling_11_3(i) is None and e["reject"] == "NO_CEILING_ROW" and i["platform"] not in CEILING_ROWS, f"{vid}: a platform with no 11.3 row must be refused, not given a ceiling")
+            else:
+                cnt.ok(ceiling_11_3(i) == e["ok"]["ceiling"], f"{vid}: expected {e['ok']['ceiling']}, xcheck {ceiling_11_3(i)}")
         elif k == "trace":
             check_trace(cnt, v)
         elif k == "consent":
             got = consent_model(i)
             cnt.ok(got == ("consumed" if "ok" in e else "refused"), f"{vid}: consent model says {got}")
             if "ok" in e:
-                cnt.ok(re.fullmatch(r"[0-9a-f]{64}", e["ok"]["textSha256"]) is not None, f"{vid}: textSha256 shape")
+                if i.get("reportText", True):
+                    cnt.ok(re.fullmatch(r"[0-9a-f]{64}", e["ok"]["textSha256"]) is not None, f"{vid}: textSha256 shape")
+                else:
+                    cnt.ok("textSha256" not in e["ok"], f"{vid}: reportText false must leave the text hash out")
+                want_opt = sorted(i["ticks"]["optIns"]) if i.get("ticks") else []
+                cnt.ok(e["ok"]["optIns"] == want_opt, f"{vid}: the token carries optIns {e['ok']['optIns']}, ticks say {want_opt}")
+                cnt.ok(e["ok"]["heatTestPermitted"] == consent_heat_permitted(i), f"{vid}: heatTestPermitted {e['ok']['heatTestPermitted']}")
         else:
             cnt.ok(False, f"{vid}: unknown kind {k}")
     return cnt, kinds
@@ -374,13 +498,28 @@ def check_m04(root):
 def consent_model(i):
     if i["confirm"] != "match":
         return "refused"
-    if i["consumeNowMs"] - i["mintNowMs"] >= 300000:
+    # r4 (R4-B-07): a tick for a name the sheet did not offer, or a rerun tick on a sheet that has none, mints nothing
+    ticks = i.get("ticks")
+    if ticks is not None:
+        if any(n != "T3" or not i["t3OptInOffered"] for n in ticks["optIns"]):
+            return "refused"
+        if ticks["rerunHeatToday"] and not (i["sustainedToday"] and i["plan"] != "quick" and i["plan"] != "ci"):
+            return "refused"
+    age = i["consumeNowMs"] - i["mintNowMs"]
+    if age < 0 or age >= 300000:
         return "refused"
     if i.get("consumeTwice"):
         return "refused"
     if i.get("consumePlan", i["plan"]) != i["plan"]:
         return "refused"
     return "consumed"
+
+
+def consent_heat_permitted(i):
+    """R4-B-07: the heat test is withheld when the sheet needed the rerun tick (a heat plan run today) and it was not ticked."""
+    needs = i["sustainedToday"] and i["plan"] not in ("quick", "ci")
+    ticked = bool(i.get("ticks") and i["ticks"]["rerunHeatToday"])
+    return (not needs) or ticked
 
 
 def check_trace(cnt, v):
@@ -417,8 +556,10 @@ def check_trace(cnt, v):
         cnt.ok(last == "IDLE" and not any("STATE PREPARING" in x for x in ev), f"{vid}: a refused run must not go past PREFLIGHT")
     if outcome == "completed":
         cnt.ok(state == "DONE" and not any("ABORTING" in x for x in ev), f"{vid}: completed without abort")
-    if outcome == "aborted":
-        cnt.ok(any("->ABORTING" in x for x in ev) and state == "DONE", f"{vid}: an aborted run passes ABORTING and finishes")
+    if outcome.startswith("aborted"):
+        # R4-B-03: the third yield (DEVICE_BUSY) goes YIELDED -> FINALIZING; every other abort passes ABORTING
+        finished_early = any(x.startswith("FINISH ") for x in ev) and any("YIELDED->FINALIZING" in x for x in ev)
+        cnt.ok((any("->ABORTING" in x for x in ev) or finished_early) and state == "DONE", f"{vid}: an aborted run passes ABORTING (or finishes at the third yield) and finishes")
 
 
 def check_m05_body(root):
@@ -447,6 +588,10 @@ def check_m05_body(root):
         except Exception as ex:  # a document the sketch cannot handle
             cnt.skipped += 1
             print(f"  note {vid}: skipped, the sketch cannot derive it ({type(ex).__name__})")
+            continue
+        if derived["throttle"] is None:  # the sketch's renderer has no "heat test not used" wording (ERRATA ERR-FX2-1)
+            cnt.skipped += 1
+            print(f"  note {vid}: skipped, the heat test is ignored by the answers (a failed tier)")
             continue
         doc = {"device": raw["device"], "run": dict(raw["run"], dayUtc=v["input"]["benchDoc"]["run"]["dayUtc"]), "harness": raw["harness"], "memory": raw["memory"],
                "tiers": tiers, "sustain": sustain, "derived": derived, "field": [], "energy": None}

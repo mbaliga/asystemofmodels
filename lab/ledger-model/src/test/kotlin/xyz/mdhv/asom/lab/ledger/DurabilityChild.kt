@@ -42,9 +42,37 @@ object DurabilityChild {
         }
     }
 
+    /** Writes half of the third row and blocks inside `write`, the state SIGKILL leaves in the middle of a write. */
+    private class TearingChannel(inner: java.nio.channels.FileChannel) : SpyChannel(inner) {
+        private var calls = 0
+
+        override fun write(src: java.nio.ByteBuffer): Int {
+            if (++calls == 3) {
+                val cut = src.duplicate().also { it.limit(src.position() + src.remaining() / 2) }
+                inner.write(cut)
+                println("TORN")
+                System.out.flush()
+                Thread.sleep(Long.MAX_VALUE)
+            }
+            return inner.write(src)
+        }
+    }
+
     @JvmStatic
     fun main(args: Array<String>) {
         val dir = Path.of(args[0])
+        if (args[1] == "tear") {
+            JsonlSink(dir.resolve("T.jsonl"), opener = { p -> TearingChannel(JsonlSink.openChannel(p)) }).use { sink ->
+                for (i in 1L..10L) {
+                    val row = LabRouteRecord(
+                        ts = i, callerPkg = "peer:tear", requestedModel = "", egress = LabEgress.peerClass, meshKind = MeshKind.CONTROL, meshCode = "HELLO", sessionId = "tear", bytesOut = i,
+                    )
+                    sink.append(row)
+                    println("DURABLE T ${digest(row.toRowBytes())}")
+                    System.out.flush()
+                }
+            }
+        }
         if (args[1] == "stress") {
             JsonlSink(dir.resolve("S.jsonl")).use { sink ->
                 var i = 0L

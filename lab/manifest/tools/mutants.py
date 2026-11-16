@@ -94,12 +94,34 @@ MUTANTS = [
      "if (body[0].toInt() and 0x80 != 0) return Result.Reject(\"negative integer\")", ""),
     ("V30-sign-no-lows", "the producer stops normalising to low-S", MAN + "Es256.kt",
      "return normaliseLowS(rs)\n    }\n\n    /** If s > n/2", "return rs\n    }\n\n    /** If s > n/2"),
+    ("V31-no-coordinate-range", "the strict SPKI form accepts a coordinate that is not reduced modulo p (ERR-FX-CV10)", MAN + "Es256.kt",
+     "x.signum() < 0 || y.signum() < 0 || x >= P || y >= P", "x.signum() < 0 || y.signum() < 0"),
+    ("V32-no-one-record", "consistency() does not tie the second copies of device and harness facts to body.bench (ERR-FX-CV1)", MAN + "Consistency.kt",
+     "        sameRecord(b)?.let { return it }\n", ""),
+    ("V33-tier-gate-on-claim", "a self-reported hardware key storage satisfies requiredTier A1 (ERR-FX-CV3)", MAN + "Verifier.kt",
+     "if (ATTESTED_TIER.ordinal < ctx.requiredTier.ordinal)", "if (tier.ordinal < ctx.requiredTier.ordinal)"),
+    ("V34-unicode-uppercase", "the typed fingerprint folds U+017F and U+0131 onto base32 letters (ERR-FX-CV6)", MAN + "Es256.kt",
+     "ch in 'a'..'z' -> out.append(ch - 32)", "ch in 'a'..'z' -> out.append(ch - 32)\n                ch == '\u017f' -> out.append('S')\n                ch == '\u0131' -> out.append('I')"),
+    ("V35-nonobject-is-version-unknown", "a container that is not an object is CONTAINER_VERSION_UNKNOWN (ERR-FX-CV8)", MAN + "Verifier.kt",
+     "return reject(RejectCode.CONTAINER_INVALID, \"3\", \"the container is not an object\")", "return reject(RejectCode.CONTAINER_VERSION_UNKNOWN, \"3\", \"the container is not an object\")"),
+    ("V36-no-sig0-shape-at-3", "the shape of signatures[0] is not decided at step 3 (ERR-FX-CV8)", MAN + "Verifier.kt",
+     "        if (first != null) {\n            val sig0", "        if (false && first != null) {\n            val sig0"),
+    ("V37-spki-not-string-is-unpinned", "a FILE signer.spki that is not a string is KEY_NOT_PINNED (ERR-FX-CV8)", MAN + "Verifier.kt",
+     "return reject(RejectCode.CONTAINER_INVALID, \"7\", \"signer.spki is not a string\")", "return reject(RejectCode.KEY_NOT_PINNED, \"7\", \"signer.spki is not a string\")"),
+    ("V38-major-leading-zero", "a major with a leading zero counts as a newer major (ERR-FX-CV8)", MAN + "Verifier.kt",
+     "digits != null && digits[0] != '0' && digits != \"1\"", "digits != null && digits != \"1\""),
+    ("V39-no-evidence-item-limit", "an evidence item of any size passes step 15c (ERR-FX-CV8)", MAN + "Verifier.kt",
+     "private const val EVIDENCE_ITEM_MAX_BYTES = 32_768", "private const val EVIDENCE_ITEM_MAX_BYTES = 100_000_000"),
+    ("V40-no-signer-lock", "signOwn does not serialise load, compare, persist and sign (ERR-FX-CV9)", MAN + "Signer.kt",
+     "synchronized(lockFor(seqStore)) { return signOwnLocked(inputs, key, keyStorage, challenge, nowMs, seqStore) }", "return signOwnLocked(inputs, key, keyStorage, challenge, nowMs, seqStore)"),
+    ("V41-fixed-temp-name", "FileSeqStore writes a fixed <name>.tmp (ERR-FX-CV9)", MAN + "Signer.kt",
+     "val tmp = Files.createTempFile(dir, file.name + \".\", \".tmp\")", "val tmp = java.io.File(dir.toFile(), file.name + \".tmp\").toPath()"),
     ("S01-file-keeps-platformids", "the FILE projection keeps platformIds", MAN + "Signer.kt",
      "inputs.device.copy(platformIds = null, os = inputs.device.os.copy(securityPatch = null))", "inputs.device.copy(os = inputs.device.os.copy(securityPatch = null))"),
     ("S02-file-keeps-securitypatch", "the FILE projection keeps securityPatch", MAN + "Signer.kt",
      "inputs.device.copy(platformIds = null, os = inputs.device.os.copy(securityPatch = null))", "inputs.device.copy(platformIds = null)"),
     ("S03-seq-no-clock", "seq ignores the clock (max(stored+1, now/1000) becomes stored+1)", MAN + "Signer.kt",
-     "maxOf((stored?.seq ?: 0L) + 1L, nowMs / 1000L)", "(stored?.seq ?: 0L) + 1L"),
+     "val clock = maxOf(1L, nowMs / 1000L)", "val clock = 1L"),
     ("S04-seq-always-new", "an unchanged body still gets a new seq", MAN + "Signer.kt",
      "if (stored != null && stored.contentDigest == digest) {", "if (stored != null && stored.contentDigest == digest && stored.seq < 0L) {"),
     ("S05-file-export-key-is-nik-free-check", "the export presentation keeps the exact time (not day-truncated)", MAN + "Signer.kt",
@@ -140,6 +162,14 @@ MUTANTS = [
      "Math.multiplyExact(a, b)", "a * b"),
     ("B14-role-helper-9000", "the occasional-helper role needs 9 tokens/s instead of 8", BEN + "BenchSet.kt",
      "const val ROLE_HELPER_MTPS: Long = 8_000L", "const val ROLE_HELPER_MTPS: Long = 9_000L"),
+    ("V42-lock-per-instance", "the signer lock is the FileSeqStore object, not the file (R4MS-1)", MAN + "Signer.kt",
+     "override val lockKey: Any get() = lock", "override val lockKey: Any get() = this"),
+    ("V43-malformed-store-is-absent", "a malformed seq store file reads as no store (R4MS-2)", MAN + "Signer.kt",
+     "throw SeqStoreCorrupt(\"the seq store ${file.path} exists and is malformed; nothing is signed until an operator resolves it\")", "return null"),
+    ("V44-no-seq-bound", "the next seq may exceed 2^53 - 1 before it is persisted (R4MS-3)", MAN + "Signer.kt",
+     "if (next > MAX_SEQ) throw ManifestUnavailable(null, \"the next seq is outside 1..2^53-1\")", ""),
+    ("V45-no-clock-bound", "a negative or out-of-range clock is persisted before it is refused (R4MS-3)", MAN + "Signer.kt",
+     "if (nowMs < 0L || nowMs > MAX_SEQ - EXPIRY_MS) throw ManifestUnavailable(null, \"the clock $nowMs is outside the range a presentation can carry\")", ""),
 ]
 
 
@@ -165,7 +195,7 @@ def expected_lines():
     """What the vector files say, for the families whose verdict is a plain ok / reject CODE."""
     out = {}
     conf = os.path.join(LAB, "conformance")
-    for rel in ("manifest/M02-verify-accept.json", "manifest/M03-verify-reject.json"):
+    for rel in ("manifest/M02-verify-accept.json", "manifest/M03-verify-reject.json", "manifest/M03-verify-reject-fx.json"):
         with open(os.path.join(conf, rel), encoding="utf-8") as f:
             for v in json.load(f)["vectors"]:
                 e = v["expect"]

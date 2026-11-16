@@ -2,6 +2,7 @@ package xyz.mdhv.asom.desktop.win.exec
 
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import xyz.mdhv.asom.desktop.win.api.ProcessRunner
 import xyz.mdhv.asom.desktop.win.api.RunResult
 
@@ -11,9 +12,13 @@ import xyz.mdhv.asom.desktop.win.api.RunResult
  * begin with:
  *  - `netsh advfirewall firewall show rule ...` (the firewall gate's listing);
  *  - `powercfg /query ...` (the lid-close action for `asom doctor`).
- * Anything else is refused. The output is capped at 8 MiB.
+ * Anything else is refused. The output is capped at 8 MiB, and a result that hit the cap says so ([RunResult.truncated]).
  */
-class SystemProcessRunner(systemRoot: String) : ProcessRunner {
+class SystemProcessRunner(
+    systemRoot: String,
+    private val maxOutput: Int = MAX_OUTPUT,
+    private val start: (List<String>) -> Process = { ProcessBuilder(it).redirectErrorStream(true).start() },
+) : ProcessRunner {
     private val allowed: Map<String, List<String>> = mapOf(
         "$systemRoot\\System32\\netsh.exe".lowercase() to listOf("advfirewall", "firewall", "show", "rule"),
         "$systemRoot\\System32\\powercfg.exe".lowercase() to listOf("/query"),
@@ -29,11 +34,20 @@ class SystemProcessRunner(systemRoot: String) : ProcessRunner {
 
     override fun run(executable: String, args: List<String>, timeoutMs: Long): RunResult {
         refusal(executable, args)?.let { throw SecurityException(it) }
-        val p = ProcessBuilder(listOf(executable) + args).redirectErrorStream(true).start()
+        val p = start(listOf(executable) + args)
         val out = ByteArrayOutputStream()
+        val truncated = AtomicBoolean(false)
         val reader = Thread({
             try {
-                out.write(p.inputStream.readNBytes(MAX_OUTPUT))
+                // One byte past the cap tells "exactly the cap" from "more than the cap".
+                val got = p.inputStream.readNBytes(maxOutput + 1)
+                if (got.size > maxOutput) {
+                    truncated.set(true)
+                    out.write(got, 0, maxOutput)
+                    p.destroyForcibly()
+                } else {
+                    out.write(got)
+                }
             } catch (_: Exception) {
             }
         }, "asom-exec-reader")
@@ -42,7 +56,7 @@ class SystemProcessRunner(systemRoot: String) : ProcessRunner {
         val finished = p.waitFor(timeoutMs, TimeUnit.MILLISECONDS)
         if (!finished) p.destroyForcibly()
         reader.join(2_000)
-        return RunResult(if (finished) p.exitValue() else -1, out.toByteArray(), timedOut = !finished)
+        return RunResult(if (finished) p.exitValue() else -1, out.toByteArray(), timedOut = !finished && !truncated.get(), truncated = truncated.get())
     }
 
     companion object {

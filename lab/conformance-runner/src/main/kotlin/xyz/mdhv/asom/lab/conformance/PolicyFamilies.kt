@@ -180,7 +180,7 @@ class W07Checker : FamilyChecker("W07") {
 class W07pChecker : FamilyChecker("W07p") {
     override val requiredLaws = setOf(
         "fsm-trace", "pf-trace", "classify-presence", "classify-condition", "classify-consent", "classify-pf-only-reject", "decision-table", "decision-presence-code",
-        "wire-diff-empty", "wire-diff-fsm-queue", "presence-drain-same-step", "hold-down-boundary", "condition-no-hold-down",
+        "decision-not-serving", "decision-session-aged", "wire-diff-empty", "wire-diff-fsm-queue", "presence-drain-same-step", "hold-down-boundary", "condition-no-hold-down",
     )
 
     override fun observe(v: Vector): Observed {
@@ -263,12 +263,17 @@ class W07pChecker : FamilyChecker("W07p") {
             modelAllowedAndLoadable = s.bool("modelAllowedAndLoadable"), limits = lim, servingConditionsOk = s.bool("servingConditionsOk"), presenceActive = s.bool("presenceActive"),
             presenceHoldRemainingMs = s.long("presenceHoldRemainingMs"), predictedThermalHold = s.bool("predictedThermalHold"), estStartMs = s.long("estStartMs"),
             inflight = s.long("inflight").toInt(), requestsThisMinute = s.long("requestsThisMinute").toInt(),
+            fsm = s.strOrNull("fsm")?.let { Fsm.valueOf(it) } ?: Fsm.SERVING, sessionAcceptsNew = s.bool("sessionAcceptsNew", true),
         )
         val d = LenderDecisionTable.decide(offer, sit)
         bump("decision-table")
         val wire = LenderWire.of(offer, d)
         val names = wire.members.map { it.first }
         if (names.any { it in setOf("queuePos", "estStartMs", "ttftMs", "totalMs", "usage") }) throw LawViolation("the decision's wire form carries a field that moves with local use (LP-1)")
+        if (sit.fsm != Fsm.SERVING && d.reply is LenderReply.Accept) throw LawViolation("a lender whose availability is ${sit.fsm} accepted an offer")
+        if (!sit.sessionAcceptsNew && d.reply is LenderReply.Accept) throw LawViolation("a session past its maximum age accepted an offer")
+        if (sit.fsm != Fsm.SERVING && d.row == "6") bump("decision-not-serving")
+        if (!sit.sessionAcceptsNew && d.row == "6c") bump("decision-session-aged")
         if (sit.presenceActive && d.row == "6") {
             val r = d.reply as? LenderReply.Decline ?: throw LawViolation("a presence cause did not decline")
             if (r.code != DeclineCode.PEER_UNAVAILABLE) throw LawViolation("a presence cause must decline PEER_UNAVAILABLE, got ${r.code}")

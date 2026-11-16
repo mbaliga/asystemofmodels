@@ -124,6 +124,7 @@ if [ "$kind" = "deb" ] || [ "$kind" = "rpm" ]; then
   [ -f /usr/lib/systemd/system/asom.service ] && [ -f /usr/lib/systemd/user/asom.service ] && ok "both units are installed" || bad "units missing"
   wants="$(find /etc/systemd /usr/lib/systemd /lib/systemd -path '*.wants/*asom*' 2>/dev/null)"
   [ -z "$wants" ] && ok "no .wants entry for asom anywhere: nothing is enabled (systemctl is-enabled is CI-VM-only)" || bad "enablement entries: $wants"
+  grep -qx 'ExecStart=/opt/asom/current/bin/asom-node --mode=user' /usr/lib/systemd/user/asom.service && ok "the packaged user unit runs /opt/asom, not a home path" || bad "the packaged user unit does not run /opt/asom"
   getent passwd asom >/dev/null && ok "user asom exists (systemd-sysusers ran in postinstall)" || bad "user asom was not created"
   getent passwd asom | cut -d: -f7 | grep -q nologin && ok "user asom has a nologin shell" || bad "user asom has a login shell: $(getent passwd asom)"
   selftest_ok "$img package" /opt/asom/current/bin/asom-node /tmp/asom-home

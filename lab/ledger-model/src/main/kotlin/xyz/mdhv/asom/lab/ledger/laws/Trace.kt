@@ -51,6 +51,9 @@ data class PlainTap(override val node: String, val sessionId: String, val outByt
 /** Ground truth of a connection: the interface its socket was bound to, and the peer path the rules give for it. */
 data class ConnFacts(override val node: String, val sessionId: String, val expectedPath: xyz.mdhv.asom.lab.ledger.PeerPath?, val measured: Boolean) : Ev
 
+/** A cloud provider call: the `Authorization` value the call carried and the upstream error text, either of which can hold a key (law L-L8). */
+data class ProviderCall(override val node: String, val requestId: String, val attemptId: String, val authorization: String, val errorText: String?) : Ev
+
 /** A fuzzed request body, the secrets the ledger must never hold, and the display name of a device (law L-L8). */
 data class Secrets(override val node: String, val bodies: List<String>, val keys: List<String>, val displayNames: List<String>) : Ev
 

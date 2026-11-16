@@ -79,4 +79,37 @@ class PowerProbeTest {
         assertNull(r.batteryPercent)
         assertNull(r.batteryBand)
     }
+
+    /**
+     * HLU-6: "cannot read" is not "no battery". A readable battery-free tree (or no power_supply class at all, as on a VM or a
+     * desktop board) is AC; a tree that cannot be listed, or an entry that cannot be classified, is UNKNOWN, which blocks lending
+     * ("power-unknown") instead of letting a laptop on battery pass as a desktop.
+     */
+    @Test
+    fun `an unreadable or unclassifiable power tree is unknown, a readable battery-free one is ac`() {
+        val tmp = java.nio.file.Files.createTempDirectory("asom-power-")
+        try {
+            val notADir = java.nio.file.Files.createFile(tmp.resolve("power_supply"))
+            val r1 = PowerProbe(RealFileSource(), notADir.toString()).read()
+            assertEquals(PowerSource.UNKNOWN, r1.source, "a power_supply path that cannot be listed (not ENOENT) is unknown")
+            assertFalse(r1.hasBattery)
+
+            val absent = PowerProbe(RealFileSource(), tmp.resolve("no-such-class").toString()).read()
+            assertEquals(PowerSource.AC, absent.source, "no power_supply class at all: nothing to read, a desktop or VM")
+
+            val empty = java.nio.file.Files.createDirectory(tmp.resolve("empty"))
+            val r3 = PowerProbe(RealFileSource(), empty.toString()).read()
+            assertEquals(PowerSource.AC, r3.source, "a readable tree with no supply: ac")
+            assertFalse(r3.hasBattery)
+        } finally {
+            tmp.toFile().deleteRecursively()
+        }
+
+        val noType = MapFileSource(mapOf("/sys/class/power_supply/BAT0/capacity" to "55\n", "/sys/class/power_supply/BAT0/status" to "Discharging\n"))
+        assertEquals(PowerSource.UNKNOWN, PowerProbe(noType).read().source, "an entry whose type cannot be read might be the battery")
+        val deviceNoType = MapFileSource(mapOf("/sys/class/power_supply/hid-x-battery/scope" to "Device\n", "/sys/class/power_supply/hid-x-battery/capacity" to "15\n"))
+        assertEquals(PowerSource.AC, PowerProbe(deviceNoType).read().source, "a peripheral (scope=Device) is ignored whatever its type")
+        assertEquals(PowerSource.UNKNOWN, PowerProbe.reduce(listOf(supply("x", null))).source)
+        assertEquals(PowerSource.BATTERY, PowerProbe.reduce(listOf(supply("b", "Battery", cap = 50), supply("m", "Mains", online = 0))).source, "a classified tree is unchanged")
+    }
 }

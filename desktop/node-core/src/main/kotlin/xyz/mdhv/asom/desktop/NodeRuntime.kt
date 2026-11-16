@@ -39,7 +39,10 @@ class NodeRuntime(
     }
 
     /** The owner's explicit "start lending". Only ever called from an owner action. */
-    fun enableLending(): FsmStep = apply(FsmEvent.USER_ENABLE)
+    fun enableLending(): FsmStep {
+        if (fsm.state == LenderState.OFF) governor.resettle()
+        return apply(FsmEvent.USER_ENABLE)
+    }
 
     fun disableLending(): FsmStep = apply(FsmEvent.USER_DISABLE)
 
@@ -49,9 +52,10 @@ class NodeRuntime(
         val power = platform.power().read()
         val thermal = platform.thermal().read()
         val cpu = runCatching { platform.presence().sample().cpuOtherPermille }.getOrNull()
-        val gpu = runCatching { platform.gpuContention()?.sample()?.otherBusyPermille }.getOrNull()
+        val gpuPort = platform.gpuContention()
+        val gpu = runCatching { gpuPort?.sample()?.otherBusyPermille }.getOrNull()
         val signals = (platform as? HostSignalsProvider)?.hostSignals() ?: HostSignals()
-        val eval = governor.evaluate(now, Readings(power, thermal, signals, cpu, gpu))
+        val eval = governor.evaluate(now, Readings(power, thermal, signals, cpu, gpu, gpuCounterPresent = gpuPort != null))
         return eval.events.map { apply(it) }
     }
 

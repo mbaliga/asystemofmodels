@@ -111,6 +111,8 @@ class SimConnection(
     private val measured: Boolean,
     fault: EngineFault,
     val expectedPath: PeerPath?,
+    /** What the oracle (law L-L10) takes as the interface's path; independent of the rule that wrote the rows. Defaults to [expectedPath]. */
+    private val truthPath: PeerPath? = expectedPath,
 ) {
     var rawBytes: Long = 0
         private set
@@ -211,11 +213,11 @@ class SimConnection(
     fun finalizeTaps() {
         trace.add(Tap(nodeA, sidA, rawBytes))
         trace.add(PlainTap(nodeA, sidA, plainA.out, plainA.inn, plainA.flushOut, plainA.flushIn))
-        trace.add(ConnFacts(nodeA, sidA, expectedPath, measured))
+        trace.add(ConnFacts(nodeA, sidA, truthPath, measured))
         if (nodeB != null && sidB != null) {
             trace.add(Tap(nodeB, sidB!!, rawBytes))
             trace.add(PlainTap(nodeB, sidB!!, plainB.out, plainB.inn, plainB.flushOut, plainB.flushIn))
-            trace.add(ConnFacts(nodeB, sidB!!, expectedPath, measured))
+            trace.add(ConnFacts(nodeB, sidB!!, truthPath, measured))
         }
     }
 }

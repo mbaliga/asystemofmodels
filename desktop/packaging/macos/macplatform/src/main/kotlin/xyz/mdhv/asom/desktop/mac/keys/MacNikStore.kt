@@ -2,6 +2,7 @@ package xyz.mdhv.asom.desktop.mac.keys
 
 import java.nio.file.Files
 import java.nio.file.LinkOption
+import java.security.SecureRandom
 import xyz.mdhv.asom.desktop.KeyStorage
 import xyz.mdhv.asom.desktop.NikStore
 import xyz.mdhv.asom.desktop.NodePaths
@@ -27,6 +28,8 @@ class MacNikStore(
 ) : NikStore {
     @Volatile
     private var resolved: KeyStorage? = null
+
+    private val random = SecureRandom()
 
     /** The tier of the existing key, or `unknown` when there is none or it cannot be inspected. Never creates, never signs. */
     override val keyStorage: KeyStorage
@@ -69,6 +72,14 @@ class MacNikStore(
                 throw NikUnavailableException("the Secure Enclave self-test failed to run: ${e.message ?: e::class.simpleName}", e)
             }
             if (!ok) throw NikUnavailableException("the Secure Enclave self-test did not verify")
+            // The helper's self-test checks the blob against the blob's OWN public key. The public key the node presents to peers is
+            // the one stored beside it, so that one is checked too: a fresh challenge signed through the blob must verify with it.
+            val problem = try {
+                NikTierSelector.selfTest(k, ByteArray(CHALLENGE_BYTES).also(random::nextBytes))
+            } catch (e: Exception) {
+                throw NikUnavailableException("the stored public key could not be checked against the blob: ${e.message ?: e::class.simpleName}", e)
+            }
+            if (problem != null) throw NikUnavailableException("the stored public key does not belong to the blob: $problem")
             k
         } else {
             FileNik.open(paths.identityDir, ownUid()) ?: throw NikUnavailableException("nik.p8 vanished while opening")
@@ -93,5 +104,9 @@ class MacNikStore(
         )
         resolved = selection.tier.keyStorage
         return selection
+    }
+
+    private companion object {
+        const val CHALLENGE_BYTES = 32
     }
 }

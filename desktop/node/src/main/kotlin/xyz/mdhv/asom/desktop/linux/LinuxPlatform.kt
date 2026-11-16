@@ -29,6 +29,7 @@ import xyz.mdhv.asom.desktop.governor.HostRules
 import xyz.mdhv.asom.desktop.governor.HostRulesProvider
 import xyz.mdhv.asom.desktop.governor.HostSignals
 import xyz.mdhv.asom.desktop.governor.HostSignalsProvider
+import xyz.mdhv.asom.desktop.governor.SettlesBeforeServing
 import xyz.mdhv.asom.desktop.linux.host.DirMeta
 import xyz.mdhv.asom.desktop.linux.host.HostCheckInput
 import xyz.mdhv.asom.desktop.linux.host.LinuxHostModeRules
@@ -92,7 +93,7 @@ class LinuxPlatform(
     private val thresholds: NodeConfig = NodeConfig(),
     private val busSocket: Path = Path.of(MiniDbus.DEFAULT_SYSTEM_BUS),
     private val inhibitCommand: List<String> = listOf("systemd-inhibit"),
-) : DesktopPlatform, HostRulesProvider, HostSignalsProvider {
+) : DesktopPlatform, HostRulesProvider, HostSignalsProvider, SettlesBeforeServing {
     override val id: String = "linux"
 
     private val osRelease: OsRelease by lazy { OsRelease.parse(fs.read("/etc/os-release")) }

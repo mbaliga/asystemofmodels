@@ -22,12 +22,29 @@ Item {
         return lines.join("\n")
     }
 
+    // What is true of this build only: UT-0 sends nodeTag "none" and has no keys and no release (ERRATA ERR-UT-CTL-2), so it must not
+    // describe a key file, a copied identity or published release values (ERRATA ERR-FX-UT-4).
+    function aboutSummary() {
+        var m = page.model
+        var sums = "Program checksum " + m.process.jarSha256 + ". Runtime list checksum " + m.process.runtimeManifestSha256 + "."
+        if (m.nodeTag === "")
+            return "About: the node has not started. " + sums
+        if (m.nodeTag === "none")
+            return "About: no node identity in this build (UT-0): it holds no keys, so there is nothing to copy and nothing to pair with yet. " + sums
+        var storage = m.keyStorage === "file"
+            ? "node key storage \"file\" (a file in this app's private folder; anything running as you outside the app's confinement can read it). "
+            : "node key storage \"" + m.keyStorage + "\". "
+        return "About: " + storage + sums + " Compare them with the values published beside the release. " +
+               "Copying this app's data folder to another device copies the node's identity: pair again instead."
+    }
+
     Column {
         anchors { fill: parent; margins: Tokens.gu }
         spacing: Tokens.gu
 
         Label {
             objectName: "failureText"
+            textFormat: Text.PlainText
             visible: page.model.failure !== ""
             width: parent.width
             wrapMode: Text.WordWrap
@@ -36,6 +53,7 @@ Item {
             text: page.model.failureText
         }
         Label {
+            textFormat: Text.PlainText
             width: parent.width
             wrapMode: Text.WordWrap
             color: Tokens.text
@@ -50,6 +68,7 @@ Item {
         }
         Label {
             objectName: "selfTestText"
+            textFormat: Text.PlainText
             width: parent.width
             wrapMode: Text.WordWrap
             color: Tokens.text
@@ -57,14 +76,13 @@ Item {
             text: page.selfTestSummary(page.model.selfTestResult)
         }
         Label {
+            objectName: "aboutText"
+            textFormat: Text.PlainText
             width: parent.width
             wrapMode: Text.WordWrap
             color: Tokens.textMuted
             font.pixelSize: Tokens.fontSmall
-            text: "About: node key storage \"" + (page.model.keyStorage === "" ? "not started" : page.model.keyStorage) +
-                  "\" (a file in this app's private folder; anything running as you outside the app's confinement can read it). " +
-                  "Program checksum " + page.model.process.jarSha256 + ". Runtime list checksum " + page.model.process.runtimeManifestSha256 +
-                  ". Compare them with the values published beside the release. Copying this app's data folder to another device copies the node's identity: pair again instead."
+            text: page.aboutSummary()
         }
     }
 }

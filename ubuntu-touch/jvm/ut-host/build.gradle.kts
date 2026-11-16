@@ -36,7 +36,7 @@ val utVectorList = tasks.register("utVectorList") {
     outputs.dir(generatedResources)
     doLast {
         val names = fileTree(vectorRoot) { include(vectorGlobs) }.files.map { it.relativeTo(vectorRoot).invariantSeparatorsPath }.sorted()
-        check(names.size == 4) { "expected 4 vector files (M01 x2, M02, M03), found $names" }
+        check(names.size == 5) { "expected 5 vector files (M01 x2, M02, M03 x2), found $names" }
         val out = generatedResources.get().file("asom-ut/vectors/FILES.txt").asFile
         out.parentFile.mkdirs()
         out.writeText(names.joinToString("\n") + "\n")

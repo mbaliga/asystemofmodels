@@ -1,5 +1,7 @@
 # Final-review findings on revision 3 (round 3) — NOT YET DISPOSITIONED
 
+**Revision 4 (2026-10-07):** every finding below is now dispositioned in `REVISION_4.md` §1 (29 adopted in full, 6 in part, 4 put to the owner in `OWNER_DECISIONS.md`, none rejected). The findings themselves are kept unchanged as the record.
+
 Recorded at the point the build phase began (2026-09-30). The design brief and specs are at revision 3; these 39 findings
 were raised against it and have not been folded into a revision 4. Builders treat them as KNOWN SPEC DEFECTS: where one
 touches what they implement they must choose the conservative reading, record the choice in their track's ERRATA file,

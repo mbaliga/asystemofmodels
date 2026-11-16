@@ -146,8 +146,8 @@ object BenchEnums {
     val powerSources = setOf("ac", "battery")
     val startThermals = setOf("cool", "warm", "hot")
     val loadColdness = setOf("evicted", "best-effort", "unknown")
-    val abortReasons = setOf("THERMAL_HARD", "BATTERY_TEMP", "USER_STOP", "BACKGROUNDED", "CHARGER_REMOVED", "MEMORY_PRESSURE", "WALL_CAP", "PROBE_LOST", "DEVICE_BUSY")
-    val endReasons = setOf("PLATEAU", "TIME_CAP", "THERMAL_SOFT", "THERMAL_HARD", "BATTERY_TEMP", "USER_STOP", "BACKGROUNDED", "CHARGER_REMOVED", "MEMORY_PRESSURE", "WALL_CAP", "YIELDED", "DEVICE_BUSY", "PROBE_LOST")
+    val abortReasons = setOf("THERMAL_HARD", "BATTERY_TEMP", "BATTERY_LOW", "POWER_SAVER", "USER_STOP", "BACKGROUNDED", "CHARGER_REMOVED", "MEMORY_PRESSURE", "WALL_CAP", "PROBE_LOST", "DEVICE_BUSY")
+    val endReasons = setOf("PLATEAU", "TIME_CAP", "THERMAL_SOFT", "THERMAL_HARD", "BATTERY_TEMP", "BATTERY_LOW", "POWER_SAVER", "USER_STOP", "BACKGROUNDED", "CHARGER_REMOVED", "MEMORY_PRESSURE", "WALL_CAP", "YIELDED", "DEVICE_BUSY", "PROBE_LOST")
     val tiers = TIER_ORDER.toSet()
 }
 
@@ -266,6 +266,7 @@ object BenchCodec {
     private fun decodeTest(r: Rd): BTest = r.scope {
         val name = str("test", StrRule.ANY_SHORT)
         val spec = TestSpec.parse(name) ?: throw SchemaViolation("$path.test", "'$name' is not a supported pp<P>@d<D> or tg<N>@d<D> test")
+        if (spec.isPrefill && spec.depth != 0L) throw SchemaViolation("$path.test", "prefill at depth cannot be carried by a manifest (benchmark.md 13.4 R5)")
         val samples = arrInts("samples", 1, 16, 1, SPAN_MAX)
         val whole = wholeSpans(spec, samples.size)
         BTest(spec, samples, whole)

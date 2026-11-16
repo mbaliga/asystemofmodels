@@ -127,6 +127,28 @@ class FakeHelper(
     var lost: String? = null
     override val alive: Boolean get() = lost == null
 
+    @Volatile
+    override var epoch: Long = 1L
+        private set
+
+    /** What the helper process itself holds: the power assertion lives in the process and dies with it. */
+    @Volatile
+    var assertionHeld: Boolean = false
+        private set
+
+    /** The helper process dies: its assertion goes with it, and every call fails until [restart]. */
+    fun die(reason: String = "the helper exited") {
+        lost = reason
+        assertionHeld = false
+    }
+
+    /** A new helper process answers: it starts with no assertion, and the epoch moves on. */
+    fun restart() {
+        lost = null
+        assertionHeld = false
+        epoch++
+    }
+
     /** Ops that answer with this failure instead of the fixture. */
     val failures = HashMap<String, Reply.Failure>()
 
@@ -141,6 +163,10 @@ class FakeHelper(
         calls += request.op
         failures[request.op]?.let { return it }
         val reply = handler(decoded) ?: enclave.answer(decoded) ?: FixtureMachine.answer(decoded)
+        if (reply is Reply.Success) {
+            if (request.op == "assert.hold") assertionHeld = true
+            if (request.op == "assert.release") assertionHeld = false
+        }
         return HelperCodec.decodeReply(request.op, HelperCodec.encode(withoutId(reply)))
     }
 

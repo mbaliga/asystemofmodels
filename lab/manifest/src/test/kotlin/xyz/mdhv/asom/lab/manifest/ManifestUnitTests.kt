@@ -705,8 +705,10 @@ class BoundaryTest {
         val c = Counter("key storage tiers")
         for (storage in listOf("strongbox", "tee", "secure-enclave", "tpm")) {
             val d = F.container(DocSpec(F.payloadOf(F.ownObj(F.ownBody(storage = storage)))))
-            val v = F.verify(d, F.ctxMesh(requiredTier = Tier.A1)) as Verified
+            // the A1 LABEL is the self-reported claim; it satisfies no requirement (ERR-FX-CV3, see SelfReportedTierTest)
+            val v = F.verify(d, F.ctxMesh()) as Verified
             assertEquals(Tier.A1, v.tier, storage)
+            assertEquals(RejectCode.TIER_INSUFFICIENT, F.rejectOf(F.verify(d, F.ctxMesh(requiredTier = Tier.A1))), storage)
             c.hit()
         }
         for (storage in listOf("os-keystore", "file", "unknown")) {

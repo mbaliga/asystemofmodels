@@ -103,7 +103,7 @@ final class EnvelopeTests: XCTestCase {
             ("signature entry is a string", try edited { $0.signaturesValueOverride = .array([.string("x")]) }, mesh1, "CONTAINER_INVALID"),
             ("signature entry has no sig", try edited { $0.signaturesValueOverride = .array([.object([JMember(name: "keyid", value: .string("k"))])]) }, mesh1, "CONTAINER_INVALID"),
             ("keyid is a number", try edited { $0.signaturesValueOverride = .array([.object([JMember(name: "keyid", value: .int(1)), JMember(name: "sig", value: .string(""))])]) }, mesh1, "CONTAINER_INVALID"),
-            ("FILE signer.spki is a number", try edited { $0.signerSpkiB64 = nil; $0.extraMembers = [JMember(name: "signer", value: .object([JMember(name: "spki", value: .int(1))]))] }, DSSEContext(mode: .file), "CONTAINER_INVALID"),
+            ("FILE signer.spki is a number", try edited { $0.signerSpkiB64 = nil; $0.extraMembers = [JMember(name: "signer", value: .object([JMember(name: "spki", value: .int(1))]))] }, DSSEContext(mode: .file, productionKeys: false), "CONTAINER_INVALID"),
             ("version 2", try edited { $0.version = .int(2) }, mesh1, "CONTAINER_VERSION_UNKNOWN"),
             ("version is a string", try edited { $0.version = .string("1") }, mesh1, "CONTAINER_VERSION_UNKNOWN"),
             ("version is true", try edited { $0.version = .bool(true) }, mesh1, "CONTAINER_VERSION_UNKNOWN"),
@@ -133,25 +133,25 @@ final class EnvelopeTests: XCTestCase {
             ("sig of 65 bytes", try edited { $0.signatures = [sig1 + [0]] }, mesh1, "SIGNATURE_ENCODING"),
             ("DER signature (M03-102)", try edited { $0.signatures = [derSig1] }, mesh1, "SIGNATURE_ENCODING"),
             ("empty signature", try edited { $0.signatures = [[]] }, mesh1, "SIGNATURE_ENCODING"),
-            ("MESH without a pinned key", plain, DSSEContext(mode: .mesh), "KEY_NOT_PINNED"),
+            ("MESH without a pinned key", plain, DSSEContext(mode: .mesh, productionKeys: false), "KEY_NOT_PINNED"),
             ("signed by key2, keyid key2, pinned key1 (M03-103)", try container(key2), mesh1, "KEY_NOT_PINNED"),
             ("signed by key1, keyid names key2", try edited { $0.keyid = key2.nodeId }, mesh1, "KEY_NOT_PINNED"),
             ("keyid differs by one character", try edited { $0.keyid = String(key1.nodeId.dropLast()) + "A" }, mesh1, "KEY_NOT_PINNED"),
-            ("FILE without signer.spki (M03-127)", try edited { $0.signerSpkiB64 = nil }, DSSEContext(mode: .file), "KEY_NOT_PINNED"),
-            ("FILE keyid disagrees with signer.spki", try edited { $0.keyid = key2.nodeId }, DSSEContext(mode: .file), "KEY_NOT_PINNED"),
+            ("FILE without signer.spki (M03-127)", try edited { $0.signerSpkiB64 = nil }, DSSEContext(mode: .file, productionKeys: false), "KEY_NOT_PINNED"),
+            ("FILE keyid disagrees with signer.spki", try edited { $0.keyid = key2.nodeId }, DSSEContext(mode: .file, productionKeys: false), "KEY_NOT_PINNED"),
             ("key is checked before the signature", try edited { $0.keyid = key2.nodeId; $0.signatures = [sig1.map { ~$0 }] }, mesh1, "KEY_NOT_PINNED"),
-            ("FILE signer.spki is not base64", try edited { $0.signerSpkiB64 = "***" }, DSSEContext(mode: .file), "ENCODING"),
-            ("encoding is checked before key selection", try edited { $0.signerSpkiB64 = nil; $0.payloadTextOverride = "!" }, DSSEContext(mode: .file), "ENCODING"),
-            ("pinned key is compressed", noKeyid, DSSEContext(mode: .mesh, pinnedSpki: compressedSpki), "ALG_UNSUPPORTED"),
-            ("pinned key is compressed, keyid present: the keyid is checked first", plain, DSSEContext(mode: .mesh, pinnedSpki: compressedSpki), "KEY_NOT_PINNED"),
-            ("pinned key has a trailing byte", noKeyid, DSSEContext(mode: .mesh, pinnedSpki: key1.spki + [0]), "ALG_UNSUPPORTED"),
-            ("FILE signer.spki compressed (M03-136)", try edited { $0.signerSpkiB64 = Base64Strict.encode(compressedSpki); $0.keyid = nil }, DSSEContext(mode: .file), "ALG_UNSUPPORTED"),
-            ("FILE signer.spki with trailing byte (M03-137)", try edited { $0.signerSpkiB64 = Base64Strict.encode(key1.spki + [0]); $0.keyid = nil }, DSSEContext(mode: .file), "ALG_UNSUPPORTED"),
+            ("FILE signer.spki is not base64", try edited { $0.signerSpkiB64 = "***" }, DSSEContext(mode: .file, productionKeys: false), "ENCODING"),
+            ("encoding is checked before key selection", try edited { $0.signerSpkiB64 = nil; $0.payloadTextOverride = "!" }, DSSEContext(mode: .file, productionKeys: false), "ENCODING"),
+            ("pinned key is compressed", noKeyid, DSSEContext(mode: .mesh, pinnedSpki: compressedSpki, productionKeys: false), "ALG_UNSUPPORTED"),
+            ("pinned key is compressed, keyid present: the keyid is checked first", plain, DSSEContext(mode: .mesh, pinnedSpki: compressedSpki, productionKeys: false), "KEY_NOT_PINNED"),
+            ("pinned key has a trailing byte", noKeyid, DSSEContext(mode: .mesh, pinnedSpki: key1.spki + [0], productionKeys: false), "ALG_UNSUPPORTED"),
+            ("FILE signer.spki compressed (M03-136)", try edited { $0.signerSpkiB64 = Base64Strict.encode(compressedSpki); $0.keyid = nil }, DSSEContext(mode: .file, productionKeys: false), "ALG_UNSUPPORTED"),
+            ("FILE signer.spki with trailing byte (M03-137)", try edited { $0.signerSpkiB64 = Base64Strict.encode(key1.spki + [0]); $0.keyid = nil }, DSSEContext(mode: .file, productionKeys: false), "ALG_UNSUPPORTED"),
             ("production mode, key1 (M03-141)", plain, mesh(key1, production: true), "TEST_ONLY_KEY"),
             ("production mode, key2 in FILE mode", try container(key2), DSSEContext(mode: .file, productionKeys: true), "TEST_ONLY_KEY"),
-            ("FILE fingerprint of another key", plain, DSSEContext(mode: .file, comparedFingerprint: NodeIdentity.exportFingerprintDisplay(spki: key2.spki), compareMethod: .typed), "FINGERPRINT_MISMATCH"),
-            ("FILE fingerprint is checked before the signature", try edited { $0.signatures = [sig1.map { ~$0 }] }, DSSEContext(mode: .file, comparedFingerprint: NodeIdentity.exportFingerprintDisplay(spki: key2.spki), compareMethod: .qr), "FINGERPRINT_MISMATCH"),
-            ("FILE empty typed fingerprint", plain, DSSEContext(mode: .file, comparedFingerprint: "", compareMethod: .typed), "FINGERPRINT_MISMATCH"),
+            ("FILE fingerprint of another key", plain, DSSEContext(mode: .file, comparedFingerprint: NodeIdentity.exportFingerprintDisplay(spki: key2.spki), compareMethod: .typed, productionKeys: false), "FINGERPRINT_MISMATCH"),
+            ("FILE fingerprint is checked before the signature", try edited { $0.signatures = [sig1.map { ~$0 }] }, DSSEContext(mode: .file, comparedFingerprint: NodeIdentity.exportFingerprintDisplay(spki: key2.spki), compareMethod: .qr, productionKeys: false), "FINGERPRINT_MISMATCH"),
+            ("FILE empty typed fingerprint", plain, DSSEContext(mode: .file, comparedFingerprint: "", compareMethod: .typed, productionKeys: false), "FINGERPRINT_MISMATCH"),
             ("payload changed after signing (M03-101)", try container(key1, payload: b("{\"hello\":\"world\",\"n\":2}"), signedPayload: payload), mesh1, "SIGNATURE_INVALID"),
             ("signed under another type", try container(key1, signedType: "application/vnd.asom.key-rollover.v1+json"), mesh1, "SIGNATURE_INVALID"),
             ("signed by key2, no keyid, pinned key1", try container(key2) { $0.keyid = nil }, mesh1, "SIGNATURE_INVALID"),
@@ -201,7 +201,7 @@ final class EnvelopeTests: XCTestCase {
             let typed = try DSSEEnvelope.verify(document: doc, context: DSSEContext(mode: .file, comparedFingerprint: fingerprint, compareMethod: .typed, productionKeys: true)).get()
             XCTAssertEqual(typed.pin, .pinnedByFingerprint(.typed))
             let scanned = try DSSEEnvelope.verify(document: doc, context: DSSEContext(
-                mode: .file, comparedFingerprint: fingerprint.lowercased().replacingOccurrences(of: "-", with: " "), compareMethod: .qr
+                mode: .file, comparedFingerprint: fingerprint.lowercased().replacingOccurrences(of: "-", with: " "), compareMethod: .qr, productionKeys: false
             )).get()
             XCTAssertEqual(scanned.pin, .pinnedByFingerprint(.qr))
             XCTAssertEqual(scanned.nodeId, NodeIdentity.nodeId(spki: export.spki))
@@ -214,9 +214,9 @@ final class EnvelopeTests: XCTestCase {
         let key1 = try loadTestKey("key1")
         let key2 = try loadTestKey("key2")
         let doc = try DSSEEnvelope.seal(payload: payload, signer: key1.signer)
-        let mesh = try DSSEEnvelope.verify(document: doc, context: DSSEContext(mode: .mesh, pinnedSpki: key1.spki, comparedFingerprint: "WRONG", compareMethod: .typed)).get()
+        let mesh = try DSSEEnvelope.verify(document: doc, context: DSSEContext(mode: .mesh, pinnedSpki: key1.spki, comparedFingerprint: "WRONG", compareMethod: .typed, productionKeys: false)).get()
         XCTAssertEqual(mesh.pin, .pinned)
-        let file = try DSSEEnvelope.verify(document: doc, context: DSSEContext(mode: .file, pinnedSpki: key2.spki)).get()
+        let file = try DSSEEnvelope.verify(document: doc, context: DSSEContext(mode: .file, pinnedSpki: key2.spki, productionKeys: false)).get()
         XCTAssertEqual(file.signerSpki, key1.spki, "FILE reads the key from the container, not from the pinned key")
         XCTAssertEqual(file.pin, .signerUnverified)
     }

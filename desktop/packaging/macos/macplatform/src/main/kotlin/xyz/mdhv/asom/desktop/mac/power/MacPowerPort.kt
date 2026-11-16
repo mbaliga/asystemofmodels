@@ -54,7 +54,9 @@ object PowerMapping {
  *
  * Keep-awake while SERVING is ONE assertion named `asom: lending compute to your paired devices`, `PreventUserIdleSystemSleep`,
  * never `PreventSystemSleep` (macos.md 2.1). Several holds share it: the helper is asked for it on the first hold and told to
- * release it on the last release. macOS has no delay or block lock distinction, so both [LockKind]s take the same assertion.
+ * release it on the last release. The assertion belongs to the helper PROCESS: when that dies (and is restarted on a later call)
+ * the assertion is gone, so a hold or a power read that finds a different helper than the one the assertion was placed on asks
+ * the new helper for it again (mac ERRATA ERR-FX-HWM-9). macOS has no delay or block lock distinction, so both [LockKind]s take the same assertion.
  * It cannot prevent forced sleep (lid, Apple menu, low battery, thermal emergency) and does not try to; the sleep watcher drains.
  * A refused hold is a state, not an error loop (linux.md 3.3, as on the other hosts): [hold] then returns a hold that holds
  * nothing and [lastHoldError] says why.
@@ -86,17 +88,42 @@ class MacPowerPort(
     /** Sleep acknowledgements sent so far (for the tests and `asom doctor`). */
     val acksSent = AtomicInteger()
 
-    override fun read(): PowerReading = try {
-        PowerMapping.map(client.power()).also { lastReadError = null }
-    } catch (e: Exception) {
-        lastReadError = e.message ?: e::class.simpleName
-        PowerMapping.unreadable()
+    /** The helper process the assertion was placed on. The assertion lives in that process and dies with it. */
+    private var assertionEpoch: Long = -1L
+
+    private fun placeAssertion() {
+        client.assertHold()
+        assertionEpoch = client.epoch
+    }
+
+    /** True when active holds rely on an assertion that a restarted (or dead) helper no longer has. */
+    private fun assertionStale(): Boolean = holds.get() > 0 && (!client.alive || assertionEpoch != client.epoch)
+
+    override fun read(): PowerReading {
+        val reading = try {
+            PowerMapping.map(client.power()).also { lastReadError = null }
+        } catch (e: Exception) {
+            lastReadError = e.message ?: e::class.simpleName
+            return PowerMapping.unreadable()
+        }
+        // A successful read means a helper answered, possibly a new one: put the assertion back for holds that are still active.
+        synchronized(lock) {
+            if (assertionStale()) {
+                try {
+                    placeAssertion()
+                    lastHoldError = null
+                } catch (e: Exception) {
+                    lastHoldError = e.message ?: e::class.simpleName
+                }
+            }
+        }
+        return reading
     }
 
     override fun hold(kind: LockKind): KeepAwakeHold {
         val ok = synchronized(lock) {
             try {
-                if (holds.get() == 0) client.assertHold()
+                if (holds.get() == 0 || assertionStale()) placeAssertion()
                 holds.incrementAndGet()
                 lastHoldError = null
                 true

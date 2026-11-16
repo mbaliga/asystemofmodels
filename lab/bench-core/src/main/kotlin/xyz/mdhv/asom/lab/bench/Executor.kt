@@ -8,7 +8,8 @@ object PinnedTexts {
     const val NUMERICS_TOKENS: Int = 1024
 }
 
-data class SessionOptions(val optInTiers: List<String> = emptyList(), val allowVirtual: Boolean = false, val sustainedToday: Boolean = false)
+/** Run options that are not consent: `--allow-virtual` (benchmark.md 11.2). What the user ticked (opt-in tiers, the rerun tick) is read from the [ConsentToken] only (R4-B-07). */
+data class SessionOptions(val allowVirtual: Boolean = false)
 
 sealed interface RunOutcome {
     /** [doc] carries the raw measurements; every statistic and sentence is derived from it later. */
@@ -80,7 +81,8 @@ class BenchSession(
         val best = p.bestSpinMicros() ?: baseline
         val contentionBefore = if (baseline > best) Checked.permille(baseline - best, best) else 0L
         trace += "SPIN baseline=$baseline contentionBeforePermille=$contentionBefore"
-        val pre = Preflight.check(host, plan, set, opts.optInTiers, opts.allowVirtual, contentionBefore, harness.shell)
+        val optInTiers = consent.optIns.filter { it in BenchEnums.tiers }.distinct().sortedBy { TIER_ORDER.indexOf(it) }
+        val pre = Preflight.check(host, plan, set, optInTiers, opts.allowVirtual, contentionBefore, harness.shell)
         if (!pre.ok) {
             trace += "PREFLIGHT refused ${pre.reasons.joinToString(",")}"
             gov.to(GState.IDLE)
@@ -160,7 +162,7 @@ class BenchSession(
             device = BDevice(dev.platform, dev.form, dev.maker, dev.model, dev.soc, dev.osVersion, dev.osBuild, dev.gpu, dev.gpuDriver, dev.memTotalBytes, dev.unifiedMemory, dev.virtualized),
             memory = BMemory(mem0.availBytes, mem0.processLimitBytes, mem0.gpuWorkingSetBytes, mem0.limitSource),
             run = BRun(
-                plan = plan.plan, optInTiers = opts.optInTiers.filter { it in BenchEnums.tiers }.distinct().sortedBy { TIER_ORDER.indexOf(it) },
+                plan = plan.plan, optInTiers = optInTiers,
                 startedAtMs = startEpoch, endedAtMs = maxOf(endEpoch, startEpoch), dayUtc = BenchCodec.dayOf(startEpoch), powerSource = power0.source,
                 batteryStartPermille = power0.levelPermille?.toLong(), startThermal = if (pre.startClass == "hot") "warm" else pre.startClass,
                 screenOn = presence0.screenOn, contentionBeforePermille = contentionBefore, contentionAfterPermille = contentionAfter, abort = abort,
@@ -324,6 +326,10 @@ class BenchSession(
 
     private fun runSustain(done: List<BTier>, form: String): BSustain? {
         val cfg = plan.sustain ?: return null
+        if (!consent.heatTestPermitted) {
+            trace += "SUSTAIN skipped (heat test not permitted: the rerun tick was not ticked)"
+            return null
+        }
         val candidates = done.filter { t ->
             val tg = t.test("tg128@d0") ?: return@filter false
             val v = Stats.stat(tg.samples.map { Checked.rate(128, it) }).value
@@ -349,11 +355,12 @@ class BenchSession(
         val t0 = now()
         var endReason: String
         var idx = 0
+        var base = t0
         val windowMicros = cfg.windowMs * 1000L
         fun draft(reason: String) = BSustain(pin.tier, cfg.windowMs, capMs, reason, onsetHeadroom(windows, headrooms), windows.toList())
         try {
             while (true) {
-                val winEnd = t0 + (idx + 1) * windowMicros
+                val winEnd = base + (idx + 1) * windowMicros
                 var tokens = 0L
                 var decMicros = 0L
                 var maxCode = 0
@@ -383,6 +390,20 @@ class BenchSession(
                     }
                     throw e
                 }
+                if (tokens == 0L) {
+                    // The window is dropped (the document needs 1 or more tokens in a window). While there is no window yet the grid restarts here, so the first kept window still starts at t = 0.
+                    if (windows.isEmpty()) {
+                        base = now()
+                        idx = 0
+                    } else {
+                        idx++
+                    }
+                    if ((now() - t0) / 1000L >= capMs) {
+                        endReason = "TIME_CAP"
+                        break
+                    }
+                    continue
+                }
                 windows += BWindow(idx * cfg.windowMs, tokens, maxOf(decMicros, 1L), maxCode)
                 headrooms += host.probes.thermal().headroom10sPermille?.toLong()
                 idx++
@@ -410,6 +431,10 @@ class BenchSession(
             throw e
         }
         cleanupModel(model)
+        if (windows.isEmpty()) {
+            trace += "SUSTAIN skipped (no window produced a token)"
+            return null
+        }
         trace += "SUSTAIN end reason=$endReason windows=${windows.size}"
         return draft(endReason)
     }

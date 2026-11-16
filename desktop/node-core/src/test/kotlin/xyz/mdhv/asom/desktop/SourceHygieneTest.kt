@@ -12,6 +12,17 @@ import kotlin.test.assertTrue
 class SourceHygieneTest {
     private companion object {
         const val CONTROL_SERVER = "ControlServer.kt"
+
+        /** The same pattern family as desktop/tools/check_law.py and lab/tools/check_law.py (its self-test compares them). */
+        val LISTENER = Regex(
+            "ServerSocket|DatagramSocket|DatagramChannel|MulticastSocket|embeddedServer|AsomServer\\(|HttpsServer|HttpServer" +
+                "|com\\.sun\\.net\\.httpserver",
+        )
+        val WILDCARD = Regex("(InetSocketAddress|getByName|getAllByName|bind)\\(\\s*\"(::|0:0:0:0:0:0:0:0)\"|InetSocketAddress\\(\\s*[\\w.]+\\s*\\)")
+        val DIAL = Regex(
+            "HttpClient|HttpURLConnection|HttpsURLConnection|openConnection\\(|\\.openStream\\(|\\bSocket\\(|SSLSocket|\\bURL\\(" +
+                "|SocketChannel\\.open\\([^)]*Inet|connect\\(\\s*(java\\.net\\.)?InetSocketAddress",
+        )
     }
 
     private val desktopDir: File = File(System.getProperty("asom.moduleDir") ?: error("asom.moduleDir not set")).parentFile
@@ -36,9 +47,44 @@ class SourceHygieneTest {
 
     @Test
     fun `nothing listens or binds in main sources except the one AF_UNIX control server`() {
-        val v = violations("listener API") { f, t -> f.name != CONTROL_SERVER && Regex("\\b(ServerSocket|ServerSocketChannel|DatagramSocket|embeddedServer|AsomServer\\()").containsMatchIn(t) } +
-            violations("wildcard address") { _, t -> "0.0.0.0" in t || Regex("\"::\"").containsMatchIn(t) }
+        val v = violations("listener API") { f, t -> f.name != CONTROL_SERVER && LISTENER.containsMatchIn(t) } +
+            violations("wildcard address") { _, t -> "0.0.0.0" in t || Regex("\"::\"").containsMatchIn(t) || WILDCARD.containsMatchIn(t) }
         assertTrue(v.isEmpty(), v.toString())
+    }
+
+    @Test
+    fun `nothing dials out from a main source`() {
+        val v = violations("outbound network API") { _, t -> DIAL.containsMatchIn(t) }
+        assertTrue(v.isEmpty(), v.toString())
+    }
+
+    @Test
+    fun `the listener, wildcard and dial patterns catch every forbidden API and pass the clean controls`() {
+        val listeners = listOf(
+            "HttpServer.create(InetSocketAddress(\"127.0.0.1\", 8080), 0)",
+            "AsynchronousServerSocketChannel.open()",
+            "DatagramChannel.open()",
+            "DatagramSocket(5353)",
+            "MulticastSocket(5353)",
+            "ServerSocketChannel.open()",
+            "com.sun.net.httpserver.HttpsServer.create()",
+        )
+        val wildcards = listOf("InetSocketAddress(\"::\", 5353)", "InetSocketAddress(9090)", "InetAddress.getByName(\"::\")")
+        val dials = listOf(
+            "java.net.http.HttpClient.newHttpClient()",
+            "URL(\"https://example.invalid\").openConnection()",
+            "URL(\"https://example.invalid\").openStream()",
+            "java.net.Socket(\"example.invalid\", 443)",
+            "SSLSocket",
+            "SocketChannel.open(InetSocketAddress(\"example.invalid\", 443))",
+            "c.connect(InetSocketAddress(\"example.invalid\", 443))",
+        )
+        for (m in listeners) assertTrue(LISTENER.containsMatchIn(m), "listener mutant not caught: $m")
+        for (m in wildcards) assertTrue(WILDCARD.containsMatchIn(m), "wildcard mutant not caught: $m")
+        for (m in dials) assertTrue(DIAL.containsMatchIn(m), "dial mutant not caught: $m")
+        for (c in listOf("SocketChannel.open(UnixDomainSocketAddress.of(path))", "fun add(a: Int, b: Int) = a + b", "InetSocketAddress(\"127.0.0.1\", 0)")) {
+            assertTrue(!LISTENER.containsMatchIn(c) && !WILDCARD.containsMatchIn(c) && !DIAL.containsMatchIn(c), "clean control flagged: $c")
+        }
     }
 
     /**

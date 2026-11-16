@@ -39,7 +39,7 @@ class SystemStateIT {
     @Test
     fun `interface aliases are the friendly names the owner knows, and loopback is up`() {
         val nics = JdkInterfaceLister().list()
-        Report.line("IT SystemStateIT: interfaces=${nics.map { "${it.alias}#${it.index}${if (it.isUp) "" else "(down)"}" }}")
+        Report.line("IT SystemStateIT: interfaces=${nics.map { "${it.alias}#${it.index}:${it.kind}${if (it.isUp) "" else "(down)"}" }}")
         assertTrue(nics.isNotEmpty())
         assertTrue(nics.any { it.alias == "Loopback Pseudo-Interface 1" }, "the friendly-name lookup must yield Windows aliases, got ${nics.map { it.alias }}")
         assertTrue(nics.all { it.alias.isNotBlank() })

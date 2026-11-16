@@ -56,8 +56,9 @@ public enum NodeIdentity {
     public static func fingerprintMatches(_ typed: String, spki: [UInt8]) -> Bool {
         let a = normalizeTypedFingerprint(typed)
         let b = Array(exportFingerprint(spki: spki).utf8)
-        var diff = UInt8(truncatingIfNeeded: a.count ^ b.count)
-        for k in 0..<b.count { diff |= (k < a.count ? a[k] : 0) ^ b[k] }
+        guard a.count == b.count else { return false }
+        var diff: UInt8 = 0
+        for k in 0..<b.count { diff |= a[k] ^ b[k] }
         return diff == 0
     }
 

@@ -131,6 +131,31 @@ class JsonlLedgerSinkTest {
         assertEquals("{\"a\":1}\n", ch.text())
     }
 
+    /**
+     * HLU-5: a tail longer than the old 64 MiB scan cap, with no newline in it, made open() loop for ever. A crash can leave
+     * a file extended with zeros, so this is a real input. The mutation check restores the cap and this test then times out.
+     */
+    @Test
+    fun `a 65 MiB tail with no newline is removed at open and open returns`() {
+        val dir = Files.createTempDirectory("asom-ledger-big-")
+        val f = dir.resolve("ledger.jsonl")
+        val row = "{\"a\":1}\n".toByteArray()
+        try {
+            Files.write(f, row)
+            java.io.RandomAccessFile(f.toFile(), "rw").use { it.setLength(row.size + 65L * 1024 * 1024) }
+            val sink: JsonlLedgerSink = org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(java.time.Duration.ofSeconds(30), org.junit.jupiter.api.function.ThrowingSupplier { JsonlLedgerSink.open(f) })
+            sink.use {
+                assertEquals(65L * 1024 * 1024, it.recoveredTornBytes)
+                assertEquals(row.size.toLong(), Files.size(f))
+                it.appendLine("{\"a\":2}")
+            }
+            assertEquals("{\"a\":1}\n{\"a\":2}\n", String(Files.readAllBytes(f), Charsets.UTF_8))
+        } finally {
+            f.toFile().delete()
+            dir.toFile().delete()
+        }
+    }
+
     @Test
     fun `real file gets mode 0600 in a 0700 directory and round-trips a RouteRecord through the server's LedgerSink seam`() {
         val dir = Files.createTempDirectory("asom-ledger-")
@@ -148,6 +173,40 @@ class JsonlLedgerSinkTest {
                 setOf(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE, PosixFilePermission.OWNER_EXECUTE),
                 Files.getPosixFilePermissions(file.parent),
             )
+        } finally {
+            dir.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `an existing ledger file with a loose mode is tightened to owner-only, and a symlink as the ledger path is refused with its target untouched (ERR-FX4-LG-2)`() {
+        val dir = Files.createTempDirectory("asom-ledger-fx4-")
+        try {
+            val file = dir.resolve("ledger.jsonl")
+            Files.write(file, "{\"a\":1}\n".toByteArray())
+            val posix = java.nio.file.FileSystems.getDefault().supportedFileAttributeViews().contains("posix")
+            if (posix) Files.setPosixFilePermissions(file, java.nio.file.attribute.PosixFilePermissions.fromString("rw-rw-rw-"))
+            JsonlLedgerSink.open(file).use { it.appendLine("{\"a\":2}") }
+            if (posix) {
+                assertEquals(setOf(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE), Files.getPosixFilePermissions(file), "an existing 0666 ledger became 0600")
+            }
+            assertEquals("{\"a\":1}\n{\"a\":2}\n", String(Files.readAllBytes(file)), "the rows already there are kept")
+
+            val victim = dir.resolve("victim.txt")
+            Files.write(victim, "line1\nTAIL-NO-NEWLINE".toByteArray())
+            val link = dir.resolve("link.jsonl")
+            val linked = try {
+                Files.createSymbolicLink(link, victim)
+                true
+            } catch (_: Exception) {
+                false
+            }
+            if (linked) {
+                assertFailsWith<java.io.IOException> { JsonlLedgerSink.open(link) }
+                assertEquals("line1\nTAIL-NO-NEWLINE", String(Files.readAllBytes(victim)), "the tail scan did not touch the symlink target")
+            } else {
+                assertFailsWith<java.io.IOException>("this account cannot create symlinks: a directory as the ledger path is refused instead") { JsonlLedgerSink.open(dir) }
+            }
         } finally {
             dir.toFile().deleteRecursively()
         }

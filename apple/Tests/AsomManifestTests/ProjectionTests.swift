@@ -59,7 +59,7 @@ final class ProjectionTests: XCTestCase {
         let export = try ES256Signer.generateEphemeral()
         let key = LabKey(signer: export, spki: export.spki, nodeId: NodeIdentity.nodeId(spki: export.spki))
         let file = try exportFile(key: key)
-        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, nowMs: Fixture.nowMs)
+        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, productionKeys: false, nowMs: Fixture.nowMs)
         guard case let .success(ok) = ManifestVerifier.verify(document: file.document, context: ctx) else { return XCTFail("file rejected") }
         XCTAssertEqual(ok.pin, .signerUnverified)
         XCTAssertEqual(ok.tier, .a0)
@@ -81,7 +81,7 @@ final class ProjectionTests: XCTestCase {
     func testFileRejectsWhatTheFileFormForbids() throws {
         let export = try ES256Signer.generateEphemeral()
         let key = LabKey(signer: export, spki: export.spki, nodeId: NodeIdentity.nodeId(spki: export.spki))
-        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, nowMs: Fixture.nowMs)
+        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, productionKeys: false, nowMs: Fixture.nowMs)
         func verdict(_ mutate: @escaping (JValue) -> JValue) throws -> String {
             code(ManifestVerifier.verify(document: try exportFile(key: key, mutateBody: mutate).document, context: ctx))
         }
@@ -101,7 +101,7 @@ final class ProjectionTests: XCTestCase {
     func testFileRulesHoldWhereUnknownMembersAreTolerated() throws {
         let export = try ES256Signer.generateEphemeral()
         let key = LabKey(signer: export, spki: export.spki, nodeId: NodeIdentity.nodeId(spki: export.spki))
-        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, nowMs: Fixture.nowMs)
+        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, productionKeys: false, nowMs: Fixture.nowMs)
         func payload(_ mutate: (JValue) -> JValue) throws -> [UInt8] {
             let body = mutate(try FileProjection.body(ownObject: try Fixture.basePayload(), exportNodeId: key.nodeId))
             let p: JValue = .object(["schema": .string("asom.manifest/1"), "schemaMinor": .int(1), "body": body,
@@ -120,7 +120,7 @@ final class ProjectionTests: XCTestCase {
         let export = try ES256Signer.generateEphemeral()
         let key = LabKey(signer: export, spki: export.spki, nodeId: NodeIdentity.nodeId(spki: export.spki))
         let file = try exportFile(key: key)
-        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, nowMs: Fixture.nowMs)
+        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, productionKeys: false, nowMs: Fixture.nowMs)
         let container = try Fixture.parse(file.document)
         XCTAssertEqual(code(ManifestVerifier.verify(document: try JCS.serialize(container.removing([.key("signer")])), context: ctx)), "KEY_NOT_PINNED")
         let lie = container.setting([.key("dsse"), .key("signatures"), .at(0), .key("keyid")], to: .string(try labKey("key2").nodeId))
@@ -133,7 +133,7 @@ final class ProjectionTests: XCTestCase {
         let export = try ES256Signer.generateEphemeral()
         let key = LabKey(signer: export, spki: export.spki, nodeId: NodeIdentity.nodeId(spki: export.spki))
         let file = try exportFile(key: key, nodeId: try labKey("key1").nodeId)
-        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, nowMs: Fixture.nowMs)
+        let ctx = VerifyContext(mode: .file, confFloor: Fixture.confFloor, productionKeys: false, nowMs: Fixture.nowMs)
         XCTAssertEqual(code(ManifestVerifier.verify(document: file.document, context: ctx)), "SUBJECT_KEY_MISMATCH")
     }
 
@@ -184,6 +184,22 @@ final class ProjectionTests: XCTestCase {
         for pair in rows[0].member("curve")?.elements ?? [] {
             for cell in pair.elements ?? [] { let v = try XCTUnwrap(cell.intValue); XCTAssertEqual(PublicDerivative.q2(v), v) }
         }
+    }
+
+    /// LAB_SPEC R4-L-14, PP3: `osFamily` of `asom.bench-public/1` is the family set of the manifest, windows and ubuntu-touch included.
+    /// This lane emits the family as the manifest states it, so the schema is the only thing that could refuse it.
+    func testThePublicSchemaOsFamilyEnumIsTheFamilySetThisLaneAccepts() throws {
+        let publicSchema = try labFile("manifest/schema/asom.bench-public.1.schema.json")
+        let manifestSchema = try labFile("manifest/schema/asom.manifest.1.schema.json")
+        let publicEnum = try XCTUnwrap(publicSchema.value(at: [.key("properties"), .key("device"), .key("properties"), .key("osFamily"), .key("enum")])?.elements?.compactMap { $0.stringValue })
+        let manifestEnum = try XCTUnwrap(manifestSchema.value(at: [.key("$defs"), .key("body"), .key("properties"), .key("device"), .key("properties"), .key("os"), .key("properties"), .key("family"), .key("enum")])?.elements?.compactMap { $0.stringValue })
+        XCTAssertEqual(Set(publicEnum), Set(manifestEnum), "PP3: one family set in both schemas")
+        XCTAssertEqual(publicEnum.count, Set(publicEnum).count, "no duplicate enum value")
+        XCTAssertEqual(Set(publicEnum), Set(BenchDocument.platforms), "and it is the set the bench decoder of this lane accepts")
+        XCTAssertTrue(publicEnum.contains("windows") && publicEnum.contains("ubuntu-touch"))
+        XCTAssertEqual(publicEnum.count, 7, "non-vacuity: seven families were compared")
+        let d = try XCTUnwrap(try derivative(catalogue: [t2]))
+        XCTAssertTrue(publicEnum.contains(try XCTUnwrap(d.value(at: [.key("device"), .key("osFamily")])?.stringValue)))
     }
 
     func testRowsOutsideTheCatalogueAreDroppedAndAnEmptyResultIsNoUpload() throws {

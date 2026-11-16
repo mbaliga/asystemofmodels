@@ -17,7 +17,7 @@ class M04Checker : FamilyChecker("M04") {
     override val requiredLaws: Set<String> = setOf(
         "test-stat", "sustain", "percentile", "doc-derive", "doc-reject", "trace-completed", "trace-aborted", "trace-refused", "trace-yield", "trace-no-leaks", "plan-sha",
         "pins-defaults-no-l1", "consent", "fsm-edges", "fsm-illegal", "ceilings", "drift-flagged", "outlier-excluded", "unstable", "insufficient", "checked-overflow", "projection-own",
-        "projection-file", "trace-sustain-plateau", "trace-hard-ceiling",
+        "projection-file", "trace-sustain-plateau", "trace-hard-ceiling", "ceilings-refused", "consent-ticks", "consent-heat-withheld",
     )
     override val requiredIds: Set<String> = (1..10).map { "M04-%03d".format(it) }.toSet()
 

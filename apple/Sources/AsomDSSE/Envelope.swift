@@ -26,7 +26,7 @@ public struct DSSEContext: Sendable {
         pinnedSpki: [UInt8]? = nil,
         comparedFingerprint: String? = nil,
         compareMethod: CompareMethod? = nil,
-        productionKeys: Bool = false
+        productionKeys: Bool = true
     ) {
         self.mode = mode
         self.pinnedSpki = pinnedSpki

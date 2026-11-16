@@ -13,7 +13,7 @@ CFG = dict(
     queueBucketMs=[0, 10000, 30000],
     quantPenaltyMs={"F16": 0, "BF16": 0, "Q8_0": 0, "Q6_K": 200, "Q5_K_M": 400, "Q4_K_M": 800, "Q4_0": 1000, "Q3_K_M": 2500, "Q2_K": 5000},
     unknownQuantPenaltyMs=1000, msPerRankStep=5000, unrankedRankOffset=10, autoRankFloor=None, cloudDecodePrior=50000,
-    maxAttempts=6, maxPeerAttempts=3, bpt=(4000, 8000), outDefault=256, outMax=32768, slack=268435456,
+    unknownSelfDesignMilliWh=10000, maxAttempts=6, maxPeerAttempts=3, bpt=(4000, 8000), outDefault=256, outMax=32768, slack=268435456,
 )
 
 
@@ -181,18 +181,29 @@ def out_tokens(w):
     return max(1, min(v, CFG["outMax"]))
 
 
+_BAD = {"DISCREPANT": 3, "WEAK": 2, "UNVERIFIED": 1}
+
+
 def tracker_state(w, node_id, sha, backend):
-    for t in w["tracker"]:
-        if t["nodeId"] == node_id and t["fileSha256"] == sha and t["backend"] == backend:
-            return t["state"]
-    return None
+    """6.6 keys the tracker on (peerNodeId, fileSha256): the backend only picks the claim row, so every entry of the peer and file is ONE state.
+    The worst state among them wins (ties: the first in backend order) and a memory mark on any of them applies."""
+    found = sorted((t for t in w["tracker"] if t["nodeId"] == node_id and t["fileSha256"] == sha), key=lambda t: t["backend"])
+    if not found:
+        return None
+    states = [t["state"] for t in found]
+    worst = states[0]
+    for st in states[1:]:
+        if _BAD.get(state_of(st), 0) > _BAD.get(state_of(worst), 0):
+            worst = st
+    return dict(worst, memoryDiscrepant=any(st.get("memoryDiscrepant") for st in states))
 
 
 def penalty_disc(w, node_id):
     pen = w["penalties"].get(node_id)
     if pen and pen["untilWallMs"] > w["wallNowMs"]:
         return 400
-    bad = sum(1 for t in w["tracker"] if t["nodeId"] == node_id and state_of(t["state"]) == "DISCREPANT")
+    shas = sorted({t["fileSha256"] for t in w["tracker"] if t["nodeId"] == node_id})
+    bad = sum(1 for sha in shas if state_of(tracker_state(w, node_id, sha, "")) == "DISCREPANT")
     return 400 if bad >= 2 else 700
 
 
@@ -231,6 +242,9 @@ def resolve(w, n, f, p_tokens):
         return None, "no-prior"
     if claim["prefillMilliTokPerSec"] <= 0 or claim["steadyMilliTokPerSec"] <= 0 or any(v <= 0 for _, v in claim["decodeAt"]):
         return None, "claim-rate<=0"
+    curve = claim["decodeAt"]
+    if not (1 <= len(curve) <= 4 and all(curve[i][0] > curve[i - 1][0] for i in range(1, len(curve)))):
+        return None, "claim-curve-invalid"
     cd = decode_at(claim["decodeAt"], p_tokens)
     if n["tier"] == "SELF":
         return dict(claim=claim, prefill=claim["prefillMilliTokPerSec"], decode=cd, steady=claim["steadyMilliTokPerSec"], state="LOCAL_MEASURED", key=None), None
@@ -252,19 +266,29 @@ def resolve(w, n, f, p_tokens):
     return r, None
 
 
+FR_ORDER = ["FRESH", "WARM", "STALE", "EXPIRED"]
+
+
 def fast_fields(w, n):
-    """thermalBand, queueBucket, batteryBand after the staleness substitution of LAB_SPEC 6.5 (literal: the thermal rule is a no-op)."""
+    """thermalBand, queueBucket, batteryBand after the staleness substitution of LAB_SPEC 6.5 (r4, R4-L-17: a STALE thermal band >= 1 reads min(2, band + 1)).
+    The fields a digest does not carry (power source, charging, battery band) are classified by `powerFreshness` when the world gives one (the requester's
+    age of the last FULL state); the class used for probe-only and S6 is the worse of the two."""
     d = n["state"]
-    fr = freshness(w, n)
+    fr_d = freshness(w, n)
     if d is None:
-        return dict(fr=fr, fsm="OFF", gov="RUN", tb=1, qb=2, src="unknown", chg=False, band=None, backend=None, held=None)
+        return dict(fr=fr_d, frd=fr_d, frp=fr_d, fsm="OFF", gov="RUN", tb=1, qb=2, src="unknown", chg=False, band=None, backend=None, held=None)
+    fr_p = fr_d
+    if n.get("powerFreshness") is not None and FR_ORDER.index(n["powerFreshness"]) > FR_ORDER.index(fr_d):
+        fr_p = n["powerFreshness"]
     tb, qb, band = d["thermalBand"], d["queueBucket"], d["batteryBand"]
-    if fr == "STALE":
-        if qb >= 1:
-            qb = min(2, qb + 1)
-        if d["powerSource"] == "battery":
-            band = lower(band)
-    return dict(fr=fr, fsm=d["fsm"], gov=d["governor"], tb=tb, qb=qb, src=d["powerSource"], chg=d["charging"], band=band, backend=d["backend"], held=set(d["held"]))
+    if fr_d == "STALE" and tb >= 1:
+        tb = min(2, tb + 1)
+    if fr_d == "STALE" and qb >= 1:
+        qb = min(2, qb + 1)
+    if fr_p == "STALE" and d["powerSource"] == "battery":
+        band = lower(band)
+    fr = fr_d if FR_ORDER.index(fr_d) >= FR_ORDER.index(fr_p) else fr_p
+    return dict(fr=fr, frd=fr_d, frp=fr_p, fsm=d["fsm"], gov=d["governor"], tb=tb, qb=qb, src=d["powerSource"], chg=d["charging"], band=band, backend=d["backend"], held=set(d["held"]))
 
 
 def serves(f, q, virtual, cfgo):
@@ -279,7 +303,8 @@ def first_failing(w, n, f, fast, prior_res, P, N):
     q = w["query"]
     peer = n["tier"] == "PEER"
     now = w["nowMonoMs"]
-    expired = fast is not None and fast["fr"] == "EXPIRED"
+    expired = fast is not None and fast["frd"] == "EXPIRED"
+    expired_power = fast is not None and fast["frp"] == "EXPIRED"
     if peer:
         row = n["peer"]
         if "O" not in P or not row["routeEnabled"]:
@@ -327,7 +352,7 @@ def first_failing(w, n, f, fast, prior_res, P, N):
             return "F9_AVAILABILITY", fast["fsm"]
         if not expired and (fast["tb"] == 2 or fast["gov"] == "HOLD"):
             return "F10_THERMAL", None
-        if not expired and fast["src"] == "battery" and not fast["chg"]:
+        if not expired_power and fast["src"] == "battery" and not fast["chg"]:
             band = fast["band"]
             if n["peer"]["requireCharging"] or band is None or band in ("20-49", "lt20"):
                 return "F11_POWER", band if band is not None else "band unknown"
@@ -374,6 +399,8 @@ def estimate(w, n, f, fast, res, N):
     energy = fdiv(mul(power, add(prefill, decode)), 1000)
     on_batt = (n["self"]["onBattery"] and not n["self"]["charging"]) if selfn else (fast["src"] == "battery" and not fast["chg"])
     design = n["self"]["batteryDesignMilliWh"] if selfn else n["batteryDesignMilliWh"]
+    if selfn and not (design and design > 0):
+        design = CFG["unknownSelfDesignMilliWh"]
     used = cdiv(mul(energy, 1000), mul(design, 3600)) if (on_batt and design and design > 0) else 0
     return dict(outTokens=N, netMs=net, loadMs=load, queueMs=queue, preEff=res["prefill"], prefillMs=prefill, decEff=res["decode"], decodeMs=decode,
                 ttftMs=ttft, totalMs=total, energyMilliJ=energy, batteryUsedPermille=used)
@@ -414,6 +441,12 @@ def usable(w, n, est):
     return n["tier"] == "SELF" or (est["decEff"] >= CFG["minDecodeMilliTokPerSec"] and est["ttftMs"] <= CFG["maxTtftMs"] and est["totalMs"] <= w["query"]["deadlineMs"])
 
 
+def file_order(f):
+    """A total order over a file row: the first of several rows with one sha is the one with the smallest known context, an unknown context before any (RP-9)."""
+    return (f["fileSha256"], -1 if f["contextTokens"] is None else f["contextTokens"], f["modelId"], f["quant"] or "", f["fileBytes"],
+            -(1 << 31) if f["catalogueRank"] is None else f["catalogueRank"], f["kind"])
+
+
 def sovereign(w):
     """(excluded, survivors) exactly as LAB_SPEC 6.2-6.4 define them, for the JSON world `w` (the cloud tier is not modelled here)."""
     q = w["query"]
@@ -425,13 +458,14 @@ def sovereign(w):
     if "T" in P and w["self"]["self"]["hasEngine"]:
         nodes.append(w["self"])
     if "O" in P:
-        nodes += w["peers"]
+        ids = [n["nodeId"] for n in w["peers"]]
+        nodes += [n for n in w["peers"] if ids.count(n["nodeId"]) == 1]
     nodes.sort(key=lambda n: n["nodeId"])
     excluded, surv = [], []
     for n in nodes:
         fast = fast_fields(w, n) if n["tier"] == "PEER" else None
         seen = set()
-        for f in sorted(n["files"], key=lambda f: f["fileSha256"]):
+        for f in sorted(n["files"], key=file_order):
             if f["fileSha256"] in seen or not serves(f, q, virtual, w["config"]):
                 continue
             seen.add(f["fileSha256"])
@@ -499,9 +533,9 @@ def merge(policy, sov, cloud, never_cloud, caps):
     delta, swapped = [], False
     if items and items[0][0] == "S" and items[0][1]["claim"] == "UNVERIFIED" and items[0][1].get("key"):
         top = items[0][1]
-        di = next((i for i, (k, x) in enumerate(items) if i > 0 and k == "S" and x["usable"]), None)
+        di = next((i for i, (k, x) in enumerate(items) if i > 0 and k == "S" and x["usable"] and x["nodeId"] != top["nodeId"] and x["claim"] != "UNVERIFIED"), None)
         if di is not None:
-            cnt = caps.get(top["key"], (0, 0))
+            cnt = tuple(sum(v[i] for k, v in caps.items() if k[0] == top["key"][0]) for i in (0, 1))
             wouldwin = cnt[0] + 1
             if cnt[1] >= -(-wouldwin // 4):
                 items[0], items[di] = items[di], items[0]

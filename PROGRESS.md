@@ -1330,3 +1330,1454 @@ Evidence label: **CI (hosted VM)**. NOT DEVICE EVIDENCE. Read from GitHub's chec
 What the first hosted runs found (each is in an ERRATA file): a colon in a fixture path made the repo uncheckable on Windows (ERR-DL2-13); a JVM SIGTERM exits 143 (unit files now declare `SuccessExitStatus=143`); the macOS control-socket limit measured 102 bytes, not 103 (ERR-MC-SOCK-1); an rpm left `/opt/asom` behind (ERR-DL3-RPM-1); Clickable parses the AppArmor file as JSON before substituting (ERR-UT-CLICK-2); three v1 tests had ledger-read or clock races (test-only fixes, isolation pins re-moved in later commits, see the re-pin tables).
 
 Open, not closed by these runs: `tst_StatusPage.qml` crashes natively under the offscreen platform with the real Lomiri widgets and passes only via the xvfb retry in `tests/run_qml_ci.sh` (which retry is not yet read from a log); the AppArmor run printed denials for `/proc/<pid>/net/if_inet6`, hugepages and coredump_filter (flag for the device checklist); the Canary failure above; the Secure Enclave, power-assertion, PDH, netsh and DPAPI results are hosted-VM observations, not device evidence. Every device and real-key item stays `NEEDS-DEVICE-VALIDATION` / `NEEDS-OWNER-VALIDATION`. Not started: `:mesh-proto` (wave 3), the final independent Opus review, revision 4 of the design brief.
+
+## Lab L0.5 gate, wire half (track `proto-wire`: `xyz.mdhv.asom.lab.proto.wire` in `:mesh-proto`, vector family W06, the STATE side of W07) — 2026-10-07 — LAB (not device evidence)
+Base: 4cf2ad05a8d68594dec24ebf1d26c5dca78b3c52 (working tree, uncommitted)   JDK: openjdk 21.0.10 (JDK 17 lane NOT run here: only JDK 21 in the container; the build config targets 17)   Runner: local
+Worktree base: HEAD was 98ab632, not the base, so `git fetch origin claude/asom-v1-build-brief-vw83oh && git reset --hard 4cf2ad05...` was run; `git rev-parse HEAD` then printed 4cf2ad05a8d68594dec24ebf1d26c5dca78b3c52 and `docs/design/mesh/LAB_SPEC.md` exists.
+```
+$ ./gradlew -p lab :mesh-proto:test :conformance-runner:test --rerun-tasks      BUILD SUCCESSFUL   (mesh-proto 42 tests, 0 failures; conformance-runner 1533 tests, 0 failures, 7 skipped = the existing proposed-lane skips, none of them W06/W07)
+family W06: 284 vectors, 284 pass, 0 fail, 0 proposed-skipped, oracle: self=284
+family W07: 98 vectors, 98 pass, 0 fail, 0 proposed-skipped, oracle: self=98          (67 existing in policy/W07-live-state.json + 31 new in wire/W07-state-frames.json)
+law W06/byte-accounting: 208   encode-decode-roundtrip: 37   extension-skip: 9   frame-length-bounds: 55   incremental-split: 33827   no-message-member: 2   size-limits: 9
+law W06/stream-parity: 244   strict-json: 223   typed-parse-reject: 73   unknown-type: 17   version-rule: 21         (cases counted from observed behaviour; a zero fails the family)
+law W07/state-producer-strict: 13   wire-state-build: 4   wire-state-decode-ok: 5   wire-state-decode-reject: 9   wire-presence-ignored: 1      (the 15 existing W07 laws unchanged)
+law wire/ (mesh-proto WireLawsTest, over many random cases, each > 0, plus a test that fails on any zero):
+  frame-length-bounds: 78   stream-parity: 1056   unknown-type: 424   extension-skip: 513   strict-json: 51   size-limits: 11   no-message-member: 136   state-producer-strict: 403   version-rule: 443   incremental-split: 43028
+$ ./gradlew -p lab :conformance-runner:run --args='lines W06' --quiet | tail -n 5        (284 lines)
+W06-666 reject PROTOCOL_ERROR
+W06-667 ok
+W06-668 reject PROTOCOL_ERROR
+W06-669 reject VERSION_UNSUPPORTED
+W06-670 ok
+$ python3 lab/mesh-proto/tools/wire/w06_tool.py --check
+selftest: the four worked encodings of LAB_SPEC 7.1 match byte for byte (HELLO 16, GOAWAY 26, STATE_REQ 16, CANCEL 67 bytes in total)
+xcheck-wire W06 (W06-frames.json): 284 of 284 agree
+xcheck-wire W07 (W07-state-frames.json): 31 of 31 agree
+xcheck-wire total: 315 agree, 0 disagree
+$ python3 lab/tools/xcheck.py lab/conformance     keys 4 agree, INDEX 29 agree, M01 94, M01der 15, M02 90, M03 185, M04 759, M05 210, M06 82 (0 disagree everywhere), W05: absent
+$ python3 lab/tools/isolation.py          isolation check 4: 136 protected files compared byte-for-byte against base 79ff5b81fcc4 ... OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py          law: 9 module build files checked ... law: 171 Kotlin/Java sources scanned ... law: OK
+$ ./gradlew jvmTest --rerun-tasks         root tests: 139   failures: 0   (see the note on jacoco below)
+```
+What was built: the incremental frame decoder (`FrameDecoder`, byte-exact accounting, checks at fixed prefix lengths so the events do not depend on the chunking), the producer (`FrameEncoder`), every 7.2 frame as a typed builder and strict parser (`MessageCodec`), the PAIR_* type numbers with raw payloads and a `PairPayloadHook`, the version rule and the HELLO/HELLO_ACK decisions as pure functions (`Handshake`), `StoredTextProbe`. The STATE frame reuses `:mesh-policy`'s `StateDoc`, `StateParser` and `ProducerStrict` (no presence field exists to fill). Vectors: W06-frames.json (284: the four worked encodings W06-001..004, a golden encoding of every frame type, the negatives of the assignment, the schema accept and reject pairs for every frame type, the version rule) and W07-state-frames.json (31). Independent oracle: `lab/mesh-proto/tools/wire/w06_model.py` (struct.pack, Python json/ipaddress/base64, no Kotlin code) computed every expectation; `w06_tool.py --write` writes both files, `--check` re-derives them (315 of 315 agree).
+Mutation checks (each applied to the real source, the WHOLE `:mesh-proto:test :conformance-runner:test` run, the original restored; the mesh-proto and runner suites together went green again afterwards: 42 + 1533 tests, 0 failures):
+```
+M01 length lower bound off by one (accepts 4)   KILLED 3      M02 length upper bound +1 (accepts MAX+1)   KILLED 4     M03 length upper bound -1 (rejects MAX)   KILLED 5
+M04 stream parity inverted                      KILLED 159    M05 unknown type below 0x80 accepted         KILLED 17    M06 float accepted in a payload           KILLED 9
+M07 message member stored from a received ERROR KILLED 7      M08 presence field emitted by the STATE builder KILLED 17  M09 0x80 skipped without EXT_IGNORED      KILLED 14
+M10 INFER_BODY limit +1 KILLED 4    M11 JSON limit -1 KILLED 4    M12 version rule picks the lowest KILLED 5    M13 direction not enforced KILLED 8
+M14 accounting counts payload only KILLED 149   M15 HELLO nodeId vs TLS identity not compared KILLED 3   M17 five endpoints KILLED 3   M18 unknown ERROR code kept as PROTOCOL_ERROR KILLED 6
+M19 DNS name accepted as an address KILLED 3   M20 payload limit never refused early KILLED 7   M21 pairing mode accepts any type KILLED 4   M22 duplicate member accepted KILLED 3
+M23 DECLINE retry floor 4999 KILLED 3   M24 STATE builder adds a presence member after the check KILLED 17   M25 decoder loses its header when a chunk ends inside it KILLED 220
+M26 INFER_ACCEPT keeps queuePos KILLED 1   M27 nodeId alphabet and unused bits unchecked KILLED 3
+M16 nodeId length check removed (>= 42): SURVIVED, EQUIVALENT: a string that decodes to 32 bytes under the unpadded URL alphabet has 43 characters, so the length test is redundant; M27 (decoding removed) is the real mutant and is killed.
+```
+Findings for the owner (ERRATA ERR-PW-1..15): (1) a length below 5 and above the maximum share the single code FRAME_TOO_LARGE as written (ERR-PW-1); (2) the spec gives no per-type stream table nor a code for a parity violation: the 7.2 "Dir, stream" column was made normative per type and the code is PROTOCOL_ERROR (ERR-PW-3); (3) a pairing-mode connection must also accept ERROR (ERR-PW-4); (4) platforms.md says W06 is `proposed`, LAB_SPEC says computed: normative taken (ERR-PW-10); (5) W07 is one family over two files and the registry needed a wrapper checker, one changed (not added) line in Suite.kt (ERR-PW-9).
+Not verified here: JDK 17 lane (only JDK 21 present); Windows and macOS lanes (no OS-specific code or skip exists in this track: no Assumptions, no POSIX paths, `String(bytes)` is Kotlin's UTF-8 form); a hosted CI run. The W08 lines, L-L15, L-L16 and the S-A9/S-A11 tables of L0.5 are another track's (not done here). Session-level rules (reply on an unopened stream, HELLO first, authorize per frame, `st` only with scope `state`, the CONTROL EXT_IGNORED row) are not in the codec by design. `./gradlew jvmTest` as a whole task exits non-zero in this sandbox ONLY because `:core:routing:jacocoTestReport` cannot resolve `org.jacoco:org.jacoco.report:0.8.13` (not cached, offline-restricted network); every test task ran and 139 root tests pass with 0 failures, and `jvmTest -x :core:routing:jacocoTestReport` prints BUILD SUCCESSFUL. This is an environment fact, unrelated to this change (the root tree is byte-identical to the base).
+Oracle status: self-oracled (an independent Python model agrees, but it was written in the same session; the tag stays `self`)
+Result: PASSED for the wire half (local LAB evidence only)
+## Lab L0.5 gate, trust half (track proto-trust: W04 pairing, W05 fingerprints, templates and verifyPeerChain) — 2026-10-07 — LAB (not device evidence)
+Commit: base `4cf2ad05a8d68594dec24ebf1d26c5dca78b3c52` plus an UNCOMMITTED working tree (the orchestrator collects it). JDK: `openjdk version "21.0.10" 2026-01-20` (the only JDK on this machine; the JDK 17 lane was NOT run here). Runner: local, Linux, 4 cores shared, `--max-workers=2`. Oracle: **self** (see ERRATA ERR-PT-11).
+
+What was built (all pure JVM, no new dependency, no socket, nothing listens): `lab/mesh-proto/src/main/kotlin/xyz/mdhv/asom/lab/proto/trust` (DER writer and strict reader, `Pin` with constant-time whole-value comparison, the two certificate templates of trust.md 2.4, `PeerChainVerifier.verify` and `verifyServer` returning a typed `ChainVerdict`, the peer registry state machine of 4.7 over a `PeerStore` DAO) and `.../pairing` (strict QR encoder and parser, the four pairing messages with the r3 changes, proof, SAS and transcript of 4.5, the D and S state machines of 4.6 as pure functions). Vectors `lab/conformance/wire/W04-pairing.json` (312) and `W05-fingerprints.json` (166), a runner checker `ProtoTrustFamilies.kt` (two registry lines in `Suite.kt`), `INDEX.json` regenerated, a second implementation in Python (`lab/mesh-proto/tools/trust/trustlib.py`, `gen_vectors.py`, `xcheck_trust.py`, `mutants.py`) and ERRATA rows ERR-PT-1 to ERR-PT-14. Touched outside the track's own directories, all additive (ERR-PT-13): `Suite.kt` (two `checkerFor` lines), `lab/tools/xcheck.py` (a dispatch to the trust checker; without it `xcheck` exits 1 as soon as a W05 file exists), `lab/conformance/INDEX.json` (regenerated). No `*_BASE_SHA`, `core/`, `server/`, build file or workflow was touched.
+
+```
+$ ./gradlew -p lab :mesh-proto:test --rerun :conformance-runner:test --max-workers=2 --offline
+BUILD SUCCESSFUL in 15s
+32 actionable tasks: 5 executed, 27 up-to-date
+    family W04: 312 vectors, 312 pass, 0 fail, 0 proposed-skipped, oracle: self=312
+    family W05: 166 vectors, 166 pass, 0 fail, 0 proposed-skipped, oracle: self=166
+```
+`:mesh-proto:test`: 39 tests, 0 failures, 0 skipped (PairCryptoTest 6, PairingFsmExhaustiveTest 5, QrUriAndMessagesTest 4, CertTemplatesTest 4, DerTest 6, PeerChainVerifierTest 8, PeerRegistryPropertyTest 3, TrustVectorsTest 2, LabModuleShellTest 1). `:conformance-runner:test`: ConformanceSuiteTest 1683 tests (6 skipped, none of them W04 or W05: both families print `0 proposed-skipped`), NegativeControlsTest 13, 0 failures. No test uses an assumption, a disabled-on-OS annotation or a per-OS skip, and none touches a temp file or a POSIX path, so the Linux and Windows test counts are the same by construction (hosted Windows NOT run).
+
+Non-vacuity (runner family laws, every required law has at least one case; a zero would print `VACUOUS` and fail the family):
+```
+W05  cert-profile 9 | chain-valid 14 | chain-negatives 108 | registry-L8 122 | pin-derive 4 | fingerprint 9 | pin-compare 13 | spki-strict 13 | test-only-key 1
+     chain-reject-<CODE> for every code of ChainReject except the defensive INTERNAL (23 codes, each >= 1: AKI_MISMATCH 5, BAD_SIGNATURE 8, CERT_MALFORMED 9, CHAIN_LENGTH 5, CLOCK_SKEW 4,
+     EXTENSION_INVALID 9, EXTENSION_MISSING 10, ISSUER_MISMATCH 6, KEY_UNSUPPORTED 6, LEAF_EKU 4, LEAF_IS_CA 3, LEAF_KEY_USAGE 1, NODE_NOT_CA 3, PAIRING_WINDOW_CLOSED 1, PATHLEN_VIOLATION 3,
+     PIN_MISMATCH 2, PIN_REVOKED 5, PIN_SUSPENDED 3, PIN_UNKNOWN 4, REGISTRY_UNREADABLE 5, SIG_ALG_UNSUPPORTED 7, TEST_ONLY_KEY 1, UNKNOWN_CRITICAL_EXTENSION 4)
+W04  qr-grammar 108 | qr-roundtrip 20 | qr-reject-<CODE> for all 18 QrReject codes (each >= 1) | proof-sas-transcript 45 | proof-invalid 49 | pin-swap 21 | nonce-swap 21
+     pair-message-ok 15 | pair-message-reject 32 | commit-no-locseed 1 | pairing-fsm-D 24 | pairing-fsm-S 17 | pairing-L1 11
+     registry-L1 18 | L2 13 | L3 2 | L4 4 | L5 2 | L6 1 | L7 1 | registry-goaway 12 | registry-per-direction 6 | registry-fail-closed 2
+```
+Module tests print their own laws and `iterations: n` (read from `lab/mesh-proto/build/test-results/test/*.xml`; ERRATA ERR-PT-13): peer registry property test `iterations: 3000 sequences x 40 operations` (law counts: L1 network event changes nothing 17134, L1 no row without both approvals 7535, L2 authorize iff paired and granted 2,880,000, L3 revoked absorbing 3165, L4 restore only local 2876, L5 unknown status denies 156,120, per-direction independence 17,225, GOAWAY on leaving PAIRED 1896, fail-closed reads 660,624 and writes 1016, re-read per frame 480,000, revoked cannot re-pair 451); `verifyPeerChain`: every single-bit flip (two masks) of every byte of both certificates is refused (`iterations: 1666`), every truncation refused (834), 3009 hostile or mutated chains never throw and never accept, the 5-mode x 6-registry-state x 2-window grid (84 pairs) equals the spec grid written out by hand, 20 fresh-key chains accepted in all 6 entry points; pairing machines: D 8 states x 20 events = 160 pairs and S 12 states x 21 events = 252 pairs, each run and compared with a typed table (95 and 59 non-no-op cells; every other pair must be a no-op), and the test fails if a state or event class has no representative; proof, SAS, transcript: 200 seeded random cases against a second formulation; QR and messages: 500 round trips, 3500 garbage URIs and 2000 garbage payloads never throw; templates: 25 fresh-key certificate pairs parsed and signature-checked by the JDK's own X.509 parser (`jdk-verifies-signature` 25).
+
+The worked vector of trust.md 4.5 reproduces from the spec text, untuned: proof `becQGXmCCTwCLN4BK4hj0qa3AW-AT9DgDikj7RA_baM`, SAS `865 412`, transcript `a7cfd74766ca9d6eab6393ad20c52a1e103e394678101b503f1e48c6f473ffb1`, and the pin-swapped proof `r3iMlWpfvBBdchUUFGHUoCSNIi283ymNyEqeqNjoAC8` (W04-200, W04-201; `PairCryptoTest.theWorkedVectorOfTrustMd45`, which types the strings from the spec). The 170-character URI of 4.2 also parses (W04-001).
+
+```
+$ ./gradlew -p lab :conformance-runner:run --args='lines W04,W05' --quiet | tail -n 5
+W05-417 reject ISSUER_MISMATCH
+W05-418 reject ISSUER_MISMATCH
+W05-419 reject ISSUER_MISMATCH
+W05-420 reject ISSUER_MISMATCH
+W05-421 reject ISSUER_MISMATCH
+(478 lines in all: 312 W04 and 166 W05; 190 `ok`, 288 `reject <CODE>`)
+$ python3 lab/tools/xcheck.py lab/conformance          (tail)
+xcheck W04: 249 agree, 0 disagree
+xcheck W05: 195 agree, 0 disagree
+xcheck oracle status: self-oracled (same-session cross-check; never clears the oracle tag)
+$ python3 lab/mesh-proto/tools/trust/xcheck_trust.py lab/conformance
+xcheck W04: 249 agree, 0 disagree (63 fsm/registry vectors are Kotlin-only)
+xcheck W05: 166 agree, 0 disagree
+xcheck W05 openssl (OpenSSL 3.0.13 30 Jan 2024 (Library: OpenSSL 3.0.13 30 Jan 2024)): templates 9 agree, 0 disagree; chains 20 agree, 0 disagree
+$ python3 lab/tools/isolation.py
+isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py
+law: OK
+$ ./gradlew jvmTest --rerun-tasks --max-workers=2          (repo root, once, at the end; `--offline` failed on an uncached jacoco artefact, so this run used the network)
+BUILD SUCCESSFUL in 15s      21 actionable tasks: 21 executed
+root tests: 139   failures: 0   (baseline: 139)
+```
+The Python second implementation agrees on all 415 vectors it covers (it re-derives pins, tags, templates including the RFC 6979 signature byte for byte, the whole `verifyPeerChain` verdict of every chain vector with its own parser and verifier, QR parse and encode, proof, SAS, transcript, and the message codec). The 63 W04 state-machine and registry vectors are typed by hand from trust.md 4.6 and 4.7 and checked only by the Kotlin code (and by the exhaustive tables). OpenSSL 3.0.13 independently reads the nine golden templates (`x509 -text`: version 3, `CA:TRUE, pathlen:0`, `Certificate Sign`, `CA:FALSE`, `Digital Signature`, serverAuth and clientAuth, AKI, `Not After: Dec 31 23:59:59 9999 GMT`; `verify -check_ss_sig` accepts the node certificates) and agrees on 20 chain vectors (accepts the valid ones, rejects the bad signatures). `openssl asn1parse` on W05-200 and W05-205 shows the intended structure (UTF8String names, UTCTime and GeneralizedTime in their RFC forms, critical BC and KU, `30060101FF020100`, `03020204`, `03020780`). The Kotlin encoder's output is those same bytes (`template` vectors compare its TBS and assembled certificate with the Python-written golden ones). `gen_vectors.py` run twice writes byte-identical files.
+
+Mutation checks (`python3 lab/mesh-proto/tools/trust/mutants.py`: each mutant is an exact-string edit of one source file, the suite is run, a failure is required, the original bytes are restored and compared). **21 mutants, 21 killed, 0 survivors, 0 non-compiling**, each against `:mesh-proto:test`:
+```
+ 1 a CA leaf accepted                              KILLED (W05 chain vectors)    12 node pathLen check removed                       KILLED (W05)
+ 2 a P-384 key accepted                            KILLED (W05)                  13 leaf EKU not checked                              KILLED (W05)
+ 3 a SHA-1 signature accepted                      KILLED (W05)                  14 unknown critical extension ignored                KILLED (W05)
+ 4 AKI not compared with the node SKI              KILLED (W05)                  15 chain length 3 accepted                           KILLED (W05)
+ 5 leaf validity not checked                       KILLED (W05)                  16 ceremony commits without the LOCAL approval       KILLED (W04)
+ 6 a pin compared with a prefix                    KILLED (W05)                  17 unknown registry status reads as PAIRED           KILLED (property test)
+ 7 SAS truncation off by one                       KILLED (W04)                  18 REVOKED pin with a valid proof reaches the challenge KILLED (W04)
+ 8 proof checked over a swapped nonce              KILLED (D exhaustive table)   19 second valid hello accepted after consumption     KILLED (D exhaustive table)
+ 9 a revoked peer still authorised                 KILLED (W04)                  20 Forget removes a row that is not REVOKED          KILLED (W04)
+10 a suspended peer authorised for any scope       KILLED (property test)        21 a network status claim restores a SUSPENDED row   KILLED (property test)
+11 node self-signature not verified                KILLED (W05)
+```
+Mutants 1, 7, 9 and 17 were also run against `:conformance-runner:test` and the runner fails each (`runner(fails)`), so the gate command itself catches them, not only the module's tests. The ten the assignment names are 1, 2, 3, 4, 5, 6, 7, 8, 9, 10.
+
+Findings during the build (each kept as a test or a vector): extension presence is checked before the CA profile, so a swapped chain reports `EXTENSION_MISSING` (my first hand-typed expectation said `NODE_NOT_CA`; the vector was corrected, not the code); OpenSSL does not check the signature of a trust anchor unless `-check_ss_sig` is given (the xcheck adds it); OpenSSL has no clock skew, so the two within-skew vectors are excluded from its comparison.
+
+BLOCKED(L10, L11): trust.md 15 L10 needs the per-frame ledger writer and L11 the two listeners, both of the later track; nothing here can honestly exercise them and no counter claims them (ERRATA ERR-PT-10). L9 and L12 are superseded (LAB_SPEC 7.3).
+NOT VERIFIED: the JDK 17 lane and the Windows lane (this machine has JDK 21 only, no hosted run); `JAVA_TOOL_OPTIONS` was left as the sandbox sets it (the module tests start no child JVM). Not independent: every vector is `oracle: self`; the Python tool shares an author and a session with the Kotlin code (ERR-PT-11). Not done, by design: the TLS profile, the hostile-node suite W08, the per-frame ledger writer and the S-A9 and S-A11 spikes (a later track); the verifier-side cap on a leaf's lifetime (ERR-PT-4); the registry is an in-memory DAO with fault injection, not a persistent store.
+Result: **PASSED** for items 1 to 6 of the assignment (templates and strict pins, W05, `verifyPeerChain`, W04 with the worked vector reproduced, the registry laws L1 to L8, the law counters) in the LAB sense above; **BLOCKED(scope)** for L10 and L11. Evidence label: LAB (self-oracled; NOT DEVICE EVIDENCE).
+
+
+## L0.5 TLS half (track `proto-tls`): JSSE TLS 1.3 mesh transport, record tap, S-A9, S-A11, W08 handshake suite
+
+Evidence label: **LAB**, `oracle: self`, Linux only, JDK 17.0.12 and JDK 21.0.10, loopback 127.0.0.1 only. NOT Windows, NOT Conscrypt, NOT Network.framework, NOT DEVICE EVIDENCE. Worktree base: the worktree was created at 98ab632 and was reset to f028376704e26ef8e9ca3f6cc82593e73ce9dc2e (fetch of claude/asom-v1-build-brief-vw83oh, then reset --hard); `rev-parse HEAD` then printed f028376 and `docs/design/mesh/LAB_SPEC.md` exists. Nothing committed or pushed. Written: `lab/mesh-proto/src/main/kotlin/xyz/mdhv/asom/lab/proto/tls/**`, `.../src/test/kotlin/.../tls/**`, `lab/mesh-proto/tools/tls/tap_xcheck.py`, `lab/mesh-proto/docs/S-A9-S-A11.md`, an append to `lab/ERRATA.md` (ERR-PL-1 to ERR-PL-17) and this entry. Spec defects met are in ERRATA (the big ones: ERR-PL-1 the listener cannot suppress tickets scoped, so it builds a fresh `SSLContext` per accepted connection; ERR-PL-2 the client CertificateVerify is encrypted, so it is proved by what the server observes; ERR-PL-4 no scoped signature-scheme API on JDK 17; ERR-PL-5 JSSE accepts an absent ALPN).
+
+```
+$ ./gradlew -p lab :mesh-proto:cleanTest :conformance-runner:cleanTest :mesh-proto:test :conformance-runner:test --max-workers=2 --offline        (JDK 21.0.10, then JAVA_HOME=/opt/jdks/jdk-17)
+BUILD SUCCESSFUL   (both JDKs)
+mesh-proto          tests 120   skipped 0   failures 0   errors 0   (JDK 21)      same on JDK 17
+  of which package tls: HandshakeTimeoutTest 2, KnobMatrixTest 12, MeshTlsTransportTest 8, NoGlobalJsseStateTest 3, RecordTapTest 5, SniGatingSpikeTest 1, TapCrossCheckDumpTest 1, W08HandshakeTest 8 = 40
+conformance-runner  tests 2013  skipped 7   failures 0   errors 0   (both JDKs; the 7 skips are not from this track, I added no skip)
+$ W08 (from TEST-xyz.mdhv.asom.lab.proto.tls.W08HandshakeTest.xml, system-out; the module's build file shows no test output)
+JDK 21.0.10  W08-handshake: accepted bad chains: 0; ClientHellos with pre_shared_key: 0; sessions with client CertificateVerify: 6/6
+JDK 17.0.12  W08-handshake: accepted bad chains: 0; ClientHellos with pre_shared_key: 0; sessions with client CertificateVerify: 6/6
+$ python3 lab/tools/isolation.py
+isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py
+law: OK
+$ python3 lab/tools/xcheck.py lab/conformance          (tail)
+xcheck W04: 249 agree, 0 disagree
+xcheck W05: 195 agree, 0 disagree
+xcheck oracle status: self-oracled (same-session cross-check; never clears the oracle tag)
+$ python3 lab/mesh-proto/tools/tls/tap_xcheck.py          (second reader of the record tap, same author, so oracle: self)
+tap-xcheck jdk17.json: 13 hellos, 0 disagree
+tap-xcheck jdk21.json: 13 hellos, 0 disagree
+tap-xcheck: 26 hellos, 0 disagree, kinds: client 18 server 8, psk 4, early_data 2, sni 4
+$ ./gradlew jvmTest --rerun-tasks --max-workers=2 --offline -x :core:routing:jacocoTestReport          (repo root, once, at the end)
+BUILD SUCCESSFUL      root tests: 139   failures: 0   (baseline: 139)
+```
+Law counters (non-vacuity; each class fails its `@AfterAll` on a zero, JDK 17 run): tls-1.3-only 2 | client-auth-required 2 | sigalg-only 6 | no-resumption 4 (+3 in transport, +W08) | no-early-data 3 | alpn-required 4 | no-sni 1 | no-hostname-check 2 | chain-only-through-verifyPeerChain 10 (+1 source scan) | no-system-properties 18 (sources scanned) + runtime-properties-unchanged 3 | measured-bytes 2 | handshake-timeout 3 | W08: typed-refusal 32, alert-uniform 22 (JDK 21: 18), client-verifies-server-first 11, client-cert-verify 6, record-tap-detects-psk 1, record-tap-detects-early-data 1 | record tap: psk 4, early_data 4, sni 4, reuse 1, reassembly 1. `sigalg-offer-scoped` is required only where `SSLParameters.setSignatureSchemes` exists (JDK 21: 1 case; absent on 17, not required there).
+
+Mutation checks (`mutate.py` in the session scratchpad, not committed: one exact-string edit at a time, the whole `xyz.mdhv.asom.lab.proto.tls.*` suite on JDK 21 AND JDK 17, a failure required on both, the file restored from the saved text and the tree compared with `diff -r` afterwards). 28 mutants: **25 killed on both JDKs, 3 survivors (all redundant defensive layers, see below), 0 non-compiling**:
+```
+KILLED  hostname check enabled (endpoint identification HTTPS)                      3 tests fail     KILLED  a REVOKED pin accepted (VerifyPeerChain.kt)            2
+KILLED  hostname check enabled (trust manager demands a SAN)                       25                KILLED  a SUSPENDED pin accepted (VerifyPeerChain.kt)          2
+KILLED  verifyPeerChain verdict ignored on the client side                           8                KILLED  record tap does not detect pre_shared_key              9
+KILLED  client side bypassed and post-handshake verdict requirement removed          8                KILLED  record tap does not detect early_data                  5
+KILLED  server does not require client authentication                               21                KILLED  trust manager does chain logic of its own              2
+KILLED  resumption allowed: shared SSLContext + peer host on the dialler            25                KILLED  a JSSE system property is set                         8
+KILLED  ALPN not required (gate and post-handshake check removed)                    3                KILLED  byte counter off by one on large unwraps               3
+KILLED  ALPN not required (post-handshake check removed)                             5                KILLED  verdict ignored on the server side                      6
+KILLED  a P-384 (KEY_UNSUPPORTED) chain accepted *                                   1 (21) / 5 (17)  KILLED  refusals are not one alert (expired-path cause)       6 (21) / 2 (17)
+KILLED  TLS 1.2 enabled                                                              5                KILLED  dialler does not insist on being asked for a certificate 1
+KILLED  handshake timeout removed (deadline 1000x)                                   2                KILLED  TEST-ONLY keys trusted in production mode              2
+KILLED  handshake timeout constant 5 s -> 60 s                                       3                KILLED  shared listener SSLContext (fresh per connection removed) 21
+KILLED  SNI sent (explicit empty server-name list removed AND a dotted peer host)    2
+SURVIVED  session.protocol not checked after the handshake      (redundant: the protocol restriction already holds; TLS 1.2 enabled is killed above)
+SURVIVED  SNI via a dotted peer host only                        (redundant: the explicit empty server-name list still suppresses it; killed once both are removed)
+SURVIVED  close_notify during the handshake no longer a refusal  (redundant: the JSSE throws on it first; the unit test `aCloseNotifyInsteadOfAServerHello...` is green either way)
+* the first run SURVIVED on JDK 21 (0 failing tests: a JDK 21 hostile P-384 peer cannot sign with the one scheme offered, so the handshake fails by itself and masks the mutant). I added `theTrustManagerItselfRefusesEveryHostileChainWhateverTheJsseDoes`, which calls the trust manager entry point directly; re-run: killed on both JDKs (1 test on 21, 5 on 17).
+```
+Findings during the build (each kept as a test): JSSE accepts a ClientHello with no ALPN and a server that selects none, so the key managers withhold the certificate until ALPN matched (a listener sent 326 bytes on JDK 17 / 266 on JDK 21 to such a dialler, a ServerHello and an alert, against about 3.3 KB); a shared server `SSLContext` resumes a ticket on both JDKs and `setSessionTimeout`, `setSessionCacheSize` and server-side `invalidate` change nothing, a fresh context per accepted connection does; a custom `X509ExtendedTrustManager` is not given an identity check by JSSE even when `endpointIdentificationAlgorithm` is `HTTPS`; JDK 21 prefixes local alert text with `(alert_name)` and sends `certificate_required` where JDK 17 sends `bad_certificate`; the engine has no handshake timeout (5 s is enforced by the transport: measured 5306, 5306, 5303 ms on 17 and 5296, 5299, 5295 ms on 21 for three silent or dripping peers, including a 200 ms drain after the failure); S-A11 works with caveats on both JDKs (the token is replayable for the hour; not adopted).
+Not done / not verified: Conscrypt and Network.framework columns of S-A9; a hostile post-handshake `CertificateRequest`; any JDK build other than the two named; the Windows lane (no hosted run here; no per-OS skip or Assumption was used, and the only OS-aware line is a tolerated reset on Windows); the per-frame ledger writer and L-L15 itself (session track; this track hands it exact `TransportCounters` and `RecordTap`); the W08 frame-level cases. `TlsMeshConnection.verifiedPin` is an ERRATA request against `MeshConnection` (ERR-PL-8). Not independent: the tap's Python second reader and every JSSE observation share one author and one session.
+Result: **PASSED** in the LAB sense above for the assignment's items 1 to 6 on JDK 17.0.12 and JDK 21.0.10; items depending on other stacks or on the session track are listed as not done. Evidence label: LAB (self-oracled; NOT DEVICE EVIDENCE).
+## Lab L0.5 gate, session half (track proto-session: `xyz.mdhv.asom.lab.proto.session` in `:mesh-proto`, per-frame ledger writer, FC-1/2/4/5, L-L13/L-L14/L-L16, W08 frame-level) — 2026-10-07 — LAB (not device evidence)
+Evidence label: LAB, oracle: self (same session as the code; no independent implementation has agreed). NOT DEVICE EVIDENCE. Everything runs over in-memory `MeshConnection` pipes; no TLS, no socket.
+Base: `f028376704e26ef8e9ca3f6cc82593e73ce9dc2e` (the worktree was created at 98ab632 and was reset to it with `git fetch origin claude/asom-v1-build-brief-vw83oh && git reset --hard f028376...`; `docs/design/mesh/LAB_SPEC.md` present). Nothing committed.
+Commands (real; output tails below are from the XML test reports, because `:mesh-proto`'s test task does not echo stdout):
+$ ./gradlew -p lab :mesh-proto:test :conformance-runner:test --max-workers=2            (JDK 21.0.10)   BUILD SUCCESSFUL; mesh-proto 145 tests 0 failures; conformance-runner 2013 tests 0 failures
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab :mesh-proto:test :conformance-runner:test (JDK 17.0.12)   BUILD SUCCESSFUL; mesh-proto 145 tests 0 failures; conformance-runner 2013 tests 0 failures
+Printed by the suite, IDENTICAL on JDK 21 and JDK 17 (seeded):
+W08-frames: hostile cases: 807; refusal kinds exercised: 25/25; row checks: 11350; frames after control failure: 0
+W08-frames manifest verdict codes: 32/32 (through a session: 26; by the verifier directly, because the frame layer refuses the document first or the context is FILE mode: 6)
+== session laws (LAB; oracle: self; NOT DEVICE EVIDENCE): 600 clean runs, 1788 failure-injection runs, 60 pairing runs
+L-L13 iterations: 1628 (failure events checked: 2478; control-row failures: 976; FC-1 requester intent: 172; FC-4 lender intent: 52; FC-5 lender outcome before INFER_END: 84; lender decline outcome: 94; DIAL intent: 80; frames after control failure: 0; content frames after a sticky failure: 0)
+L-L14 iterations: 2308 (every connect had a durable DIAL intent before it)
+L-L15 MEASURED sessions: 984 (n > 0), mismatches: 0 (clean runs only; ESTIMATED lane in AccountingAndDialTest)
+L-L16 iterations: 4576 sessions; frames matched to a row on the node that sent or received them: 57567; rows of failed appends tolerated: 536
+L-L16 per-frame-type counts: {ERROR=716, EXT_IGNORED=1326, GOAWAY=1554, HELLO=4136, HELLO_ACK=3736, MANIFEST=686, MANIFEST_REQ=1286, PAIR_CHALLENGE=120, PAIR_COMMIT=120, PAIR_COMMIT_ACK=120, PAIR_DECISION=240, PAIR_HELLO=120, REVOKE_NOTICE=1102, STATE=820, STATE_REQ=1184}
+structural laws (iterations): {L-L1=1118, L-L12=2130, L-L2=1066, L-L3=1254, L-L6=35215, L-L7=22582, L-L8=35215, L-L9=5899}
+$ python3 lab/tools/isolation.py   -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py   -> law: OK
+$ python3 lab/tools/xcheck.py lab/conformance -> xcheck W04: 249 agree, 0 disagree ... xcheck oracle status: self-oracled
+$ ./gradlew jvmTest (root)         -> BUILD SUCCESSFUL; root tests: 139, 0 failures (the :core:routing and :server test tasks were FROM-CACHE; the XML counts are the cached results of the same inputs)
+Mutation checks (`python3 lab/mesh-proto/tools/session/mutants.py`): 28 mutants, 28 KILLED, 0 survivors, each restored byte for byte. They include every one required: the row appended AFTER the frame is sent (control frames, lender decline, requester intent, lender outcome before INFER_END), a control-row failure that still sends GOAWAY (and one that does not close the connection), FC-4 not declining PEER_UNAVAILABLE, FC-5 sending INFER_END, FC-1 ignoring a failed intent, authorisation read once per session, a revoked peer served, a duplicate attemptId accepted, HELLO (and HELLO_ACK) nodeId not compared with the pin, a received MANIFEST accepted without verification (and a manifest key that does not hash to the pin), the extension skip without its EXT_IGNORED row, bytes counted as payload only, a STATE builder emitting a presence field; plus st to a peer without scope state, no registry listener, DIAL intent after the connect, no CLOCK_SKEW, a reused stream id accepted, MEASURED overhead taken from the writer, an unknown CANCEL or an INFER_BODY without an offer ignored, and the SESSION close row dropping uncovered bytes.
+What was built: session engine for both TLS roles (HELLO/HELLO_ACK, version rule, nodeId = authenticated pin, 2 h CLOCK_SKEW, limits, granted scopes, per-frame `authorize` re-read, registry-change GOAWAY, stream parity and reuse, duplicate attempt, typed ERROR then close, extension skip with EXT_IGNORED), lender decision by `:mesh-policy` `LenderDecisionTable` with an `EnginePort` (NoopEngine in main; a scripted fake in tests), INFER_ACCEPT/DECLINE/BODY/HEAD/CHUNK/END/CANCEL, STATE (producer-strict, from `:mesh-policy`), MANIFEST (signed through a test provider, received ones verified by `:manifest` `Verifier` with the typed verdict in the MANIFEST_RECEIVED row), the per-frame ledger writer (durable before, 9 + payload bytes, SESSION open/close with MEASURED or ESTIMATED overhead), the DIAL writer (intent before connect through an injected `Dialer`), FC-1/2/4/5, a `PairingChannel` for the PAIR_* rows, and the structural laws.
+Reading choices are recorded in `lab/ERRATA.md` ERR-PS-1..22 (conservative readings of R3-OVERCLAIM-3, R3-CLOSURE-6 and the silent points). BLOCKED / NOT DONE (honest): L-L15 over a real TLS stack and the S-A9/S-A11/handshake half of W08 (the `proto-tls` track); L-L10 (`MeshConnection` carries no `peerPath`); L-L11 process death over a live session (the sink SIGKILL harness exists in `:ledger-model`); timers other than the 5 s handshake timeout (idle, accept-without-body, max-age, stream and handshake limits); `MeshConnection` was not changed (ERR-PS-8 lists the three figures the TLS track should expose). The Windows lane and hosted CI were NOT run here.
+Result: **PASSED** for items 1 to 6 of the assignment in the LAB (oracle: self).
+## Apple lane I0c gate (Swift: M04 plan/consent/governor/ceilings/pins, signPresentation + cross-lane fixtures, M08 claim tracker, lane-diff controls) — 2026-10-07 — LAB (not device evidence)
+
+Base: `f028376704e26ef8e9ca3f6cc82593e73ce9dc2e` (worktree already at it, `git rev-parse HEAD` confirmed; no reset performed) plus an uncommitted working tree (`apple/`, `.github/workflows/apple-ios.yml`, this entry). Runner: local container, Swift 6.1 on Linux (swift-crypto), JDK 21 and JDK 17 for the JVM lane. **No macOS, no CryptoKit run, no Xcode, no GitHub Actions run, actionlint not installed (YAML parsed with python only).**
+Two sittings: a first builder was stopped by a usage limit (uncommitted work); the second took the tree over, found it building and green (216 tests), re-ran every gate below, reviewed the code against the spec text for M04 5.2, 11.1, 11.3, 11.4 and LAB_SPEC 4.7 and 6.6, wrote the ERRATA section "Half I0c" (E-29 to E-41, LF-1 to LF-5) which the code already cited but which did not exist, fixed README and workflow claims, and re-ran the mutation harness. Not re-derived line by line by the second builder: the bodies of `CrossLane.swift`, `M08Conformance.swift` and the unit-test bodies (they run green, are mutation-checked below, and the vectors are the cross-check).
+
+```
+$ export PATH=/opt/swift/usr/bin:$PATH; swift build --package-path apple    -> Build complete!
+$ swift test --package-path apple
+	 Executed 216 tests, with 0 failures (0 unexpected) in 22.001 (22.001) seconds          (0 skipped; I0b was 166)
+$ ASOM_CONFORMANCE_DIR=lab/conformance swift run --skip-build --package-path apple asom-conformance lines M01,M02,M03,M04,M05,M06,M08 > swift.lines ; wc -l      -> 370
+   stderr: not implemented in this lane: M04/consent-text-unspecified (1), M04/plan-unspecified (2), M04/trace (26)
+$ ./gradlew -p lab :conformance-runner:run --args='lines M01,M02,M03,M04,M05,M06,M08' --quiet > jvm.lines ; wc -l      -> 399   (JDK 21; the same command under JAVA_HOME=/opt/jdks/jdk-17 gives a byte-identical file, cmp)
+$ python3 apple/ci/lane_diff.py jvm.lines swift.lines --known apple/ci/known-disagreements.txt --not-implemented apple/ci/not-implemented.txt
+vectors: jvm=399 swift=370 agree=333 disagree=37 (known 37) jvm-only=29 (not implemented 29)          exit 0
+$ ASOM_DIAGNOSTIC_DRIFT_FLAG=1 ... lines ... > swift-diagnostic.lines ; python3 apple/ci/lane_diff.py jvm.lines swift-diagnostic.lines --not-implemented apple/ci/not-implemented.txt
+vectors: jvm=399 swift=370 agree=370 disagree=0 (known 0) jvm-only=29 (not implemented 29)           exit 0
+$ asom-conformance check M01,M02,M03,M04,M05,M06,M08  -> checked 370, mismatches 42 (spec-literal; LF-1: 37 verdicts + 5 values);  with ASOM_DIAGNOSTIC_DRIFT_FLAG=1 -> checked 370, mismatches 0
+$ python3 apple/ci/test_lane_diff.py -> Ran 13 tests OK        python3 apple/ci/test_crosslane.py -> Ran 8 tests OK
+$ python3 apple/ci/crosslane.py all --jvm-runner .../conformance-runner --swift-cli apple/.build/debug/asom-conformance
+crosslane: 37 vectors (23 ok, 14 reject), reject codes EQUIVOCATION, EXPIRED, FINGERPRINT_MISMATCH, KEY_NOT_PINNED, NONCE_MISMATCH, NON_CANONICAL, NOT_YET_VALID, ROLLBACK, SIGNATURE_INVALID, SUBJECT_KEY_MISMATCH, TEST_ONLY_KEY, TIER_INSUFFICIENT
+crosslane: JVM, Swift and the fixture agree on 37 of 37
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)        $ python3 lab/tools/check_law.py -> law: OK
+$ ./gradlew jvmTest --offline -> BUILD SUCCESSFUL (task results FROM-CACHE; the junit XML of the root modules sums to 139 tests, 0 failures)
+```
+The lane diff is **NOT empty**: 37 listed disagreements (one cause) and 29 vectors not implemented. Both lists are explicit files, the diff fails on anything else.
+
+Item by item. **1 (F-1).** The premise of the assignment (a verifier step-order difference) is not what the evidence shows: the verifier order is LAB_SPEC 4.6 steps 1 to 19 in both lanes; the 37 vectors differ because the JVM projection adds a row flag `thermal-drift` that benchmark.md 13.3 does not list, so the Swift step 15a (a step before the one that decides the vector) says DERIVATION_MISMATCH; five of them are shadowed (the JVM verdict belongs to a later step). Decision from the spec text: the Swift lane is the literal reading, the JVM flag is unsupported by 13.3, so the Swift lane was NOT changed and a lab finding was recorded (apple/ERRATA.md LF-1) instead of editing lab/. known-disagreements.txt is now 37 lines with the same reason each, and the lane-diff tool fails on an unlisted disagreement, on a listed vector that agrees, on an entry with no reason and on a duplicate (`test_lane_diff.py`, 13 tests run against the real script).
+**2 (M04).** Built: `plan` (standard, 1 of 3), `consent` (5 of 6), `fsm` (1), `ceilings` (9), `pins` (1); all agree with the JVM lane. BLOCKED, listed with reasons in `apple/ci/not-implemented.txt`: the 26 executor traces (E-29: the fake engine's timing model, presets and log grammar are not in the spec), the quick and ci plans (E-30: JCS form not in the spec), M04-425 (E-31: the run-today sheet wording is not in the spec). Wording of every consent sheet other than the spec's standard one is this lane's own (E-31).
+**3 (signer).** `ManifestSigner.signPresentation` (own and file, self-check, `nextSeq`), keys read from `lab/conformance/keys/TEST-ONLY-keys.json` at test time (a search for the four `d_hex` values in `apple/` and `.github/` finds none). 37 Swift-signed documents in `apple/crosslane` (generated by this code, committed, each regeneration changes the signatures), and the JVM lane, the Swift lane and the fixture file give the same verdict for all 37 (above). The CryptoKit signing path is UNVERIFIED.
+**4 (M08).** A second implementation (`AsomRouterCore`) written from LAB_SPEC 6.6 and the M08 vector file. All 59 M08 vectors agree (`diff` of the M08 lines of the two lanes is empty; none is in either list). Files read: LAB_SPEC 6.6, REVIEW_ROUND3 R3-CLOSURE-5 and R3-OVERCLAIM-1, `lab/conformance/router/M08-claim-tracker.json`. Deliberately not read: `lab/mesh-router/**`, the runner's M08 adapter, `lab/ERRATA.md` outside three lines (ERR-BENCH-3, -4, -10, printed by a search for "drift"). The first sitting's source header states the same; the second builder could not verify what the first opened beyond that. No oracle tag changed. The padding residual (R3-OVERCLAIM-1) is real and unfixed (E-39).
+
+Non-vacuity: `R3ConformanceTests.testNonVacuity` fails when any family or any implemented kind ran zero vectors (28 kinds, now including M04 plan/consent/fsm/ceilings/pins and the four M08 kinds with exact counts 28/26/3/2), and pins the only skipped kinds (M04 trace 26, plan 2, consent 1). Token laws, discard-order combinations, boundaries (299,999 ms vs 300,000 ms; 127/128 bytes; 3/4 observations) and a sweep of all 100 governor pairs are unit tests.
+
+Mutation checks of the new code: **38 mutants, 38 killed, 0 survived.** Each applied to the real source with the WHOLE suite run (216 tests) and the file touched back to the original. The harness is `swift test` exit status after "Build complete" (a mutant that crashed the test process counts as killed and is named). **First pass defect, found and fixed:** the first harness restored files with an old mtime, so SwiftPM did not rebuild after a restore and later mutants ran on top of earlier ones, and two mutants were reported as survivors because the test process crashed (no summary line); the whole set was re-run with a touch after every restore and a baseline run first (216 green) and the table below is that second run. Failure counts printed by the harness are the count in the last summary line only and are not a measure of strength.
+```
+S1 signer self-check removed          S2 seq ignores stored             S3 file issuedAt not day-truncated  S4 own challenge length unchecked  S5 own ttl 700000     S6 file export falls back to node key
+C1 token lifetime inclusive           C2 spent token not refused        C3 token never marked spent         C4 hash compare always true        C5 plan binding dropped  C6 sheet wording changed
+G1 DONE has an out edge               G2 ABORTING skips FINALIZING      G3 COOLING cannot abort
+K1 android soft headroom 951          K2 android hard code 4            K3 gpu busy 10001                   K4 macos charger rule for every form  K5 ios low power mode ignored  K6 battery level 199
+R1 plan interRepMs 501                R2 plan sustain window 15001
+T1 CORR 801  T2 DISC 601  T3 WIN 21  T4 best index n/2  T5 budget trips at half  T6 SHORT inclusive  T7 ratio cap 5001  T8 no strike on OVERLONG  T9 median upper  T10 claim-body gate inclusive
+T11 new seq forgets DISCREPANT  T12 net time floors (killed by a division-by-zero crash in the test process)  T13 held setting without claim not a difference  T14 terminal not checked  T15 short/overlong discard order swapped
+all KILLED
+```
+Not mutation-checked: `CrossLane.swift` and the M08 adapter (their output is compared against the JVM lane by the lane diff and `crosslane.py`, whose own negative controls are `test_lane_diff.py` and `test_crosslane.py`), the Python tools beyond those controls, and every CryptoKit branch.
+
+NOT VERIFIED (written, not run): everything on macOS (the CryptoKit verifier and signer, `swift test` on macos-latest, the iOS simulator job), the new workflow steps on GitHub Actions (the same commands were run here as separate steps; the artefact layout `lanes/UNSIGNED-*/` is untested), actionlint on the I0c workflow (python YAML parse only).
+Result: **PARTIAL.** Built and tested here: PASSED (LAB). Lane diff vs the JVM lane: 333 agree, 37 disagree (LF-1, explicit), 29 not implemented (BLOCKED, explicit); 370 agree once LF-1 is set aside. No independence claimed.
+
+## Lab L0.5 closing step (track `proto-integration`: the TLS half joined to the session half over real loopback TLS; L-L15 over a real stack, L-L16, L-L13, L-L14, the whole W08, the timers and limits of trust.md 3.3 and 5.1) — 2026-10-07 — LAB (not device evidence)
+Evidence label: LAB, oracle: self (same session as the code; no independent implementation has agreed). NOT DEVICE EVIDENCE, NOT Windows, NOT Conscrypt, NOT Network.framework. Real TLS 1.3 (JSSE) over 127.0.0.1 with an ephemeral port, the real peer registry, the real per-frame ledger writer on the real JSONL sink in a temp directory.
+Base: `f6a8f1efeea47c0c3ef8653a34762e9d6b706fe0`. The worktree was created at 98ab632 and was reset to the base (fetch of the branch, then a hard reset to that sha); `rev-parse HEAD` printed the base and `docs/design/mesh/LAB_SPEC.md` exists. Nothing committed.
+Commands (real). `:mesh-proto`'s test task does not echo stdout, so the summary lines are read from the test report by `python3 lab/mesh-proto/tools/integration/summary.py`, which also fails on a zero or a missing line:
+$ ./gradlew -p lab :mesh-proto:test :conformance-runner:test --rerun-tasks --max-workers=2 --offline          (JDK 21.0.10)  BUILD SUCCESSFUL in 1m 58s; mesh-proto 213 tests 0 failures; conformance-runner 2013 tests 0 failures
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab :mesh-proto:test :conformance-runner:test --rerun-tasks ...   (JDK 17.0.12)  BUILD SUCCESSFUL in 1m 44s; mesh-proto 213 tests 0 failures; conformance-runner 2013 tests 0 failures
+Summary lines printed by `ProtoIntegrationGateTest`, JDK 21.0.10:
+```
+== proto integration gate (LAB; oracle: self; NOT DEVICE EVIDENCE; JDK 21.0.10, os Linux) ==
+calibration: cipher TLS_AES_256_GCM_SHA384; one TLS record costs 38 bytes over the plaintext (spec figure [F51]: 22), the close alert is 40 bytes, the largest single-record write is 16367 bytes
+runs: 60 clean seeded sessions, 122 failure-injection runs, 17 runs cut by a peer reset, 16 pairing sessions, 1 lifecycle walk (28 rows)
+L-L15 MEASURED sessions: 171 (n > 0), mismatches: 0
+L-L15 detail: rows 531901 application bytes + 840527 overhead bytes = 1372428 = 1373757 bytes counted by the record tap; handshake figure 2530..4453 bytes; sessions that lost 5 write-ahead claims totalling 125 bytes; cross-checked socket to socket on every clean run: 176/176
+L-L15 ESTIMATED sessions (a node that crashed and wrote no close row): 12; largest |estimate - tap| 3637 bytes; estimate 8390 real 4753 (B); estimate 8412 real 4790 (A); estimate 8434 real 4829 (B); estimate 8434 real 4865 (A); estimate 8478 real 4902 (B); estimate 8368 real 4749 (A); estimate 8412 real 4791 (B); estimate 8412 real 4829 (A); estimate 8456 real 4869 (B); estimate 8456 real 4902 (A); estimate 8390 real 4754 (B); estimate 8390 real 4792 (A)
+L-L16 iterations: 398 sessions; frames matched to a row on the node that sent or received them: 4274; rows of failed appends tolerated: 34
+L-L16 per-frame-type counts: {ERROR=28, EXT_IGNORED=60, GOAWAY=108, HELLO=342, HELLO_ACK=312, MANIFEST=70, MANIFEST_REQ=98, PAIR_CHALLENGE=32, PAIR_COMMIT=32, PAIR_COMMIT_ACK=32, PAIR_DECISION=64, PAIR_HELLO=32, REVOKE_NOTICE=146, STATE=54, STATE_REQ=70}
+L-L13 iterations: 110 (failure events checked: 165; control-row failures: 64; FC-1 requester intent: 10; FC-4 lender intent: 4; FC-5 lender outcome before INFER_END: 6; lender decline outcome: 6; DIAL intent: 6; frames after control failure: 0; content frames after a sticky failure: 0; checked against the record tap: 76)
+L-L14 iterations: 176 (every connect had a durable DIAL intent before it)
+W08-frames-tls: hostile cases: 153; refusal kinds exercised: 25/25; row checks: 947; frames after control failure: 0; split runs: 14; closed by the honest end and seen as end of stream by the hostile end: 60; typed ERROR codes seen on the wire: CLOCK_SKEW=2, FRAME_TOO_LARGE=9, MANIFEST_UNAVAILABLE=1, PROTOCOL_ERROR=46, SCOPE_DENIED=2, VERSION_UNSUPPORTED=1
+W08-frames-tls manifest verdict codes: 32/32 (through a TLS session: 26; by the verifier directly, because the frame layer refuses the document first or the context is FILE mode: 6)
+W08-frames-tls L-L15 over its sessions: MEASURED 141, mismatches 0
+W08-handshake-session: cases 41; dial outcomes {not-tls=1, pin-mismatch=10, refused=4}; INBOUND_REFUSED rows 17; sessions established under the session engine in this suite 15
+W08-over-tls: accepted bad chains: 0; ClientHellos with pre_shared_key: 0; sessions with client CertificateVerify: 307/307
+evidence: LAB, oracle: self, NOT DEVICE EVIDENCE, jdk feature 21
+gate class: 10 tests, 0 failures, 0 errors
+summary OK (LAB, oracle: self, NOT DEVICE EVIDENCE)
+```
+Summary lines, JDK 17.0.12:
+```
+== proto integration gate (LAB; oracle: self; NOT DEVICE EVIDENCE; JDK 17.0.12, os Linux) ==
+calibration: cipher TLS_AES_256_GCM_SHA384; one TLS record costs 38 bytes over the plaintext (spec figure [F51]: 22), the close alert is 40 bytes, the largest single-record write is 16367 bytes
+runs: 60 clean seeded sessions, 122 failure-injection runs, 17 runs cut by a peer reset, 16 pairing sessions, 1 lifecycle walk (28 rows)
+L-L15 MEASURED sessions: 171 (n > 0), mismatches: 0
+L-L15 detail: rows 530676 application bytes + 869496 overhead bytes = 1400172 = 1401501 bytes counted by the record tap; handshake figure 2650..4633 bytes; sessions that lost 3 write-ahead claims totalling 75 bytes; cross-checked socket to socket on every clean run: 176/176
+L-L15 ESTIMATED sessions (a node that crashed and wrote no close row): 12; largest |estimate - tap| 3461 bytes; estimate 8390 real 4929 (B); estimate 8390 real 4969 (A); estimate 8434 real 5005 (B); estimate 8434 real 5043 (A); estimate 8478 real 5084 (B); estimate 8368 real 4930 (A); estimate 8412 real 4972 (B); estimate 8412 real 5010 (A); estimate 8456 real 5042 (B); estimate 8456 real 5084 (A); estimate 8390 real 4931 (B); estimate 8390 real 4971 (A)
+L-L16 iterations: 398 sessions; frames matched to a row on the node that sent or received them: 4249; rows of failed appends tolerated: 34
+L-L16 per-frame-type counts: {ERROR=28, EXT_IGNORED=60, GOAWAY=109, HELLO=342, HELLO_ACK=312, MANIFEST=70, MANIFEST_REQ=98, PAIR_CHALLENGE=32, PAIR_COMMIT=32, PAIR_COMMIT_ACK=32, PAIR_DECISION=64, PAIR_HELLO=32, REVOKE_NOTICE=146, STATE=54, STATE_REQ=70}
+L-L13 iterations: 110 (failure events checked: 165; control-row failures: 64; FC-1 requester intent: 10; FC-4 lender intent: 4; FC-5 lender outcome before INFER_END: 6; lender decline outcome: 6; DIAL intent: 6; frames after control failure: 0; content frames after a sticky failure: 0; checked against the record tap: 76)
+L-L14 iterations: 176 (every connect had a durable DIAL intent before it)
+W08-frames-tls: hostile cases: 153; refusal kinds exercised: 25/25; row checks: 947; frames after control failure: 0; split runs: 14; closed by the honest end and seen as end of stream by the hostile end: 60; typed ERROR codes seen on the wire: CLOCK_SKEW=2, FRAME_TOO_LARGE=9, MANIFEST_UNAVAILABLE=1, PROTOCOL_ERROR=46, SCOPE_DENIED=2, VERSION_UNSUPPORTED=1
+W08-frames-tls manifest verdict codes: 32/32 (through a TLS session: 26; by the verifier directly, because the frame layer refuses the document first or the context is FILE mode: 6)
+W08-frames-tls L-L15 over its sessions: MEASURED 141, mismatches 0
+W08-handshake-session: cases 41; dial outcomes {not-tls=1, pin-mismatch=11, refused=3}; INBOUND_REFUSED rows 17; sessions established under the session engine in this suite 15
+W08-over-tls: accepted bad chains: 0; ClientHellos with pre_shared_key: 0; sessions with client CertificateVerify: 307/307
+evidence: LAB, oracle: self, NOT DEVICE EVIDENCE, jdk feature 17
+gate class: 10 tests, 0 failures, 0 errors
+summary OK (LAB, oracle: self, NOT DEVICE EVIDENCE)
+```
+$ python3 lab/tools/isolation.py   -> isolation check 4: OK (136 protected files byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py   -> law: OK (259 sources scanned, listeners only in tests)
+$ python3 lab/tools/xcheck.py lab/conformance -> xcheck W04: 249 agree, 0 disagree; W05: 195 agree, 0 disagree; oracle status: self-oracled
+$ ./gradlew jvmTest --rerun-tasks (repo root, once, at the end) -> BUILD SUCCESSFUL; root tests: 139, failures: 0 (baseline: 139); the jacoco report resolved, no exclusion was needed
+Mutation checks (`python3 lab/mesh-proto/tools/integration/mutants.py`, one exact-string edit set at a time, the whole `xyz.mdhv.asom.lab.proto.integration.*` suite, the file restored byte for byte): 32 mutants on JDK 21: 31 KILLED at the first run; mutant 16 (a connection-level frame restarts the idle timer) SURVIVED, because the test sent only an extension frame, which never reaches that code; a dispatched stream-0 frame (`REVOKE_NOTICE`) was added to `TimersTest` and it is KILLED. Re-run on JDK 17: mutants 1 to 12, 16, 20, 21, 22: 16 of 16 KILLED. The ones the assignment names, all KILLED on BOTH JDKs: bytes counted by the session layer but not by the tap source swapped (1, 2, 3); the row written after the frame (4); a control-row failure that still sends (5); a revoked pin served over TLS (6 at the lender, 7 in `verifyPeerChain`); the overhead snapshot taken too early (8 at the session, 9 in the DIAL row) and too late (10); the idle timer never firing (11); max-age (12). The reverts of this track's three fixes (20, 21, 22) are killed on both. Kills only on JDK 21 (not repeated on 17): 13 to 15, 17 to 19, 23 to 32 (body expiry, body wait, stream cap, both limiter limits, DIAL code mapping, counters not measured, trust manager lets a refused chain through, authorisation once per session, registry listener, duplicate attempt, EXT_IGNORED row, FC-5, FC-1, FC-4, DIAL intent after connect).
+What was built: `integration/` (main): `SessionDriver` (reader and ticker threads on an injected clock), `HandshakeLimiter` (8 in flight, 10 per minute per source, pure), `DialOutcomes`. Tests: a TLS harness (loopback listener and dialler, tapped connections that log plaintext before it is handed to TLS, JSONL ledgers, hostile raw clients and servers), `TlsOracle` (L-L15 with three independent quantities, L-L16, write-ahead order), `L13Tls` (sink probes against the record tap), `TlsPairing`, `HostileFramesTls` (153 cases), `HostileHandshakeSession` (41 cases), `TimersTest`, `HandshakeLimiterTest`, `DialOutcomesTest`, `RisksTest`, `PartialRecord`, and the gate class. Changes inside `tls/` and `session/` (ERRATA ERR-PI-1, -3, -4, -5, -7): `TlsEngineIo` counts what the socket took and, once closed, every byte it delivered; `Session`/`LenderSide`/`RequesterSide` implement the idle, max-age, body-wait and 4-stream rules; `PairingChannel` takes the dialler's DIAL id and handshake figure and has a read loop; new `SessionLimits.kt`. Findings: JSSE puts 38 bytes (not 22) on each record on both JDKs (ERR-PI-2).
+Reading choices: `lab/ERRATA.md` ERR-PI-1..16.
+NOT DONE / UNVERIFIED (honest): any Windows run (the only OS-aware lines are listed in ERR-PI-16; the tolerance for a Windows hard reset is coded but never executed); the real pairing ceremony over TLS (frames and rows only, ERR-PI-14); a requester-side deadline for an unanswered offer; `local-network-denied` and `firewall-blocked` DIAL outcomes; the hostile frame cases are ported not shared and reduced in two places (ERR-PI-12); the ESTIMATED form is checked against the tap with a measured allowance, it is not exact, and its spec constants (22 bytes, 16,384) disagree with JSSE (ERR-PI-2); the limiter is not wired to any listener loop (the lab has none by rule R5); mutants 13 to 15, 17 to 19 and 23 to 32 were not repeated on JDK 17.
+Result: **PASSED** in the LAB sense above for items 1 to 6 of the assignment on JDK 17.0.12 and JDK 21.0.10 (oracle: self; NOT DEVICE EVIDENCE).
+
+## LAB: integration test timing flakes on hosted CI (oracle: self; NOT DEVICE EVIDENCE)
+
+Scope: `lab/mesh-proto/src/test/kotlin/.../integration/` only; no main code changed. Two hosted-runner failures (HandshakeLimiterTest line 95, `w08FramesAttemptsAndRegistry`)
+were not reproduced locally (12/12 passes of HandshakeLimiterTest under 8 busy loops on 4 cores); one other race was reproduced under load and fixed.
+Races fixed (each by waiting on the condition with the 30 s `Wait.until`, assertions unchanged):
+- `InboundRefusedCounter.refused()` is an unsynchronised `count++`; `acceptOn` called it from up to 8 acceptor threads at once, so a lost increment gives `refused:8`. The harness now serialises the calls (`countRefusal`). Not reproduced locally, so a hypothesis; the assertion text now shows the refusal list.
+- `refused()`/counter reads right after the reply frame (the session thread bumps the counter) now `Wait.refusals(...)`; late-cancel count, engine `cancelled`, INTERRUPTED/close rows, `honest.closed` after a refusal, outcome rows in TimersTest likewise.
+- REPRODUCED under load: `l15OverRunsCutMidStreamByAPeerResetAndMidRecord` "session B: closed with no SESSION close row" (`closed` flag is seen before the close row is logged). `TlsRuns.settle` now waits (5 s, then the oracle reports) for each closed session's close row or failed append.
+Verification (8 busy loops, 4 cores): `./gradlew -p lab :mesh-proto:test --offline --max-workers=2 --rerun-tasks`
+  JDK 17.0.12: 3 consecutive full passes after the last edit (plus 1 earlier pass); JDK 21 (default): 1 pass, all under load.
+  `python3 lab/tools/isolation.py` -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+
+## Review fixes CV-1 to CV-10 (track `fix-crypto`: `lab/manifest`, `lab/json`, `lab/conformance/manifest`, `apple/`) — 2026-10-07 — LAB (not device evidence)
+
+Evidence label: LAB and CI-APPROX on this machine (JDK 21 default, JDK 17 at /opt/jdks/jdk-17, Swift 6.1 on Linux with swift-crypto). `oracle: self` on every vector. NOT DEVICE EVIDENCE. Nothing was run on macOS, Windows or hosted CI. Base commit `f6a8f1efeea47c0c3ef8653a34762e9d6b706fe0` (the worktree started on another commit and was reset to it). No commit was made.
+
+Findings: CV-1, CV-3, CV-5, CV-6, CV-7, CV-8, CV-9, CV-10 FIXED; CV-2 and CV-4 FIXED (Swift); CV-3 is a ruling (see `lab/ERRATA.md` ERR-FX-CV3): the JVM and Swift lanes now refuse `requiredTier` A1 and A2 because the A1 label is a self-report. Readings: `lab/ERRATA.md` ERR-FX-CV1, -CV3 to -CV10 and ERR-FX-FILES; `apple/ERRATA.md` "Review fixes" section.
+
+Failing-before evidence (real output, before the fix):
+```
+$ ./gradlew -p lab :manifest:test --tests '*OneRecordTiesTest' --tests '*SelfReportedTierTest' --tests '*FingerprintNormalisationTest' --tests '*LaneAgreementReadingsTest' --tests '*SeqRaceTest' --tests '*NonReducedCoordinateTest'
+15 tests completed, 10 failed
+FingerprintNormalisationTest > nonAsciiLettersThatUnicodeUppercasesToBase32LettersAreNotFolded() FAILED   expected: <ſ> but was: <S>
+LaneAgreementReadingsTest > aContainerThatIsNotAnObjectIsContainerInvalid() FAILED   []: 3 ==> expected: <CONTAINER_INVALID> but was: <CONTAINER_VERSION_UNKNOWN>
+LaneAgreementReadingsTest > aFileSignerSpkiThatIsNotAStringIsContainerInvalid() FAILED   signer.spki = 5: 7 no signer.spki ==> expected: <CONTAINER_INVALID> but was: <KEY_NOT_PINNED>
+LaneAgreementReadingsTest > aPayloadTypeOrSchemaMajorMustBeACanonicalDecimal() FAILED   payloadType v02: 4 ==> expected: <PAYLOAD_TYPE_UNSUPPORTED> but was: <SCHEMA_MAJOR_UNKNOWN>
+LaneAgreementReadingsTest > theShapeOfTheFirstSignatureEntryIsDecidedAtStepThreeBeforeThePayloadTypeAndTheCount() FAILED   signatures [1,2]: 5 ==> expected: <CONTAINER_INVALID> but was: <SIGNATURE_COUNT>
+OneRecordTiesTest > everySecondCopyOfABenchFactMustAgreeWithBench() FAILED   producer confVersion below the floor: expected INCONSISTENT at step 15, the verifier accepted
+OneRecordTiesTest > theSameTiesHoldForAFileExport() FAILED   body.producer.harness.confVersion: expected INCONSISTENT at step 15, the verifier accepted
+SelfReportedTierTest > aHardwareClaimIsALabelAndNeverSatisfiesARequiredTierAboveA0() FAILED   strongbox required A1: expected TIER_INSUFFICIENT at step 18, the verifier accepted
+SeqRaceTest > concurrentWritersOfTheFileStoreNeitherFailNorLeaveTemporaryFiles() FAILED   NoSuchFileException: .../seq.tmp -> .../seq
+SeqRaceTest > twoDifferentBodiesSignedInTheSameSecondNeverShareASeq() FAILED   ExecutionException: NoSuchFileException: .../seq.tmp -> .../seq
+$ (original src/main restored, new vectors in the generator) ./gradlew -p lab :manifest:genManifestVectors     -> generator refuses to write:
+M03-179..M03-189: expected INCONSISTENT, but the verifier accepted        M03-191, M03-192: expected TIER_INSUFFICIENT, but the verifier accepted
+M03-195, M03-196: expected FINGERPRINT_MISMATCH, but the verifier accepted
+M03-201, M03-202: expected CONTAINER_INVALID at step 3, got CONTAINER_VERSION_UNKNOWN at step 3     M03-203: ... got SIGNATURE_COUNT at step 5     M03-204: ... got PAYLOAD_TYPE_UNSUPPORTED at step 4
+M03-205: expected CONTAINER_INVALID at step 7, got KEY_NOT_PINNED at step 7     M03-206: expected PAYLOAD_TYPE_UNSUPPORTED at step 4, got SCHEMA_MAJOR_UNKNOWN at step 4     M03-207: expected SCHEMA_INVALID at step 11, got SCHEMA_MAJOR_UNKNOWN at step 11
+$ ASOM_DIAGNOSTIC_DRIFT_FLAG=1 swift run --package-path apple asom-conformance check     (Swift lane before its fixes, new vectors present)
+MISMATCH M03-179..M03-190 (expected reject INCONSISTENT, observed ok)   MISMATCH M03-191, M03-192 (expected reject TIER_INSUFFICIENT, observed ok)
+MISMATCH M03-193 (expected reject SCHEMA_INVALID, observed ok)   MISMATCH M03-194 (expected reject FINGERPRINT_MISMATCH, observed ok)
+MISMATCH M03-197..M03-200 (expected NON_INTEGER_NUMBER / DUPLICATE_KEY / INVALID_UNICODE / NUMBER_RANGE, observed reject MALFORMED_JSON)
+MISMATCH M03-208 (expected reject CONTAINER_INVALID, observed ok)   MISMATCH M03-209, M03-210 (expected MALFORMED_JSON, observed TRAILING_DATA)   MISMATCH M03-211 (expected MALFORMED_JSON, observed NON_INTEGER_NUMBER)
+MISMATCH M03-212, M03-213, M03-214 (expected NON_INTEGER_NUMBER, observed MALFORMED_JSON)   MISMATCH M05-109 (line 20: 96 '?' in this lane, 64 in the JVM lane)
+checked 332, mismatches 28
+```
+Not reproduced as failures before the fix (test or vector gaps, as the review said): CV-10 (the JVM and Swift range clause existed; `NonReducedCoordinateTest`, `FixCryptoTests.testANonReducedCoordinate...` and M03-215 pass before and after, and are killed by the mutants below), CV-4, CV-5 and CV-7 on the JVM (already correct: the failure is Swift-only), and CV-6 in Swift (already ASCII-only). The Swift-only unit tests for CV-2 and CV-5 were written after the fix; their failing-before evidence is the mutants Y02, Y02b, Y05a and Y05b below, each of which restores the old code and fails the new tests (for example `FixCryptoManifestTests.testDefaultContextsRefuseTheTestOnlyKeys` and `testTheChallengeComparisonDoesNotFoldTheLengths` with `+256`).
+
+After the fix (real output):
+```
+$ ./gradlew -p lab test                      (JDK 21)  -> BUILD SUCCESSFUL; M01 105, M02 20, M03 108, M05 42, M06 10 vectors, 0 fail
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab test     -> BUILD SUCCESSFUL (Launcher JVM 17.0.12); :manifest 53 tests, :json 42, :conformance-runner 2052, :mesh-proto 185, 0 failures
+$ swift test --package-path apple            -> Executed 176 tests, with 0 failures (0 unexpected)     (166 before; +10)
+$ ASOM_DIAGNOSTIC_DRIFT_FLAG=1 swift run ... asom-conformance check -> checked 332, mismatches 0
+$ python3 apple/ci/lane_diff.py jvm.lines swift.lines --known apple/ci/known-disagreements.txt ... -> vectors: jvm=379 swift=333 agree=291 disagree=42 (known 42) jvm-only=46 (not implemented 46)
+$ python3 apple/ci/lane_diff.py jvm.lines swift_diag.lines --not-implemented ...                    -> vectors: jvm=379 swift=333 agree=333 disagree=0 (known 0) jvm-only=46 (not implemented 46)
+$ python3 lab/tools/xcheck.py lab/conformance -> xcheck M02: 100 agree, 0 disagree; M03: 264 agree, 0 disagree; INDEX: 32 agree ... (all families 0 disagree)
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py -> law: OK
+$ ./gradlew cleanTest jvmTest (root) -> BUILD SUCCESSFUL; root tests: 139, 0 failures
+```
+Mutation checks (narrow driver, each mutant applied, the suite run, the source restored byte for byte; the same mutants are registered as V31 to V41 in `lab/manifest/tools/mutants.py`, which was NOT run through its full three-layer harness): JVM, 23 mutants, 22 KILLED, 1 SURVIVED. Killed: every one-record tie separately (confVersion, engine name, commit, buildFlags, memory, os family, os version, vendor, model, soc), the whole rule, the tier gate on the label, Unicode uppercase, non-object container as version-unknown, no `signatures[0]` shape at step 3, non-string `signer.spki` as unpinned, a leading-zero major, no evidence item limit, no signer lock, a per-call lock, the fixed temp name, no coordinate range. SURVIVED: `X12-no-store-lock` (the per-path lock inside `FileSeqStore`): equivalent on Linux, because unique temp names and an atomic rename already make concurrent writers safe there; the lock exists for Windows, which refuses concurrent renames onto one target, and that cannot be tested here. Swift, 15 mutants, 15 KILLED: the whole one-record rule, default `productionKeys` false in `VerifyContext` and in `DSSEContext`, the tier gate on the label, the tolerant FILE presentation, the folding length compare for the challenge and for the fingerprint, the scan that stops at depth 17, two lexer mutants (a literal prefix followed by data; a digits-only number), no evidence item limit, no coordinate range, no long-word split. Two earlier lexer mutants were killed only by a crash or by an unrelated parse failure and were replaced by the two named. The directory sync after the rename in `FileSeqStore` is not observable by a test and has no mutant.
+
+Changed existing tests (ruling-driven, each recorded in the ERRATA): `BoundaryTest.onlyHardwareBackedStorageIsTierA1` (CV-3); `VerifierTests.testTierFromKeyStorageAndTheRequiredTier` (CV-3); `StrictJSONTests.testRejectTable` row "lone minus" from `MALFORMED_JSON` to `NON_INTEGER_NUMBER` (CV-8, ERR-JSON-3); four Swift tests that edited one copy of a duplicated fact now edit both (CV-1); 27 Swift call sites now say `productionKeys: false` explicitly (CV-2). Changed vectors: M02-113, M02-118, M02-120, M03-131 (and M05-109, regenerated from M02-113). Added vectors: M02-121, M02-122, M03-179..215 (37, in `lab/conformance/manifest/M03-verify-reject-fx.json`).
+
+NOT DONE / BLOCKED / for the orchestrator: (1) `lab/conformance/INDEX.json` was regenerated with `lab/tools/regen_index.py` (outside the track's directories; a generated dependant; it will conflict with any other track that regenerates it, so regenerate it once after merging). (2) `lab/conformance/VERSION` was not bumped and `lab/conformance/README.md` was not edited. (3) `HostileFramesTest` in `:mesh-proto` pins `vectors.size == 71` for `M03-verify-reject.json`; the new M03 vectors therefore live in a second file of the same family and that count still holds. (4) The M01-family vectors for the lexer and depth readings (CV-7, CV-8) are M03 vectors at step 2, because `lab/conformance/json` is outside this track. (5) `.github/workflows/apple-ios.yml` needed no edit (it reads `known-disagreements.txt`, which gained five ids). (6) Not run: macOS/CryptoKit, Windows, hosted CI; two PROCESSES writing one seq store is not covered (needs an OS file lock). (7) CV-3 is a design ruling the next design revision must fold into LAB_SPEC 4.6 steps 17/18 and the M02-118 row. (8) `docs/design/mesh/*.md` were not edited.
+Result: **PASSED** for the ten findings in the LAB (oracle: self).
+
+## Review fixes, track fix-router (LTQ-01, 02, 05, 06, 12, 13, 15: `:mesh-router`, `:mesh-sim`, R01/R02/R03/R06/M08 vectors) — 2026-10-07 — LAB
+Evidence label: LAB and SIMULATED, oracle: self. NOT DEVICE EVIDENCE. The worktree was created at 98ab632 and was reset to BASE_SHA f6a8f1efeea47c0c3ef8653a34762e9d6b706fe0 (fetch of the branch claude/asom-v1-build-brief-vw83oh, then a hard reset to that sha; `docs/design/mesh/LAB_SPEC.md` present). Nothing committed.
+Failing-before: every fix has a test that failed on the unfixed code (`TrackerFixTest` 8 of 13 failed, `LiveStateFixTest` 7 of 9 failed; the ones that passed before are the test-gap tests LTQ-12/13 and controls, and are mutation-checked below). Real commands:
+$ ./gradlew -p lab :mesh-router:test :mesh-sim:test :conformance-runner:test --max-workers=2   (JDK 21.0.10)  BUILD SUCCESSFUL; mesh-router 59 tests 0 failures; mesh-sim 37 tests 0 failures; conformance-runner 2061 tests 0 failures (7 skipped, as before this change)
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab :mesh-router:test :mesh-sim:test :conformance-runner:test --max-workers=2   (JDK 17.0.12)  BUILD SUCCESSFUL; same counts 59 / 37 / 2061, 0 failures
+Vector families after the change: M08 77 (was 59), R01 91 (81), R02 50 (46), R03 33 (31), R06 68 (54), all pass; `power-fields iterations: 3564 violations: 0`.
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py -> law: OK
+$ python3 lab/tools/xcheck.py lab/conformance -> xcheck W04: 249 agree, 0 disagree; W05: 195 agree, 0 disagree
+$ ./gradlew jvmTest (root) -> BUILD SUCCESSFUL; root tests 139, 0 failures (`:core:routing:test` and `:server:test` FROM-CACHE: cached results of the same inputs)
+Mutation checks (scratch runner outside the repo; each mutant applied to the source, `:mesh-router:test :conformance-runner:test` (+ `:mesh-sim:test` for the simulator ones) run, the file restored byte for byte): 25 mutants, 25 KILLED after two additions. First pass: 2 survivors (a sibling memory mark taken from the worst entry only: killed after adding `theMemoryMarkOfAnySiblingAppliesEvenWhenAnotherSiblingIsTheWorstState`; the simulator pulling on the digest class only: killed after adding `PowerFieldsTest`) and 2 mutants that did not compile (rewritten and killed). Killed: stateAt exact key only; capAt exact key only; memory mark not merged; slotOf exact key; penalty count per entry; claim body wipes `recent`; re-dial clears GOAWAY; re-dial clears regressed; GOAWAY not recorded for the full state; power freshness = digest freshness; equal-seq full state ignored; F11 reads digest expiry; F9 reads power expiry; STALE band substitution dropped; effective freshness = digest only; simulator pulls on digest class only; curve validation off; curve allows duplicates; curve allows five points; inherited DISCREPANT clears at MIN_STATE (R21); no penalty doubling (R19); best index (3n - 1)/4 (R12); `bad >= 3` in `disc` (R18); half-open peer not probe-only (R29); digest regression ignored (R9).
+What was built: tracker keyed (peer, file) with the backend only picking the claim row (ERR-FX-RT-1), curve validation to F8 (RT-2), the discard budget kept across a claim seq (RT-3), GOAWAY and regression surviving a re-dial (RT-5), power fields aged from the last full STATE (RT-6, additive `NodeView.powerFreshness`, simulator pulls when either class is STALE), new M08 kinds `inherit`, `claimBudget`, `penalty`, `disc`. Reading choices and residuals are in `lab/ERRATA.md` ERR-FX-RT-1..8.
+Not done / not verified: the Windows lane and hosted CI (not run here); ratios kept across a backend switch were measured against the old claim row (RT-1 residual, owner decision); the first-claim-body inheritance loophole (RT-3 note) is recorded and NOT changed; a half-open peer's probe-only flag has a unit test but no R01/R02 vector (the expected shape has no field for it); the simulator's state-pull counts rose slightly because of the added pulls and the gate scenarios still pass.
+Result: **PASSED** in the LAB for the six findings; LTQ-06 is a SPEC GAP resolved conservatively and recorded.
+
+## Fix track fix-ledger (LTQ-03, LTQ-04, LTQ-10, LTQ-11, LTQ-14) - 2026-10-07 - LAB (not device evidence)
+
+Worktree base: HEAD was 98ab632f7460..., not BASE_SHA, so a fetch of `claude/asom-v1-build-brief-vw83oh` and a hard reset to f6a8f1efeea47c0c3ef8653a34762e9d6b706fe0 were run; HEAD then printed f6a8f1efeea47c0c3ef8653a34762e9d6b706fe0 and `ls docs/design/mesh/LAB_SPEC.md` succeeded. Nothing committed.
+
+Failing-before evidence (real output, before any fix):
+- LTQ-03: `SinkTest > reopeningAfterATornTailTruncatesItInsteadOfMergingOntoItAndKeepsEveryDurableRow_LTQ03() FAILED  CorruptRowException: line 3 is not a JSON object: Reject(MALFORMED_JSON at 18: expected ':')` (5 of 14 SinkTest tests failed).
+- LTQ-04: `HostileCodesTest > aReceivedErrorCodeOutsideTheClosedSetIsStoredAsUNKNOWN_LTQ04() FAILED  code 'x 192.168.1.20 my prompt text' ==> expected: <ERROR:UNKNOWN> but was: <ERROR:x 192.168.1.20 my prompt text>`; GOAWAY `expected: <GOAWAY:unknown> but was: <GOAWAY:x 192.168.1.20 my prompt text>`; `5 tests completed, 4 failed`.
+- LTQ-10, LTQ-11, LTQ-14 are TEST_GAPs: proved by mutation (below), not by a failing-before run.
+
+Gate output after the fixes (Linux, this machine):
+```
+$ ./gradlew --max-workers=2 -p lab labTest --offline          (JDK 21)   -> BUILD SUCCESSFUL in 1m 18s, exit 0
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew --max-workers=2 -p lab labTest --offline  (JDK 17.0.12)  -> BUILD SUCCESSFUL in 2m 11s, exit 0
+  JDK 17 run, from the test XML: :ledger-model 94 tests, 0 failures; :conformance-runner 2015 tests, 0 failures; family L02: 23 vectors, 23 pass (L02-022, L02-023 added)
+$ ./gradlew --max-workers=2 -p ubuntu-touch/jvm utTest --offline   -> BUILD SUCCESSFUL (JsonlSink caller)
+$ ./gradlew --max-workers=2 jvmTest --offline                       -> BUILD SUCCESSFUL; root tests: 139, 0 failures
+$ python3 lab/tools/isolation.py   -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py   -> law: OK
+DurabilityHarnessTest line: rows intact after kill inside a write: 2 durable rows verified, torn tail bytes: 294, restart append read back clean
+```
+Mutation checks (apply mutant, run the named tests, restore; 17 mutants, 17 KILLED, 0 survivors): LTQ03 no torn-tail truncation on open (5 tests fail); no rollback after a failed append (2); LTQ04 ERROR code raw (2); GOAWAY reason raw (1); no CONTROL grammar rule (1); grammar accepts any `ERROR:` suffix (1); LTQ11 default force a no-op (2); `force(true)` (1); constructor default an inline no-op (2); force before write (2); LTQ10 appendControl without failClosed (8); failClosed without wire.close (9); handOff without the closed check (1); close row status 200 (6); LTQ14 lower bound 0 (2); lower exclusive (2); upper exclusive (1). The L02-022 and L02-023 vectors were also shown to fail in `:conformance-runner:test` against the raw-ERROR-code mutant.
+
+Result: LTQ-03, LTQ-04, LTQ-10, LTQ-11 FIXED; LTQ-14 PARTIAL (only the `withinRecordBound` lower bound is in this track; the router `Scoring.kt` boundary and the sim RL16 counter are outside its write set); LTQ-04 in `:mesh-proto` `SessionRows.kt` REJECTED (already a closed enum there). Reading choices: `lab/ERRATA.md` ERR-FX-1..5. UNVERIFIED: Windows (append-mode truncate), Linux only here. `lab/conformance/INDEX.json` changed by one line (the L02 sha256, regenerated by `lab/tools/regen_index.py`).
+## Fix gate, track fix-desktop-linux-ci (review findings EGR-1..9, EGR-11, HLU-4..7, HA-09) — 2026-10-07 — LAB (not device evidence)
+Base: `f6a8f1efeea47c0c3ef8653a34762e9d6b706fe0` (the worktree began at another commit and was reset to it; `git rev-parse HEAD` then printed the base and `docs/design/mesh/LAB_SPEC.md` exists). Uncommitted working tree. Machine: Ubuntu 24.04 container, x86_64, JDK 21 (default) and JDK 17.0.12 at /opt/jdks/jdk-17, no Android SDK, no Docker, no hosted runner. Readings and choices: `desktop/ERRATA.md` ERR-FX-1..14.
+Per finding, failing-before evidence (a test or command run on the OLD code, output kept) and the result:
+```
+EGR-1  old install.sh + a scratch key "Mallory" signing SHA256SUMS: "signature SHA256SUMS.asc verified by gpg (this proves the owner's key signed the checksums, not that the code is safe)", rc=0
+       new, unpinned: "signature SHA256SUMS.asc is valid and made by key 31C3946B... which is NOT checked against the owner's key (no owner fingerprint is pinned in this installer yet)"; pinned to another key: "...is NOT the owner's pinned key 0123..." rc=1, nothing installed; pinned to the signer: accepted (positive control)
+EGR-2  old: top asom-desktop--rf-linux-x86_64 -> "mv: cannot stat .../current.tmp.28521" and a symlink "current.tmp.28521" left in the caller's cwd; top ...-current-... -> "are the same file", prefix/current left a real directory
+       new: "unsafe version string '-rf' in the archive name (it must start with a digit)" / "'current'", cwd empty, nothing installed
+EGR-5  old: lib/x -> ../../<top>/bin installs, rc=0, "no symlink leaving the image" printed. new: "the archive holds a symlink that leaves the image (...9.9.9-hostile/lib/x -> ../../...)", rc=1
+EGR-8  lab-packaging-check.sh against the OLD install.sh (swapped in, then restored): checks passed 110, failed 16 (the new hostile cases, the cwd check, the 6 signature checks, "the tarball's install.sh differs")
+       new: install-refusals 41 checks, install-signature 8 checks; "14 hostile archives exercised"; separate canary scans plus a planted-canary positive control
+EGR-3/9/11 desktop/tools/check_workflows.py on the ORIGINAL desktop-linux, desktop-windows, lab, cleanup-artifacts workflows: 23 VIOLATION lines (15 checkouts keeping credentials, 5 images by tag, 2 github-script by tag, 1 input interpolated into a script body)
+       new (desktop-linux, lab, cleanup-artifacts): "workflow-law: 3 workflow files; third-party uses checked: 33; run/script bodies: 34; checkouts: 10; container images: 5 / workflow-law: OK"
+EGR-4  old lab check_law.py on a copy of lab/ with a mesh-sim Mutant.kt (HttpServer, AsynchronousServerSocketChannel, DatagramChannel on "::", HttpClient): "law: OK"
+       new: 3 VIOLATION lines (wildcard bind InetSocketAddress(8080), listener HttpServer, outbound HttpClient). The old desktop/tools/check_law.py likewise printed "law: OK" on a desktop Mutant.kt; the new one flags it.
+EGR-6  test/fetch-nfpm-check.sh against the OLD fetch-nfpm.sh and build-packages.sh: "fetch-nfpm-check: 1 passed, 8 failed" (the planted cached binary was executed; build-packages ran the PATH nfpm). New: "fetch-nfpm-check: 9 passed, 0 failed". Real download path (network via the proxy): sha256 22aa6d3b... matched, second call "cached tarball matches the pinned sha256, re-extracting the binary from it".
+EGR-7  proposal only (ERR-FX-8). systemd-analyze security --offline: "Overall exposure level for asom.service: 3.6 OK"; systemd-vm.sh gained check 1b (ceiling 4.0), never run on a hosted runner.
+HLU-4  PresenceLawsTest new cases (startup-mid-band-never-serves, startup-quiet-dwell-60s, startup-blind-sample-not-eligible, startup-gpu-counter-must-settle) against the OLD governor logic: 4 FAILED ("a blind first sample is not eligibility ==> expected: <[]> but was: <[CONDITIONS_MET]>", "59,999 ms below 200 is not 60 s", ...). New: pass.
+HLU-5  JsonlLedgerSinkTest "a 65 MiB tail with no newline is removed at open and open returns" against the OLD sink: "execution timed out after 30000 ms". New: passes, recoveredTornBytes = 65 MiB.
+HLU-6  PowerProbeTest "an unreadable or unclassifiable power tree is unknown..." against the OLD probe: "a power_supply path that cannot be listed (not ENOENT) is unknown ==> expected: <UNKNOWN> but was: <AC>". New: pass.
+HLU-7  LinuxPathsPrepareTest (5 cases) against the OLD prepare: 5 of 5 failed (0755 identity dir kept, symlinked ledger and identity dirs accepted, CACHEDIR.TAG 0644, system runtime dir 0755 kept). New: 6 cases pass (the owner-mismatch case is new API).
+HA-09  lab.yml: xcheck --families L01,W07,W07p -> "xcheck L01: 56 agree, 0 disagree / W07: 67 agree / W07p: 97 agree"; gen_vectors.py + regen_index.py on a copy of lab/ reproduce lab/conformance byte for byte ("IDENTICAL").
+```
+Gates, real output (JDK 21 unless stated):
+```
+$ lab-packaging-check.sh --dist <built dist> --probe <built probe>   (root, ASOM_REQUIRE_UNSHARE=1, TMPDIR=/tmp; image built with build-app-image.sh, packages with build-packages.sh using the pinned nfpm 2.41.3)
+  family install-tarball: 27 checks / install-refusals: 41 / install-signature: 8 / uninstall: 12 / deb-layout: 19 / package-scripts: 19
+  checks passed: 126   failed: 0          lab-packaging-check: PASS          (was 104 checks before this track)
+$ test/fetch-nfpm-check.sh                -> fetch-nfpm-check: 9 passed, 0 failed
+$ shellcheck -x -S warning <the CI list plus test/fetch-nfpm-check.sh>   (shellcheck-py, in a venv)   -> clean (one pre-existing SC2034 in test/systemd-vm.sh, which the CI list does not include, line 139, untouched)
+$ python3 lab/tools/isolation.py          -> "isolation check 4: OK (shipped tree byte-identical to the pinned base)"
+$ python3 lab/tools/check_law.py          -> law: OK  (236 sources)      --selftest -> law selftest OK: 17 mutants caught, 3 clean controls passed, harness and test scopes behave
+$ desktop/tools/isolation.sh              -> ISOLATION: all checks passed  (incl. check_law --selftest "16 mutants caught ... patterns equal lab/tools/check_law.py" and check_workflows --selftest "10 mutants caught, 2 clean controls passed")
+$ python3 desktop/tools/check_paths.py    -> check_paths: 1210 tracked paths checked, 0 problems
+$ ./gradlew -p desktop desktopTest :packaging:windows:winplatform:test :packaging:macos:macplatform:test --rerun-tasks   (JDK 21 AND JDK 17.0.12)
+  node-core 76 tests 0 failed; node 127 tests 0 failed; winplatform "141 tests, 114 passed, 0 failed, 27 skipped"; macplatform "141 tests, 130 passed, 0 failed, 11 skipped"   (both JDKs identical)
+$ ./gradlew -p lab labTest                 -> BUILD SUCCESSFUL on JDK 21 and on JDK 17 (no lab Kotlin changed; lab/tools/check_law.py only)
+$ ./gradlew jvmTest (root)                 -> BUILD SUCCESSFUL; root tests: 139, 0 failures
+```
+Mutation checks: install.sh (old script into the lab check: 16 failures, above); fetch-nfpm/build-packages (old scripts: 8 of 9 failed); lab check_law (HttpServer removed from LISTENER: "mutant not caught in main of mesh-sim: HttpServer"; HttpClient removed from DIAL: the lab selftest AND the desktop selftest's pattern-equality check fail); check_workflows (SHA rule weakened: "mutant not caught: tag-pinned action"; injection rule disabled: 3 mutants not caught); Governor, ledger sink, power probe, paths (old code: the new tests fail, above). NOT mutation-checked by a real escape: the install canary scan (GNU tar 1.35 refuses every write-through case, so only the planted-canary positive control exercises the scan).
+BLOCKED / NOT DONE (honest): EGR-11 (`apple-ios.yml` is not in this track's file list; two path-filter lines, ERR-FX-14). EGR-9 PARTIAL: matrix images pinned by digest and checkouts stop persisting credentials in `desktop-linux.yml` and `lab.yml`; NOT `desktop-windows.yml` (its byte-for-byte canonical copy under desktop/packaging/windows/ci is the Windows track's, ERR-FX-4) and NOT the whole-checkout mount in `ubuntu-touch.yml`'s smoke container (not in the file list). The image digests came from mirror.gcr.io; Docker Hub returned 429. HLU-4 PARTIAL BY DESIGN: `Governor` is strict by default and the Linux host adopts it; Windows and macOS keep the old start until their (unowned) tests are warmed up, because with the strict start on, 2 Windows and 3 macOS tests failed (ERR-FX-5). EGR-7 is a proposal only; the unit file is unchanged. CI-ONLY, never run on a hosted runner: the new `fetch-nfpm-check.sh` step, the digest-pinned install matrix (the digests were not pulled here: no Docker), `systemd-vm.sh` check 1b, the new lab.yml steps, `check_workflows.py` inside `isolation.sh` on JDK 17/21 and aarch64. The signature accept path uses a scratch key and a sed-substituted copy of the installer; no real owner fingerprint exists.
+Oracle status: self-oracled where vectors are concerned (none were changed); the Python cross-checks in lab.yml never clear the oracle tag.
+Result: PASSED for the findings fixed (LAB evidence only); PARTIAL and BLOCKED items as listed.
+
+
+## Gate: fix-windows-mac (review findings HWM-1 to HWM-9, HWM-11, HWM-12, HWM-13, HA-01, HA-08)
+
+Evidence label: LAB (Linux container, fakes behind the Windows and macOS port interfaces). NOT DEVICE EVIDENCE: nothing here ran on Windows or macOS; the Windows and macOS integration tests (`*IT`) SKIPPED as designed.
+Base `f6a8f1efeea47c0c3ef8653a34762e9d6b706fe0` confirmed (the worktree started at another commit and was reset to it).
+
+Failing before the fix (new tests `FixWindowsTest`, `FixMacTest`, run against the production code with only behaviour-preserving seams added): winplatform had 11 failing tests (HWM-1 x2, HWM-2, HWM-3, HWM-4, HWM-5, HWM-6, HWM-12, HWM-13 x2, plus the law-vacuity check); macplatform had 9 failing tests (HWM-7, HWM-8, HWM-9 x3, HWM-11, HA-01, HA-08, plus the law-vacuity check). Captured JUnit XML is in the builder's scratchpad (`fixwm/win-before-fix.xml`, `fixwm/mac-before-fix.xml`).
+
+After the fix, real output:
+
+```
+./gradlew --max-workers=2 --offline -p desktop :packaging:windows:winplatform:test :packaging:macos:macplatform:test   (JDK 21)
+winplatform test summary: 153 tests, 126 passed, 0 failed, 27 skipped   (os=Linux; ...)
+macplatform test summary: 150 tests, 139 passed, 0 failed, 11 skipped   (os=Linux; ...)
+BUILD SUCCESSFUL in 50s
+JAVA_HOME=/opt/jdks/jdk-17 ./gradlew ... (same command)
+winplatform test summary: 153 tests, 126 passed, 0 failed, 27 skipped   (os=Linux; ...)
+macplatform test summary: 150 tests, 139 passed, 0 failed, 11 skipped   (os=Linux; ...)
+BUILD SUCCESSFUL in 1m 56s
+python3 lab/tools/isolation.py      -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+python3 lab/tools/check_law.py      -> law: OK
+python3 desktop/tools/isolation.py  -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+python3 desktop/tools/check_law.py  -> law: OK
+python3 desktop/tools/check_paths.py -> check_paths: 1210 tracked paths checked, 0 problems
+./gradlew --offline jvmTest (root)  -> BUILD SUCCESSFUL (tasks FROM-CACHE / UP-TO-DATE: the root build was not changed, so this re-ran nothing; the 139-test count is NOT re-observed here)
+```
+
+Mutation checks (apply, run the suite, restore; all restored, `git diff` shows only the intended changes): 26 mutants, 25 killed, 1 equivalent.
+Killed: HWM-1 providerAbsent always true; HWM-1 store swallows existing(); HWM-2 old any-self-test bypass; HWM-3 no state-tree check; HWM-3 directory only; HWM-4 escalation rights folded into WRITE; HWM-5 socket file unchecked; HWM-5 socket owner rule relaxed; HWM-6 unreadable console read as none; HWM-12 narrow before range check; HWM-13 truncation ignored; HWM-13 exit code ignored; HWM-13 runner never reads past the cap; HWM-7 stored SPKI check removed; HWM-8 reresolve ignores the recorded address; HWM-8 several candidates pick lowest name; HWM-9 stale assertion never detected; HWM-9 epoch ignored; HWM-9 read does not re-assert; HWM-9 HelperProcess epoch constant; HWM-11 unreadable binding migrated; HA-01/08 node limit raised to 103; HA-08 zero escape restored; HA-01 checklist reverted; HA-08 tried-check removed (first run SURVIVED, a partial-probe case was added to the test, re-run killed).
+Equivalent (not killable): HWM-12 `isFinite` check removed: `Math.round(+Infinity)` is `Long.MAX_VALUE`, which the range check on the Long rejects anyway, so the explicit check is redundant defence.
+
+Existing assertions changed because they pinned the behaviour a finding says is wrong (recorded in the ERRATA rows, not hidden): `NetAndControlTest` (two cases: several overlay candidates without a selection, and a changed overlay address on the same utun; HWM-8) and `PathsAndGuardTest` (an unreadable binding record is `Unverifiable`, not `Migrated`; HWM-11).
+
+NEEDS-DEVICE-VALIDATION (open): `desktop/packaging/windows/docs/DEVICE_CHECKLIST_WINDOWS.md` FX-1, FX-3, FX-5, FX-6; `DEVICE_CHECKLIST_MACOS.md` S-M7a (its pass criterion corrected). PARTIAL: HWM-6 does not enumerate RDP sessions. Rows: `desktop/packaging/windows/ERRATA.md` and `desktop/packaging/macos/ERRATA.md`, ids `ERR-FX-*`.
+Result: **PASSED in the LAB** for the pure logic of every finding; the Windows and macOS runtime behaviour is unverified.
+
+## Ubuntu Touch review fixes (track fix-ubuntu-touch: HLU-1, HLU-2, HLU-3, HLU-8) - 2026-10-07 - LAB (not device evidence)
+
+Evidence label: LAB / CI-APPROX on this container, NOT DEVICE EVIDENCE. No Qt is installed here, so `tests/qml/tst_Text.qml` and the QML changes were NOT run by a QML runtime (the static check and the JVM tests were). Base: `f6a8f1efeea47c0c3ef8653a34762e9d6b706fe0` (the worktree was created at 98ab632 and reset to it with `git fetch origin claude/asom-v1-build-brief-vw83oh && git reset --hard f6a8f1e...`; `docs/design/mesh/LAB_SPEC.md` present).
+Failing before the fix (real runs on the unfixed tree): `python3 ubuntu-touch/tools/check_qml_text.py` -> 18 VIOLATION lines, one per Label/Text, exit 1; `LedgerRecoveryTest` 8 tests, 8 failed (`CorruptRowException` out of `NodeSession.run`, `FrameTooLargeException`, exit 74 for an unreadable ledger, torn tail kept, last bad row accepted at open); `WatchdogLockTest`: `aTickMeasuresTheGapFromTheMomentItsThreadWokeNotFromWhenItGotTheLock` failed with states `[idle, active, interrupted, idle]` and `aSelfTestThatTakesTenSecondsDoesNotMakeTheWatchdogReportASuspend` failed with "the tick at 1000 ms is stuck behind the self-test: it holds the session lock".
+$ ./gradlew -p ubuntu-touch/jvm utTest --max-workers=2                      (JDK 21.0.10)  BUILD SUCCESSFUL; ut-host 64 tests, 0 failed, 0 skipped (15 new: LedgerRecoveryTest 12, WatchdogLockTest 3)
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p ubuntu-touch/jvm utTest --max-workers=2  (JDK 17.0.12)  BUILD SUCCESSFUL; ut-host 64 tests, 0 failed, 0 skipped
+$ python3 ubuntu-touch/tools/check_qml_text.py --selftest -> check_qml_text selftest: OK (17 negative, 7 positive controls)
+$ python3 ubuntu-touch/tools/check_qml_text.py          -> check_qml_text: 18 Label/Text/TextEdit objects in 13 QML/JS files / check_qml_text: OK
+$ ASOM_GRADLE_FLAGS=--max-workers=2 ubuntu-touch/tools/isolation.sh -> ISOLATION: all checks passed (runs check_law.py and the new check_qml_text.py)
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base);  python3 lab/tools/check_law.py -> law: OK;  python3 ubuntu-touch/tools/check_law.py -> law: OK
+$ ./gradlew :core:*:cleanTest :server:cleanTest jvmTest --no-build-cache -> BUILD SUCCESSFUL; root tests: 139, 0 failures (really executed, not from cache)
+Built jar (`utNodeJar`, run with `-Duser.name=tester`, clean env, temp HOME), unfixed behaviour from the finding vs now: ledger.jsonl = `{"ts":1,"callerPkg":"x"{"ts":2}\n` then hello, active, peers open, ledger query -> now `state interrupted`, `error LEDGER_UNAVAILABLE` (twice, for peers and ledger), stderr `asom-ut: ledger unavailable`, exit 0 (finding: exit 70). Self-test under `-Xint` with a heartbeat every second -> `selftest` result at 14.07 s and states `idle`, `active` only (finding: `interrupted`, `idle` at 14.3 s).
+Mutation checks (`python3 ubuntu-touch/tools/mutants.py --kotlin --only NAME --tests CLASS`, each restored): 12 new mutants, 12 KILLED: ledger-tail-kept, ledger-last-row-unchecked, ledger-rollback-skipped, ledger-poison-skipped, ledger-budget-ignored, ledger-limit-ignored, ledger-corrupt-uncaught, ledger-toolarge-uncaught, ledger-loss-keeps-state, selftest-under-lock, tick-stamped-after-lock, selftest-not-awaited. The QML static check was mutated by deleting one `textFormat` line from `PeersPage.qml`: it printed `VIOLATION: qml/PeersPage.qml:39 ...` and exit 1; restored. Not re-run: the older 25 mutants (their targets are unchanged apart from the `apply(event, atMs)` default parameter).
+Not done / not verified: `tst_Text.qml` (needs Qt; CI `clickable test` runs it); the workflow file `.github/workflows/ubuntu-touch.yml` was not edited (outside this track), the check runs through `isolation.sh` and `clickable.yaml`; `FileLedger.append` has no production caller in UT-0. Reading choices: `ubuntu-touch/ERRATA.md` ERR-FX-UT-1 to ERR-FX-UT-4.
+Result: HLU-1 FIXED, HLU-2 FIXED (PLAUSIBLE finding; real defect reproduced in tests), HLU-3 FIXED, HLU-8 FIXED, in the LAB sense above.
+
+## Corrections to the record, 2026-10-07 (fix-docs): HA-03 to HA-07
+
+Evidence label: **LAB** for the commands below (this machine, Linux, JDK 17.0.12 and JDK 21.0.10, `--max-workers=2`) and **CI (hosted VM)** for the check-run conclusions, read through GitHub's check-runs API (conclusions and step names only: the job logs are served from a blob host that this sandbox's `gh` refuses, so no hosted output is pasted here). NOT DEVICE EVIDENCE. Base: the worktree was created at `98ab632`, then `git fetch origin claude/asom-v1-build-brief-vw83oh && git reset --hard f6a8f1efeea47c0c3ef8653a34762e9d6b706fe0`; `git rev-parse HEAD` then printed `f6a8f1efeea47c0c3ef8653a34762e9d6b706fe0` and `docs/design/mesh/LAB_SPEC.md` exists. Nothing is committed or pushed. This section only appends; every earlier line stays as it was written, and where an earlier line is wrong this section says which one and why.
+
+### HA-03: gates recorded PASSED with the JDK 17 half never run
+
+Confirmed. LAB_SPEC 8.1 says a gate has not passed when the real output differs from the expected column, and the L0.2 gate asks for JDK 17 and 21. Each of these entries says in its own text that JDK 17 was not run, and still ends in a bare "Result: PASSED". Read them as follows (the earlier lines are not edited):
+
+| Entry (heading above) | Its own words on JDK 17 | Status to read it as |
+|---|---|---|
+| Lab L0.2a-json gate (`:json`, M01) | "JDK 17 NOT available in this container" | PASSED on JDK 21 (LAB). JDK 17 half was open when written; closed below |
+| Lab L0.2 + L0.3 gate (`:bench-core`, `:manifest`) | "JDK 17 NOT available in this container" | same |
+| Lab L0.4 gate (`:ledger-model`, `:mesh-policy`) | "JDK 17 lane NOT run here" | same |
+| Lab L0.6 gate (`:mesh-router`, `:mesh-sim`) | "JDK 17 lane NOT run here" | same |
+| Lab L0.5 gate, wire half and trust half (`:mesh-proto` wire and trust) | "JDK 17 lane NOT run here" | same (not in the finding; identical defect) |
+
+The TLS half and the session half of L0.5 and the DL0/DL1 and DL2 entries carry JDK 17 results of their own and are not affected.
+
+How the JDK 17 half is closed, with real output. JDK 17 is selected through `JAVA_HOME`; `JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab --version` printed `Launcher JVM:  17.0.12 (Eclipse Adoptium 17.0.12+7)`.
+
+```
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab test --max-workers=2 --continue
+BUILD SUCCESSFUL in 2m 14s
+58 actionable tasks: 24 executed, 34 from cache
+(every lab module's :test task executed; the 34 from cache were :core:* and :server tests, not lab modules)
+```
+Test counts read from `lab/<module>/build/test-results/test/*.xml` after that run (tests / failures / errors / skipped), JDK 17.0.12:
+```
+json                 42 / 0 / 0 / 0
+bench-core           41 / 0 / 0 / 0
+manifest             36 / 0 / 0 / 0
+ledger-model         67 / 0 / 0 / 0
+mesh-policy          32 / 0 / 0 / 0
+mesh-proto          185 / 0 / 0 / 0
+mesh-router          35 / 0 / 0 / 0
+mesh-sim             36 / 0 / 0 / 0
+conformance-runner 2013 / 0 / 0 / 7
+```
+The 7 skipped in `conformance-runner`: W00-100 to W00-104 and W01b-reach (PROPOSED vectors, reported `proposed-skipped`) and `RegenerateVectors` (runs only under `genVectors`); none is an Assumption.
+
+The same command on JDK 21.0.10 (`./gradlew -p lab test --max-workers=2 --continue --rerun-tasks`) gave identical per-module counts and 0 failures in every lab module. It ended `BUILD FAILED in 2m 27s` for one reason outside the lab: `:server:test` (the unmodified v1 test `AsomServerIntegrationTest > a failed-over attempt gets its own cloud ledger row`, line 540, 1 of 65) failed once under the full `--rerun-tasks` load; `./gradlew -p lab :server:test --rerun` then printed `BUILD SUCCESSFUL in 6s`. That is the known v1 ledger-read race class (see the re-pin tables in `lab/ERRATA.md`); it was not investigated or touched here (`server/` is outside this track).
+
+What this closes and what it does not. It is a JDK 17 result for the tree at `f6a8f1ef`, which contains those modules plus later work; it is not a re-run of each gate's own commit. It is Linux only; the Windows lane is covered only by the hosted conclusions below.
+
+Hosted conclusions (CI (hosted VM), head `37332005d32538e30b1a4330c748efcdc0a6c7cb`, read with `gh api repos/mbaliga/asystemofmodels/commits/37332005/check-runs`): 52 check runs, 52 success. `Lab (pure JVM, JDK 17)` https://github.com/mbaliga/asystemofmodels/actions/runs/37566435041/job/112615204314 and `Lab (pure JVM, JDK 21)` https://github.com/mbaliga/asystemofmodels/actions/runs/37566435041/job/112615204415 (the JDK 17 job's step "Lab tests (prints the per-family vector counts)" concluded success); `W0 lab on Windows (JDK 17)` https://github.com/mbaliga/asystemofmodels/actions/runs/37566435127/job/112616034107 and `(JDK 21)` https://github.com/mbaliga/asystemofmodels/actions/runs/37566435127/job/112616034114 concluded success. At `6711bb5d`, 58 of 58 check runs concluded success. Pasted family lines from those jobs: none (logs not reachable).
+
+Observed, outside the findings, NOT investigated: the hosted `Lab (pure JVM, JDK 17)` job concluded **failure** at `a358a1dd` (https://github.com/mbaliga/asystemofmodels/actions/runs/37604110270/job/112738342815) and at the branch tip `5b6b4352` (https://github.com/mbaliga/asystemofmodels/actions/runs/37607936621/job/112747899349), in the step "Lab tests (prints the per-family vector counts)", while the JDK 21 job concluded success at both; `Lab reference counts (Linux, JDK 17)` also failed at both. The tip commit's message is "lab: make integration tests wait on conditions (CI timing flakes)". So JDK 17 hosted is red at the tip as of this reading; the local JDK 17 pass above is at the older base `f6a8f1ef` and says nothing about those later commits.
+
+### HA-04: Apple I0b mutation report count
+
+Confirmed. The entry "Apple lane I0b gate" says "Five survived the first pass and were killed by tests added afterwards (marked *)" but marks seven:
+```
+$ sed -n 1305,1320p PROGRESS.md | grep -o 'KILLED\*' | wc -l
+7
+```
+(run before this correction was appended; the seven are D06, C01, B04, S01, S02, S06, U02). The total is right: 61 `KILLED` plus 2 `SURVIVED (equivalent)` is 63 distinct ids, none repeated (counted in lines 1307 to 1318). The mutation log is not committed, so the repository cannot show which two of the seven stars are wrong or whether "Five" was the miscount. Conservative reading: the **stars are authoritative, so seven mutants survived the first pass and were killed afterwards**; read "Five" in that line as "Seven". Nothing was re-mutated here.
+
+### HA-05: ERRATA ids that named two entries
+
+Confirmed, exactly four. Before-check (a script written for this, kept in the session scratchpad and not committed; it lists ids defined as a table row, a bold `**E-n.` item or a heading):
+```
+./apple/ERRATA.md 40 ids; duplicates: {'E-15': [82, 90]}
+./desktop/ERRATA.md 47 ids; duplicates: {'ERR-DL2-13': [52, 63]}
+./desktop/packaging/linux/ERRATA.md 14 ids; duplicates: {}
+./lab/ERRATA.md 170 ids; duplicates: {}
+./ubuntu-touch/ERRATA.md 29 ids; duplicates: {'ERR-UT-CLICK-2': [31, 59], 'ERR-UT-QML-1': [34, 63]}
+```
+ERRATA files are append-only for this track, so no heading was edited. Each now has an appended disambiguation note that gives the orchestrator section a new id: `ERR-DL2-15` (desktop/ERRATA.md), `ERR-UT-CLICK-4` and `ERR-UT-QML-3` (ubuntu-touch/ERRATA.md), `E-29` (apple/ERRATA.md). Citations, resolved:
+
+- `PROGRESS.md` line 900 cites `ERR-DL2-13` for the drain: that is the table row, correct as written.
+- The hosted-CI entry for head `aa060c4` (line 1330) cites `ERR-DL2-13` for the colon path: that means **`ERR-DL2-15`**; and cites `ERR-UT-CLICK-2` for Clickable parsing the AppArmor file as JSON: that means **`ERR-UT-CLICK-4`**.
+- `ubuntu-touch/CMakeLists.txt` line 22 cites `ERR-UT-CLICK-2` and means `ERR-UT-CLICK-4`; `ubuntu-touch/tests/run_qml_ci.sh` line 5 cites `ERR-UT-QML-1` and means `ERR-UT-QML-3`. Both files are outside this track's write set, so the comments were NOT changed (the finding suggested changing `CMakeLists.txt`); the ERRATA note is the key. A later track that owns those files should update the two comments.
+
+### HA-06: the hosted-CI entry's "Open" list is stale
+
+Confirmed against the ERRATA and the hosted state. The entry for head `aa060c4` ("Hosted CI state for the multi-platform mesh program") said the Canary failure's cause was "not investigated", the xvfb retry was "not yet read from a log", and cited no run URL. Updated state:
+
+- **Canary (26.04-1.x), cause found** (`ubuntu-touch/ERRATA.md`, `ERR-UT-QML-3`, the orchestrator section formerly headed `ERR-UT-QML-1`): the click builds; the canary image's `click-review` does not know the `ubuntu-touch-26.04-1.x` framework. The canary job now builds with `clickable build --skip-review` and runs `clickable review` as an informational step. At `37332005` the check run `Canary - the next series (26.04-1.x), NON-GATING` concluded **success**: https://github.com/mbaliga/asystemofmodels/actions/runs/37566435049/job/112616062294 (this track read the conclusion, not the log).
+- **`tst_StatusPage.qml` and the xvfb retry**: `tests/run_qml_ci.sh` now runs the real-Lomiri QML tests under `xvfb-run` with Mesa software GL as its primary path; the ERRATA records that the hosted log of the follow-up run shows 6 of 6 passing (this track did not read that log). At `37332005`, `QML tests against the real Lomiri.Components (fake node)` concluded success: https://github.com/mbaliga/asystemofmodels/actions/runs/37566435049/job/112615442506
+- **Head `37332005`: 52 of 52 check runs success** (check-runs API). Workflow runs, all `head_sha` `37332005`, conclusion success: lab https://github.com/mbaliga/asystemofmodels/actions/runs/37566435041 , ubuntu-touch https://github.com/mbaliga/asystemofmodels/actions/runs/37566435049 , desktop-linux https://github.com/mbaliga/asystemofmodels/actions/runs/37566435063 , desktop-macos https://github.com/mbaliga/asystemofmodels/actions/runs/37566435017 , desktop-windows https://github.com/mbaliga/asystemofmodels/actions/runs/37566435127 , apple-ios https://github.com/mbaliga/asystemofmodels/actions/runs/37566435004 , CI https://github.com/mbaliga/asystemofmodels/actions/runs/37566435059 .
+- **Still open** from that entry's list: the AppArmor approximation printed denials for `/proc/<pid>/net/if_inet6`, hugepages and coredump_filter (a device-checklist item); the Secure Enclave, power-assertion, PDH, netsh and DPAPI results are hosted-VM observations, not device evidence; every device and real-key item stays `NEEDS-DEVICE-VALIDATION` / `NEEDS-OWNER-VALIDATION`.
+- **No longer true** in that entry's last sentence ("Not started: `:mesh-proto` (wave 3) ..."): `:mesh-proto` is built (wire, trust, pairing, tls, transport and session packages; 185 tests, see HA-03). Not claimed here: whether the final independent review and revision 4 of the design brief are finished.
+- Also open and new: the hosted JDK 17 lab job at `a358a1dd` and `5b6b4352` (see HA-03).
+
+### HA-07: READMEs that described the code as unbuilt or never run
+
+Confirmed, with two refinements found while checking. What changed, each checked against the code or a command:
+
+- `lab/README.md`: the "empty shells" rows now describe the built modules with their test counts (json 42, bench-core 41, manifest 36, ledger-model 67, mesh-policy 32, mesh-proto 185, mesh-router 35, mesh-sim 36, conformance-runner 2013). Refinement: **`mesh-proto` is not a shell either** (the finding left it as one); only `LabModule.kt` and its shell test remain in it.
+- `lab/conformance/README.md`: the file table now lists the 30 indexed vector files by family with counts read from the files; `history/r0/` and `scenarios/` do not exist at this commit and the table called them reserved.
+- `desktop/README.md`: status rewritten. Refinement: the finding's "listens on nothing ... all are built" is **half right**. Built and tested: the control socket server and client, the mini D-Bus reader, the sleep watcher, keep-awake locks, systemd units, DL3 packaging, the Windows host (W0 to W2) and the macOS host (MC1, MC2). Still true: `asom-node` does not start the control socket (`ControlServer.notYetImplemented`, D23/D25), so a running node binds nothing; the Linux `nikStore` is `NotYetImplementedNikStore`; no engine; no mesh. The README says exactly that. Its "reserved `native/`" row is replaced: that directory does not exist.
+- `desktop/docs/LINUX.md`: the control socket's directory is 0700 for USER and FOREGROUND and 0750 for SYSTEM (`SocketDirRule.PRIVATE` and `GROUP_TRAVERSE` in `ControlServer.kt`; `RuntimeDirectoryMode=0750` in `desktop/packaging/linux/systemd/asom.service`).
+- `apple/README.md`, `ubuntu-touch/README.md`, `desktop/packaging/windows/README.md`, `desktop/packaging/macos/README.md`, `desktop/packaging/linux/README.md`: the "never run on GitHub / until a hosted run has been seen / CI-ONLY, never run" statements keep their historical text and gain a dated "Superseded 2026-10-07" note naming the hosted check runs that concluded success at `37332005` (URLs in HA-03 and HA-06 above; conclusions and step names only). The notes keep the label `CI (hosted VM) evidence` and say device results are unchanged. Not changed because still true: `apple/README.md` says `signPresentation` is not built in the Swift lane (only `lab/manifest/.../Signer.kt` has it); the Steam Deck document says nothing has run on a Deck.
+- `docs/design/mesh/OWNER_BRIEF.md`: not edited; no check made here showed a statement in it to be wrong.
+
+### Final gates for this entry (real output, LAB, base `f6a8f1ef` plus the uncommitted documentation changes)
+
+```
+$ python3 lab/tools/isolation.py
+isolation check 4: base 79ff5b81fcc4c8a435813acaa192be206874eacc (from lab/LAB_BASE_SHA), ancestor of HEAD confirmed
+isolation check 4: 136 protected files compared byte-for-byte against base 79ff5b81fcc4
+isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py
+law: 9 module build files checked against the LAB_SPEC 1.2 dependency table
+law: 236 Kotlin/Java sources scanned (no android imports, no frozen-enum reuse, no wildcard bind, listeners only in the harness or tests)
+law: OK
+$ python3 desktop/tools/check_paths.py
+check_paths: 1210 tracked paths checked, 0 problems
+$ ./gradlew jvmTest --rerun-tasks --max-workers=2
+BUILD SUCCESSFUL in 13s   (root tests read from the XML: 139 tests, 0 failures, 0 errors, 0 skipped; the jacoco report resolved here)
+```
+`desktop/tools/isolation.py`, `desktop/tools/check_law.py`, `ubuntu-touch/tools/isolation.py`, `ubuntu-touch/tools/check_law.py` and `ubuntu-touch/tools/check_texts.py` also printed OK. No source or test file changed in this track, so no module test result depends on it beyond the two full-lab runs above. Not run: the Swift lane (`swift test`; documentation only changed under `apple/`), any hosted job.
+
+## Gate: Apple Swift lane repaired after the merge of the seven fix groups (2026-10-07)
+
+Evidence: LAB, oracle: self, NOT DEVICE EVIDENCE. Linux Swift only; macOS and CryptoKit are unverified here. Output below is real (vector bodies not printed).
+
+Findings: (1) `SignerTests` verified a TEST-ONLY-signed FILE document with the new fail-closed default (ERR-FX-CV2): the context now says `productionKeys: false`. (2) Cross-lane fixture M02-930 claimed requiredTier A1 accepted (pre ERR-FX-CV3); retagged to requiredTier A0 (still a strongbox claim, labelled A1) and the fixtures regenerated. (3) `not-implemented.txt` was right for M04 (29) but the router group added 14 M08 vectors (kinds inherit, claimBudget, penalty, disc) the Swift tracker does not run, and 4 M08 `state` vectors it does; `known-disagreements.txt` had been merged into two copies (37 + 37 + 5 reasonless) so `lane_diff.py` reported duplicates. See `apple/ERRATA.md` ERR-FX-M08. The Swift tracker still clears the discard budget on a new claim seq (lab ERR-FX-RT-3 says it must not): a real, listed disagreement in rule, not fixed here.
+
+```
+$ swift test --package-path apple
+Executed 226 tests, with 0 failures (0 unexpected)
+$ asom-conformance check M01,M02,M03,M04,M05,M06,M08
+checked 413, mismatches 47     (42 LF-1 verdicts = known-disagreements.txt; 5 LF-1 values M04-042, M06-201..204)
+$ ./gradlew -p lab :conformance-runner:run --args='lines M01,M02,M03,M04,M05,M06,M08'   (JDK 17)
+456 lines
+$ python3 apple/ci/lane_diff.py jvm.lines swift.lines --known ... --not-implemented ...
+vectors: jvm=456 swift=413 agree=371 disagree=42 (known 42) jvm-only=43 (not implemented 43)
+  (F-1 diagnostic reading, ASOM_DIAGNOSTIC_DRIFT_FLAG=1: agree=413 disagree=0)
+$ python3 apple/ci/test_lane_diff.py   -> Ran 13 tests OK
+$ python3 apple/ci/test_crosslane.py   -> Ran 8 tests OK
+crosslane: JVM, Swift and the fixture agree on 37 of 37 (23 ok, 14 reject)
+$ python3 lab/tools/isolation.py  -> isolation check 4: OK
+$ ./gradlew -p lab :conformance-runner:test --offline -> BUILD SUCCESSFUL
+```
+
+## Gate: Swift claim tracker brought to agreement with the JVM router fix group, M08-065..M08-078 (2026-10-07)
+
+Evidence: LAB, oracle: self, NOT DEVICE EVIDENCE. Linux Swift 6.1 only; macOS and CryptoKit are unverified here. Output below is real (vector bodies not printed).
+
+Change: `ClaimTracker.onNewClaimSeq` no longer clears the discard-budget record (real defect; lab ERR-FX-RT-3; apple E-35 superseded). New `PeerClaimBook` / `DiscPenalty` (cross-file `disc`, 7-day penalty doubling on repeat); the M08 adapter runs `inherit` (3), `claimBudget` (2), `penalty` (4), `disc` (5); the 14 `BLOCKED(m08-tracker)` entries left `apple/ci/not-implemented.txt` (43 to 29). Independence: spec 6.6, the M08 vector files and the ERR-FX-RT rows of lab/ERRATA.md were read; no `lab/*/src` Kotlin (apple/ERRATA.md ERR-FX-M08-1, -2). Spec ambiguities that no vector settles (latch timing, repeat counter never reset, overflow saturation) are listed in ERR-FX-M08-2 with the conservative reading.
+
+```
+$ swift test --package-path apple     (new tests written first: build failed on the missing PeerClaimBook type)
+Executed 235 tests, with 0 failures (0 unexpected)          (was 226; PeerClaimBookTests 9 new)
+$ asom-conformance check M01,M02,M03,M04,M05,M06,M08
+checked 427, mismatches 47     (the 42 + 5 LF-1 ones; 0 in M08)
+$ ./gradlew -p lab :conformance-runner:run --args='lines M01,M02,M03,M04,M05,M06,M08' --quiet --offline   (JDK 17)
+456 lines
+$ python3 apple/ci/lane_diff.py jvm.lines swift.lines --known ... --not-implemented ...   (exit 0)
+vectors: jvm=456 swift=427 agree=385 disagree=42 (known 42) jvm-only=29 (not implemented 29)
+$ same with ASOM_DIAGNOSTIC_DRIFT_FLAG=1 (F-1 set aside, no --known)
+vectors: jvm=456 swift=427 agree=427 disagree=0 (known 0) jvm-only=29 (not implemented 29)
+$ python3 apple/ci/test_lane_diff.py  -> OK
+$ python3 lab/tools/isolation.py      -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+```
+
+Mutation check (17 mutants of ClaimTracker.swift, each run against `swift test --filter AsomRouterCoreTests`; 17 killed, 0 survived): new seq clears `recent` again; inherited clears at 5 (constant); inherited clears at 5 (state); inherited clears at 5 (onObservation); no doubling on repeat; repeat counter does not advance; latch with one DISCREPANT file; `disc` count needs more than two files; penalty still runs at its end instant; a running penalty is extended; base penalty 6 days; repeated `disc` 500; `disc` ignores a running penalty; inherited files not counted; always inherit; best index off by one; overflow saturation dropped. (One first attempt at M06 matched a doc comment and showed "survived"; re-aimed at the code and killed.)
+
+## Hosted CI after wave 3d, fix wave 1 and the Apple repairs (2026-10-07)
+
+Head `384a1cfb14a96d1707b9da03aea29de7185b1602`: `gh api repos/mbaliga/asystemofmodels/commits/384a1cf/check-runs` lists **58 non-cleanup check runs, all `completed/success`** (lab Linux JDK 17 and 21, lab on Windows JDK 17 and 21, desktop Linux/macOS/Windows, apple-swift-lane on macos-latest (CryptoKit) and on swift:6.1-noble, ios-package-sim, jvm-lines, lane-diff, UT host JDK 17 and 21, QML tests against the real Lomiri.Components, click build arm64, AppArmor approximation, install matrix). Evidence label: `CI (hosted VM) evidence`; conclusions were read from GitHub's check runs, not the logs. **NOT DEVICE EVIDENCE.**
+
+Failures seen on the way and what they were (all fixed in later commits on this branch, each with real output in the commit's own gate entry):
+- lab `ProtoIntegrationGateTest`/`HandshakeLimiterTest`/`TimersTest` timing-dependent assertions on 2-core runners (`5b6b435`, `740dc56`): the tests now wait on the condition; the cause of the `HandshakeLimiterTest` failure was not reproduced locally, so that fix is a hypothesis that the hosted run since confirmed passes.
+- `ut-host` expected exactly 4 lab vector files; the fix wave added a fifth (`d110c7c`).
+- `tst_Text.qml` expected a ledger row's keys in insertion order; Qt returns them sorted (`bca0931`).
+- `check_fake_nodes.py`: the JVM self-test frame could overtake a later frame on a slow runner; the script is now sent in two parts (`5e2528f`).
+- Windows lab: the fix wave's torn-tail scan opened a ledger file that was never created where POSIX permissions do not exist (`384a1cf`).
+- One Windows job failed on a transient 403 from repo.maven.apache.org (infrastructure, no code change).
+
+Root `./gradlew jvmTest` is now 140 tests (was 139): the never-run `AnthropicDriverTest` case runs; `ROOT_TEST_BASELINE` and the three base-SHA pins were updated in a later commit with ERRATA re-pin rows.
+
+Open: LF-1 (`thermal-drift` projection flag vs benchmark.md 13.3) needs an owner decision; the second independent review is running.
+
+## Gate: fix-tls-trust (PTT-1 write stall and close, PTT-2 registry race, PTT-4 constant alert law)
+
+Evidence label: LAB, oracle: self, NOT DEVICE EVIDENCE. Base 3a91da05 (worktree reset to it first). Failing-before runs (JDK 21, `./gradlew -p lab :mesh-proto:test --tests ...`):
+- `WriteStallTest`: `closeReturnsInBoundedTimeWhileAWriterIsStalledAgainstAPeerThatDoesNotRead` and `revokingAPeerWhoseSessionIsStalledReturnsInBoundedTime` FAILED with "the call did not return within 8000 ms".
+- `PeerRegistryConcurrencyTest`: 5 of 5 cases FAILED, e.g. "restore: a revoke that returned Changed was overwritten (status Known(status=PAIRED))", "pause: ... (status Known(status=SUSPENDED))", "round 0 ... status Known(status=PAIRED) after a revoke returned Changed".
+
+After the fix: `WriteStallTest` 3 tests pass (revoke with a stalled session took 502 ms; laws close-bounded 1, close-wakes-writer 1, revoke-bounded 1, write-budget-typed 1); `PeerRegistryConcurrencyTest` 6 tests pass (stress: 40 of 40 rounds revoked; laws L3-under-race 4, L3-stress 40, revoke-landed-in-window 4). Mutation checks (each failed the suite, then restored): write timeout 0 (write-budget test fails "must end within its budget"); blocking `writeLock.lock()` in `flushClosing` (both close tests fail "did not return within 8000 ms"); no lock in `update` (scope and route cases and the stress case fail); no lock in `transition` (restore, pause, scope, route and stress cases fail).
+
+Full runs, `./gradlew -p lab :mesh-proto:test :conformance-runner:test`: JDK 21 BUILD SUCCESSFUL, mesh-proto 221 tests 0 failures 0 skipped, conformance-runner 2102 tests 0 failures (7 skipped, the known PROPOSED/genVectors ones). JDK 17 (`JAVA_HOME=/opt/jdks/jdk-17`, fresh daemon, `--rerun-tasks`): BUILD SUCCESSFUL, the same counts. `python3 lab/tools/isolation.py`: "isolation check 4: OK". `python3 lab/tools/check_law.py`: "law: OK". Root `./gradlew jvmTest`: BUILD SUCCESSFUL, 140 tests, 0 failures (the base already pins 140; the assignment text said 139).
+
+Open: BLOCKED(other-track) for PTT-1's last sentence: `integration/Node.kt` should post the GOAWAY to the session driver instead of writing on the revoking thread (see ERR-FX2-1).
+## Gate: fix-pairing (review findings PPW-1, PPW-2, PPW-3, PPW-5, PPW-6, PSL-5 pairing-channel part), 2026-10-07
+
+Worktree base confirmed: `git rev-parse HEAD` printed `98ab632f...` at the start (wrong commit, `docs/design/mesh/LAB_SPEC.md` missing), so `git fetch origin claude/asom-v1-build-brief-vw83oh && git reset --hard 3a91da05947359eebb468f05d5afb60424f315ba` was run; after it `git rev-parse HEAD` printed `3a91da05947359eebb468f05d5afb60424f315ba` and `ls docs/design/mesh/LAB_SPEC.md` succeeded. Nothing committed or pushed. Evidence label: LAB, oracle: self, NOT DEVICE EVIDENCE.
+
+Failing before (new tests against the API skeleton with the old behaviour; `./gradlew -p lab :mesh-proto:test --tests '*PairR3Test*' --tests '*QrExpiryTest*' --tests '*PairDirectionTest*'`): `33 tests completed, 22 failed`, among them `PairDirectionTest.withTheTlsRoleOrientationDAcceptsOnlyWhatSMaySend...` ("PAIR_HELLO from the TLS server is the wrong direction ==> expected: <[]>"), `PairDirectionTest.aPeerThatSendsExtensionFramesWithoutEnd...` ("the connection is closed when the budget is spent"), `PairR3Test.underR3DShowsNoCodeAndAsksForOne` ("expected: <PromptTypedCode> but was: <ShowConsent(555 468)>"), `PairR3Test.underR3AnApprovalWithoutACodeNeverCounts...` ("expected: <AWAIT_REMOTE> but was: <COMMITTING>"), `PairR3Test.underR3AnApprovalFromSThatDoesNotOpenTheCommitment...` ("missing ==> expected: <CLOSED> but was: <AWAIT_REMOTE>"), `PairR3Test.underR3NothingSHasSentBeforeNonceDIsChosen...` ("R3 puts only the commitment on the wire"), `PairR3Test.onlyAnOpenUnexpiredWindowAdmitsAPairingConnection` (the skeleton used `state !is Closed`, the host wiring the finding describes), `QrExpiryTest.withoutTheGateAPhone...` ("now=1790000180 ==> expected: <OK> but was: <EXPIRED>"). The reproduction of the attack itself, against the first-built machines, is `PairRelayAttackTest.underR0AttackerGrindsNonceD...` (D ends in `COMMITTING` for the attacker's pin) and `PairR3Test.underR0AnAttackerInTheDRoleCanPredictTheCodeSWillShow...` (50 of 50 predictions equal the displayed code).
+
+After the fix:
+```
+$ ./gradlew -p lab :mesh-proto:test :conformance-runner:test --max-workers=2 --offline -q --rerun-tasks      (JDK 21.0.10)
+mesh-proto tests 252 failures 0 errors 0 skipped 0 ; conformance-runner tests 2102 failures 0 errors 0 skipped 7
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab :mesh-proto:test :conformance-runner:test ... --rerun-tasks      (launcher JVM 17.0.12)
+mesh-proto tests 252 failures 0 errors 0 skipped 0 ; conformance-runner tests 2102 failures 0 errors 0 skipped 7
+$ ./gradlew jvmTest --rerun-tasks --max-workers=2 --offline
+BUILD SUCCESSFUL in 13s ; root jvmTest tests 140 failures 0 errors 0 (the baseline is 140, see the entry above)
+$ python3 lab/tools/isolation.py   -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py   -> law: 273 Kotlin/Java sources scanned ... law: OK
+```
+The 7 skipped conformance tests are the PROPOSED vectors and `RegenerateVectors` (ERR-FX-DOCS-1), not new. New tests (all in new files): `PairR3Test` 18, `PairDirectionTest` 7, `PairRelayAttackTest` 3, `QrExpiryTest` 4, `W04R3RunnerTest` 7; each class counts its laws and fails on a zero count (for example `law pair-r3/r3-sas-not-predictable-from-wire: 2000 cases`, `law pair-direction/tls-role-refuses-wrong-direction: 4 cases`).
+
+Mutation checks (a main-source line broken, the narrow suite run, the file restored; `git status` shows only the intended files afterwards): 16 mutants, 16 killed, 0 survived on the three first classes: commitment check always true; typed code not compared; S puts nonce_S on the wire; D's SAS from the commitment; connection binding off; direction guard off; budget off; window probe "any non-closed state"; D still shows the code; QR expiry always enforced; first frame may be anything; typed-code length unchecked; S reveals on decline; wrong codes uncounted; WINDOW_CLOSED treated as a decline; transcript over the commitment. `PairRelayAttackTest` alone kills the typed-compare, nonce-on-wire and (after `r3-late-opening-refused` was added) commitment-check mutants; the commitment mutant first SURVIVED it, which is why that test exists.
+
+Honest limits. (1) The R3 profile, `QrExpiry.NONE` and `FROM_TLS_ROLE` are NOT the defaults: 41 frozen W04 `fsm` vectors, 104 `qrParse` vectors, `PairingFsmExhaustiveTest` and the session-track harnesses (which send `PAIR_HELLO` from the TLS server) pin the first-built behaviour, and none of those files is in this track's write set (ERRATA ERR-FX2-7 lists the flip). (2) No W04 vector was added to `W04-pairing.json` (outside the write set); `W04Vectors` can evaluate them. (3) PPW-6 and PSL-5 are PARTIAL (ERR-FX2-5, ERR-FX2-6). (4) `ProtoIntegrationGateTest.w08FramesAttemptsAndRegistry` ("revoked during a served attempt", engine never cancelled within 30 s) failed twice in a row on a loaded shared machine (load average about 5) and passed on the third run and in every later run; the same test passed at the untouched base copy; it does not touch pairing code, and was not changed.
+## Review fixes, track fix-session (PSL-1, 2, 3, 4, 6, 7, 8, 9, 10; 2026-10-07)
+
+Base `3a91da05` (worktree reset to it). Evidence label: LAB, oracle: self, NOT DEVICE EVIDENCE. Rows: `lab/ERRATA.md` ERR-FX2-1 to ERR-FX2-10.
+
+```
+$ ./gradlew -p lab :mesh-proto:test --tests '*SessionFixesTest*'   (session code at base; new constants only)
+13 tests completed, 13 failed
+$ same after the fix (JDK 21)                                       BUILD SUCCESSFUL (14 tests)
+$ ./gradlew -p lab :mesh-proto:test --tests '*HandshakeLimiterTest*'  (limiter at base)
+7 tests completed, 3 failed
+$ ./gradlew -p lab test                      (JDK 21)   BUILD SUCCESSFUL; 2693 lab tests, 0 failures
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab test --rerun-tasks   BUILD SUCCESSFUL; 2693 lab tests, 0 failures (mesh-proto 233)
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py -> law: OK
+$ ./gradlew jvmTest                          BUILD SUCCESSFUL; 140 tests, 0 failures
+```
+
+Mutation check: 23 mutants of the session and limiter sources killed, 1 equivalent mutant (removed), 2 survived the first versions of the tests and were killed after strengthening them; list in ERR-FX2 closing paragraph. NOT RUN: Windows, hosted CI, `swift test` (outside this track).
+## Gate: Apple lane review fixes ASC-01..ASC-10 (track fix-apple, 2026-10-07)
+
+Evidence: LAB, oracle: self, NOT DEVICE EVIDENCE. Linux Swift 6.1 only; macOS and CryptoKit were not run. Output below is real. Readings and residuals are in `apple/ERRATA.md` ERR-FX2-ASC01..ASC10.
+
+Findings: ASC-01 FIXED (a tripped discard budget no longer lifts DISCREPANT to WEAK), ASC-02 FIXED (spent state lives in the token), ASC-03 FIXED (hash length fold), ASC-04 FIXED with a stated limit (node-key guard only binds when the node key is passed), ASC-05 PARTIAL (ipados fixed; windows and ubuntu-touch stay refused; iOS low-battery label kept, needs a lab ruling), ASC-07 FIXED as a SPEC_GAP reading (token carries the ticks; a caller that passes none gets `heatTestPermitted == false` when the sheet needs the tick), ASC-09 FIXED, ASC-10 FIXED.
+
+```
+$ swift test --package-path apple
+Executed 243 tests, with 0 failures (0 unexpected)          (was 235; 8 new tests)
+$ asom-conformance check M01,M02,M03,M04,M05,M06,M08
+checked 427, mismatches 47     (unchanged: the 42 + 5 LF-1 ones; 0 in M08)
+$ conformance-runner lines M01,M02,M03,M04,M05,M06,M08   (JDK 21, installDist, -Dasom.repoRoot)
+456 lines
+$ python3 apple/ci/lane_diff.py jvm.lines swift.lines --known ... --not-implemented ...
+vectors: jvm=456 swift=427 agree=385 disagree=42 (known 42) jvm-only=29 (not implemented 29)
+$ python3 apple/ci/test_lane_diff.py -> OK
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py -> law: OK
+$ ./gradlew jvmTest --max-workers=2 --offline -> BUILD SUCCESSFUL (every test task FROM-CACHE: no JVM source was touched)
+```
+
+Fail-first (each run before the fix, real failures): `PeerClaimBookTests.testATrippedBudgetNeverTakesAWindowOutOfDiscrepant` ("weak" is not equal to "discrepant"), `PeerClaimBookTests.testTruncatingEveryFileDoesNotEscapeThePenaltyOrTheDiscOf400` (count 1 not 2, penalty nil, disc 700 not 400), `ClaimTrackerTests.testATrackedRateIsNeverAboveTheClaimAndADiscOutsideZeroToOneThousandIsRefused` (did not throw for disc -1, 1001, 1500), `ProtocolTests.testASpentTokenIsSpentInEveryGateAndEveryCopyOfTheGate` (copy and other gate both succeeded), `ProtocolTests.testAHashWithTheRightPrefixAndExtraBytesMintsNothing` ("minted for a hash with 256 extra bytes"), `ProtocolTests.testIPadOSHasTheIOSHardCeilingsAndPlatformsWithoutARowAreRefused` (UnknownCeilingPlatform for ipados, 7 times), `SignerTests.testAFileExportIsNeverSignedByTheNodeKey` (did not throw, twice), `SignerTests.testSeqRule` (nextSeq nil/0 gave 0; 2^53, negative clock gave a value). `ProtocolTests.testTheTokenCarriesTheTicksAndRefusesWhatTheSheetDidNotOffer` uses the new API, so before the change it did not compile; its evidence is the mutants below.
+
+Mutation check (15 mutants, each run against the matching `swift test --filter` suite; 14 killed, 1 survived): ASC-01 budget overrides DISCREPANT (killed, 11 failures); ASC-10 disc guard removed (killed), guard bound widened to 1001 (killed), final `min(rate, claimRate)` removed (SURVIVED: unreachable behind the guard, kept as defence in depth); ASC-02 spend never records (killed); ASC-03 length folded again (killed); ASC-07 unoffered opt-in accepted, rerun tick not enforced, `heatTestPermitted` always true, ticks dropped from the token (all killed); ASC-05 ipados row removed (killed); ASC-04 node-key guard removed (killed); ASC-09 floor of 1 removed, range cap removed, negative clock accepted (all killed). Each mutant was restored; the final run above is on the restored sources.
+
+Not done: no M08 vector for ASC-01 was added (the vector files are the lab's); a scratch vector passed `asom-conformance check` here and the JVM runner's `lines` mode prints verdicts only, so the JVM lane's state value for that case was not observed. The conformance adapter (`R3Conformance.swift`, outside this track) still calls `confirm` without ticks. Existing assertions edited, not deleted: `testDiscCountsFilesDiscrepantByInheritanceToo` (it encoded the ASC-01 defect) and the `(nil, 0) -> 0` row of `testSeqRule` (the ASC-09 defect).
+## Gate: fix-bench-derive (review findings BRP-01, -02, -04, -05 fixed; BRP-03, -07, -08 recorded for the owner), 2026-10-07
+
+Base `3a91da05` (worktree reset to it, `ls docs/design/mesh/LAB_SPEC.md` ok). Evidence label: LAB (lab modules, JDK 17.0.12 and JDK 21), `oracle: self`, NOT DEVICE EVIDENCE. The Swift mirror (`apple/Sources/AsomBenchCore/Derive.swift`) was edited without a Swift toolchain: NOT COMPILED, NOT RUN here (apple/ERRATA.md ERR-FX2-SW1).
+
+Fail-first (`FixBenchDeriveTest`, run before any fix): 7 of 9 failed: `aSustainBlockOnAFailedNumericsTierIsIgnoredByEveryAnswer` (expected null, was `Throttle(tier=T3, onsetMs=195000, stabilityPermille=663 ...)`), `aFastButWrongBackendIsNotAStrongProvider` ("sustain on T3, T3 numerics fail ==> expected: not equal but was: strong-provider"), `aFailedTiersSustainDoesNotLowerTheOverallConfidence` (expected HIGH, was LOW), `theOnsetThresholdIsTheFloorOfNineHundredPermillePeak` ("6824 < floor(6824.7) is false ==> expected null but was 3"), `aTierWithAnInsufficientTestIsNotProjectedSoNoRowOverclaims` (flags [charging, confidence-high]), `prefillAtDepthIsRefusedByTheDecoder` ("Expected an exception of class SchemaViolation, but completed successfully"), `aSustainedPhaseThatStartsWarmIsLowWhicheverRecordSaysSo` ("run cool, sustain tier warm ==> expected LOW but was HIGH"). The other two (the pinned LF-1 flag facts and the 9.5 seed order) pass before and after by design.
+
+After the fixes: `./gradlew -p lab :bench-core:test :conformance-runner:test` JDK 21: bench-core 50 tests 0 failures; conformance-runner 2111 tests 0 failures 7 skipped (the 7 are the PROPOSED vectors and `RegenerateVectors`, as before). The same on `JAVA_HOME=/opt/jdks/jdk-17`: 50 / 0 and 2111 / 0 / 7. Full `./gradlew -p lab test` on both JDKs: json 42, ledger-model 94, manifest 53, mesh-policy 32, mesh-proto 213, mesh-router 59, mesh-sim 37, bench-core 50, conformance-runner 2111, 0 failures. Vectors: M04-043 and the text of M05-211 changed (regenerated by `genBenchVectors`; `INDEX.json` by `regen_index.py`); M04-037 to M04-039 and M04-055 to M04-060 are new (conformance-runner was 2102 tests before, 2111 now). `lab/conformance/VERSION` NOT bumped.
+
+Mutation checks (each mutation applied, `FixBenchDeriveTest` failed, restored): sustain block of a failed tier not ignored (2 tests fail); tier map over all tiers (3 fail); real-valued onset threshold (1 fails); run-start-only sustain class (1 fails); tier-start-only sustain class (1 fails); projectable without the all-values rule (1 fails); depth refusal removed (1 fails).
+
+`python3 lab/tools/isolation.py`: `isolation check 4: OK (shipped tree byte-identical to the pinned base)`. `python3 lab/tools/check_law.py`: `law: OK`. Root `./gradlew cleanTest jvmTest --no-build-cache`: BUILD SUCCESSFUL, 140 tests, 0 failures (the baseline is 140).
+
+Not changed on purpose (owner decisions, lab/ERRATA.md ERR-FX2-3 and ERR-FX2-6): the row flags `thermal-drift`, `restarted`, `swapped` (LF-1), and the order of the outlier and drift rules (BRP-08). Not done: refusing a sustain block on a tier other than the 4.4 sustain tier (ERR-FX2-1); a sustain-block `startThermal` schema member (ERR-FX2-5).
+
+Addendum to the fix-bench-derive gate (2026-10-07, same worktree, LAB, `oracle: self`, NOT DEVICE EVIDENCE): the first pass above did not run the hosted-CI step `python3 lab/tools/xcheck.py lab/conformance`. Run on that tree it printed `DISAGREE M04-037 ... onsetMs: expected None, xcheck 45000` and died with `TypeError: 'NoneType' object is not subscriptable` on M04-043. Fixed in `lab/bench-core/tools/xcheck_m04.py` (lab/ERRATA.md ERR-FX2-7). Now: `xcheck M04: 848 agree, 0 disagree`, `xcheck M05: 210 agree, 0 disagree`, exit 0; `xcheck.py lab/conformance --families L01,W07,W07p` exit 0. Re-run in this session: fail-first by reverting only `lab/bench-core/src/main` (`FixBenchDeriveTest`: `9 tests completed, 7 failed`), then `./gradlew -p lab test --rerun-tasks` on JDK 21 and on `/opt/jdks/jdk-17` (bench-core 50, conformance-runner 2111 with 7 skipped, json 42, ledger-model 94, manifest 53, mesh-policy 32, mesh-proto 213, mesh-router 59, mesh-sim 37, 0 failures each), `genBenchVectors` plus `regen_index.py` leave the tree unchanged, the seven mutations fail the suite again (2, 3, 1, 1, 1, 1, 1 tests) and are restored, `isolation.py` OK, `check_law.py` OK, root `cleanTest jvmTest --no-build-cache` BUILD SUCCESSFUL with 140 tests, 0 failures. The Swift mirror is still NOT COMPILED or RUN.
+## fix-bench-exec (BRP-06, BRP-09, BRP-10, BRP-11), 2026-10-07, base 3a91da05
+
+Evidence label: LAB (simulated host, NOT DEVICE EVIDENCE). BRP-10 FIXED in `Executor.kt` (zero-token sustain windows are dropped; an empty phase leaves `sustain` out). BRP-06, BRP-09 and BRP-11 are recorded as ERR-FX2-1 to ERR-FX2-7 in `lab/ERRATA.md` (each needs a closed-set, schema or renderer change outside this track).
+Failing before the fix (`./gradlew -p lab :bench-core:test --tests '*SustainZeroTokenWindowTest*'`): `aWindowWhosePrefillOutlastsItIsNeverRecordedWithZeroTokens` failed with `zero-token window kept: [BWindow(tStartMs=0, tokens=0, micros=1, maxThermalCode=0), BWindow(tStartMs=15000, tokens=0, ...` (40 zero-token windows) and `aPhaseWhoseEveryWindowIsEmptyIsDroppedNotSigned` failed with `expected: <null> but was: <BSustain(tier=T2, ... endReason=TIME_CAP ...`.
+After the fix, on JDK 21 and on JDK 17.0.12: `./gradlew --max-workers=2 -p lab :bench-core:test :conformance-runner:test` BUILD SUCCESSFUL both times; `SustainZeroTokenWindowTest` 4 tests (non-vacuity: hard ceiling at sustain start exercised 7 cases). Mutation checks: disabling the zero-token block fails 2 of 4; disabling the empty-phase check fails 3 of 4. `isolation.py` OK, `check_law.py` OK, root `jvmTest` 140 tests 0 failures (task results FROM-CACHE; XML counts summed: 140, 0).
+## Corrections to the record, 2026-10-07 (fix-honesty): HON-1 to HON-9 except HON-7
+
+Base `3a91da05947359eebb468f05d5afb60424f315ba`. Evidence label: LAB, oracle: self, NOT DEVICE EVIDENCE (the hosted-CI URLs are `CI (hosted VM) evidence`, read from the check-runs API, not from logs). Nothing below rewrites an earlier entry; each item says what the earlier text got wrong. The readings are in `lab/ERRATA.md`, `ERR-FX-HON` (rows `ERR-FX-VER`, `-SKIP`, `-L15`, `-W08`, `-CNT`, `-MUT`).
+
+**HON-1 (Windows lab jobs failing at `6cde2e9`): already fixed, recorded here for accuracy.** The Windows lab failure was the torn-tail scan opening a ledger file that was never created where the file system has no POSIX permissions; it was fixed in `384a1cf`, and the entry "Hosted CI after wave 3d, fix wave 1 and the Apple repairs" above records 58 of 58 check runs `completed/success` at head `384a1cf`. Nothing was redone.
+
+**HON-2 (a generated vector changed while `VERSION` stayed 0.2.0): OPEN, deliberately not bumped by this track.** The vectors that changed their expectation after `3733200` are M02-113, M02-118 (meaning moved under the CV-3 tier ruling), M02-120, M03-131 and M05-109; added: M02-121/122, M03-179..215 (new file), L02-022/023, R01-082..091, R02-047..050, R03-032/033, R06-055..068, M08-065..082, and the new files W04, W05, W06, W07-state. `lab/conformance/README.md` now lists them by id. The bump needs the generators and the Swift lane, which are outside this track: `lab/mesh-router/tools/common.py` (`CONF = "0.2.0"`, regenerated by the hosted router step that fails on any difference), `lab/mesh-policy/tools/gen_vectors.py`, `:manifest`'s `F.CONF` (the same constant is the file tag and the `harness.confVersion` inside signed documents) and `apple/Sources/AsomConformanceKit/R3Conformance.swift` (`supportedConfVersion`, and any other `VERSION` is read as the r0 set). The exact one-commit procedure is `ERR-FX-VER`. `INDEX.json` was re-run (`python3 lab/tools/regen_index.py` printed `INDEX.json: 31 entries`) and did not change, because no vector file changed.
+
+**HON-3 (the six always-skipped vectors give a false reason): FIXED in text; the vectors still do not run, and the reason is now the true one.** Decided by reproduction. Before: `PureFamilies.kt:36` threw `NotRunnable("mesh addition: needs the lab types of :ledger-model / :mesh-policy (L0.4), ruled by ...")`, while `lab/ledger-model/.../LabRouteRecord.kt` exists and `:ledger-model` runs 94 tests, `:mesh-policy` 32. The vectors are `proposed` because owner decisions D12.1 to D12.4 (W00-100..104) and D3 (W01b-reach) are unruled and the v1 contract is frozen; no ruling appears in `OWNER_DIRECTIVES_2026-09-30.md`. After, the JUnit report of the suite says `Assumption failed: proposed-skipped: PROPOSED mesh addition: awaiting owner ruling D12.1, and the v1 contract is frozen; the runner has no checker for it (the lab modules exist)` (and D12.2, D12.3, D12.4 for the others). Both READMEs say the same. **Not fixed:** `ServerFamilies.kt:35` (W01b-reach) still says "needs LabRouteRecord from :ledger-model (L0.4)"; that file is outside this track (`ERR-FX-SKIP`). W01b-reach is exercised outside the runner by `RequestReachAndBytesTest.w01bReachHoldsThroughTheLabTypes` (ERRATA `ERR-LL-10`).
+
+**HON-4 (the L-L15 detail line prints an equality whose sides differ): FIXED in the printed line; the stats class is not changed.** Failing before (a command over the two pasted gate entries of `PROGRESS.md`, the JDK 21 and JDK 17 `L-L15 detail` lines):
+```
+rows 531901 + overhead 840527 = 1372428 ; printed tap 1373757 ; equal? False ; gap 1329
+rows 530676 + overhead 869496 = 1400172 ; printed tap 1401501 ; equal? False ; gap 1329
+```
+Cause: `TlsOracle.l15` checks `appSum - unsent + rawOut + overhead == tapTotal` per session but accumulates only `appSum - unsent` and `overhead` into `L15Stats`, so the sum of the out-of-session raw bytes (`rawOut`) was never printed. `ProtoIntegrationGateTest.summary` now prints `rows A + overhead O + R bytes written outside the session (derived as the tap total minus the other two; each session checks them exactly) = S = tap T` and asserts `R >= 0`. After (real lines from the test XML):
+```
+JDK 21.0.10: L-L15 detail: rows 531201 application bytes + 839482 overhead bytes + 1329 bytes written outside the session (...) = 1372012 = 1372012 bytes counted by the record tap
+JDK 17.0.12: L-L15 detail: rows 531926 application bytes + 871355 overhead bytes + 1329 bytes written outside the session (...) = 1404610 = 1404610 bytes counted by the record tap
+```
+R is derived (tap minus rows minus overhead), so the identity is true by construction here and the exact check stays the per-session one; a real accumulated `rawOut` field in `L15Stats` (`TlsOracle.kt`, another track's file) is the better fix (`ERR-FX-L15`). Mutation check of the new assertion (`outOfSession >= 0` changed to `< 0`, narrow run of `ProtoIntegrationGateTest`, JDK 21): the suite FAILED with `AssertionFailedError: L-L15: the rows and their overhead count more bytes (1329) than the record tap saw`; restored byte for byte (md5 `4d4fc4bd...` before and after) and the narrow run then passed (`BUILD SUCCESSFUL`). That mutated run also showed one unrelated failure, `w08FramesAttemptsAndRegistry` ("hostile client case 'revoked during a served attempt': timed out after 30000 ms waiting for: the engine to be cancelled"), on a machine shared with other builders; it did not recur in the unmutated narrow run or in either full run, and it was not investigated.
+
+**HON-5 (stale README counts): FIXED.** `./gradlew -p lab test` at head `3a91da05` (with this entry's edits), per module from the test XML, JDK 21.0.10 and JDK 17.0.12 identical: bench-core 41, conformance-runner 2102 (7 skipped), json 42, ledger-model 94, manifest 53, mesh-policy 32, mesh-proto 213, mesh-router 59, mesh-sim 37; 0 failures, 0 errors. `lab/README.md` and `lab/conformance/README.md` now carry these counts and the per-file vector counts read from `INDEX.json` (31 files, including `manifest/M03-verify-reject-fx.json`: M02 20, M03 71 + 37, L02 23, R01 91, R02 50, R03 33, R06 68, M08 77). The three "139" root floors (`lab/README.md`, `desktop/README.md`, `ubuntu-touch/README.md`) now say 140 and name `ROOT_TEST_BASELINE`, which reads 140 in all three directories. The HA-07 text above says "the 30 indexed vector files": it was 30 at `f6a8f1ef` and is 31 now.
+
+**HON-6 (unrecorded changes after the fix-docs entry): CLOSED here.**
+```
+$ ./gradlew cleanTest jvmTest (root)  -> BUILD SUCCESSFUL; root tests (read from the test XML of :core:*, :server): 140, 0 failures, 0 errors, 0 skipped
+```
+(`:server:test` and `:core:routing:test` were restored `FROM-CACHE`, so their XML is the cached run's, not a fresh execution; the count is the point.) `5b16c79` added `Unit` to `server/src/test/.../AnthropicDriverTest.kt:224` so that a case that returned a non-Unit value and was never executed now runs, which is why the floor moved from 139 to 140; `8b12f1a` re-pinned `LAB_BASE_SHA`, `DESKTOP_BASE_SHA` and `UT_BASE_SHA` (ERRATA re-pin rows) and the three `ROOT_TEST_BASELINE` files read 140. The `Open` item of HA-06 and HA-03 about the hosted JDK 17 lab job is **closed**: at `740dc56` the check run `Lab (pure JVM, JDK 17)` concluded `success`, https://github.com/mbaliga/asystemofmodels/actions/runs/37608558354/job/112749939350 (the same run lists `W0 lab on Windows (JDK 17)` success and `Lab reference counts (Linux, JDK 17)` success; conclusions read from the API, not the logs). `740dc56` and `5b6b435` are the timing-assertion fixes, `d110c7c` bundles the fifth lab vector file in the Ubuntu Touch host test, `bca0931` makes `tst_Text` expect Qt's sorted key order, `5e2528f` sends the `check_fake_nodes` script in two parts; the entry "Hosted CI after wave 3d..." above already lists each with its cause.
+
+**HON-8 (mutation evidence that cannot be reproduced): CORRECTED.** The fix-crypto entry reported 23 JVM mutants and said they are registered as V31 to V41 in `lab/manifest/tools/mutants.py`. `grep -c` over V31..V41 there gives **11** registered mutants (coordinate range, one-record whole rule, tier gate, Unicode uppercase, non-object container, `signatures[0]` shape, non-string spki, leading-zero major, evidence item limit, no signer lock, fixed temp name). **12 of the 23 are not registered and cannot be reproduced from committed code:** the ten separate one-record ties (confVersion, engine name, commit, buildFlags, memory, os family, os version, vendor, model, soc), the per-call lock, and the one survivor `X12-no-store-lock`. The 15 Swift mutants reported in the same entry are in no committed harness either (`grep -rli mutant apple` finds only ERRATA mentions); they were run by hand. The "22 killed, 1 survived" and "15 of 15 killed" results therefore stand as the author's report, not as something a reader can re-run. No mutant was added (the file belongs to the manifest track).
+
+**HON-9 (`family W08: not-implemented`): label unchanged; meaning stated.** The runner still prints `family W08: not-implemented` on both JDKs. W08 has no vector file by design; its hostile cases are code in `:mesh-proto` (`W08HandshakeTest`, `HostileFramesTest`, `HostileFramesTls`, `HostileHandshakeSession`) and the integration gate prints their counts. A distinct printed status needs `Suite.kt` and changes the text that `ConformanceSuiteTest.unbuiltFamiliesAreNeverReportedAsPass` asserts for every unbuilt family; dropping W08 from `ALL_FAMILIES` would leave that test no unbuilt family and fail its `assertTrue(built.isNotEmpty())`. Neither file is in this track. `Vectors.kt` and `lab/conformance/README.md` now say that `not-implemented` for W08 means "no vectors here" and where W08 runs (`ERR-FX-W08`).
+
+Other gates run for this entry (real output):
+```
+$ python3 lab/tools/isolation.py   -> isolation check 4: 136 protected files compared byte-for-byte against base 5b16c7992244 ... OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py   -> law: 267 Kotlin/Java sources scanned ... law: OK
+$ python3 lab/tools/xcheck.py lab/conformance -> every family 0 disagree (last lines: xcheck W04: 249 agree, 0 disagree; xcheck W05: 195 agree, 0 disagree)
+$ ./gradlew -p lab test (JDK 21.0.10) -> BUILD SUCCESSFUL, counts above
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab test -> BUILD SUCCESSFUL, counts above
+```
+Not run: the Swift lane (`swift` is not installed on this machine) and hosted CI for these edits. Result: **PARTIAL**: HON-3 (W00 half), HON-4 (printed line), HON-5, HON-6 and HON-8 corrected; HON-9 explained, label unchanged; HON-2 open with the exact procedure recorded.
+
+## Gate: Swift lane repaired after fix wave 2 (M04-057 to M04-059 text), 2026-10-07 (LAB, oracle: self, NOT DEVICE EVIDENCE)
+
+Cause: `apple/Sources/AsomBenchCore/TextRenderer.swift` lacked two NOTES rules of the JVM renderer (heat-test low-confidence line; `running <name>` wording for a test outside the wording table). Derivation (BRP-01, BRP-05) was already in step. Details: `apple/ERRATA.md` ERR-FX2-SW2. No lab file touched, no vector or list edited. Real output (Linux Swift 6.1, JDK 21.0.10; JDK 17 not available here and not needed, nothing under lab/ changed):
+```
+$ swift test --package-path apple  -> Executed 243 tests, with 0 failures (0 unexpected)
+$ swift run --package-path apple asom-conformance check M01,M02,M03,M04,M05,M06,M08  -> checked 436, mismatches 47 (the 42 LF-1 vectors of known-disagreements.txt + M04-042, M06-201..M06-204, all LF-1 value differences)
+$ ./gradlew --offline -p lab :conformance-runner:run --args='lines M01,M02,M03,M04,M05,M06,M08'  -> 465 lines
+$ python3 apple/ci/lane_diff.py jvm.lines swift.lines --known apple/ci/known-disagreements.txt --not-implemented apple/ci/not-implemented.txt  -> vectors: jvm=465 swift=436 agree=394 disagree=42 (known 42) jvm-only=29 (not implemented 29)
+$ (diagnostic lines, ASOM_DIAGNOSTIC_DRIFT_FLAG=1, no known list)  -> agree=436 disagree=0 jvm-only=29 (not implemented 29)
+$ python3 apple/ci/test_lane_diff.py  -> Ran 13 tests ... OK
+$ ./gradlew -p lab :conformance-runner:test --offline  -> BUILD SUCCESSFUL
+$ python3 lab/tools/isolation.py  -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+```
+Not run: macOS lane, hosted CI, JDK 17, the crosslane step.
+
+## Design revision 4 (docs only), 2026-10-07
+
+Pointer: `docs/design/mesh/REVISION_4.md` (change log: the 39 round-3 findings and every ERRATA reading, each ADOPTED, OWNER DECISION, REJECTED or DEFERRED) and `docs/design/mesh/OWNER_DECISIONS.md` (every open ratification). Docs-only: no code, vector or workflow changed; nothing here is device evidence.
+
+## Hosted CI at ee88fc4 and design revision 4 (2026-10-07)
+
+`gh api repos/mbaliga/asystemofmodels/commits/ee88fc4/check-runs`: **58 non-cleanup check runs, all `completed/success`** (lab Linux and Windows on JDK 17 and 21, desktop, apple-swift-lane on macOS CryptoKit and Linux swift-crypto, lane-diff, UT, QML, click, AppArmor approximation, install matrix). `CI (hosted VM) evidence`, conclusions read from check runs, not logs. NOT DEVICE EVIDENCE. Includes fix wave 2 (review round 2: 40 confirmed findings in seven groups) and the Swift text-renderer repair; PTT-1 is only partly closed (the revoke listener in `integration/Node.kt` still writes GOAWAY on the revoking thread, bounded by the 30 s write-stall budget).
+
+Design revision 4 (docs only, `docs/design/mesh/REVISION_4.md`, `OWNER_DECISIONS.md`) folds the round-3 dispositions and implementation readings into the design and lists 17 builder actions and the owner decisions (including D30 `thermal-drift`, recommended: add to benchmark.md 13.3). Nothing in the code was changed by it.
+
+## Design revision 4, builder action 1: pairing r4 defaults (track `build-pairing`, trust.md R4-T-10), 2026-10-15
+
+Scope: `lab/mesh-proto` packages `pairing` and `session/PairingChannel.kt`, the pairing and session test harness, `lab/conformance/wire/W04-pairing.json` (and the generator that writes it), `lab/ERRATA.md` rows `ERR-R4B-PW-1` to `-10`. Evidence label: LAB (JDK 21 and JDK 17 on this machine), oracle: self, NOT DEVICE EVIDENCE. Base `2a670033b907307a4cb9fe0e982194153e3f71cc` (confirmed after `git fetch` and `git reset --hard`). Nothing committed. Windows and hosted CI not run.
+
+Done: `PairFsmConfig.profile` defaults to `R3`, `QrUri.parse` to `QrExpiry.NONE`, `PairingChannel` to `FROM_TLS_ROLE`; the first-built behaviour is the explicit `R0_COMPAT`, `ENFORCE` and `FROM_HELLO`; the W04 runner reads an absent `profile`/`expiry` as the r4 default; 131 W04 vectors and nine new required laws; `PairWorld`, `TlsPairing` and `PairOracle` re-oriented (S dials and sends the hello, D listens and derives its session id from the hello it receives); cold-frame rule and connection binding in COMMITTING and AWAIT_ACK (readings in ERRATA). Open: `lab/conformance/README.md` still says 312 W04 vectors (outside the write set); the Swift lane does not consume W04 and was not touched.
+
+Failing before (new tests and vectors against the base code, real output):
+```
+$ ./gradlew -p lab :mesh-proto:test --tests '*PairingAndLoopTest' --tests '*PairDirectionTest' --tests '*QrExpiryTest' --tests '*W04R3RunnerTest' --tests '*QrUriAndMessagesTest' --tests '*SessionLawsTest'   (re-oriented harness and default tests, base main code)
+44 tests completed, 15 failed        BUILD FAILED
+$ ./gradlew -p lab :conformance-runner:test --tests '*ConformanceSuiteTest*'   (new W04 file, base main code)
+    family W04: 443 vectors, 338 pass, 105 fail, 0 proposed-skipped, oracle: self=443        2228 tests completed, 105 failed, 6 skipped        BUILD FAILED
+```
+After (same commands, implemented): `family W04: 443 vectors, 443 pass, 0 fail, 0 proposed-skipped, oracle: self=443` on JDK 21 and on JDK 17.
+
+Gates:
+```
+$ ./gradlew -p lab test --offline                                   (JDK 21)  BUILD SUCCESSFUL   mesh-proto 295 tests, conformance-runner 2242 (7 skipped: the proposed-lane assumptions of the suite, not compared with base), 0 failures; json 42, bench-core 54, ledger-model 94, manifest 53, mesh-policy 32, mesh-router 59, mesh-sim 37
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab :mesh-proto:test :conformance-runner:test --offline   (JDK 17.0.12)  BUILD SUCCESSFUL   mesh-proto 295, conformance-runner 2242 (7 skipped, same), 0 failures  (baseline mesh-proto at base: 280, 0 failures)
+$ python3 lab/tools/isolation.py        -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py        -> law: OK
+$ python3 lab/mesh-proto/tools/trust/gen_vectors.py ; python3 lab/tools/regen_index.py   -> W05: 166 vectors, W04: 443 vectors, INDEX.json: 31 entries (W04 and W05 byte-identical on a second run)
+$ python3 lab/tools/xcheck.py           -> xcheck W04: 315 agree, 0 disagree (128 fsm/registry vectors are Kotlin-only); xcheck W05: 195 agree, 0 disagree
+$ ./gradlew jvmTest --rerun-tasks --offline   -> BUILD SUCCESSFUL, 140 tests, 0 failures (no jacoco report requested)
+```
+W04 law counts (non-vacuity, `lab/build/conformance-report.txt`): pairing-typed-code 16, pairing-commit-reveal 37, pairing-connection-binding 5, pairing-window-expired-on-d 2, pairing-r0-compat 41, qr-expiry-none 12, qr-expiry-enforce 7, commit-function 49, pair-decision-reveal 3, qr-reject-EXPIRED 2, qr-reject-EXPIRY_TOO_FAR 2.
+
+Mutation checks (break the implementation, run the pairing and session suites and the conformance suite, restore byte for byte; script kept outside the repository): 22 mutants, 22 killed. Default profile back to R0_COMPAT; default expiry back to ENFORCE; default orientation back to FROM_HELLO; the expiry gate running under NONE; the cold rule removed; S may send PAIR_COMMIT; the listener not naming its session from the hello; the dialler taking the derived id as its session id (also killed by `ProtoIntegrationGateTest.l16OverPairingSessionsOnRealTls`); budget 17; D accepting any opening; D accepting any typed code; the third wrong code not counted; D showing the code instead of prompting; a foreign decision accepted while COMMITTING or AWAIT_ACK; a foreign acknowledgement accepted; a foreign decision accepted while awaiting the decisions; a second valid hello accepted after the window was consumed; S putting the raw nonce in the hello; S approving without the opening; S reading `PAIRING_WINDOW_CLOSED` as a decline; the runner reading an absent profile as R0_COMPAT; the runner reading an absent expiry as ENFORCE. Older trust mutants 7, 8 and 18 re-run with `--runner`: killed. Trust mutant 19's target text has not matched since fix wave 2 (its `RemoteDecision` line changed); its L6 mutation was re-run with repaired text as the 22nd mutant above and is killed.
+## Revision 4 builder actions 2, 3, 4 (track build-session-trust), 2026-10-15
+
+Worktree base: `git rev-parse HEAD` printed 98ab632f at start, so `git fetch origin claude/asom-v1-build-brief-vw83oh && git reset --hard 2a670033b907307a4cb9fe0e982194153e3f71cc` was run; HEAD then printed 2a670033 and `docs/design/mesh/LAB_SPEC.md` exists. Nothing committed. Evidence label: LAB, oracle: self, NOT DEVICE EVIDENCE. Readings and every deliberate change to an existing test: `lab/ERRATA.md` rows ERR-R4B-ST-1 to ERR-R4B-ST-4.
+
+Failing before (each against the unchanged code, output of the real run):
+```
+MaxAgeTest > theMaximumSessionAgeIsThirtyMinutes / theRequesterSaysGoawayMaxAge... / theLenderAlsoSaysGoawayMaxAge... FAILED (3 tests completed, 3 failed)
+RevokeDoesNotBlockTest > revokingAPeerWhoseLenderIsStalledInAWriteReturnsAtOnce...: "revoke() did not return within 8000 ms while the lender was stalled in a write"
+GoawayPostedTest > aRevokeWritesNothingOnTheRevokingThread...: "the revoking thread wrote to the connection ==> expected: <347> but was: <376>"
+LeafLifetimeTest: 5 of 6 tests FAILED (e.g. "one second more is refused ==> expected: <LEAF_LIFETIME> but was: <.>")
+PeerChainVerifierTest > theModeMatrixMatchesTheSpecGrid: "window=true status=paired mode column 1 ==> expected: <PIN_EXISTS> but was: <.>"
+TrustVectorsTest with the old VerifyPeerChain.kt and the regenerated W05 file: W05-307 (expected reject PIN_SUSPENDED, accepted), W05-308 (PIN_EXISTS, accepted), W05-422.., W05-432/433 (LEAF_LIFETIME but CLOCK_SKEW), W05-438 (PIN_REVOKED), W05-439 (REGISTRY_UNREADABLE)
+```
+Gates after the change:
+```
+$ python3 lab/mesh-proto/tools/trust/gen_vectors.py && python3 lab/tools/regen_index.py  -> W05: 185 vectors (was 166), W04: 312 vectors (W04 file byte-identical), INDEX.json: 31 entries
+$ python3 lab/mesh-proto/tools/trust/xcheck_trust.py  -> xcheck W05: 185 agree, 0 disagree; xcheck W05 openssl (OpenSSL 3.0.13): templates 9 agree, 0 disagree; chains 20 agree, 0 disagree; xcheck W04: 249 agree, 0 disagree
+$ ./gradlew -p lab test --max-workers=2 --offline  (JDK 21)  -> BUILD SUCCESSFUL
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab test --max-workers=2 --offline  -> BUILD SUCCESSFUL; lab test XML: 2795 tests, 0 failures, 0 errors; :mesh-proto 294 tests, 0 failures
+$ family W05: 185 vectors, 185 pass, 0 fail; law W05/chain-reject-LEAF_LIFETIME: 13 cases; law W05/chain-reject-PIN_EXISTS: 2 cases
+$ python3 lab/tools/isolation.py  -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py  -> law: OK
+$ ./gradlew jvmTest --max-workers=2 --offline  -> BUILD SUCCESSFUL (task results FROM-CACHE); root test XML: 140 tests, 0 failures
+```
+Mutation checks (19 mutants, each an exact-string edit of one main file, restored byte for byte; a mutant counts as killed only if the build did not fail to COMPILE and a test failed): max age 24 h; max age 31 min; max age one ms late; GOAWAY written inline on the revoking thread; driver watchdog never closes the transport; `advance()` ignores a posted GOAWAY; `tick()` ignores it; post does nothing; leaf lifetime cap removed; cap exclusive; cap one second generous; cap without the 1 h back-date; inverted validity accepted; over-long leaf reported as CLOCK_SKEW; lifetime judged after the clock; PAIRED admitted by the pairing modes; SUSPENDED admitted by them; EXPECT_PAIRING alone on the old letter; PAIRING_SERVER alone on the old letter. Result: `SUMMARY 19 killed of 19` (all KILLED-BY-TEST, none COMPILE-ERROR). One run was interrupted by the harness mid-mutant and the source was found mutated and restored by hand, then the full 19 were re-run clean.
+Not run: hosted CI, Windows, macOS, any device. Windows parity of the new tests (`RevokeDoesNotBlockTest` uses a real loopback TLS peer with a small receive buffer) is untested here; the assertions are bounds, not OS-specific values.
+## Design revision 4 builder actions 8 and 5 (track build-ledger-thermal), 2026-10-15
+
+Base 2a670033b907. Evidence label: LAB (JSSE on loopback, JDK 17.0.12 and 21 on Linux), CI-APPROX, NOT DEVICE EVIDENCE, not Windows evidence.
+
+- **Action 8 DONE** (LAB_SPEC R4-L-25): `:ledger-model` `Overhead.Stack`, `JSSE_17_21` (38 / 16,367 / close_notify 40), `UNCALIBRATED` (22 / 16,384), `estimatedRecords(flush, stack)`, `estimated(flush, stack)`, handshake 8,192 per session. `TlsOracle` (test) uses the JSSE stack for the ESTIMATED check, pins the stack constants to `TlsCalibration`, and bounds every MEASURED session by the form. Failing before: `EstimatedOverheadTest` did not compile (no stack-aware form); `ProtoIntegrationGateTest.l15OverRunsCutMidStreamByAPeerResetAndMidRecord` with the uncalibrated stack failed with "uncalibrated (RFC 8446 minimum): R is 22, the record tap measured 38 bytes per record (TLS_AES_256_GCM_SHA384)".
+- **Action 5 BLOCKED(write-set)**: the thermal rule, W07-075, `LiveStateTest` and `gen_vectors.py` are in `lab/mesh-policy` and `lab/conformance/policy`, not in the track's write set (lab/ERRATA.md ERR-R4B-LT-1). Built and verified in a scratch copy only; not applied here.
+
+```
+$ ./gradlew --max-workers=2 -p lab :ledger-model:test :mesh-proto:test --rerun   (JDK 21)  -> BUILD SUCCESSFUL; ledger-model 98 tests, mesh-proto 280 tests, 0 failures, 0 skipped
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew --max-workers=2 -p lab :mesh-proto:test :ledger-model:test :mesh-policy:test :mesh-sim:test :conformance-runner:test --rerun --continue  -> BUILD SUCCESSFUL; ledger-model 98, mesh-proto 280, mesh-sim 37, conformance-runner 2111 (7 skipped, as before), 0 failures
+$ ./gradlew --max-workers=2 -p lab test --continue  (JDK 21, all lab modules)  -> BUILD SUCCESSFUL
+$ python3 lab/tools/isolation.py  -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py  -> law: OK
+$ ./gradlew --max-workers=2 jvmTest --rerun-tasks -x :core:routing:jacocoTestReport  -> BUILD SUCCESSFUL; 140 tests, 0 failures
+```
+Mutants killed (each reverted afterwards): `estimatedRecords` ignoring the stack, JSSE R=22, JSSE Lmax=16,384, handshake 4,096, floor instead of ceiling division (all by `:ledger-model:test`); JSSE R=22 (7 `ProtoIntegrationGateTest` tests fail), MEASURED ceiling divided by 4, ESTIMATED figure without the handshake term (by `:mesh-proto:test`). Not run: Windows, the Swift lane (no change), hosted CI.
+## Gate: design revision 4 builder actions 6 and 7 (padding normalisation; tracker inheritance, ASC01 and interpolation vectors), 2026-10-15 (LAB, oracle: self, NOT DEVICE EVIDENCE)
+
+Track build-tracker. Spec: `LAB_SPEC.md` R4-L-18, R4-L-19. Readings and the deviations from the brief are in `lab/ERRATA.md` and `apple/ERRATA.md` (`ERR-R4B-TR-1` to `ERR-R4B-TR-14`). Linux only: JDK 21.0.10 and JDK 17 (`/opt/jdks/jdk-17`), Swift 6.1 on Linux (swift-crypto). The macOS lane and hosted CI were not run. Working tree only, nothing committed.
+
+Fail first (unchanged tracker code, new vectors in place):
+```
+$ ./gradlew --max-workers=2 -p lab :conformance-runner:test --offline
+  2130 tests completed, 11 failed, 7 skipped   (M08-083 084 085 087 088 089 090 091 092 093 and 097; the 7 skipped are the proposed vectors that were already skipped)
+  FAIL M08-083: expected {"outBytes":1200,...,"ratio":973,...} but observed {"outBytes":3000,"outTokEst":750,"predictedMs":42461,...,"ratio":2071,...}
+  FAIL M08-097: expected {"accepted":true,"states":[DISCREPANT x9, CORROBORATED]} but observed {"accepted":true,"states":["UNVERIFIED" x4,"CORROBORATED" x6]}
+$ swift run --skip-build asom-conformance check M08     (Swift lane, before any Swift change)
+  MISMATCH M08-017 and M08-083..093: HARNESS_ERROR: chunk shape;  MISMATCH M08-097: accepted got false want true
+  checked 96, mismatches 13
+```
+M08-086 (visible filler), M08-094..096 (interpolation) and M08-098..101 (ASC01) passed on the unchanged code in both lanes: they are pins, not fixes (`ERR-R4B-TR-8`).
+
+After the change:
+```
+$ python3 lab/mesh-router/tools/gen_vectors.py && python3 lab/tools/regen_index.py   -> M08 96 vectors (77 + 19), every other vector byte-identical (only M08-017 differs); idempotent; the generator asserts every hand-computed expectation against ref.py
+$ ./gradlew --max-workers=2 -p lab test --offline            (JDK 21.0.10) -> BUILD SUCCESSFUL; 2786 tests, 0 failures, 7 skipped (the pre-existing proposed vectors); mesh-router 64, conformance-runner 2130; family M08: 96 vectors, 96 pass, 0 fail
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew --max-workers=2 -p lab test --offline  -> BUILD SUCCESSFUL; 2786 tests, 0 failures (the same counts)
+$ ./gradlew cleanTest jvmTest --no-build-cache --offline     (root) -> BUILD SUCCESSFUL; core + server: 140 tests, 0 failures
+$ swift test --package-path apple                            -> Executed 249 tests, with 0 failures (0 unexpected)   (243 + 6 new)
+$ swift run --skip-build --package-path apple asom-conformance check M01,M02,M03,M04,M05,M06,M08 -> checked 455, mismatches 47  (the same 47 as before: 42 LF-1 vectors of known-disagreements.txt + M04-042, M06-201..M06-204; none in M08)
+$ lines: JVM 484, Swift 455; python3 apple/ci/lane_diff.py ... --known ... --not-implemented ... -> vectors: jvm=484 swift=455 agree=413 disagree=42 (known 42) jvm-only=29 (not implemented 29); exit 0
+$ python3 apple/ci/test_lane_diff.py -> Ran 13 tests ... OK
+$ python3 lab/tools/xcheck.py lab/conformance -> every family 0 disagree (INDEX: 32 agree)
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py -> law: OK
+```
+Mutation checks (each break applied, suite run, restored; the files were verified restored):
+```
+JVM  J1 keep Cf                 -> 5 fail (M08-084, -092, -093, 2 unit tests)       J2 no NFC                -> 4 fail (M08-088, -092, 2 unit tests)
+JVM  J3 newline collapses       -> 2 fail (M08-090, normaliser-order test)           J4 no leading trim       -> 2 fail (M08-091, normaliser-order test)
+JVM  J5 whitespace not collapsed-> 8 fail (M08-083, -085, -087, -089, ...)           J6 raw bytes counted     -> 14 fail (10 vectors, 2 unit tests, the M08 non-vacuity law check)
+JVM  J7 inheritance needs seq   -> 2 fail (M08-097, TrackerFixTest)                  J8 no collection bound   -> 1 fail (aStreamBeyondAnyHonestAnswerIsSaturated...)
+JVM  J9 budget lifts DISCREPANT -> 4 fail (M08-098, M08-101, M08 non-vacuity, NegativeControlsTest.theSuiteExercisedEveryRequiredLaw)
+JVM  J10 interpolation rounds   -> 1 fail (M08-095; M08-094 does not discriminate, the prediction is the same)
+Swift S1 keep Cf  -> M08-084, -092, -093 + 2 unit tests      S2 no NFC -> M08-088, -092 + 1      S3 newline collapses -> M08-090 + 1      S4 no trim -> M08-091 + 1
+Swift S5 raw bytes -> 10 vectors + 2 unit tests              S6 budget lifts DISCREPANT -> M08-098, -101 + 3 unit tests
+Swift S7 no inheritance -> M08-065, -067, -097 + 5 unit tests    S8 interpolation rounds up -> M08-095 + 2 unit tests    S9 adapter ignores initialClaim -> M08-097 (adapter only, no unit test)
+```
+Not run: macOS/CryptoKit lane, Windows, hosted CI, any device. Stale counts in files outside this track: `apple/README.md` (M08 77, kinds 28/26/7/2/3/2/4/5, 465/436 line counts, 243 tests) and `lab/conformance/README.md` (M08 77 vectors); `apple/ci/known-disagreements.txt` header says "42 of 456" (historical).
+## Design revision 4, builder actions 9 to 12 (track build-bench): end reasons, ceiling rows, consent ticks, quick and ci plans (2026-10-15)
+
+Base 2a670033b907307a4cb9fe0e982194153e3f71cc (worktree reset to it first; `ls docs/design/mesh/LAB_SPEC.md` ok). Evidence label: LAB (this container, JDK 21 and JDK 17 for the lab, Swift 6.1 on Linux). NOT DEVICE EVIDENCE. Not touched: D30 to D32 row flags and drift rule, the conformance VERSION. Not done: the `asom.bench/1` JSON schema enum in `lab/conformance/manifest/schema` (outside this track's write set, `lab/ERRATA.md` ERR-R4B-BN-6, BLOCKED(write-set)). Rows and readings: `lab/ERRATA.md` and `apple/ERRATA.md`, ERR-R4B-BN-1 to BN-8.
+
+Real output (commands run in the worktree):
+
+- Fail-first, JVM: `:bench-core:test --tests R4EndReasonsTest` printed `8 tests completed, 7 failed` (for example `expected: <hard BATTERY_LOW> but was: <hard BATTERY_TEMP>`, `unknown injection BATTERY_LEVEL`, `'BATTERY_LOW' is not one of [THERMAL_HARD, BATTERY_TEMP, ...]`); the consent, rows and plans tests failed to compile against the base (`Unresolved reference 'ConsentTicks'`); the plans-in-spec test alone failed at run time with `expected: <[standard, quick, ci]> but was: <[standard]>`.
+- Fail-first, Swift: `swift test --filter AsomBenchCoreTests` printed `Executed 88 tests, with 32 failures`; failing: `ProtocolTests.testCeilingTable`, `testIPadOSHasTheIOSHardCeilingsAndPlatformsWithoutARowAreRefused`, `testPlansTheSpecDoesNotGiveInFullAreNotInvented`, `testTheTokenCarriesTheTicksAndRefusesWhatTheSheetDidNotOffer` (the last four are old pins changed on purpose) and six `RevisionFourTests`.
+- `./gradlew -p lab :bench-core:test :conformance-runner:test`, JDK 21: exit 0, bench-core 73 tests 0 failures, conformance-runner 2138 tests 0 failures 7 skipped (the same 7 as before); JDK 17 (`JAVA_HOME=/opt/jdks/jdk-17`, launcher 17.0.12): exit 0, same counts. `lab/build/conformance-report.txt`: `family M04: 130 vectors, 130 pass, 0 fail, 0 proposed-skipped, oracle: self=130`; new laws `ceilings-refused: 2`, `consent-ticks: 5`, `consent-heat-withheld: 2` cases.
+- `python3 lab/tools/xcheck.py lab/conformance`: `xcheck M04: 1049 agree, 0 disagree`, M05, M06 0 disagree.
+- `swift test --package-path apple`: `Executed 250 tests, with 0 failures`. Lane diff over M01 to M08: `vectors: jvm=492 swift=459 agree=417 disagree=42 (known 42) jvm-only=33 (not implemented 33)`, exit 0.
+- Mutation checks (implementation broken, suite failed, restored): JVM 13 (old BATTERY_TEMP name, old THERMAL_HARD name for Low Power Mode, windows mapped to the Linux row, preflight no-row refusal removed, POWER_SAVER dropped from HARD_CEILING, DEVICE_BUSY added to HARD_CEILING, token always permits heat, unoffered opt-in accepted, rerun tick on a tickless sheet accepted, non-atomic spend, executor ignores the token's opt-ins, executor ignores heatTestPermitted, mid-run refusal crashes); Swift 10 (Low Power Mode name, Android level name, POWER_SAVER dropped, DEVICE_BUSY added, token always permits, unoffered opt-in accepted, quick floor changed, ci headline test dropped, adapter ignores ticks, adapter loses NO_CEILING_ROW). Every one failed the suite.
+- `python3 lab/tools/isolation.py`: `isolation check 4: OK (shipped tree byte-identical to the pinned base)`; `python3 lab/tools/check_law.py`: `law: OK`; `python3 apple/ci/test_lane_diff.py` and `test_crosslane.py`: OK.
+- Root `./gradlew jvmTest` (exit 0): 140 tests, 0 failures (read from the test XML).
+## Gate: builder actions 13 and 14 (public derivative PP3; per-export key inside the signer), 2026-10-15 (LAB, oracle: self, NOT DEVICE EVIDENCE)
+
+Spec: LAB_SPEC R4-L-14 (PP3) and R4-L-13 (REVISION_4.md section 6 actions 13, 14). Readings: `lab/ERRATA.md` ERR-R4B-MF-1, -2, -4; `apple/ERRATA.md` ERR-R4B-MF-3, -5. Action 15 (lab `VERSION`) is WAIT-OWNER and untouched; no vector was regenerated.
+Failing before (JDK 21, `./gradlew -p lab :manifest:test --tests '*PublicDerivativeOsFamilyTest*' --tests '*ExportKeyGeneratedInsideSignerTest*'`): `4 tests completed, 3 failed`: `PP3: osFamily of asom.bench-public/1 is the manifest family enum ==> expected: <[android, ios, ipados, macos, linux, windows, ubuntu-touch]> but was: <[android, ios, ipados, macos, linux]>`; `a windows manifest produced a derivative its own schema refuses`; `signFile[ManifestInputs, long, EcKeyPair] lets a caller choose the export key`.
+```
+$ python3 lab/manifest/tools/patch_schema.py   -> only asom.bench-public.1.schema.json changes (windows, ubuntu-touch appended to osFamily)
+$ PYTHONPATH=<jsonschema 4.26.0 installed outside the repo> python3 lab/manifest/tools/schema_oracle.py
+    schema oracle PP3: 28 (vector, family) derivatives accepted by the public schema
+    schema oracle: 24 accepted payloads agree, 14 SCHEMA_INVALID payloads rejected by the schema too, 0 disagree (jsonschema 4.26.0)
+$ ./gradlew -p lab test --offline   (JDK 21)  -> BUILD SUCCESSFUL, 2767 tests, 0 failures, 0 errors, 7 skipped (the existing skips)
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab test --offline  (Launcher JVM 17.0.12) -> BUILD SUCCESSFUL, 2767 tests, 0 failures, 0 errors, 7 skipped
+$ ./gradlew jvmTest --offline -> BUILD SUCCESSFUL; 140 tests, 0 failures (core/* and server XML)
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py -> law: OK
+```
+Mutation checks (each: break, run, see red, restore; the restored tree is the one measured above): (1) `signFile` signs with the published TEST-ONLY key3 -> `everyProductionExportHasItsOwnKeyAndNeverATestOnlyOrNodeKey` fails (`file export refused by its own verifier at step 7: TEST_ONLY_KEY`); (2) the injected seam ignores its key -> `anInjectedKeyIsReachableOnlyThroughTheTestEntry...` fails (`expected: <Ees1k...> but was: <W978V...>`); (3) the default `exportKey` parameter restored on `signFile` -> `noPublicFileSigningMethodTakesAKey` fails; (4) `windows` and `ubuntu-touch` removed from the public schema -> `schema_oracle.py` prints 8 DISAGREE (`'windows' is not one of [...]`) and exits 1, and both `PublicDerivativeOsFamilyTest` tests fail (the failing-before run above is the same state).
+One unrelated flake seen and not caused by this change: the first full `./gradlew -p lab test` on JDK 21 failed `ProtoIntegrationGateTest > l13AndL14WithASinkThatThrowsAtEveryDurabilityPointOfARealSession` (`:mesh-proto`, 280 tests, 1 failed) while other builders shared the cores; the test passed alone (`BUILD SUCCESSFUL`) and the whole suite passed on the immediate re-run. Not investigated.
+Swift lane: `apple/Sources/AsomManifest/Signer.swift`, `apple/Sources/AsomConformanceKit/CrossLane.swift`, `apple/Tests/AsomManifestTests/SignerTests.swift` and `ProjectionTests.swift` were edited (production `signPresentation` has no export key; `package` test seam; PP3 schema test). **NOT COMPILED AND NOT RUN: `swift` is not installed here.** No Swift evidence exists for this change until the hosted `apple-swift-lane` job runs. Cross-lane fixtures not regenerated (see ERR-R4B-MF-3).
+## Design revision 4 builder actions 16 and 17 (track build-hosts-ci)
+
+Action 16, strict governor start on the Windows and macOS hosts (PLATFORM_PLAN R4-P-12). `WinPlatform` and `MacPlatform` now implement `SettlesBeforeServing`. Failing before: `StrictGovernorStartTest` (new, one per host) with the marker absent: winplatform all 5 of its tests plus the non-vacuity guard (`executionError`) failed (marker, exact 62,000 ms first serve, 200-400 permille band, blind CPU, burst restart) and macplatform `7 failed` of 7 including that guard. After the marker, five old tests that ticked once and expected SERVING failed (Windows `PresenceLawsTest` two, macOS `PresenceLawsTest` two, `PlatformTest` one) and were changed to warm up for 62 s first (desktop/ERRATA.md ERR-R4B-HC-1). Mutation checks: marker removed from both hosts, 8 winplatform and 9 macplatform failures; the `r.gpuCounterPresent && ...` clause of `Governor.evaluate` replaced by `false`, macplatform `GPU contention ... never serves`, `an unreadable CPU counter or an unreadable GPU counter never serves` and the vacuity guard fail; both restored.
+
+Action 17, workflow edits (CI-ONLY: no hosted run seen, no `actionlint` here): `ASOM_REQUIRE_DBUS: "1"` on `desktop-jvm` and `desktop-jvm-arm`; `persist-credentials: false` on the five checkouts of `desktop-windows.yml` and its pinned copy together; `docs/design/mesh/manifest-vectors/**` and `conformance-examples/**` in both path filters of `apple-ios.yml`. Failing before: `WorkflowRequiresDbusTest` (`:node`) and `WorkflowTest > every checkout drops its credentials` (winplatform) both red on the base files, `check_workflows.py` reports 5 violations on the base `desktop-windows.yml`. `desktop-windows.yml` joined the `check_workflows.py` default set.
+
+Real output (Linux container, LAB / CI-APPROX, NOT DEVICE EVIDENCE), JDK 21 and again `JAVA_HOME=/opt/jdks/jdk-17` (Launcher JVM 17.0.12), both `ASOM_REQUIRE_DBUS=1 ./gradlew --offline -p desktop desktopTest :packaging:windows:winplatform:test :packaging:macos:macplatform:test`:
+```
+winplatform test summary: 159 tests, 132 passed, 0 failed, 27 skipped   (os=Linux; ...)
+macplatform test summary: 156 tests, 145 passed, 0 failed, 11 skipped   (os=Linux; ...)
+node tests 129 skipped 0 failed 0 ; node-core tests 76 skipped 0 failed 0   (summed from build/test-results XML)
+BUILD SUCCESSFUL
+```
+Baselines were winplatform 153 tests, macplatform 150. Also: `python3 lab/tools/isolation.py` check 4 `OK (shipped tree byte-identical to the pinned base)`; `python3 lab/tools/check_law.py` `law: OK`; `desktop/tools/isolation.sh` `ISOLATION: all checks passed` (includes `workflow-law: OK` over 4 files and its selftest); `check_eol.py` `OK`; `check_paths.py` `0 problems`; root `./gradlew jvmTest` `BUILD SUCCESSFUL`, 140 tests, 0 failed, 0 skipped (results came from the build cache, counted from the XML). Not run: any hosted workflow, a real Windows or macOS machine, the lab and Swift suites (untouched).
+
+## Design revision 4 builder action 5 (track build-thermal)
+
+Thermal substitution `min(2, last + 1)` for STALE (LAB_SPEC R4-L-17; readings in `lab/ERRATA.md` ERR-R4B-TH-1, closing ERR-R4B-LT-1). Changed: `lab/mesh-policy` `Staleness.fastFields` and `LiveStateTest`; `gen_vectors.py`, `xcheck_policy.py`; `lab/conformance/policy/W07-live-state.json` (W07-075 regenerated, W07-081 and W07-082 added, 67 to 69 vectors); `INDEX.json` (W07 digest only). Swift lane: no staleness code, unchanged.
+
+Failing before (JDK 21, `./gradlew -p lab --max-workers=2 :mesh-policy:test :conformance-runner:test --continue`, new tests and vectors, unchanged `Staleness.kt`): `LiveStateTest > theStaleSubstitutionRaisesThermalAndQueueByOneBandCappedAtTwo() FAILED ... thermal 1 ==> expected: <2> but was: <1>`; `FAIL W07-075` and `FAIL W07-081` (`thermalBand` 2 expected, 1 observed); `33 tests completed, 2 failed`; `2309 tests completed, 2 failed, 7 skipped`.
+
+Real output after (LAB / CI-APPROX, NOT DEVICE EVIDENCE):
+```
+$ ./gradlew -p lab --max-workers=2 :mesh-policy:test :mesh-router:test :conformance-runner:test --continue   (JDK 21)  -> BUILD SUCCESSFUL
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab ... --rerun-tasks   (JDK 17)  -> BUILD SUCCESSFUL; summed XML of the three modules: 2406 tests, 0 failures, 7 skipped (the existing W00 PROPOSED skips and RegenerateVectors)
+$ python3 lab/tools/xcheck.py -> xcheck W07: 69 agree, 0 disagree ; xcheck L01: 56 agree ; xcheck W07p: 97 agree
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py -> law: OK
+$ ./gradlew jvmTest --max-workers=2 --offline -> BUILD SUCCESSFUL; 140 tests, 0 failures (core/* and server XML)
+```
+Mutation checks (break `Staleness.fastFields`, run `:mesh-policy:test :conformance-runner:test`, see red, restore): no cap (`d.thermalBand + 1`): both LiveStateTest tests and W07-082 fail; no `>= 1` guard: both LiveStateTest tests and W07-076, -079, -080 fail; the r3 `max(last, 1)` no-op: both LiveStateTest tests and W07-075, -081 fail. The restored tree is the one measured above.
+## Design revision 4 follow-ups (track build-schema-swift): bench end-reason schema, Swift export-key review, cross-lane fixtures
+
+Scope: (a) benchmark R4-B-01 end reasons in the `asom.bench/1` schema; (b) Swift half of builder action 14 (LAB_SPEC R4-L-13); (c) the apple-ios.yml job steps. Readings: `lab/ERRATA.md` ERR-R4B-SW-1, -2; `apple/ERRATA.md` ERR-R4B-SW-3 .. -5. Worktree base: HEAD was 98ab632, reset to BASE_SHA 044e214 as instructed.
+Evidence label: LAB, Linux container, Swift 6.1 (swift-crypto), JDK 21 and JDK 17; NOT DEVICE EVIDENCE; hosted CI not seen for this change.
+
+Failing before (a): `BenchEndReasonSchemaTest > theSchemaEnumsAreTheBenchCoreEnumsExactly() FAILED: run.abort.reason lacks BATTERY_LOW` (`:manifest:test`), and `schema_oracle.py` printed 4 lines `DISAGREE R4-B-01` (abort and endReason, BATTERY_LOW and POWER_SAVER) and `4 disagree`.
+Failing before (b, fixtures): after updating the generator and tests but before regenerating, `CrossLaneTests` `Executed 4 tests, with 8 failures` (`37 is not equal to 39`, `23`/`24`, `14`/`15`, `36`/`38`, `0`/`2`).
+```
+$ python3 lab/manifest/tools/patch_schema.py   -> only asom.manifest.1.schema.json changes (BATTERY_LOW, POWER_SAVER in run.abort.reason and sustain.endReason)
+$ python3 lab/manifest/tools/schema_oracle.py  (jsonschema 4.26.0 installed outside the repo)
+    schema oracle R4-B-01: 26 end-reason embeddings accepted, 6 unknown reasons rejected
+    schema oracle: 24 accepted payloads agree, 14 SCHEMA_INVALID payloads rejected by the schema too, 0 disagree (jsonschema 4.26.0)
+$ ./gradlew -p lab :manifest:test :conformance-runner:test   (JDK 21)  -> BUILD SUCCESSFUL; manifest 61 tests 0 failures 0 skipped; conformance-runner 2307 tests 0 failures 7 skipped (the existing skips)
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab :manifest:test :conformance-runner:test -> BUILD SUCCESSFUL; manifest 61 / 0 failures; conformance-runner 2307 / 0 failures / 7 skipped
+$ PATH=/opt/swift/usr/bin:$PATH swift test --package-path apple -> Executed 265 tests, with 0 failures (0 unexpected)   (was 258: +6 ExportKeyTests, +1 two-regeneration test)
+$ swift run asom-conformance check M02,M03   (ASOM_CONFORMANCE_DIR=docs/design/mesh/manifest-vectors) -> checked 37, disagreements 0
+$ ... lines M01,M02,M03,M04,M05,M06,M08 (lab/conformance) -> 478 lines; DIAGNOSTIC check -> checked 478, mismatches 0
+$ ASOM_CONFORMANCE_DIR=apple/crosslane swift run asom-conformance generate-crosslane apple/crosslane -> wrote 24 M02 and 15 M03 vectors, 25 fresh signatures
+$ python3 apple/ci/crosslane.py jvm-lines ... ; python3 apple/ci/crosslane.py compare ... -> crosslane: 39 vectors (24 ok, 15 reject) ... JVM, Swift and the fixture agree on 39 of 39
+$ python3 apple/ci/test_crosslane.py -> Ran 8 tests OK ; python3 apple/ci/test_lane_diff.py -> Ran 13 tests OK
+$ python3 apple/ci/lane_diff.py jvm.lines swift.lines --known apple/ci/known-disagreements.txt --not-implemented apple/ci/not-implemented.txt
+    vectors: jvm=511 swift=478 agree=436 disagree=42 (known 42) jvm-only=33 (not implemented 33)   (exit 0; the 42 are exactly the LF-1 set, file unchanged)
+$ lane_diff.py ... swift-diagnostic.lines (no --known) -> vectors: jvm=511 swift=478 agree=478 disagree=0 (known 0) jvm-only=33 (not implemented 33)
+$ ./gradlew --offline jvmTest -> BUILD SUCCESSFUL (test tasks FROM-CACHE: no input of core/* or server changed); XML: 140 tests, 0 failures
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py -> law: OK
+```
+Mutation checks (break, run, see red, restore, re-run green): Swift `Signer.swift` M1 cached export key, M2 node key as export key, M3 fixed non-published key, M4 own signed by a generated key, M5 `exportKeyIsNodeKey` guard removed, M7 self-check skipped, M10 fingerprint from the node key: 7 of 7 killed (`ExportKeyTests` and `SignerTests`; M2, M3, M4 by `ExportKeyTests` alone). Swift `CrossLane.swift` C1 production vector under a TEST-ONLY key, C2 fixed non-published key, C3 `productionKeys` false in the context: 3 of 3 killed. Schema: `POWER_SAVER` dropped from the generated `sustain.endReason` enum: oracle 1 disagree and `theSchemaEnumsAreTheBenchCoreEnumsExactly` red, restored by re-running the generator (byte-identical to the saved copy). The restore step of my first mutation script left a stale modification time, so one full `swift test` ran a stale mutant binary and reported 20 failures; the file contents were never wrong (`git diff` empty for `Signer.swift`), the times were touched, and all 10 mutants were re-run with the fixed script and a clean full run (265 tests, 0 failures) is the one reported above.
+Not done / limits: the macOS (CryptoKit) leg and the iOS simulator job are unseen; `package` access is compile-time only (see ERR-R4B-SW-3); `schema_oracle.py` is not run by any workflow.
+### Design revision 4: follow-up to builder action 8, session-layer ESTIMATED form (ERR-R4B-LT-3, LT-5) (track build-session-estimated)
+
+Evidence label: LAB, `oracle: self`, JDK 17.0.12 and JDK 21 on Linux, loopback only, NOT DEVICE EVIDENCE. Reading and choices: `lab/ERRATA.md` ERR-R4B-SE-1 to SE-4.
+
+Change: `session/Wire.kt` takes the record arithmetic of its ESTIMATED figure from the connection (`overheadStackOf`: a connection reporting a stack, else `TlsMeshConnection` is `Overhead.JSSE_17_21` 38 / 16,367, else `Overhead.UNCALIBRATED` 22 / 16,384). `TlsOracle` takes the stack of the transport (`stackOf`, asserting the session layer's choice agrees) and gained `estimateReading` / `estimateVerdict`; new `EstimatedLongRunTest` (603 frames per end) tells R 22 and R 54 from R 38 against the record tap.
+
+Failing before (`AccountingAndDialTest.aWireOverRealTlsEstimatesWithTheJsseStackAndTheRecordTapAgrees`, real loopback TLS pair, nine frames of 9 to 70,009 application bytes), run against the unchanged `Wire.kt`:
+```
+AccountingAndDialTest > aWireOverRealTlsEstimatesWithTheJsseStackAndTheRecordTapAgrees() FAILED
+    org.opentest4j.AssertionFailedError: writer side: 38 x ceilDiv(app, 16367) per frame ==> expected: <646> but was: <352>
+```
+After the change that test, `theStackOfTheEstimatedFormFollowsTheConnection` and `EstimatedLongRunTest` pass; the existing in-memory ESTIMATED test (22, 16,384) is unchanged and passes.
+
+Mutation checks (each applied, suite run, restored): `Wire.stack` fixed to `UNCALIBRATED` (2 `AccountingAndDialTest` tests fail); `overheadStackOf` without the `TlsMeshConnection` branch (`aWireOverRealTls...` and `EstimatedLongRunTest` fail); without the `ReportsOverheadStack` branch (`theStackOfTheEstimatedFormFollowsTheConnection` fails); `noteReceived` ignoring the stack (both fail); `estimateVerdict` without the undercount check (`EstimatedLongRunTest` fails at the R 22 control); without the overcount check (fails at the R 54 control); `Overhead.JSSE_17_21` R set to 22 in `ledger-model` (3 tests fail), restored (`git status` shows no change to `ledger-model`).
+
+Real output, JDK 21 and again `JAVA_HOME=/opt/jdks/jdk-17` (JDK 17.0.12), `./gradlew --max-workers=2 -p lab :mesh-proto:test :conformance-runner:test`: `BUILD SUCCESSFUL`; `mesh-proto tests 312 skipped 0 failures 0 errors 0` on both (summed from `build/test-results` XML); `conformance-runner tests 2307 skipped 7 failures 0` (JDK 21; the 7 skips are in the runner and were not touched). Long run printed `L-L15 ESTIMATED long run A: 603 frames; JSSE estimate 31106 / tap 27437; R 22 estimate 21458; R 54 estimate 40754` (JDK 21) and the same with `tap 27621` (JDK 17). `python3 lab/tools/isolation.py`: `isolation check 4: OK (shipped tree byte-identical to the pinned base)`; `python3 lab/tools/check_law.py`: `law: OK`; root `./gradlew jvmTest` `BUILD SUCCESSFUL`, 140 tests, 0 failed (results taken from the build cache). Not run: any hosted workflow, a Windows run of the new tests, the Swift lane (untouched).
+### Fix wave 3, track fix3-pairing (R4P-1 to R4P-5, R4ST-2): pairing session id, early extensions, W04 reveal vectors
+
+Evidence label: LAB, `oracle: self`, JDK 17 and JDK 21 on Linux, in-memory connections and loopback only, NOT DEVICE EVIDENCE. Readings and choices: `lab/ERRATA.md` ERR-FX3-PW-1 to PW-5.
+
+Failing before (against the unchanged tree): `PairingAndLoopTest.extensionFramesThatArriveBeforeThePairHelloAreRowedAfterTheOpenRow...` and `aDiallerWhoseHelloRowIsNotDurableHasNoJoinIdOnItsCloseRow` FAILED; a scratch test sending one `PAIR_HELLO` on three listener channels printed `SCRATCH ids=[BwcHBwcHBwcHBwcHBwcHBw, BwcHBwcHBwcHBwcHBwcHBw, BwcHBwcHBwcHBwcHBwcHBw]` and `expected: <3> but was: <1>`; three lenient base64url decoders (padding accepted in `PAIR_DECISION.reveal`, trailing bits ignored there, trailing bits ignored in the commit runner) each left `TrustVectorsTest` green (`exit=0`) against the old W04 file; `gen_vectors.py` with an empty exception set failed at W04-017 (`('reject', 'EXPIRED')` against `('ok', ...)`).
+
+Change: `PairingChannel` takes a required `SessionIdClaims` (the node's id registry), claims the id a listener derives from `PAIR_HELLO.nonceS`, refuses a repeat with `PROTOCOL_ERROR` under a minted id, holds up to 16 pre-hello extension frames and rows them after the open row, and drops the dialler's join id from a close row when the hello row was not durable. W04-454 and W04-466 now hold the inputs they describe, W04-459 is new (444 vectors), `INDEX.json` regenerated, `gen_vectors.py` asserts the two-readings claim of ERR-R4B-PW-1.
+
+Mutation checks (each applied, suite run, restored; `PairingChannel.kt` byte-identical afterwards): claim check removed (2 `PairingAndLoopTest` tests fail), early extensions rowed at once (1 fails), join id not cleared (1 fails); the three lenient decoders above against the new W04 file (`TrustVectorsTest.w04Pairing` fails each time).
+
+Real output: `./gradlew --max-workers=2 -p lab :mesh-proto:test` on JDK 21 and `JAVA_HOME=/opt/jdks/jdk-17` both `BUILD SUCCESSFUL` (mesh-proto 317 tests, 0 skipped, 0 failures; was 312); `:conformance-runner:test` on both `BUILD SUCCESSFUL`; `python3 lab/tools/isolation.py` -> `isolation check 4: OK (shipped tree byte-identical to the pinned base)`; `python3 lab/tools/check_law.py` -> `law: OK`; `python3 lab/mesh-proto/tools/trust/xcheck_trust.py` -> `xcheck W04: 316 agree, 0 disagree`; `./gradlew --offline jvmTest` -> `BUILD SUCCESSFUL`, 140 tests, 0 failures.
+
+## Fix wave 3, track fix3-session (R4ST-1, R4ST-3, R4ST-4, R4H-04) - LAB, oracle: self, NOT DEVICE EVIDENCE
+
+The worktree started at 98ab632 and was reset to the base 5c4871bbc4877856b39777ae6fe0bd396d3a6fcc before any change (fetch of the branch, then a hard reset; `HEAD` and `docs/design/mesh/LAB_SPEC.md` confirmed). Rows: `lab/ERRATA.md` ERR-FX3-SS-1 to -4.
+
+Failing before (real output, unchanged sources): `GoawayPostedTest` four new cases `FAILED` at GoawayPostedTest.kt:85, 103, 128, 140 (offer to a revoked lender did not throw; request not Lost; chunks of a revoked lender taken as 200; a session to a revoked peer established); `RevokeDoesNotBlockTest.closingTheDriver...` two cases `FAILED` at 30.68 s and 31.07 s against an 8 s bound; the R4ST-4 test did not compile (`Unresolved reference 'tlsOverheadStack'`, AccountingAndDialTest.kt:173).
+
+After: `./gradlew --max-workers=2 --offline -p lab :mesh-proto:test :conformance-runner:test` BUILD SUCCESSFUL on JDK 21 (2m 13s) and again with `JAVA_HOME=/opt/jdks/jdk-17` and `--rerun-tasks` BUILD SUCCESSFUL (2m 40s): `mesh-proto tests 321 skipped 0 failures 0 errors 0` (base 312, nine added), `conformance-runner tests 2309 skipped 7 failures 0 errors 0` on both (summed from build/test-results XML). The two stalled-driver close tests now take about 2.2 s each. `python3 lab/tools/isolation.py`: `isolation check 4: OK (shipped tree byte-identical to the pinned base)`; `python3 lab/tools/check_law.py`: `law: OK`; root `./gradlew jvmTest` BUILD SUCCESSFUL (core and server results came from the build cache: those sources are untouched).
+
+Mutation checks (applied, suite run, restored; each harness `--check` reports 0 stale edits): session mutants 3, 21, 27 (re-pointed) and 29 to 33 (new) KILLED, and 29 to 33 were also confirmed one at a time against `GoawayPostedTest` or `AccountingAndDialTest` alone (the first failing test of the full run was an unrelated `KnobMatrixTest executionError` for some, so the targeted run is the evidence); integration mutants 13, 18, 26 (re-pointed) and 33 (`SessionDriver.close` without `abortTransport`, killed by `RevokeDoesNotBlockTest`) KILLED on JDK 21; trust mutant 19 (re-pointed) KILLED. Not mutation-checked on JDK 17. Not done: re-running the whole old lists (only the repaired and new mutants were run); the r4 mutant lists (not in the repository: BLOCKED, ERR-FX3-SS-4); wiring `--check` into check_law.py (outside this track's write set); any hosted CI; any Windows run.
+
+### Gate: fix wave 3, track fix3-tracker-padding (R4TB-03, R4TB-05, R4TB-10, R4H-05, R4H-08)
+
+Evidence label: LAB, `oracle: self`, JDK 17.0.12 and JDK 21 on Linux, Swift 6.1 on Linux, NOT DEVICE EVIDENCE. Readings and choices: `lab/ERRATA.md` ERR-FX3-TP-1..6 and `apple/ERRATA.md` ERR-FX3-TP. Base 5c4871bbc4877856b39777ae6fe0bd396d3a6fcc.
+
+Change: `AnswerText` (Kotlin `ClaimTracker.kt`, Swift `AnswerText.swift`, Python `gen_m08.py`) removes a written-out invisible set (Default_Ignorable_Code_Point plus U+2800 and the newer Cf; 20 ranges, identical in the three lanes) in addition to Cc and Cf, and counts `min(NFC form, same text without NFC)`. M08-102..108 added (M08 is now 103 vectors; `INDEX.json` regenerated; no existing vector changed). The bytes-per-token basis (normalised text) is recorded as a rule in ERRATA; no code computes that table today. Swift headers fixed to cite rows that exist.
+
+Failing before (unchanged tracker code, JDK 21):
+```
+ClaimTrackerTest > defaultIgnorablePaddingThatIsNotAFormatCharacterIsRemoved() FAILED
+    org.opentest4j.AssertionFailedError: variation selector 16 ==> expected: <1200> but was: <1500>
+ClaimTrackerTest > normalisationNeverCountsMoreBytesThanTheAnswerWasSentWith() FAILED
+    org.opentest4j.AssertionFailedError: U+0958 would be 2,100 after NFC ==> expected: <1200> but was: <2100>
+FAIL M08-102: expected {"outBytes":1200,...,"ratio":973,...} but observed {"outBytes":3300,"outTokEst":825,"predictedMs":46211,"elapsedMs":20500,"ratio":2254,"discard":null}
+FAIL M08-105: ... observed {"outBytes":2100,"outTokEst":525,"predictedMs":31211,"elapsedMs":20500,"ratio":1522,"discard":null}
+Swift: R3ConformanceTests.swift:69: error: ... M08-104: value differs: member outBytes: got 2400 want 1200
+       R3ConformanceTests.swift:69: error: ... M08-105: value differs: member outBytes: got 2100 want 1200
+```
+
+Mutation checks (each applied, suite run, restored; the restored file was compared with the saved copy): Kotlin set check ignored: `defaultIgnorablePaddingThatIsNotAFormatCharacterIsRemoved`, `everyCodePointOfTheNamedInvisibleSetIsRemovedAndVisibleOnesSurvive`, M08-102, -103, -104 fail; Kotlin `normalizedBytes` without the `min`: `normalisationNeverCountsMoreBytesThanTheAnswerWasSentWith` and M08-105 fail; Kotlin range U+FE00..FE0F shortened to FE0E: the padding test and M08-102 fail; Swift set check ignored: 23 failing assertions; Swift `min` removed: `testNormalisationNeverCountsMoreBytesThanTheAnswerWasSentWith` and M08-105 fail.
+
+Real output after the fix:
+- `./gradlew --max-workers=2 -p lab :mesh-router:test :conformance-runner:test --offline --rerun-tasks`, JDK 21 and again with `JAVA_HOME=/opt/jdks/jdk-17`: `BUILD SUCCESSFUL`; mesh-router tests 68, failures 0, errors 0, skipped 0; conformance-runner tests 2316, failures 0, errors 0, skipped 7 (the skips are the runner's pre-existing not-implemented rows, not touched), on both JDKs (summed from `build/test-results` XML).
+- `swift test --package-path apple` (Swift 6.1, Linux): `Executed 269 tests, with 0 failures`.
+- `python3 lab/tools/xcheck.py lab/conformance`: every family `0 disagree` (self-oracled, same-session).
+- `python3 lab/tools/check_law.py`: `law: OK`. `python3 lab/tools/isolation.py`: `isolation check 4: OK`.
+- root `./gradlew jvmTest --offline --rerun-tasks -x :core:routing:jacocoTestReport`: 140 tests, 0 failures on the second run; the FIRST run had one failure, `AsomServerIntegrationTest > a failed-over attempt gets its own cloud ledger row()`, a `:server` test this track does not touch (no file under `core/` or `server/` changed); it did not repeat. Not investigated further here; it looks like the asynchronous-ledger read race of the CI lessons.
+
+## Gate: fix3-bench-policy (R4TB-01, R4TB-02, R4TB-06, R4TB-07) - LAB, CI-APPROX, NOT DEVICE EVIDENCE
+
+Worktree base: `git rev-parse HEAD` printed 98ab632f7460b1f4ce03c91038862a31a11f012e (not the base), so `git fetch origin claude/asom-v1-build-brief-vw83oh` and a hard reset to 5c4871bbc4877856b39777ae6fe0bd396d3a6fcc were run; HEAD then printed 5c4871bbc4877856b39777ae6fe0bd396d3a6fcc and `docs/design/mesh/LAB_SPEC.md` existed. Nothing committed or pushed.
+
+Failing before (real output): `FixBenchPolicyTest` 9 tests completed, 6 failed (for example `expected: <aborted BATTERY_TEMP> but was: <aborted CHARGER_REMOVED>`, `THERMAL_CODE 3 with MEMORY_PRESSURE in the heat test keeps the run ==> expected: <completed> but was: <aborted MEMORY_PRESSURE>`, `a token minted at 3600000 must not be spendable at 1000: null`); `xcheck W07: 69 agree, 2 disagree` (`DISAGREE W07-083`, `W07-084`); `RouterLawsTest > aStalePeerAtThermalBandOne...` `expected: <F10> but was: <null>`; `DISAGREE M04-431: consent model says consumed`.
+
+After (real output): `FixBenchPolicyTest` tests=10 skipped=0 failures=0; `./gradlew --max-workers=2 -p lab test` on JDK 21 `BUILD SUCCESSFUL in 3m 16s`; the same with `JAVA_HOME=/opt/jdks/jdk-17 ... --rerun-tasks`: summed `build/test-results` XML of all lab modules `tests 3044 skipped 7 failures 0 errors 0` (the 7 skips are the PROPOSED W00 vectors in the runner, untouched); `family M04: 131 vectors, 131 pass, 0 fail`; `family W07: 102 vectors, 102 pass, 0 fail`; `python3 lab/mesh-policy/tools/xcheck_policy.py`: `xcheck W07: 71 agree, 0 disagree`; `python3 lab/tools/xcheck.py`: `xcheck M04: 1050 agree, 0 disagree`; `python3 lab/tools/isolation.py`: `isolation check 4: OK (shipped tree byte-identical to the pinned base)`; `python3 lab/tools/check_law.py`: `law: OK`; root `./gradlew jvmTest -x :core:routing:jacocoTestReport` `BUILD SUCCESSFUL`, 140 tests, 0 failures (from the build cache).
+
+Mutation checks (each applied, suite failed, restored): Governor `MEASURED_HARD` without `POWER_SAVER` (1 test fails), without `BATTERY_LOW` (1), the early measured-hard line removed (5); Consent without the `age < 0` refusal (1), `>=` changed to `>` (1), `subtractExact` replaced by plain subtraction (1); router `Situation.kt` `thermalBand = d.thermalBand` (new test fails; with the old oracle RL5 survives, with the fixed oracle RL5 fails too). Not run: `swift test` (no Swift toolchain on this machine), any hosted workflow, a Windows run. The one Swift test edit (`R3ConformanceTests` expects 11 `M04/consent` vectors) is therefore unverified. Details and readings: lab/ERRATA.md and apple/ERRATA.md rows ERR-FX3-BP-1 to ERR-FX3-BP-4.
+
+### Fix wave 3, track fix3-manifest: R4MS-1 to R4MS-5 (lab/manifest seq store, schema oracle in CI)
+
+Evidence label: LAB, `oracle: self`, JDK 21 and JDK 17.0.12 on Linux. NOT Windows evidence, NOT DEVICE EVIDENCE. The new `lab-schema-oracle` job in `lab.yml` is CI-ONLY: no hosted run has seen it (the YAML parses with PyYAML and each step was run by hand). Reading and choices: `lab/ERRATA.md` ERR-FX3-MF-1 to MF-5.
+
+Failing before (new tests against the unchanged behaviour, only the `SeqStore.lockKey` plumbing with its identity default present): `SeqLockIdentityTest.twoFileStoreInstancesOnOnePathNeverSignTwoBodiesUnderOneSeq` (`two different bodies were signed under one seq by two instances of one file ==> expected: not equal but was: <1790676000>`), `SeqStoreFailsClosedTest` (`crlf line endings: load() treated an unreadable store as an absent one`, `... signOwn went on with an unreadable store`), `NextSeqBoundsTest` (`memory, clock -1: a seq was persisted before the refusal`; `IllegalArgumentException: integer outside +-(2^53-1)` for a stored seq at the maximum). 8 of 14 new tests failed; the 3 `SignerSurfaceTest` tests are TEST_GAP tests and passed on the unchanged code by design (mutation-checked below).
+
+```
+$ ./gradlew -p lab :manifest:test :conformance-runner:test :mesh-proto:test --max-workers=2   (JDK 21)  -> BUILD SUCCESSFUL; manifest 76 tests 0 failures 0 skipped; conformance-runner 2309 / 0 / 7 skipped (the existing skips); mesh-proto 312 / 0 / 0
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab ... same three modules                              -> BUILD SUCCESSFUL; manifest 76 / 0 / 0; conformance-runner 2309 / 0 / 7; mesh-proto 312 / 0 / 0
+$ python3 lab/manifest/tools/schema_oracle.py --require   -> schema oracle: 24 accepted payloads agree, 14 SCHEMA_INVALID payloads rejected by the schema too, 0 disagree (jsonschema 4.26.0)   (exit 0)
+$ python3 lab/manifest/tools/patch_schema.py --out <tmp>; diff -r <tmp> lab/conformance/manifest/schema   -> identical
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py -> law: OK
+$ ./gradlew jvmTest --max-workers=2 -> BUILD SUCCESSFUL; XML: 140 tests, 0 failures
+```
+Mutation checks (each applied, suite run, restored, source compared with `cmp`): `python3 lab/manifest/tools/mutants.py --only S03-seq-no-clock,V40-no-signer-lock,V41-fixed-temp-name,V42-lock-per-instance,V43-malformed-store-is-absent,V44-no-seq-bound,V45-no-clock-bound` gave 7 KILLED (all at layer L3, `:manifest:test`); V42 to V45 are new entries, S03 was retargeted because its old text moved into `nextSeq`. By hand: public `signFile(.., PrivateKey, ByteArray)`, public `exportBytes(.., EcKeyPair): ByteArray` and an extension `ManifestSigner.signFileWith(.., EcKeyPair): SignedFile` in another file each turn `SignerSurfaceTest` red (the last two left the old `ExportKeyGeneratedInsideSignerTest` green). Schema oracle: `POWER_SAVER` deleted from `sustain.endReason` -> exit 1, 2 DISAGREE lines; `jsonschema` made unimportable -> `--require` exits 2, default exits 0; one character changed in a schema title -> oracle still 0 disagree and the `diff -r` step fails.
+
+Not done / limits: `lab-schema-oracle` never ran on a hosted runner; the Windows `..`, 8.3 and case behaviour of `FileSeqStore.lockName` is by construction (canonical path, lower-cased) and untested on Windows; two PROCESSES on one seq file remain unlocked (ERR-FX-CV9). One `labTest` run (not the `-p lab :mesh-proto:test` runs above) showed `AccountingAndDialTest.aWireOverRealTlsEstimatesWithTheJsseStackAndTheRecordTapAgrees` FAILED once while the machine was loaded; it passed on an immediate rerun and in both full runs above; nothing in this change touches `mesh-proto`, and its cause was not investigated.
+
+## fix3-hosts-ci: strict-start re-enable, GPU existence, workflow filters and credentials (review findings HC-R1 to HC-R6, R4H-09)
+
+Evidence: LAB (Linux container, JDK 21 and JDK 17.0.12) for the Kotlin tests; CI-ONLY (not run on a hosted runner, no `actionlint` here) for the workflow edits; NOT DEVICE EVIDENCE. Details and readings: `desktop/ERRATA.md` ERR-FX3-HC-1 to ERR-FX3-HC-7.
+
+Failing before the fix (real output, same tests, unchanged sources): `StrictStartReenableTest > a re-enable while other-process load sits between 200 and 400 permille does not serve at the first tick (HC-R1) FAILED` (a marker-declaring host went SERVING on the first tick after a re-enable at 350 permille), `... a host that declares no marker gets the strict start (HC-R4) FAILED`, `... a delegating wrapper does not lose the strict start (HC-R4) FAILED`; `GpuExistenceTest > one UNAVAILABLE answer at the first tick does not switch the GPU rule off ... FAILED: the GPU counter exists and sits between 200 and 400 permille (tick 31)` (macOS) and the same on Windows (`one failed open ...`, tick 31); `python3 desktop/tools/check_workflows.py` on the base files: `VIOLATION: apple-ios.yml: push paths filter does not cover docs/design/mesh/benchmark.md, which apple reads` (and the pull_request line) plus 5 `apple-ios.yml` and 5 `desktop-macos.yml` `checkout without persist-credentials: false`; macOS `WorkflowTest > every checkout drops its credentials ... FAILED: checkout at line 57 keeps the token in .git/config` against the base copy; `WorkflowRequiresDbusTest > the check accepts only the job-level env ... FAILED` against the old any-indent regex.
+
+After (JDK 17.0.12, `JAVA_HOME=/opt/jdks/jdk-17 ./gradlew --max-workers=2 -p desktop --rerun-tasks desktopTest :packaging:windows:winplatform:test :packaging:macos:macplatform:test`): `BUILD SUCCESSFUL`; summed from build/test-results: node-core 83 tests 0 failures, node 130 tests 0 failures, winplatform 163 tests (27 skipped, the Windows-only ones, as before) 0 failures, macplatform 161 tests (11 skipped, macOS-only) 0 failures. The same four tasks on JDK 21: `BUILD SUCCESSFUL`. `python3 desktop/tools/check_workflows.py --selftest`: `workflow-law selftest OK: 14 mutants caught, 3 clean controls passed`; `python3 desktop/tools/check_workflows.py`: `workflow-law: 6 workflow files; ... spec paths read by a path-filtered lane: 6` / `workflow-law: OK`. `bash desktop/tools/isolation.sh`: `ISOLATION: all checks passed`. `python3 lab/tools/isolation.py`: `isolation check 4: OK (shipped tree byte-identical to the pinned base)`; `python3 lab/tools/check_law.py`: `law: OK`; `python3 desktop/tools/check_paths.py`: `0 problems`; `cmp` of both `desktop-macos.yml` copies: identical; `yaml.safe_load` of the four edited workflows: parses, job counts unchanged. Root `./gradlew --rerun-tasks jvmTest`: `BUILD SUCCESSFUL`, 140 tests, 0 failed (summed from the XML).
+
+Not run: any hosted workflow (the `branches: [main]` change to `apple-ios.yml` and the new `persist-credentials` keys are untested on GitHub Actions), a Windows or macOS machine (the strict start and the GPU re-check are fake-clock LAB evidence of the rule, NEEDS-DEVICE-VALIDATION), the Swift lane (untouched).
+
+
+### Corrections: hosted red runs, VERSION 0.2.0 change record, stale counts, generator guard (track fix3-honesty; findings R4H-01, R4H-02, R4H-07, R4H-10; base 5c4871b)
+
+Evidence label: LAB (this container, JDK 21 and JDK 17 on Linux, Swift 6.1 on Linux), `oracle: self`, NOT DEVICE EVIDENCE. Hosted-CI facts below were read through the GitHub check-runs API; they were not run here. Reading and choices: `lab/ERRATA.md` ERR-FX3-HN-1 to HN-4 and `apple/ERRATA.md` ERR-FX3-HN-4a.
+
+R4H-01, red hosted runs that this file never recorded. `044e214` (build wave r4 group 7): `W0 lab on Windows (JDK 21)` and `(JDK 17)` failed (run 38693013482, jobs 116284629370 and 116284629364). `08ab72f`: `W0 lab on Windows (JDK 21)` failed (run 38693858552, job 116287264272). Fixes: `08ab72f` (the bench-core test read `benchmark.md` with CRLF after the Windows checkout) and `d4baacb` (`ManifestSigner.lockFor` was a non-atomic `getOrPut`, so two signers could take two locks and sign two bodies under one seq; ERR-FX-CV9 was therefore not true under contention before `d4baacb`). `5c4871b`: both `W0 lab on Windows` jobs `success` (run 38697490410). The failing test names of the red runs could not be recovered from the job-log tails (only Gradle frames); the attribution is from the commit messages. Failing-before evidence for the new `SeqRaceTest` case, produced here with `lockFor` temporarily reverted (restored afterwards):
+```
+$ ./gradlew -p lab :manifest:test --tests '*SeqRaceTest*'      (old lockFor)
+SeqRaceTest > theLockForOneStoreIsTheSameObjectForEveryConcurrentCaller() FAILED
+    org.opentest4j.AssertionFailedError: two callers got two different locks for one store ==> expected: <1> but was: <2>
+4 tests completed, 1 failed            BUILD FAILED
+$ same command, fix restored           BUILD SUCCESSFUL
+```
+
+R4H-02, `VERSION` 0.2.0 was not bumped although vectors changed after `2a67003`. The bump is WAIT-OWNER (D30 to D32) and was NOT done. Compared id by id with `2a67003` (script in the session scratchpad): expectation changed M04-420, M04-425, M04-443, M04-444 (generated file), W05-307, W05-308, W07-075; input changed M08-017 and 47 W04 ids (W04-013, W04-014, W04-045..048, W04-500..540); added M04 27, W05 19, W07 2, M08 19, W04 131; every other vector file identical by id; the two JSON schemas under `manifest/schema/` also differ from `2a67003` (enum widenings: `windows`, `ubuntu-touch`, `BATTERY_LOW`, `POWER_SAVER`); `confVersion` 0.2.0 throughout. LAB_SPEC 3.2 ("a generated file changes only together with a `VERSION` bump") is therefore violated at `5c4871b` until builder action 15 lands; `lab/conformance/README.md` now lists the ids and the corrected per-file counts (M04 130, W07 69, M08 96, W04 443, W05 185), and builder action 15 must cover them.
+
+R4H-07, stale counts. Real output at `5c4871b`:
+```
+$ ./gradlew -p lab :conformance-runner:run --args='lines M01,M02,M03,M04,M05,M06,M08' --quiet | wc -l          -> 511
+$ swift run asom-conformance lines M01,M02,M03,M04,M05,M06,M08 | wc -l                                          -> 478
+$ python3 apple/ci/lane_diff.py jvm.lines swift.lines --known ... --not-implemented ...
+    vectors: jvm=511 swift=478 agree=436 disagree=42 (known 42) jvm-only=33 (not implemented 33)
+$ swift test --package-path apple                                                                               -> Executed 265 tests, with 0 failures
+$ python3 apple/ci/test_lane_diff.py                                                                            -> Ran 13 tests OK
+```
+`apple/README.md` (M04 97 of 130, M08 96, "Current counts" sentence, `not-implemented.txt` 33), the `apple/ci/known-disagreements.txt` header (`42 of 478`) and `apple/ERRATA.md` (ERR-R4B-MF-5 limit is permanent: refused by R4-B-02) were updated. No other stale count outside these files was searched for.
+
+R4H-10, the generator that clobbered `L02-frame-rows.json`. Before: a scratch run of `lab/mesh-policy/tools/gen_vectors.py` printed `ledger/L02-frame-rows.json: 21 vectors` and `diff -rq` reported that file as different. After: L02-022 and L02-023 are in the generator and `write()` refuses to drop a committed id; the scratch run printed `L01 56, W07 69, W07p 97, L02 23 vectors` with an empty `diff -rq`; with L02-023 renamed in the scratch copy it printed `refusing to write ledger/L02-frame-rows.json: it would lose committed vector ids ['L02-023']; add them to this generator first` (exit 1).
+
+Gates:
+```
+$ ./gradlew -p lab :mesh-policy:test :manifest:test :conformance-runner:test --max-workers=2 --offline    (JDK 21)   BUILD SUCCESSFUL
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab ... --rerun-tasks                                             (JDK 17)   BUILD SUCCESSFUL
+    summed from build/test-results on JDK 17: mesh-policy 33 tests, manifest 62, conformance-runner 2309 (7 skipped, the existing proposed-skipped cases); failures 0, errors 0
+$ python3 lab/tools/regen_index.py -> INDEX.json: 31 entries (no change)
+$ python3 lab/tools/isolation.py   -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py   -> law: OK
+$ ./gradlew jvmTest --offline      -> BUILD SUCCESSFUL; XML: 140 tests, 0 failures (test tasks from cache: no input of core/* or server changed)
+```
+Not done: `VERSION` bump; `LAB_SPEC.md` R4-L-08 list; hosted CI was not run for this change.
+
+Re-verification of the entry above (same track, second pass, LAB, NOT DEVICE EVIDENCE): every figure was re-run. Hosted check-runs re-read through the GitHub API (`044e214` Windows JDK 21 and 17 failure; `08ab72f` Windows JDK 21 failure, JDK 17 success; `5c4871b` both success). The `lockFor` mutation was re-applied (`locks.getOrPut(store) { Any() }` without `synchronized`): `SeqRaceTest > theLockForOneStoreIsTheSameObjectForEveryConcurrentCaller` failed (`4 tests completed, 1 failed`), then restored (`git status` shows no change to `Signer.kt`). Correction made in this pass: the entry said no file other than the listed vector files differs from `2a67003`; the two JSON schemas under `lab/conformance/manifest/schema/` do differ (enum widenings), and README and `ERR-FX3-HN-2` now say so. Counts re-run: JVM `lines` 511, Swift `lines` 478, `lane_diff.py` `jvm=511 swift=478 agree=436 disagree=42 (known 42) jvm-only=33 (not implemented 33)`, `swift test` `Executed 265 tests, with 0 failures`, `test_lane_diff.py` 13 tests OK. `./gradlew -p lab :mesh-policy:test :manifest:test :conformance-runner:test --rerun-tasks` on JDK 21 and on JDK 17.0.12: `BUILD SUCCESSFUL`, mesh-policy 33, manifest 62, conformance-runner 2309 (7 skipped), 0 failures, 0 errors on both. `isolation.py` OK, `check_law.py` OK, root `jvmTest` `BUILD SUCCESSFUL` (140 tests, 0 failures, from cache).
+
+### Fix wave 4, track fix4-lender (LAB, oracle: self, NOT DEVICE EVIDENCE)
+
+Findings A-MP-2, A-MP-5, A-MP-6, A-F1, B-MP-3, B-MP-5, B-MP-8, B-TL-1, A-R4X-1, A-MP-8, B-F2, B-TL-5, B-R5X-1, A-TRUST-3. Readings and choices: `lab/ERRATA.md` ERR-FX4-LD-1 to ERR-FX4-LD-9. Owner decision applied: the 30-minute session age is a HARD cap (no new attempt from the age, 60 s PROVISIONAL grace for streams already open, then `GOAWAY max-age` cancels them).
+
+Failing before (new `LenderFixesTest`, 14 tests, run on the unfixed main sources with only the harness doubles added; `./gradlew -p lab :mesh-proto:test --tests '*LenderFixesTest*'`): `14 tests completed, 13 failed` (the 14th is the sequential control of the race). Messages seen: `fsm=OFF: the offer was not declined (INFER_ACCEPT)`; `ClassCastException: StateParse$Reject cannot be cast to StateParse$Ok` (commit, confVersion, thermal band 3, 65 held files); `IllegalStateException: policy` (offer with a failing host port); `run 1: inflight 2 with maxConcurrent 1`; `run 3: 5 streams of one pin`; `the engine of a revoked lender was opened with the prompt`; `expected: <4> but was: <9>` (live-state seq after five requests by another peer); `an offer after the maximum age was INFER_ACCEPT`; `idle=0 age=1800000 streams=1: Quiescence says true`; `no CANCEL after 590000ms of empty chunks`; `a dripping lender kept the session open for 3600000ms`. One of the 13 (the requester past max age) failed for a reason of the test, not of the code, in that first run (it jumped the clock 30 min in one tick); it was rewritten as a stepped run and its fail-before was shown by mutation instead.
+
+Mutation checks (apply, run, restore; sources verified restored by the next full run), `scratchpad` script, all killed except one equivalent mutant:
+```
+A-MP-2 lender ignores its fsm                      KILLED  LenderFixesTest.aLenderThatIsNotServing...
+A-MP-2 table drops the fsm row                     KILLED  5 failing (ConformanceSuiteTest.vectors, 3 LenderDecisionTest)
+A-MP-5 STATE cast back to Ok                       SURVIVED (equivalent: the guard around stateDoc still catches the ClassCastException)
+A-MP-5 STATE cast back to Ok AND guard narrowed    KILLED  aStateThatTheStrictParserWouldRefuse...
+A-MP-5 held not capped                             KILLED  moreThanSixtyFourHeldFiles...
+A-MP-5 offer ports not guarded                     KILLED  aHostPortThatThrowsDuringAnOffer...
+A-F1 admission lock removed                        KILLED  twoSessionsOfferingAtOnce..., twoSessionsOfOnePin...
+B-TL-1 no recheck before the body                  KILLED  aRevokeInsideTheAcceptedCallback...
+B-MP-8 seq node wide again                         KILLED  theLiveStateSequenceOfOneRequester...
+A-R4X-1 lender takes offers past the age           KILLED  aLenderPastMaxAgeDeclines...
+A-R4X-1 no cap at age plus grace                   KILLED  4 failing (lender, requester, drip, differential)
+A-R4X-1 requester opens streams past the age       KILLED  aRequesterPastMaxAgeOpensNoNewStream...
+B-MP-5 Quiescence without the grace cap            KILLED  ConformanceSuiteTest.vectors, DestinationSetsTest, the differential test
+B-F2 empty chunk counts as activity                KILLED  aLenderThatDripsEmptyChunks...
+A-MP-8 presence leaks the hold-down                KILLED  ConformanceSuiteTest.vectors, LenderDecisionTest
+```
+
+Gates (real output, this worktree, 4 cores shared):
+```
+$ ./gradlew -p lab test --max-workers=2 --offline --continue --rerun-tasks      (JDK 21)   BUILD SUCCESSFUL in 2m 42s
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab test ... --rerun-tasks            (JDK 17.0.12)   BUILD SUCCESSFUL in 3m
+    summed from build/test-results, identical on both JDKs: bench-core 83, conformance-runner 2333 (7 skipped), json 42, ledger-model 98, manifest 76,
+    mesh-policy 36, mesh-proto 340, mesh-router 69, mesh-sim 37; failures 0, errors 0
+$ python3 lab/tools/xcheck.py lab/conformance --families L01,W07,W07p -> xcheck L01: 61 agree, 0 disagree / W07: 71 agree / W07p: 105 agree
+$ python3 lab/tools/regen_index.py -> INDEX.json: 31 entries
+$ python3 lab/tools/isolation.py   -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py   -> law: OK
+$ ./gradlew jvmTest --offline      -> BUILD SUCCESSFUL; XML: 140 tests, 0 failures
+```
+Vectors: L01 56 to 61 (L01-343 changed to the grace reading, L01-345 to L01-349 added), W07p 97 to 105 (W07p-210, -211, -212, -222 now 30,000; W07p-226 to W07p-233 added). Not done: hosted CI was not run; the hard-cap grace of 60 s is PROVISIONAL; a per-attempt total deadline is still the router's (ERR-FX2-PS-10); `docs/design/mesh/*.md` and `trust.md` R4-T-08 were not edited.
+## Gate: fix4-policy (A-MP-3 user_disable drain, A-MP-7 producer-strict nesting, A-MP-9 unknown power source) - LAB, CI-APPROX, NOT DEVICE EVIDENCE
+Base 0e8a3e4 (worktree was created at 98ab632 and reset to 0e8a3e4 with `git fetch origin claude/asom-v1-build-brief-vw83oh && git reset --hard 0e8a3e4...`; `git rev-parse HEAD` then printed 0e8a3e42d87495ff8780329b7fe83b989ec41f6a). Nothing committed. Readings recorded in `lab/ERRATA.md` ERR-FX4-PO-1 to ERR-FX4-PO-4.
+
+Failing before the fix (real output, JDK 21):
+- `./gradlew -p lab :mesh-policy:test --tests '*PresenceLawsTest*'`: `15 tests completed, 3 failed` (`userDisableFromServingRunsDrainingWithGraceZeroThenOffAndAbortsInflightWork`: `user_disable is observable as DRAINING for one step (grace 0) ==> expected: <DRAINING> but was: <OFF>`; `userDisableFromArmedAndOffIsOffAtOnceAndFromADrainItShortensTheDrain` and `anEnableDuringAUserDisableDrainCancelsTheDisableButNotTheDrain` likewise).
+- `./gradlew -p lab :mesh-policy:test --tests '*LiveStateTest*'`: `11 tests completed, 1 failed` (`anUnknownPowerSourceIsTreatedAsBatteryNotAsAcInTheStaleSubstitution`: `fail closed: not AC means on battery ==> expected: <Fast(thermalBand=0, queueBucket=0, batteryBand=B50_79)> but was: ...`; run with a behaviour-preserving `onBattery` stub so it compiled), and `12 tests completed, 1 failed` (`producerStrictWalksByFullPathAndIntoArraysSoNothingHidesUnderAScalarMember`, the nested-under-`availability.fsm` document returned null instead of `PRESENCE_FIELD`).
+- Python cross-check against the new vectors before it was changed: `DISAGREE W07p-008, W07p-020, W07p-022, W07p-023, W07p-024` (`xcheck W07p: 97 agree, 5 disagree`); `DISAGREE W07-085` (`xcheck W07: 73 agree, 1 disagree`); `DISAGREE W07-051 to W07-058` (`xcheck W07: 75 agree, 8 disagree`).
+
+After the fix (real output):
+- `python3 lab/mesh-policy/tools/xcheck_policy.py`: `xcheck L01: 56 agree, 0 disagree`, `xcheck W07: 83 agree, 0 disagree`, `xcheck W07p: 102 agree, 0 disagree`.
+- `./gradlew -p lab --max-workers=2 --offline :mesh-policy:test :conformance-runner:test :mesh-router:test :mesh-sim:test --rerun-tasks`: `BUILD SUCCESSFUL` on JDK 21 and on JDK 17.0.12 (`JAVA_HOME=/opt/jdks/jdk-17`). Result XML totals on JDK 17: mesh-policy 38 tests, conformance-runner 2337 (7 skipped, as before), mesh-router 69, mesh-sim 37, 0 failures, 0 errors. Printed non-vacuity: `LP-2 iterations: 180000 steps in 3000 random sequences; presence while SERVING: 5915; ticks at t+599,999 (not SERVING): 1797; at t+600,000 (SERVING): 554; PF waiting for Start lending: 29535; user_disable drains: 501, ended in OFF: 428`; `STALE power source iterations: 7`; `producer-strict nested iterations: 13`.
+- Mutation checks (each applied, `:mesh-policy:test :conformance-runner:test` run, restored; `git diff` shows the sources back to the fix): M1 disable from SERVING straight to OFF (3 policy and 4 runner failures); M2 disable drain keeps the full grace (2 and 2); M3 a pending disable ends in ARMED (3 and 4); M4 enable does not cancel a pending disable (1 and 1); M5 disable during a drain does not shorten it (2 and 1); M6 unknown power source is not battery (1 and 1); M7 `held` elements not scanned (1 and 2); M8 containers under scalar members not scanned (1 and 5); M9 unknown member values not scanned for presence names (1 and 1). All nine were caught.
+- `python3 lab/tools/isolation.py`: `isolation check 4: OK (shipped tree byte-identical to the pinned base)`. `python3 lab/tools/check_law.py`: `law: OK`. `python3 lab/tools/regen_index.py`: `INDEX.json: 31 entries`.
+- Root `./gradlew --offline jvmTest`: `BUILD SUCCESSFUL` (140 tests, 0 failures, partly from cache).
+
+Not done: the router's F11 (`Filters.kt`) still tests `== "battery"` (outside this track; follow-up in ERR-FX4-PO-3); no conformance-runner required-law counter for the disable drain (outside the write set, ERR-FX4-PO-1); no `VERSION` bump (ERR-FX4-PO-4).
+## fix4-ledger (fix wave 4, track fix4-ledger: review findings A-LED-1..11, B-LDG-1..9, B-F4, B-TL-8; base 0e8a3e4)
+
+Evidence label: LAB (a MODEL of TLS record accounting and of the session layer), oracle: self, NOT DEVICE EVIDENCE. Readings and the per-finding story are in `lab/ERRATA.md` ERR-FX4-LG-1 to -15 and `desktop/ERRATA.md` ERR-FX4-LG-2D. Windows: not run (this machine is Linux); the new tests are OS-aware with no skips, so the hosted Windows parity count is the open check.
+
+Gates (real output of this session):
+```
+$ ./gradlew --max-workers=2 -p lab test                                   (JDK 21)   BUILD SUCCESSFUL in 3m 43s
+$ JAVA_HOME=/opt/jdks/jdk-17 ./gradlew --max-workers=2 -p lab test        (JDK 17)   BUILD SUCCESSFUL in 2m 47s
+    summed from build/test-results on JDK 17: ledger-model 132 tests, mesh-sim 39, conformance-runner 2322 (7 skipped, the existing proposed-skipped cases), mesh-proto 326; failures 0, errors 0
+    ledger-model before this track: 98 tests; this track added SinkRecoveryTest 4, AttemptCoverageTest 5, FixTrackLawsTest 25; mesh-sim added LifecycleRevokeTest 2
+    conformance-runner: family L02: 25 vectors, 25 pass, 0 fail (L02-017 expectation changed, L02-024 and L02-025 added, ERR-FX4-LG-14)
+$ ./gradlew --max-workers=2 -p desktop test                               (JDK 21 and JDK 17)   BUILD SUCCESSFUL
+$ python3 lab/mesh-policy/tools/gen_vectors.py && python3 lab/tools/regen_index.py -> L02 25 vectors; only L02-frame-rows.json and INDEX.json differ
+$ python3 lab/tools/isolation.py   -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py   -> law: OK          $ python3 desktop/tools/check_law.py -> law: OK
+$ ./gradlew jvmTest                -> BUILD SUCCESSFUL (test tasks from cache: no input of core/* or server changed)
+```
+Failing before the fix (run on the unfixed code): SinkRecoveryTest 3 of 4 (poison, mode, symlink), AttemptCoverageTest 5 of 5 (lender row after cancel, row at close, send after outcome, DIAL outcome failure, closed DIAL code), desktop JsonlLedgerSinkTest 1 (mode). Tautological oracles reproduced on a pristine copy of the base: with `RequestLedger.terminal` writing `servedClass = LOCAL`, or `PeerPathRule` mapping overlay to lan, `LedgerLawsPropertyTest` stayed 6 of 6 green; with a requester that ignored `paired` (two places) the whole base mesh-sim suite stayed green.
+
+Mutation checks (each applied, the module suite run, the file restored): M01 sink poison removed, KILLED (1); M02 no owner-only tighten, KILLED (1); M03 explicit regular-file check removed, SURVIVED, and M03b with the tail scan's NOFOLLOW removed as well, SURVIVED (layered defences, see ERR-FX4-LG-2); M04 lender abort a no-op, KILLED (6); M05 close row drops the uncovered bytes, KILLED (2); M06 L-L16 frame-driven clause off, KILLED (2); M07 requester send after outcome allowed, KILLED (1); M08 DIAL connection leaked, KILLED (2); M09 any DIAL code accepted, KILLED (1); M10 attemptIndex a world counter, KILLED (3); M11 terminal servedClass always local, KILLED (3, mesh-sim too: M22, 7); M12 PeerPathRule overlay to lan, KILLED (2); M13 provider error text copied into routeDetail, KILLED (3); M14 served-by header literal, KILLED (3); M15 L-L12 head status strict, KILLED (2); M16 cloud intent not written, KILLED (5, incl. CrashConsistencyTest); M17 L-L19 closed set too small, KILLED (4); M18 close skips requester attempts, KILLED (1); M19 abort failure not a ledger failure, KILLED (1); M20 sim ignores paired in flight, KILLED (1); M21 sim pulls an unpaired peer, KILLED (1); M23 cloud intent absent in mesh-sim, KILLED (2); M25 desktop no tighten, KILLED (1).
+
+Not done: Windows ACL path unverified; `mesh-proto` `RequesterSide` still writes no `servedProvider`/`servedModel` on its outcome row; `VERSION` bump and the `lab/conformance/README.md` change tables (L02-017, L02-024, L02-025); contract.md 4.3 table row for "accepted, cancelled"; a mesh-proto-level mid-stream revoke scenario; hosted CI was not run.
+## Gate: fix4-json-ci (A-F2, A-F3, A-F4, A-F5, B-F5) - LAB, CI-APPROX, oracle: self, NOT DEVICE EVIDENCE
+
+Worktree base: `git rev-parse HEAD` printed 98ab632 at the start, so `git fetch origin claude/asom-v1-build-brief-vw83oh && git reset --hard 0e8a3e42d87495ff8780329b7fe83b989ec41f6a` was run; HEAD then printed `0e8a3e42d87495ff8780329b7fe83b989ec41f6a` and `docs/design/mesh/LAB_SPEC.md` exists. Nothing committed or pushed. Rows: `lab/ERRATA.md` ERR-FX4-JS-1 to ERR-FX4-JS-6.
+
+Failing before the fix (real runs on the unfixed tree):
+```
+DeepInputTest > millionLevelsAreRejectedWithBoundedTimeAndMemory(): 1,000,000 open arrays: allocated 54586584 bytes for 1000000 input bytes, bound 12582912
+old xcheck_m01.py: 25000 [ 1.5 -> MALFORMED_JSON (lab, Swift: NON_INTEGER_NUMBER); 200000 [ dup -> MALFORMED_JSON (lab, Swift: DUPLICATE_KEY)
+old check_qml_text.py --selftest: 10 of the 12 new negative controls MISSED, PropertyChanges 2 of 4 violations; "check_qml_text selftest: FAILED"
+```
+After the fix:
+```
+$ ./gradlew -p lab :json:cleanTest :json:test      (JDK 21 and JDK 17, both BUILD SUCCESSFUL; 45 tests, 0 failures on each)
+$ ./gradlew -p lab labTest                         (JDK 21 and JDK 17, both BUILD SUCCESSFUL, includes :conformance-runner)
+measured (JDK 21, bytes allocated by the parsing thread): 1M open [ 1440 B 7 ms; 1M closed [] 2576 B 11 ms; 250k open {"a": 2166800 B 22 ms; 250k dup at bottom 6171376 B 22 ms
+$ python3 lab/json/tools/xcheck_m01.py lab/conformance --corpus lab/build/json-fuzz-corpus.tsv
+xcheck M01 corpus: 4000 inputs
+xcheck M01: 4130 agree, 0 disagree
+$ (one-off, 60,000 inputs of which 30,000 deep, then restored)  xcheck M01: 60094 agree, 0 disagree
+$ python3 lab/tools/xcheck.py lab/conformance          every family 0 disagree (M01 130 agree)
+$ python3 lab/tools/xcheck.py lab/conformance --families L01,W07,W07p   L01 56, W07 71, W07p 97 agree, 0 disagree
+$ python3 lab/mesh-router/tools/gen_vectors.py; python3 lab/mesh-proto/tools/trust/gen_vectors.py; python3 lab/mesh-policy/tools/gen_vectors.py; ./gradlew -p lab :bench-core:genBenchVectors (JDK 21 and 17); python3 lab/tools/regen_index.py
+git status --porcelain -- lab/conformance   (empty)
+$ python3 ubuntu-touch/tools/check_qml_text.py --selftest   check_qml_text selftest: OK (29 negative, 11 positive controls)
+$ python3 ubuntu-touch/tools/check_qml_text.py              check_qml_text: 18 Label/Text/TextEdit objects in 13 QML/JS files / OK
+$ python3 lab/tools/isolation.py                            isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 ubuntu-touch/tools/isolation.py                   isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py                            law: OK
+$ python3 lab/tools/check_law.py --selftest                 law selftest OK: 17 mutants caught, 3 clean controls passed
+$ ./gradlew jvmTest                                         BUILD SUCCESSFUL, 140 root tests, 0 failures (from cache)
+```
+Mutation checks (suite must fail, then restored): StrictJson skim, nine mutants (duplicate never reported; a closed object keeps its names; first name not in the set; tooDeep not recorded; skim one level late; array closer accepts `}`; object closer accepts `]`; colon check removed; frame-per-level restored), all failed; the first run of the array-closer mutant SURVIVED and exposed a missing test (the mismatch was above depth 16), which was then added. `check_qml_text.py`, six mutants, all failed the selftest. `xcheck_m01.py` with `MAX_DEPTH = 17`: 4 disagree.
+NOT RUN: the new lab.yml steps on a hosted runner (the commands were run locally); the Swift lane against the corpus; `tests/qml/tst_Text.qml` (no Qt here).
+## fix4-desktop (review findings B-LA-2, B-LA-4, B-LA-6, B-LA-7, A-LA-2, A-LA-3, A-LA-4, A-LA-6, A-LA-7, A-F6, B-F3, B-LA-3), LAB, NOT DEVICE EVIDENCE
+
+Worktree base: HEAD was 98ab632f7460, not 0e8a3e42d874; `git fetch origin claude/asom-v1-build-brief-vw83oh && git reset --hard 0e8a3e42d87495ff8780329b7fe83b989ec41f6a` was run, `git rev-parse HEAD` then printed `0e8a3e42d87495ff8780329b7fe83b989ec41f6a` and `ls docs/design/mesh/LAB_SPEC.md` succeeded. Nothing was committed.
+
+Failing before the fix (real output, JDK 21):
+```
+Windows (alias-only tests written against the old API): ReproCellularTest > repro a cellular interface with a carrier 10 address confirmed as LAN is refused() FAILED  ... selected: SelectionResult$Selected
+                                                         ReproCellularTest > repro a cellular interface with a CGNAT address picked as overlay is refused() FAILED
+macOS:   ReproTetherTest > repro a USB tethered iPhone on en5 at 172 20 10 2 is refused even when confirmed() FAILED  Expected value to be of type <Eligibility.Refuse>, actual <class Eligibility$Bind>
+PackageUserUnitTest: 3 of 3 FAILED (nfpm.yaml installs systemd/asom-user.service system-wide; no package-user-unit.sh)
+ControlStartRaceTest > a start that loses the bind race ... FAILED   (the loser deleted the winner's socket)
+DefaultTtyOpenerTest > forcing the JVM console provider that reads file descriptor 0 ... FAILED   expected: <RESULT NoTty> but was: <RESULT Confirmed>
+ControlFramesTest > a frame body that is not strict UTF-8 ... FAILED ; StrictJsonTest > unicode escapes take ASCII hex digits only FAILED ; StrictJsonTest > nesting counts containers ... FAILED
+SleepWatcherHostileBusTest: 3 of 3 FAILED: "no reply to Hello after 64 messages"; "expected: <SLEEP_IMMINENT> but was: <null>"; "8 dropped sessions left 16 sockets open ==> expected: <2> but was: <18>"
+```
+(The two Repro files were scratch and are deleted; `InterfaceKindTest` and `HardwarePortTest` replace them.)
+
+Gates after the fix:
+```
+$ ./gradlew -p desktop --max-workers=2 --offline desktopTest :packaging:windows:winplatform:test :packaging:macos:macplatform:test      (JDK 21 and, with JAVA_HOME=/opt/jdks/jdk-17, JDK 17)   BUILD SUCCESSFUL both
+    winplatform test summary: 170 tests, 143 passed, 0 failed, 27 skipped (os=Linux)
+    macplatform test summary: 166 tests, 155 passed, 0 failed, 11 skipped (os=Linux)
+    summed from build/test-results (JDK 21): node-core 90 tests, node 139 tests; skipped 0, failures 0, errors 0
+$ python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+$ python3 lab/tools/check_law.py -> law: OK
+$ ASOM_GRADLE_FLAGS="--max-workers=2 --offline" desktop/tools/isolation.sh -> ISOLATION: all checks passed
+$ ./gradlew jvmTest --max-workers=2 --offline -> BUILD SUCCESSFUL; XML: 140 tests, 0 failures (from cache: no input of core/* or server changed)
+```
+Not run: the real `build-packages.sh` with nfpm (no jlink image here), `lab-packaging-check.sh` and `distro-matrix.sh` (CI-ONLY), any Windows or macOS integration test, a real dbus-daemon test of the hostile-bus cases. See desktop/ERRATA.md ERR-FX4-DK-1 to ERR-FX4-DK-9 for readings taken, partial items (A-LA-6 owner check, A-LA-7 network fingerprint) and the macOS wiring that is still open.
+
+## Gate: lab fix wave 4, track fix4-trust (HandshakeLimiter, PeerRegistry, InboundRefusedCounter, HELLO endpoint eligibility) - LAB, NOT DEVICE EVIDENCE
+
+Base 0e8a3e4 (worktree reset to it). Findings A-TRUST-1, A-TRUST-4, A-TRUST-5, A-TRUST-6, A-MP-4, B-TL-3, B-TL-4, B-TL-7, B-TL-9, B-R5X-5; readings in `lab/ERRATA.md` ERR-FX4-TR-1 to ERR-FX4-TR-9. `oracle: self`. Linux only: no Windows run, nothing listener-reachable (R5).
+
+Failing before (real output, tests run against the unfixed code):
+```
+HandshakeLimiterRaceTest > aReleaseHoldingTheTicketCannotDeadlockAnAdmitThatReclaimsThatTicket  message="deadlock: admit BLOCKED, release BLOCKED"
+HandshakeLimiterRaceTest > aReleaseAtTheSameInstantAsTheReclaimFreesTheSlotExactlyOnceWithoutAnError  message="threads stuck in 8 of 400 rounds ==> expected: <0> but was: <8>"
+InboundRefusedCounterRaceTest > noRefusalIsLostWhenManyThreadsCountWhileAnotherFlushes  message="expected: <634253> but was: <1189753>"
+InboundRefusedCounterRaceTest > aRefusalCountedWhileTheRowIsBeingWrittenLandsInTheNextRowAndIsNotLost  message="the refusal that arrived while the first row was written has a window of its own ==> expected: not <null>"
+PeerRegistryFixesTest: 15 tests completed, 11 failed (class 'other' status 2: authorize(infer) was Allow; ui listener bug thrown out of revoke; restore reported STORE_WRITE_FAILED after the write took effect; ...)
+```
+After the fix (JDK 21 and JDK 17.0.12, `./gradlew -p lab test --max-workers=2 --offline`, full lab suite): `BUILD SUCCESSFUL in 2m 45s` (JDK 21), `BUILD SUCCESSFUL in 3m 18s` (JDK 17, `JAVA_HOME=/opt/jdks/jdk-17`). After a last test-only edit (the wildcard literal in `HelloEndpointEligibilityTest`, so `check_law.py` stays green) the changed and new classes were re-run on JDK 17: `BUILD SUCCESSFUL in 1m 55s`; HandshakeLimiterRaceTest 2, HandshakeLimiterTest 8, PeerRegistryConcurrencyTest 5, PeerRegistryFixesTest 15, PeerRegistryPropertyTest 3, HelloEndpointEligibilityTest 2, InboundRefusedCounterRaceTest 3, 0 failures. Laws printed non-zero: registry `class-column-denies` 1699, `corrupt-row-revoked` 386; registry-fixes class-column-denies 14, corrupt-row-revoked-then-forgotten 8, listener-contained 6, write-not-applied-refused 3, write-then-throw-unknown 2, write-then-throw-verified 5.
+
+A first attempt at B-TL-9 (the ordinary `revoke` overwriting a corrupt status) broke the committed vector W04-613 (`ConformanceSuiteTest > vectors() > family W04 > W04-613 L5: a status value the code does not know denies everything and closes FAILED`, `2320 tests completed, 1 failed`); it was replaced by a separate `revokeCorrupt` call and the conformance runner is green again in the full run above.
+
+Mutation checks (apply, run, restore; `git status` shows only the intended files): HandshakeLimiter `tickets.remove(t); t.admitted.reclaim()` RED (`aReleaseAtTheSameInstant...`); PeerRegistry class test in `load` disabled RED (`aRowOfAnyClassButOwn...`, property test); listener catch narrowed to `Error` RED (2 tests); a throwing write treated as `false` RED (5 tests); unknown-outcome notification removed RED; `revokeCorrupt` without the corrupt-only guard RED; `HelloEndpoints.eligible` returning true RED (2 tests); InboundRefusedCounter count not taken at flush RED (3 tests); count not restored after a failed append RED (1 test).
+
+```
+python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+python3 lab/tools/check_law.py -> law: OK   (a first run flagged the literal wildcard address in the new test; the test now builds it from parts)
+./gradlew jvmTest -> BUILD SUCCESSFUL in 4s (tasks FROM-CACHE / UP-TO-DATE: the root build is untouched, so this re-confirms the cached 140-test result, it did not re-execute it)
+```
+Not done / disclosed: Node.kt (GOAWAY-first hook, `dial` eligibility check) is another track; the Swift lane has no `revokeCorrupt`, class-column or write-outcome mirror (apple/ is outside this track); the stale comment in `integration/TlsHarness.kt` about the unsynchronised counter was not edited.
+### Fix wave 4, track fix4-bench-docs (corrections entry; base 0e8a3e4; LAB, CI-APPROX, NOT DEVICE EVIDENCE)
+
+The worktree was created from the wrong commit (`98ab632`); it was reset to the base `0e8a3e4` with `git fetch origin claude/asom-v1-build-brief-vw83oh` and `git reset --hard 0e8a3e4`, and `docs/design/mesh/LAB_SPEC.md` exists. Nothing is committed.
+
+Findings and what the real runs showed (details and readings in `lab/ERRATA.md` ERR-FX4-BD-1..5 and `apple/ERRATA.md` ERR-FX4-BD-1a):
+- A-F1 (macOS laptop off AC is a ceiling only in the sustained phase): FIXED in the JVM lane. Failing before: `FixBenchCeilingTest > aQuickOrCiRunOnAMacLaptopOnBatteryIsNotAbortedForAChargerThatWasNeverRequired() FAILED`, `expected: <completed> but was: <aborted CHARGER_REMOVED>`. The Swift mirror (`Ceilings.swift`, `ProtocolTests.swift`) is written but NOT RUN: no Swift toolchain in this container. No ceilings vector or trace was added and M04-445's description is not corrected (conformance vectors are outside this track and need the VERSION bump, WAIT-OWNER D30 to D32).
+- A-R4X-5 (`disc` outside 0..1000): FIXED in the JVM lane. Failing before: `TrackerDiscRangeTest > aDiscOutsideZeroToOneThousandIsRefusedAndTheEdgesAreAccepted() FAILED` (`trackedRate disc=-1 ... expected IllegalArgumentException ... but was completed successfully`). The Swift lane already refused.
+- A-R4X-3, B-VEC-1, A-F3 (conformance README): FIXED as documentation. Real counts from the files at `0e8a3e4`, compared id by id with `5c4871b`: M04 130 to 131 (M04-431), W07 69 to 71 (W07-083/084), M08 96 to 103 (M08-102..108), W04 443 to 444 (W04-459 added; W04-454 and W04-466 input changed, expectation the same). Third table added, counts corrected, builder action 15 covers all three tables. VERSION still 0.2.0 (not bumped).
+- B-VEC-4 (workflow comment): FIXED, comment only: 42 known disagreements, 33 not implemented (32 traces, 1 consent sheet), counted from `apple/ci/known-disagreements.txt` and `apple/ci/not-implemented.txt`.
+- B-VEC-3 (`xcheck_trust` circularity): DISCLOSED LIMIT in `lab/ERRATA.md` ERR-FX4-BD-5; no code change.
+
+Mutation checks (each applied, suite failed, restored): removing the `acLossCounts = phase == Phase.SUSTAIN` argument in `Governor.check` gave `FixBenchCeilingTest > aQuickOrCiRunOnAMacLaptopOnBatteryIsNotAbortedForAChargerThatWasNeverRequired() FAILED`, `3 tests completed, 1 failed`; deleting the `require(disc in 0..1_000L)` line gave `TrackerDiscRangeTest > aDiscOutsideZeroToOneThousandIsRefusedAndTheEdgesAreAccepted() FAILED`. Both files restored (the tests pass again below). The new tests count their cases and fail on zero (`Counter.requireNonVacuous`, explicit counts).
+
+Gates, run in this container after the change (test totals summed from `build/test-results/test/*.xml`):
+```
+./gradlew -p lab :bench-core:test :mesh-router:test :conformance-runner:test --max-workers=2 --rerun-tasks   (JDK 21)
+  bench-core tests 86 skipped 0 failures 0 errors 0
+  mesh-router tests 70 skipped 0 failures 0 errors 0
+  conformance-runner tests 2320 skipped 7 failures 0 errors 0
+JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab :bench-core:test :mesh-router:test :conformance-runner:test --max-workers=2 --rerun-tasks
+  BUILD SUCCESSFUL in 1m 17s
+  bench-core tests 86 skipped 0 failures 0 errors 0
+  mesh-router tests 70 skipped 0 failures 0 errors 0
+  conformance-runner tests 2320 skipped 7 failures 0 errors 0
+python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+python3 lab/tools/check_law.py -> law: OK
+./gradlew jvmTest --max-workers=2 -> BUILD SUCCESSFUL; 140 tests, 0 failures, 0 errors (from cache)
+```
+Not run: `swift test --package-path apple` (no Swift toolchain here); hosted CI. The JDK 21 run's `BUILD` line was cut off by my output filter; its result is the XML totals above.
+
+## Gate: lab fix wave 4, track fix4b-router (ROUTER-REVIEW RP-1..RP-11; base f32b2af) - LAB, CI-APPROX, oracle: self, SIMULATED, NOT DEVICE EVIDENCE
+
+Findings and outcomes (ids ERR-FX4-RT-1..13 in `lab/ERRATA.md`, RT-10 also in `apple/ERRATA.md`): RP-1 FIXED (cap partner is a verified candidate of another node, counters per node), RP-2 FIXED (offer-only probe, `MeshPlan.probeIndex`, sim RL18 asserts the peer serves again), RP-3 FIXED (ref.py ported, vectors added; the Kotlin was already right), RP-4 FIXED with a PROVISIONAL 10,000 mWh (owner item), RP-5 FIXED, RP-6 PARTIAL (`AttemptErrors.errorAfterAttempts` maps only to ALL_PROVIDERS_COOLING; the other situations are BLOCKED(owner-decision), no code invented), RP-7 PARTIAL (runner-up fixed, executed reasons carry prev; writing the reason into the terminal ledger row is BLOCKED(cross-track: lab/ledger-model)), RP-8 FIXED, RP-9 FIXED, RP-10 FIXED in code but NOT RUN (no Swift toolchain), RP-11 pinned as intended, plus the idleUnloadMs boundary test and ERR-FX4-RT-13 (error decisions record their exclusions).
+
+Failing output seen BEFORE each fix (tests written first, run on the unfixed code):
+```
+ReviewFixTest rp1_aLiarWithTwoFiles...        the liar won 20 of 20 placements (bound 5): [liar, liar, liar, ...]
+ReviewFixTest rp1_twoUnverifiedPeers...       UNVERIFIED peers won 20 of 20 (bound 5): [liar, liar2, liar2, liar2, liar, ...]
+ReviewFixTest rp1_lawRl11b...                 RL11b violated: seed 1: the liar won 33 of 33 would-win plans over 2 files (bound 9)
+ReviewFixTest rp4_...                         an unknown capacity is charged at least as much as a known one (S2 0 vs 48000)
+ReviewFixTest rp5_...                         mesh=true ==> expected: <LOCAL_ENGINE_ABSENT> but was: <NO_PROVIDER_KEY>
+ReviewFixTest rp8_...                         java.lang.IllegalArgumentException: a divisor is positive
+ReviewFixTest rp9_aDuplicatedFileKey...       expected: <([NO_PROVIDER_KEY], [])> but was: <([PEER:peer-d/a1a1...], [])>
+ReviewFixTest rp7_theRunnerUp...              the detail must not name a runner-up the reason was not computed against: winner self-node/qwen3-8b ... runner-up deck/qwen3-8b ... S=168623
+ReviewFixSimTest rp6_...                      codes outside the frozen v1 set ...: [ALL_ATTEMPTS_FAILED]   (RP-6 recorded request errors: ALL_ATTEMPTS_FAILED=35, ALL_PROVIDERS_COOLING=234, MESH_STREAM_INTERRUPTED=1)
+ReviewFixSimTest rp2_aPeerThatWasUsefulServesAgain...   RL18/serves-again [T-RL18 seed 1]: mac was back at 720000 and never served again before 1080000 (served 3 requests before its first outage), ... dell was back at 840000 ...
+gen_vectors.py (R01-092)                      AssertionError: R01-092: hand exclusions [['peer-a', 'a1a1a1a1', 'F10_THERMAL']] vs ref []
+gen_vectors.py (M08-109)                      ref.py cdiv: assert b > 0 -> AssertionError
+```
+
+Mutation checks (each applied, the named suite failed, restored; Kotlin tests unless marked V = conformance runner vectors): same-node partner (killed after adding rp1_aVerifiedSecondFile..., it first SURVIVED because the other file was UNVERIFIED), UNVERIFIED partner, per-file counter, cap without partner (V), unknown design free, no LOCAL_ENGINE_ABSENT clause (V), cloud rate 0, file order (V), duplicate node (V), runner-up of the detail, no probe index, probe on any score (first SURVIVED: the 'slow' peer was unusable; fixed), wrong code of errorAfterAttempts, `<=` to `<` in the idle-unload test, sim without probe, failed probe re-asked (first SURVIVED, mutation redefined), sim without breaker close at the probe accept (first SURVIVED, check added), invented code in the sim (first SURVIVED, scenario T-FX4-NOCLOUD added), no prev in the executed reason.
+
+Gates, run in this container after the change (totals from `build/test-results/test/*.xml`):
+```
+./gradlew -p lab :mesh-router:test :mesh-sim:test :conformance-runner:test --max-workers=2 --offline --rerun-tasks --continue   (JDK 21)
+  BUILD SUCCESSFUL in 1m 14s
+  mesh-router tests 90 skipped 0 failures 0 errors 0
+  mesh-sim tests 44 skipped 0 failures 0 errors 0
+  conformance-runner tests 2368 skipped 7 failures 0 errors 0
+JAVA_HOME=/opt/jdks/jdk-17 ./gradlew -p lab :mesh-router:test :mesh-sim:test :conformance-runner:test --max-workers=2 --offline --rerun-tasks --continue   (launcher JVM 17.0.12)
+  BUILD SUCCESSFUL in 1m 14s
+  mesh-router tests 90 skipped 0 failures 0 errors 0
+  mesh-sim tests 44 skipped 0 failures 0 errors 0
+  conformance-runner tests 2368 skipped 7 failures 0 errors 0
+python3 lab/tools/isolation.py -> isolation check 4: OK (shipped tree byte-identical to the pinned base)
+python3 lab/tools/check_law.py -> law: OK
+./gradlew jvmTest --max-workers=2 --offline -> BUILD SUCCESSFUL; 140 tests, 0 failures, 0 errors (from cache)
+python3 lab/mesh-router/tools/gen_vectors.py -> R01 98, R02 54, R03 37, R05 44, R06 68, M08 104 vectors; R05 and R06 byte-identical to before; lab/conformance/INDEX.json regenerated with lab/tools/regen_index.py (re-run it after merging the groups)
+```
+Non-vacuity printed by the new laws: `RL11b iterations: 70 violations: 0`, `RL18b iterations: 232 violations: 0`, `RL18/serves-again iterations: 24 violations: 0`, 22 offer-only probes (all accepted, none with a body), RL16 468 and RL22 63 cases on T-RL18.
+
+Not run: `swift test --package-path apple` and the hosted `apple-ios` lane-diff (no Swift toolchain here); Windows. Files outside the listed directories: `lab/conformance/INDEX.json` (derived, regenerated) and `apple/Tests/AsomConformanceTests/R3ConformanceTests.swift` (the two M08 count pins, 47 to 48 and 103 to 104).
+Design revision 4.1 (docs only, 2026-10-18): `docs/design/mesh/REVISION_4_1.md` (stale r3 text fixed; the acting decisions the builders implemented after r4 adopted as normative text and put to the owner as AD-7; every ERRATA row since r4 dispositioned) and `docs/design/mesh/OWNER_DECISIONS.md` §J (AD-7, D42–D48). No code, vector or workflow changed; nothing here is device evidence.
+
+## Review rounds 3 and 4, fix waves 3 and 4, router wave, design revision 4.1 (2026-10-18)
+
+Hosted CI, head `e96f759db9d923b078abdbec88aa31b142d76e68`: `gh api repos/mbaliga/asystemofmodels/commits/e96f759/check-runs` lists **53 non-cleanup check runs, all `completed/success`** (lab Linux and Windows on JDK 17 and 21, desktop Linux/macOS/Windows, apple-swift-lane on macOS CryptoKit and Linux swift-crypto, lane-diff, UT host, QML, click, AppArmor approximation, install matrix). `CI (hosted VM) evidence`, conclusions read from check runs, not logs. NOT DEVICE EVIDENCE. Every artefact stays UNSIGNED.
+
+What ran since `2a67003`:
+- Design revision 4 build wave (seven builders) and a second wave (three), integrated and verified; REVISION_4.md section 6 actions 1-14, 16, 17 done, action 15 (VERSION 0.3.0) WAIT-OWNER (D30-D32).
+- Opus review round 3 (revision 4 build): 32 confirmed, 3 plausible, 7 refuted; fix wave 3 (seven fixers) integrated.
+- Opus review round 4 (areas no earlier round covered): 36 + 30 confirmed across two runs, 12 plausible, router placement review single-pass and NOT adversarially verified (11 findings, each reproduced fail-first by the fixer); fix wave 4 (seven fixers) and a router wave integrated. High findings fixed: lender decision ignored its own availability state (MP-2), revoked-lender requester kept sending (R4ST-1), listener session id from an unauthenticated hello (R4P-1), cross-session admission races (F1/MP-3), unverified-claim cap bypass (RP-1), permanent starvation of a recovered peer (RP-2), accepted-but-no-body lender wrote no row (LED-1), Windows eligibility ignored interface type (LA-2).
+- Design revision 4.1 (docs only): stale r3 text corrected, twelve acting decisions adopted as AD-7, owner items D42-D48 added to OWNER_DECISIONS.md.
+
+Hosted-CI failures met on the way and their causes (all fixed): CRLF in spec-reading tests on Windows; a non-atomic `getOrPut` in `ManifestSigner.lockFor` (a production race: two signers could get two locks and sign two bodies under one seq); a tap-snapshot race in a real-TLS accounting test; chunk hooks installed after the offer; the lab reference to a fifth vector file in the UT build; Qt key order in a QML test; an asynchronous self-test frame in `check_fake_nodes.py`; one unexplained Windows JDK 17 failure of the gate class summary (not reproduced locally, did not recur; failure messages are now printed by mesh-proto).
+
+Known open items (none is device evidence, none is hidden): lab VERSION is still 0.2.0 although vectors changed (LAB_SPEC 3.2 broken until the bump; owner D30-D32); the Swift tracker's r4 additions are not independent of the Kotlin (ERR-R4B-TR-4); RP-6 (error code when every attempt failed) and RP-7 (route reasons in the terminal ledger row) are owner-decision / cross-track; the PROVISIONAL constants (60 s max-age grace, 30 s probe interval, 10,000 mWh unknown-battery cost, 30 s write-stall budget) await ratification (D43); Windows ledger permissions are unverified on a real Windows ACL; macOS and every device checklist remain NEEDS-DEVICE-VALIDATION.

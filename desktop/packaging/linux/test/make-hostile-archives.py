@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Builds deliberately malformed asom-desktop archives for lab-packaging-check.sh (standard library only).
 
-    make-hostile-archives.py <out-dir> <arch>
+    make-hostile-archives.py <out-dir> <arch> <outside-dir>
 
 Each archive has a matching line in <out-dir>/SHA256SUMS, so a refusal can only come from install.sh's own inspection of
 the archive, never from the checksum. Prints one line per archive: <file>|<regex the refusal message must match>.
+
+<outside-dir> is an existing absolute directory the write-through archives aim at; the caller then asserts it stayed empty.
+The canary members are all named asom-pwned-*, so a stray copy anywhere is found by name.
 """
 import hashlib
 import io
@@ -46,7 +49,7 @@ def valid_body(tf, top):
 
 
 def main():
-    out, arch = sys.argv[1], sys.argv[2]
+    out, arch, outside = sys.argv[1], sys.argv[2], sys.argv[3]
     other = "aarch64" if arch == "x86_64" else "x86_64"
     top = f"asom-desktop-9.9.9-hostile-linux-{arch}"
     os.makedirs(out, exist_ok=True)
@@ -92,6 +95,27 @@ def main():
     def bad_name(tf):
         valid_body(tf, "evil-directory")
 
+    def option_version(tf):
+        valid_body(tf, f"asom-desktop--rf-linux-{arch}")
+
+    def reserved_version(tf):
+        valid_body(tf, f"asom-desktop-current-linux-{arch}")
+
+    def reenter_by_name(tf):
+        valid_body(tf, top)
+        add_link(tf, top + "/lib/x", f"../../{top}/bin")
+
+    def through_relative(tf):
+        valid_body(tf, top)
+        add_link(tf, top + "/lib/esc", "../../../../../..")
+        add_file(tf, top + "/lib/esc/asom-pwned-through-relative", b"pwned\n")
+
+    def through_absolute_chain(tf):
+        valid_body(tf, top)
+        add_link(tf, top + "/lib/abs", outside)
+        add_link(tf, top + "/lib/safe", "abs")
+        add_file(tf, top + "/lib/safe/asom-pwned-through-chain", b"pwned\n")
+
     make("hostile-dotdot.tar.gz", dotdot, "absolute path or a '..' component")
     make("hostile-absolute.tar.gz", absolute, "more than one top-level entry|absolute path or a '..' component")
     make("hostile-symlink-escape.tar.gz", symlink_escape, "symlink that leaves the image")
@@ -101,6 +125,11 @@ def main():
     make("hostile-two-tops.tar.gz", two_tops, "more than one top-level entry")
     make("hostile-not-asom.tar.gz", not_asom, "not an asom app image")
     make("hostile-bad-name.tar.gz", bad_name, "unexpected top-level directory")
+    make("hostile-version-option.tar.gz", option_version, "unsafe version string")
+    make("hostile-version-current.tar.gz", reserved_version, "unsafe version string")
+    make("hostile-symlink-reenter.tar.gz", reenter_by_name, "symlink that leaves the image")
+    make("hostile-through-relative.tar.gz", through_relative, "written through a symlink")
+    make("hostile-through-absolute.tar.gz", through_absolute_chain, "written through a symlink")
 
     with open(os.path.join(out, "SHA256SUMS"), "w") as f:
         for fname, _, digest in cases:

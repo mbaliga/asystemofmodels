@@ -2,8 +2,12 @@ package xyz.mdhv.asom.lab.manifest
 
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
+import java.nio.channels.FileChannel
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
 import xyz.mdhv.asom.lab.bench.Audience
 import xyz.mdhv.asom.lab.bench.BenchCodec
@@ -30,10 +34,23 @@ class ManifestUnavailable(val code: RejectCode?, message: String) : Exception(me
 
 class StoredSeq(val seq: Long, val contentDigest: String)
 
-/** The `seq` rule needs a durable store: the value is written (with `force`) before the first signature over the new body. */
+/** The largest integer the wire form carries (2^53 - 1), and so the largest `seq` a verifier accepts. */
+internal const val MAX_SEQ = 9_007_199_254_740_991L
+
+/** The store file exists and cannot be read back; treating it as absent would restart `seq` at the clock and could reuse one already signed. */
+class SeqStoreCorrupt(message: String) : IOException(message)
+
+/**
+ * The `seq` rule needs a durable store: the value is written (with `force`) before the first signature over the new body.
+ * `load` returns null only when nothing was ever stored, and throws [IOException] when something is stored and unreadable.
+ * [lockKey] is the identity of the durable store: every instance that reads and writes the same data returns the same object, and the signer
+ * serialises on it. A decorator must forward its inner store's key.
+ */
 interface SeqStore {
     fun load(): StoredSeq?
     fun persist(stored: StoredSeq)
+
+    val lockKey: Any get() = this
 }
 
 class InMemorySeqStore : SeqStore {
@@ -46,23 +63,71 @@ class InMemorySeqStore : SeqStore {
     }
 }
 
-/** A file store: temp file, `FileChannel.force(true)`, atomic move. */
+/**
+ * A file store: a temp file of its own, `FileChannel.force(true)`, atomic move, then a sync of the directory so that the rename itself is durable
+ * (where the platform lets a directory be opened; Windows does not, and its journal covers the rename).
+ */
 class FileSeqStore(private val file: File) : SeqStore {
+    /** One lock per canonical file, so that two instances in one process never rename onto the same target at once (Windows refuses that) and the signer serialises them. */
+    private val lock: Any = locks.computeIfAbsent(lockName(file)) { Any() }
+
+    override val lockKey: Any get() = lock
+
     override fun load(): StoredSeq? {
-        if (!file.isFile) return null
-        val lines = file.readText(Charsets.UTF_8).split("\n")
-        val seq = lines.getOrNull(0)?.toLongOrNull() ?: return null
-        val digest = lines.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: return null
-        return StoredSeq(seq, digest)
+        synchronized(lock) {
+            if (!file.exists()) return null
+            if (!file.isFile) throw SeqStoreCorrupt("the seq store ${file.path} exists and is not a regular file")
+            val lines = file.readText(Charsets.UTF_8).split("\n")
+            val seq = lines.getOrNull(0)?.toLongOrNull()?.takeIf { it in 1L..MAX_SEQ }
+            val digest = lines.getOrNull(1)?.takeIf { it.isNotEmpty() }
+            if (lines.size != 3 || lines[2].isNotEmpty() || seq == null || digest == null) {
+                throw SeqStoreCorrupt("the seq store ${file.path} exists and is malformed; nothing is signed until an operator resolves it")
+            }
+            return StoredSeq(seq, digest)
+        }
     }
 
     override fun persist(stored: StoredSeq) {
-        val tmp = File(file.parentFile, file.name + ".tmp")
-        FileOutputStream(tmp).use { out ->
-            out.write("${stored.seq}\n${stored.contentDigest}\n".toByteArray(Charsets.UTF_8))
-            out.channel.force(true)
+        synchronized(lock) { write(stored) }
+    }
+
+    private fun write(stored: StoredSeq) {
+        val dir = (file.absoluteFile.parentFile ?: File(".")).toPath()
+        val tmp = Files.createTempFile(dir, file.name + ".", ".tmp")
+        try {
+            FileOutputStream(tmp.toFile()).use { out ->
+                out.write("${stored.seq}\n${stored.contentDigest}\n".toByteArray(Charsets.UTF_8))
+                out.channel.force(true)
+            }
+            Files.move(tmp, file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        } finally {
+            Files.deleteIfExists(tmp)
         }
-        Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        syncDirectory(dir)
+    }
+
+    private companion object {
+        val locks = java.util.concurrent.ConcurrentHashMap<String, Any>()
+
+        /** Lower-cased on every platform: a case-insensitive file system names one file by several spellings, and sharing a lock between two files is only contention. */
+        fun lockName(file: File): String {
+            val abs = file.absoluteFile
+            val parent = abs.parentFile
+            val canonical = try {
+                if (parent == null) abs.canonicalFile else File(parent.canonicalFile, abs.name)
+            } catch (e: IOException) {
+                abs.normalize()
+            }
+            return canonical.path.lowercase(java.util.Locale.ROOT)
+        }
+    }
+
+    private fun syncDirectory(dir: Path) {
+        try {
+            FileChannel.open(dir, StandardOpenOption.READ).use { it.force(true) }
+        } catch (e: IOException) {
+            // a directory cannot be opened for reading on Windows
+        }
     }
 }
 
@@ -114,22 +179,52 @@ class ManifestSigner(
 ) {
     private fun sha256B64u(b: ByteArray): String = Base64Strict.encodeUrlNoPad(MessageDigest.getInstance("SHA-256").digest(b))
 
-    /** Audience `own`: NIK-signed, answers one `MANIFEST_REQ`; `challenge` is the requester's 32 bytes. */
+    internal companion object {
+        const val EXPIRY_MS = 600_000L
+
+        fun lockFor(store: SeqStore): Any = store.lockKey
+
+        /** `max(stored + 1, nowMs / 1000)` kept inside 1..2^53-1, checked before anything is written (LAB_SPEC R4-L-13; the Swift `nextSeq`). */
+        fun nextSeq(stored: StoredSeq?, nowMs: Long): Long {
+            val clock = maxOf(1L, nowMs / 1000L)
+            val next = if (stored == null) clock else maxOf(if (stored.seq < MAX_SEQ) stored.seq + 1L else Long.MAX_VALUE, clock)
+            if (next > MAX_SEQ) throw ManifestUnavailable(null, "the next seq is outside 1..2^53-1")
+            return next
+        }
+    }
+
+    /**
+     * Audience `own`: NIK-signed, answers one `MANIFEST_REQ`; `challenge` is the requester's 32 bytes. The load, compare, persist and sign steps run
+     * under one lock per [seqStore], so that two different bodies presented in the same second can never be signed under one `seq` (ERR-FX-CV9).
+     */
     fun signOwn(inputs: ManifestInputs, key: EcKeyPair, keyStorage: String, challenge: ByteArray, nowMs: Long, seqStore: SeqStore): Signed {
         require(challenge.size == 32) { "the challenge is 32 bytes" }
+        synchronized(lockFor(seqStore)) { return signOwnLocked(inputs, key, keyStorage, challenge, nowMs, seqStore) }
+    }
+
+    private fun signOwnLocked(inputs: ManifestInputs, key: EcKeyPair, keyStorage: String, challenge: ByteArray, nowMs: Long, seqStore: SeqStore): Signed {
+        if (nowMs < 0L || nowMs > MAX_SEQ - EXPIRY_MS) throw ManifestUnavailable(null, "the clock $nowMs is outside the range a presentation can carry")
         val subject = ManifestBuilder.subjectJson(key.nodeId, keyStorage)
         val content = ManifestBuilder.bodyJson(Audience.OWN, null, subject, inputs, inputs.bench, inputs.device)
         val digest = sha256B64u(Jcs.serialize(content))
-        val stored = seqStore.load()
+        val stored = try {
+            seqStore.load()
+        } catch (e: IOException) {
+            throw ManifestUnavailable(null, "the seq store cannot be read: ${e.message}")
+        }
         val seq = if (stored != null && stored.contentDigest == digest) {
             stored.seq
         } else {
-            val next = maxOf((stored?.seq ?: 0L) + 1L, nowMs / 1000L)
-            seqStore.persist(StoredSeq(next, digest))
+            val next = nextSeq(stored, nowMs)
+            try {
+                seqStore.persist(StoredSeq(next, digest))
+            } catch (e: IOException) {
+                throw ManifestUnavailable(null, "the seq store cannot be written: ${e.message}")
+            }
             next
         }
         val body = ManifestBuilder.bodyJson(Audience.OWN, seq, subject, inputs, inputs.bench, inputs.device)
-        val presentation = jo("issuedAtMs" to ji(nowMs), "expiresAtMs" to ji(nowMs + 600_000L), "challenge" to js(Base64Strict.encodeUrlNoPad(challenge)))
+        val presentation = jo("issuedAtMs" to ji(nowMs), "expiresAtMs" to ji(nowMs + EXPIRY_MS), "challenge" to js(Base64Strict.encodeUrlNoPad(challenge)))
         val payload = ManifestBuilder.payload(body, presentation)
         val sig = Es256.sign(key.private, Dsse.pae(Dsse.PT_MANIFEST_V1, payload))
         val container = Dsse.container(payload, sig, key.nodeId, key.spki)
@@ -141,11 +236,17 @@ class ManifestSigner(
     }
 
     /**
-     * Audience `file`: signed by a fresh per-export key (never the NIK), the private key is discarded on return. The body is
-     * `projectFile(bodyOwn)`: a new subject (the export key's node id, `ephemeral`), no `platformIds`, no `securityPatch`, day-granular times, no
-     * battery level, screen state, OS build or GPU driver, no `seq`, no expiry, no challenge, no evidence (ERRATA ERR-CLOSURE-1).
+     * Audience `file`: signed by a fresh per-export key that is generated here and discarded on return, never the NIK (LAB_SPEC R4-L-13). The body
+     * is `projectFile(bodyOwn)`: a new subject (the export key's node id, `ephemeral`), no `platformIds`, no `securityPatch`, day-granular times, no
+     * battery level, screen state, OS build or GPU driver, no `seq`, no expiry, no challenge, no evidence (ERRATA ERR-CLOSURE-1). The production
+     * entry point takes no key, so a caller can neither choose the export key nor hand it the node key.
      */
-    fun signFile(inputs: ManifestInputs, nowMs: Long, exportKey: EcKeyPair = Es256.generate()): SignedFile {
+    fun signFile(inputs: ManifestInputs, nowMs: Long): SignedFile = signFileWithKey(inputs, nowMs, Es256.generate())
+
+    /** The test seam of R4-L-13: the same path with a key the test chose (vectors need the published TEST-ONLY keys). Not visible outside this module. */
+    internal fun signFileWithInjectedKeyForTests(inputs: ManifestInputs, nowMs: Long, exportKey: EcKeyPair): SignedFile = signFileWithKey(inputs, nowMs, exportKey)
+
+    private fun signFileWithKey(inputs: ManifestInputs, nowMs: Long, exportKey: EcKeyPair): SignedFile {
         val body = FileProjection.body(inputs, exportKey.nodeId)
         val presentation = jo("issuedAtMs" to ji(nowMs / DAY_MS * DAY_MS))
         val payload = ManifestBuilder.payload(body, presentation)

@@ -10,7 +10,7 @@
 # Usage: sudo systemd-vm.sh --app <dir of `:node:installDist`, e.g. desktop/node/build/install/asom-node> [--keep]
 #
 # What it checks (each line prints PASS: or FAIL:):
-#   1  systemd-analyze verify on the installed system unit prints nothing
+#   1  systemd-analyze verify on the installed system unit prints nothing; 1b its security exposure level is within a ceiling
 #   2  after install the unit is DISABLED and INACTIVE (nothing enables or starts it)
 #   3  after an explicit start the unit is active, runs as user asom, holds no listening socket, has the
 #      StateDirectory 0700 and RuntimeDirectory 0750, LimitCORE=0, MemorySwapMax=0, StandardOutput=null
@@ -89,6 +89,13 @@ systemctl daemon-reload
 # 1
 out="$(systemd-analyze verify /usr/lib/systemd/system/asom.service 2>&1)"; rc=$?
 if [ "$rc" = "0" ] && [ -z "$out" ]; then ok "1 systemd-analyze verify prints nothing"; else bad "1 systemd-analyze verify: rc=$rc output: $out"; fi
+
+# 1b: the unit's sandbox exposure score (EGR-7). Measured 3.6 with systemd 255 on 2026-10-07; the ceiling leaves 0.4 of room,
+# so a change that weakens the sandbox shows here instead of passing silently. A missing score is a failure, not a skip.
+sec="$(systemd-analyze security --offline=true --no-pager /usr/lib/systemd/system/asom.service 2>&1)"
+score="$(printf '%s\n' "$sec" | sed -n 's/.*Overall exposure level for [^:]*: \([0-9][0-9.]*\).*/\1/p' | head -1)"
+echo "INFO: systemd-analyze security exposure level of asom.service: ${score:-unreadable} (ceiling ${ASOM_MAX_EXPOSURE:-4.0})"
+if [ -n "$score" ] && awk -v s="$score" -v m="${ASOM_MAX_EXPOSURE:-4.0}" 'BEGIN { exit !(s + 0 <= m + 0) }'; then ok "1b the unit's exposure level $score is within the ceiling"; else bad "1b exposure level '${score:-unreadable}' is above the ceiling ${ASOM_MAX_EXPOSURE:-4.0} or unreadable"; fi
 
 # CI-only environment: the launcher needs to find this runner's JDK, which is not on systemd's PATH. The drop-in is added
 # AFTER check 1, so check 1 verifies the shipped unit file untouched.

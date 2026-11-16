@@ -160,25 +160,31 @@ class Steps:
         kind, c = M01.parse(doc)
         if kind == "reject":
             return (c, "2")
-        if not isinstance(c, dict) or type(c.get("asomCapabilityManifest")) is not int or c["asomCapabilityManifest"] != 1:
+        if not isinstance(c, dict):
+            return ("CONTAINER_INVALID", "3")
+        if type(c.get("asomCapabilityManifest")) is not int or c["asomCapabilityManifest"] != 1:
             return ("CONTAINER_VERSION_UNKNOWN", "3")
         d = c.get("dsse")
         if not isinstance(d, dict) or not isinstance(d.get("payloadType"), str) or not isinstance(d.get("payload"), str) or not isinstance(d.get("signatures"), list):
             return ("CONTAINER_INVALID", "3")
+        sigs = d["signatures"]
+        keyid = None
+        s0 = None
+        if sigs:
+            s0 = sigs[0]
+            if not isinstance(s0, dict) or not isinstance(s0.get("sig"), str):
+                return ("CONTAINER_INVALID", "3")
+            if "keyid" in s0 and not isinstance(s0["keyid"], str):
+                return ("CONTAINER_INVALID", "3")
+            keyid = s0.get("keyid")
         ptype = d["payloadType"]
         if ptype != PT:
             import re
             m = re.fullmatch(r"application/vnd\.asom\.manifest\.v([0-9]+)\+json", ptype)
-            return ("SCHEMA_MAJOR_UNKNOWN", "4") if m and int(m.group(1)) > 1 else ("PAYLOAD_TYPE_UNSUPPORTED", "4")
-        sigs = d["signatures"]
+            newer = m is not None and m.group(1)[0] != "0" and m.group(1) != "1"
+            return ("SCHEMA_MAJOR_UNKNOWN", "4") if newer else ("PAYLOAD_TYPE_UNSUPPORTED", "4")
         if len(sigs) != 1:
             return ("SIGNATURE_COUNT", "5")
-        s0 = sigs[0]
-        if not isinstance(s0, dict) or not isinstance(s0.get("sig"), str):
-            return ("CONTAINER_INVALID", "5")
-        if "keyid" in s0 and not isinstance(s0["keyid"], str):
-            return ("CONTAINER_INVALID", "5")
-        keyid = s0.get("keyid")
         payload = M01.b64(d["payload"], True)
         if payload is None:
             return ("ENCODING", "6")
@@ -197,8 +203,10 @@ class Steps:
             spki = base64.b64decode(ctx["pinnedSpkiB64"])
         else:
             sg = c.get("signer")
-            if not isinstance(sg, dict) or not isinstance(sg.get("spki"), str):
+            if not isinstance(sg, dict) or "spki" not in sg:
                 return ("KEY_NOT_PINNED", "7")
+            if not isinstance(sg["spki"], str):
+                return ("CONTAINER_INVALID", "7")
             spki = M01.b64(sg["spki"], True)
             if spki is None:
                 return ("ENCODING", "7")
@@ -212,7 +220,7 @@ class Steps:
             return ("TEST_ONLY_KEY", "7")
         if mode == "FILE" and ctx.get("comparedFingerprint") is not None:
             want = export_fp_plain(spki)
-            got = "".join(ch for ch in ctx["comparedFingerprint"].upper() if ch not in " -")
+            got = "".join(chr(ord(ch) - 32) if "a" <= ch <= "z" else ch for ch in ctx["comparedFingerprint"] if ch not in " -")
             if want != got:
                 return ("FINGERPRINT_MISMATCH", "7b")
         if not ecdsa_verify(pub, pae(PT, payload), sig):
@@ -300,7 +308,12 @@ class Counter:
 
 # ------------------------------------------------------------------ M02 / M03
 def check_verify(root, family, cnt, openssl_state):
-    doc = load_json(os.path.join(root, "manifest", "M02-verify-accept.json" if family == "M02" else "M03-verify-reject.json"))
+    names = ["M02-verify-accept.json"] if family == "M02" else ["M03-verify-reject.json", "M03-verify-reject-fx.json"]
+    doc = {"vectors": []}
+    for name in names:
+        path = os.path.join(root, "manifest", name)
+        if os.path.isfile(path):
+            doc["vectors"] += load_json(path)["vectors"]
     steps = Steps(test_only_ids(root))
     tmp = tempfile.mkdtemp(prefix="xcheck-manifest-")
     try:

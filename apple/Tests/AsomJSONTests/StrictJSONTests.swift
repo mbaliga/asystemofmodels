@@ -31,7 +31,7 @@ final class StrictJSONTests: XCTestCase {
             ("bad escape", b("\"\\x\""), "MALFORMED_JSON"),
             ("short unicode escape", b("\"\\u12\""), "MALFORMED_JSON"),
             ("missing colon", b("{\"a\" 1}"), "MALFORMED_JSON"),
-            ("lone minus", b("-]"), "MALFORMED_JSON"),
+            ("lone minus is a number lexeme outside the profile (ERR-JSON-3, ERR-FX-CV8)", b("-]"), "NON_INTEGER_NUMBER"),
             ("stray byte outside a string", [0x7B, 0xFF, 0x7D], "MALFORMED_JSON"),
             ("overlong 2-byte", [0x22, 0xC0, 0x80, 0x22], "INVALID_UNICODE"),
             ("overlong 3-byte", [0x22, 0xE0, 0x80, 0x80, 0x22], "INVALID_UNICODE"),
@@ -90,6 +90,27 @@ final class StrictJSONTests: XCTestCase {
             ("valid non-ASCII after the value is only trailing data", b("{} \u{E9}"), "TRAILING_DATA"),
             ("a fraction in the trailing data is never parsed", b("{} 1.5"), "TRAILING_DATA"),
             ("invalid utf-8 after the value outranks a fraction before it", b("1.5 ") + [0xFF], "INVALID_UNICODE"),
+            // ERR-FX-CV7 (M03-197..200): the scan goes on past depth 16, so rows 2 to 6 outrank row 7 wherever they sit.
+            ("fraction inside a region deeper than 16", b(String(repeating: "[", count: 17) + "1.5" + String(repeating: "]", count: 17)), "NON_INTEGER_NUMBER"),
+            ("duplicate after a region deeper than 16", b("[" + String(repeating: "[", count: 16) + String(repeating: "]", count: 16) + ",{\"a\":1,\"a\":2}]"), "DUPLICATE_KEY"),
+            ("duplicate inside a region deeper than 16", b(String(repeating: "[", count: 17) + "{\"a\":1,\"a\":2}" + String(repeating: "]", count: 17)), "DUPLICATE_KEY"),
+            ("lone surrogate inside a region deeper than 16", b(String(repeating: "[", count: 17) + "\"\\ud800\"" + String(repeating: "]", count: 17)), "INVALID_UNICODE"),
+            ("range inside a region deeper than 16", b(String(repeating: "[", count: 17) + "9007199254740992" + String(repeating: "]", count: 17)), "NUMBER_RANGE"),
+            ("invalid utf-8 after a region deeper than 16", b(String(repeating: "[", count: 17) + String(repeating: "]", count: 17) + " ") + [0xFF], "INVALID_UNICODE"),
+            ("a structural fault inside a region deeper than 16", b(String(repeating: "[", count: 17) + "1,]" + String(repeating: "]", count: 16)), "MALFORMED_JSON"),
+            ("200,000 levels closed does not overflow the stack", b(String(repeating: "[", count: 200_000) + String(repeating: "]", count: 200_000)), "MALFORMED_JSON"),
+            ("200,000 object levels with a fraction", b(String(repeating: "{\"a\":", count: 200_000) + "1.5" + String(repeating: "}", count: 200_000)), "NON_INTEGER_NUMBER"),
+            // ERR-FX-CV8 (M03-209..214): a letter run and a number run are each one token.
+            ("truex", b("truex"), "MALFORMED_JSON"),
+            ("nullnull", b("nullnull"), "MALFORMED_JSON"),
+            ("Infinityx", b("Infinityx"), "MALFORMED_JSON"),
+            ("two letter runs in an array", b("[truefalse]"), "MALFORMED_JSON"),
+            ("a number lexeme with an inner sign", b("[1-2]"), "NON_INTEGER_NUMBER"),
+            ("a lone minus at the top level", b("-"), "NON_INTEGER_NUMBER"),
+            ("minus NaN", b("[-NaN]"), "NON_INTEGER_NUMBER"),
+            ("a number with a trailing plus", b("[1+]"), "NON_INTEGER_NUMBER"),
+            ("minus Infinity is a number outside the profile", b("-Infinity"), "NON_INTEGER_NUMBER"),
+            ("minus true is not a token", b("-true"), "MALFORMED_JSON"),
         ]
         var exercised = 0
         var perCode: [String: Int] = [:]

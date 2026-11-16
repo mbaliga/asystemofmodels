@@ -26,7 +26,7 @@ class ScenarioSummary(
 
 object SimLaws {
     /**
-     * The ledger laws that read a simulated trace: L-L1, 2, 3, 4, 5, 5b, 7, 9, 10, 12, 13, 14 (LAB_SPEC 6.9). Each one carries its own case count. [sharedAttemptIds] is for the
+     * The ledger laws that read a simulated trace: L-L1, 2, 3, 4, 5, 5b, 7, 9, 10, 12, 13, 14, 17, 18, 19 (LAB_SPEC 6.9; the last three are the fix4-ledger additions, ERRATA ERR-FX4-LG-7, -8, -10). Each one carries its own case count. [sharedAttemptIds] is for the
      * `duplicate-attempt` fault only: L-L12 joins a lender row to a frame by `attemptId`, and a duplicate offer reuses the id of an attempt that was already served, so that join is
      * ambiguous by construction there (ERRATA); the law is skipped for that one scenario and stays on everywhere else.
      */
@@ -34,7 +34,7 @@ object SimLaws {
         val t = r.trace.events
         return listOfNotNull(
             LedgerLaws.l1(t), LedgerLaws.l2(t), LedgerLaws.l3(t), LedgerLaws.l4(t), LedgerLaws.l5(t), LedgerLaws.l5b(t), LedgerLaws.l7(t), LedgerLaws.l9(t), LedgerLaws.l10(t),
-            if (sharedAttemptIds) null else LedgerLaws.l12(t), LedgerLaws.l13(t), LedgerLaws.l14(t),
+            if (sharedAttemptIds) null else LedgerLaws.l12(t), LedgerLaws.l13(t), LedgerLaws.l14(t), LedgerLaws.l17(t), LedgerLaws.l18(t), LedgerLaws.l19(t),
         )
     }
 

@@ -1,4 +1,5 @@
 import AsomBenchCore
+import AsomJSON
 
 /// Internal consistency (manifest.md section 8.4): claims that contradict each other are rejected, not warned about.
 /// Every product and sum is overflow-checked; an overflow means INCONSISTENT (LAB_SPEC.md 4.6, "Arithmetic").
@@ -13,6 +14,7 @@ public enum Consistency {
     }
 
     static func check(_ m: Manifest) throws -> String? {
+        if let reason = sameRecord(m) { return reason }
         var seen = Set<String>()
         for row in m.rows {
             if !seen.insert(row.fileSha256 + "|" + row.backend).inserted { return "two rows share (fileSha256, backend)" }
@@ -40,6 +42,31 @@ public enum Consistency {
             if row.measuredAtMs > m.issuedAtMs { return "measured after issued" }
             if row.powerMethod == "unavailable", row.avgMilliW != nil { return "power reported by an unavailable method" }
         }
+        return nil
+    }
+
+    /// M2 / LM-3, one record (ERR-FX-CV1): `bench` is the only measurement source, so every fact the body states a second time must equal its
+    /// `bench` twin. The engine commit may be an abbreviation of the bench commit (or the reverse). Strings compare by code units.
+    /// `device.class` is NOT tied to `bench.device.form`: the class is an open enum (a viewer shows an unknown one as "other"), the form a closed one.
+    private static func sameRecord(_ m: Manifest) -> String? {
+        let h = m.bench.harness
+        let bd = m.bench.device
+        let d = m.device
+        let p = m.producer
+        func same(_ a: String, _ b: String) -> Bool { codeUnitsEqual(a, b) }
+        if !same(p.harness.confVersion, h.confVersion) { return "producer.harness.confVersion differs from bench" }
+        if !same(p.engine.name, h.engine.name) { return "producer.engine.name differs from bench" }
+        let a = Array(p.engine.commit.utf8), b = Array(h.engine.commit.utf8)
+        if !a.starts(with: b), !b.starts(with: a) { return "producer.engine.commit differs from bench" }
+        if p.engine.buildFlags.count != h.engine.buildFlags.count || !zip(p.engine.buildFlags, h.engine.buildFlags).allSatisfy({ same($0, $1) }) {
+            return "producer.engine.buildFlags differs from bench"
+        }
+        if d.totalBytes != bd.memTotalBytes { return "device.memory.totalBytes differs from bench" }
+        if !same(d.os.family, bd.platform) { return "device.os.family differs from bench" }
+        if !same(d.os.version, bd.osVersion) { return "device.os.version differs from bench" }
+        if !same(d.vendor, bd.maker) { return "device.vendor differs from bench" }
+        if !same(d.model, bd.model) { return "device.model differs from bench" }
+        if !same(d.soc.name, bd.soc) { return "device.soc.name differs from bench" }
         return nil
     }
 

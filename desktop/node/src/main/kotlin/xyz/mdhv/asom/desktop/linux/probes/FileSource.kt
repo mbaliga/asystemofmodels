@@ -14,11 +14,19 @@ interface FileSource {
 
     /** Child names, sorted; empty if the directory is absent. */
     fun list(path: String): List<String>
+
+    /**
+     * Child names, sorted; empty if the directory is ABSENT (ENOENT), and null if it exists or may exist but cannot be listed
+     * (permission, I/O error, not a directory). "Nothing there" and "cannot look" are different answers (finding HLU-6).
+     * The default is for in-memory sources, which cannot fail.
+     */
+    fun listOrNull(path: String): List<String>? = list(path)
 }
 
 class RealFileSource : FileSource {
     override fun read(path: String): String? = readBounded(Path.of(path))
     override fun list(path: String): List<String> = listDir(Path.of(path))
+    override fun listOrNull(path: String): List<String>? = listDirOrNull(Path.of(path))
 }
 
 /** Maps "/x/y" to `<root>/x/y`, for fixture trees. */
@@ -26,6 +34,7 @@ class RootedFileSource(private val root: Path) : FileSource {
     private fun map(path: String): Path = root.resolve(path.removePrefix("/"))
     override fun read(path: String): String? = readBounded(map(path))
     override fun list(path: String): List<String> = listDir(map(path))
+    override fun listOrNull(path: String): List<String>? = listDirOrNull(map(path))
 }
 
 private const val MAX_FILE_BYTES = 1 shl 20
@@ -36,10 +45,14 @@ private fun readBounded(p: Path): String? = try {
     null
 }
 
-private fun listDir(p: Path): List<String> = try {
+private fun listDir(p: Path): List<String> = listDirOrNull(p) ?: emptyList()
+
+private fun listDirOrNull(p: Path): List<String>? = try {
     Files.list(p).use { s -> s.map { it.fileName.toString() }.sorted().toList() }
-} catch (_: Exception) {
+} catch (_: java.nio.file.NoSuchFileException) {
     emptyList()
+} catch (_: Exception) {
+    null
 }
 
 /** Parses a trimmed decimal integer file; null on anything else. */

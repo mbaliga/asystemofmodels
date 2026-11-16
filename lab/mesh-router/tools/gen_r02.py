@@ -111,4 +111,35 @@ r02("this device is not subject to the usability gate (D9)", only_self(SELF(prio
 r02("saturation: a load time beyond 2^53 - 1 saturates and the sum saturates too",
     WORLD(SELF(situation=SS(engine=False)), [PEER("mac", files=[F(bytes=(1 << 60))], last_same={}, prior=PR())], config=dict(loadBytesPerMs={"DESKTOP": 1})))
 
+# review fixes (LTQ-01, LTQ-06): appended so that every earlier id keeps its number
+def two_backend_mac(state_backend):
+    p = PEER("mac", state=ST(backend=state_backend), last_same={A: NOW - 100})
+    p["priors"] = [dict(nodeId="mac", fileSha256=A, backend=b, prior=PR()) for b in ("metal", "vulkan")]
+    return p
+
+
+DISC6 = [TRK("mac", A, "metal", TS(ratios=[400] * 6))]
+metal_run = r02("tracker n = 6 of ratio 400 (DISCREPANT), live state on the claim's own backend: every rate is scaled by the lower median 400 (prefill 24,000, decode 4,800)",
+                WORLD(SELF(situation=SS(engine=False)), [two_backend_mac("metal")], tracker=DISC6),
+                anchor={"PEER:mac/a1a1a1a1": dict(preEff=24000, decEff=4800)})
+vulkan_run = r02("the same tracker after the peer's live state switches to backend vulkan: the tracker is keyed (peer, file), so the placement rate is the same (LTQ-01)",
+                 WORLD(SELF(situation=SS(engine=False)), [two_backend_mac("vulkan")], tracker=DISC6),
+                 anchor={"PEER:mac/a1a1a1a1": dict(preEff=24000, decEff=4800)})
+assert metal_run == vulkan_run
+r02("S6 charges the worse of the digest class and the power class: a FRESH digest with STALE power fields is 25% of the total, and the band 'ge80' reads 50-79 (LTQ-06)",
+    only_peer(PEER("mac", cls="LAPTOP", state=ST(src="battery", band="ge80"), design=50000, power_freshness="STALE", last_same={A: NOW - 100})))
+r02("S6 with EXPIRED power fields and a FRESH digest is 50% of the total (LTQ-06)",
+    only_peer(PEER("mac", cls="LAPTOP", state=ST(src="battery", band="ge80"), design=50000, power_freshness="EXPIRED", last_same={A: NOW - 100})))
+
+# review fixes RP-3 and RP-4 (ERR-FX4-RT-3, ERR-FX4-RT-4): appended so that every earlier id keeps its number
+r02("S2: this device on battery with NO design capacity is charged the provisional 10,000 mWh (RP-4): E11 383,335 mJ, E12 ceilDiv(383335 x 1000, 10000 x 3600) = 11, S2 = 11 x 2000 x 4000 / 1000",
+    only_self(SELF(situation=SS(permille=150, design=None))),
+    anchor={"SELF:self-node/a1a1a1a1": dict(energyMilliJ=383335, batteryUsedPermille=11, S2=88000)})
+r02("S2: a non-positive design capacity is unknown too (RP-4)", only_self(SELF(situation=SS(permille=150, design=0))),
+    anchor={"SELF:self-node/a1a1a1a1": dict(batteryUsedPermille=11, S2=88000)})
+r02("a STALE handheld lender at thermal band 1 reads band 2 and is excluded by F10, so only this device is scored (RP-3)",
+    WORLD(SELF(), [PEER("deck", "HANDHELD", state=ST(tb=1), rx=NOW - 100000, last_same={A: NOW - 100})]), expect_excluded=True)
+r02("a WARM handheld lender at thermal band 1 is scored with S3 = 250 permille of prefill + decode (RP-3 control)",
+    only_peer(PEER("deck", "HANDHELD", state=ST(tb=1), rx=NOW - 10000, last_same={A: NOW - 100})))
+
 write("R02-scoring.json", "R02", ["LAB_SPEC.md 6.4 (E0-E12, S1-S6)", "LAB_SPEC.md 6.4 worked example R02-r3-001", "docs/design/mesh/REVIEW_ROUND3.md R3-CLOSURE-5"], R02)

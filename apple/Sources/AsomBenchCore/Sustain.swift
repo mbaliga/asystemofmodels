@@ -18,8 +18,9 @@ public enum SustainDerivation {
     public static let settleMs: Int64 = 60_000
     public static let plateauWindows = 8
     public static let onsetPermille: Int64 = 900
-    /// Ceilings that end the phase and keep its windows (design B9). Other aborts are safety aborts.
-    public static let hardCeilingReasons: Set<String> = ["THERMAL_HARD", "BATTERY_TEMP"]
+    /// Ceilings that end the phase and keep its windows (design B9; R4-B-01 adds BATTERY_LOW and POWER_SAVER). Other aborts are safety aborts;
+    /// DEVICE_BUSY is not a hard ceiling here.
+    public static let hardCeilingReasons: Set<String> = ["THERMAL_HARD", "BATTERY_TEMP", "BATTERY_LOW", "POWER_SAVER"]
 
     public static func derive(_ s: BenchDocument.Sustain, startedCool: Bool) throws -> SustainResult {
         let n = s.windows.count

@@ -81,13 +81,18 @@ data class FsmState(
     val drainStartMs: Long? = null,
     val drainCause: DrainCause? = null,
     val inflight: Int = 0,
+    /** A `user_disable` is pending: the drain it started (or joined) has grace 0 and ends in OFF, not ARMED. Never serialised. */
+    val disableRequested: Boolean = false,
 )
 
 sealed interface FsmEvent {
     /** `user_enable` (OFF to ARMED). On a PF node the return also needs an explicit [StartLending]. */
     data object Enable : FsmEvent
 
-    /** `user_disable`: from any state to OFF at once. */
+    /**
+     * `user_disable` (platforms.md 2.1, ERRATA ERR-FX4-PO-1): from SERVING it runs DRAINING with grace 0 (visible in the step that starts it, over at the first later
+     * evaluation even with work in flight, which the host aborts) and then OFF; during a drain it shortens the drain the same way; from ARMED or OFF it is OFF at once.
+     */
     data object Disable : FsmEvent
 
     /** The explicit "Start lending" of a PF node. */
@@ -113,8 +118,16 @@ class AvailabilityFsm(private val cfg: FsmConfig = FsmConfig()) {
     fun step(s: FsmState, e: FsmEvent, nowMs: Long): FsmState = settle(apply(s, e, nowMs), nowMs)
 
     private fun apply(s: FsmState, e: FsmEvent, now: Long): FsmState = when (e) {
-        FsmEvent.Enable -> if (s.fsm == Fsm.OFF) s.copy(fsm = Fsm.ARMED, explicitStartNeeded = cfg.pf) else s
-        FsmEvent.Disable -> s.copy(fsm = Fsm.OFF, drainStartMs = null, drainCause = null)
+        FsmEvent.Enable -> when (s.fsm) {
+            Fsm.OFF -> s.copy(fsm = Fsm.ARMED, explicitStartNeeded = cfg.pf)
+            Fsm.DRAINING -> s.copy(disableRequested = false)
+            else -> s
+        }
+        FsmEvent.Disable -> when (s.fsm) {
+            Fsm.SERVING -> s.copy(fsm = Fsm.DRAINING, drainStartMs = now, drainCause = DrainCause.USER, disableRequested = true)
+            Fsm.DRAINING -> s.copy(drainStartMs = now, disableRequested = true)
+            else -> s.copy(fsm = Fsm.OFF, drainStartMs = null, drainCause = null, disableRequested = false)
+        }
         FsmEvent.StartLending -> s.copy(explicitStartNeeded = false)
         is FsmEvent.InflightChanged -> s.copy(inflight = e.inflight)
         FsmEvent.Tick -> s
@@ -139,7 +152,10 @@ class AvailabilityFsm(private val cfg: FsmConfig = FsmConfig()) {
         if (n.fsm == Fsm.DRAINING) {
             val start = n.drainStartMs ?: now
             // DRAINING is always observable in the step that starts it (even with a grace of 0); it completes at the first later evaluation.
-            if (now > start && (n.inflight == 0 || now - start >= cfg.graceMs)) n = n.copy(fsm = Fsm.ARMED, drainStartMs = null)
+            val grace = if (n.disableRequested) 0L else cfg.graceMs
+            if (now > start && (n.inflight == 0 || now - start >= grace)) {
+                n = if (n.disableRequested) n.copy(fsm = Fsm.OFF, drainStartMs = null, drainCause = null, disableRequested = false) else n.copy(fsm = Fsm.ARMED, drainStartMs = null)
+            }
         }
         if (n.fsm == Fsm.ARMED && n.conditionsOk && !n.explicitStartNeeded && holdDownElapsed(n, now)) n = n.copy(fsm = Fsm.SERVING, drainCause = null)
         return n

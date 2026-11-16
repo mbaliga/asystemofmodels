@@ -4,6 +4,7 @@
 Every EXPECTED value below is typed by hand from LAB_SPEC 6.2, 6.3, 6.5, 7.2, 7.5-7.7 and design 8.4-8.6 (arithmetic such as `9 + payload` is written
 out). Nothing here calls the Kotlin code, so a vector that disagrees with the implementation is a real disagreement to be investigated, never a recording.
 Python 3 standard library only. Run from anywhere; it rewrites the four files, then run `python3 lab/tools/regen_index.py`.
+write() refuses to overwrite a file that would lose a committed vector id, so a vector added by hand to a generated file must be added here too.
 """
 import json
 import os
@@ -27,6 +28,12 @@ def rej(code):
 def write(sub, name, family, refs, vectors):
     path = os.path.join(ROOT, sub, name)
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            have = {v["id"] for v in json.load(f)["vectors"]}
+        lost = sorted(have - {v["id"] for v in vectors})
+        if lost:
+            raise SystemExit(f"refusing to write {sub}/{name}: it would lose committed vector ids {lost}; add them to this generator first")
     doc = {"family": family, "confVersion": CONF, "specRefs": refs, "vectors": vectors}
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(doc, f, indent=2, ensure_ascii=False)
@@ -156,8 +163,13 @@ L01 += [
     vec("L01-340", "idle 299,999 ms with no open stream: stays open", sc(299_999, 10, 0), clo(False)),
     vec("L01-341", "idle 300,000 ms with no open stream: closes (5 minutes)", sc(300_000, 10, 0), clo(True)),
     vec("L01-342", "an open stream keeps the session past 5 idle minutes", sc(400_000, 10, 1), clo(False)),
-    vec("L01-343", "age 1,800,000 ms closes even with a stream (30 minutes)", sc(0, 1_800_000, 1), clo(True)),
+    vec("L01-343", "ERR-FX4-LD-3: age 1,800,000 ms with a stream open does not cut it at once: the 60,000 ms grace for open streams has begun", sc(0, 1_800_000, 1), clo(False)),
     vec("L01-344", "age 1,799,999 ms with a stream stays open", sc(0, 1_799_999, 1), clo(False)),
+    vec("L01-345", "ERR-FX4-LD-3: age 1,800,000 ms with no stream closes at once (GOAWAY max-age at the first moment without a stream)", sc(0, 1_800_000, 0), clo(True)),
+    vec("L01-346", "age 1,799,999 ms with no stream and no idle time stays open", sc(0, 1_799_999, 0), clo(False)),
+    vec("L01-347", "ERR-FX4-LD-3: age 1,859,999 ms with a stream open is still inside the grace", sc(0, 1_859_999, 1), clo(False)),
+    vec("L01-348", "ERR-FX4-LD-3: age 1,860,000 ms (30 minutes plus the 60 s grace) closes the session and cancels the open stream", sc(0, 1_860_000, 1), clo(True)),
+    vec("L01-349", "ERR-FX4-LD-3: a session far past its age closes whatever is open", sc(0, 9_999_999, 4), clo(True)),
 ]
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------
@@ -299,6 +311,27 @@ W07.append(vec("W07-049", "producer-strict: a float is refused by the JSON profi
 W07.append(vec("W07-050", "producer-strict: `queuePos` (removed from INFER_ACCEPT and never a STATE member)", prod(EXAMPLE_TEXT.replace('"bucket":0', '"bucket":0,"queuePos":1')), rej("PRESENCE_FIELD")))
 
 
+def prod_mut(fn):
+    import copy
+
+    d = copy.deepcopy(EXAMPLE)
+    fn(d)
+    return prod(jcs(d))
+
+
+W07 += [
+    vec("W07-051", "producer-strict: presence fields nested under a scalar-named member (`availability.fsm`) are found (ERR-FX4-PO-2)", prod_mut(lambda d: d["availability"].update(fsm={"user": True, "inflight": 2})), rej("PRESENCE_FIELD")),
+    vec("W07-052", "producer-strict: a presence field inside an element of `held` is found", prod_mut(lambda d: d["engine"].update(held=[{"loaded": ["SECRET"]}])), rej("PRESENCE_FIELD")),
+    vec("W07-053", "producer-strict: a presence field under `queue.bucket` is found", prod_mut(lambda d: d["queue"].update(bucket={"busyForMs": 5})), rej("PRESENCE_FIELD")),
+    vec("W07-054", "producer-strict: a presence field in an array where `engine.backend` is a scalar is found", prod_mut(lambda d: d["engine"].update(backend=[{"idle": True}])), rej("PRESENCE_FIELD")),
+    vec("W07-055", "producer-strict: a presence field nested inside an unknown member is a presence field, not just unknown", prod_mut(lambda d: d.update(zzz={"user": {"active": True}})), rej("PRESENCE_FIELD")),
+    vec("W07-056", "producer-strict: an object where `queue.bucket` is a scalar is an unknown member", prod_mut(lambda d: d["queue"].update(bucket={"x": 1})), rej("UNKNOWN_MEMBER")),
+    vec("W07-057", "producer-strict: `held` holds strings only; an object element is an unknown member", prod_mut(lambda d: d["engine"].update(held=[{"x": 1}])), rej("UNKNOWN_MEMBER")),
+    vec("W07-058", "producer-strict: an array where `seq` is a scalar is an unknown member", prod_mut(lambda d: d.update(seq=[4711])), rej("UNKNOWN_MEMBER")),
+    vec("W07-059", "producer-strict: an empty `held` and a null `manifest` conform (control)", prod_mut(lambda d: (d["engine"].update(held=[]), d.update(manifest=None))), ok({"conforms": True})),
+]
+
+
 def stale(now, rx, sampled, closed=False, seq=5, last=None, goaway=False, state=None, extra=None):
     d = {"kind": "staleness", "nowMonoMs": now, "rxMonoMs": rx, "sampledAgeMs": sampled, "sessionClosed": closed, "seq": seq, "lastSeq": last, "goaway": goaway}
     if state is not None:
@@ -333,9 +366,9 @@ W07 += [
     vec("W07-073", "an equal seq is a repeat, not a reset (ERR-LP-4)", stale(R, R, 0, seq=5, last=5), cls("FRESH", 0)),
     vec("W07-074", "a GOAWAY since the state: EXPIRED", stale(R, R, 0, goaway=True), cls("EXPIRED", 0, True)),
     vec(
-        "W07-075", "STALE: queue min(2, 1 + 1) = 2, battery band one lower (ge80 to 50-79) on battery, thermal band unchanged (ERR-LP-5)",
+        "W07-075", "STALE: thermal and queue min(2, 1 + 1) = 2 (R4-L-17), battery band one lower (ge80 to 50-79) on battery",
         stale(R + 40_000, R, 0, state={"thermalBand": 1, "queueBucket": 1, "batteryBand": "ge80", "powerSource": "battery"}),
-        cls("STALE", 40_000, False, {"thermalBand": 1, "queueBucket": 2, "batteryBand": "50-79"}),
+        cls("STALE", 40_000, False, {"thermalBand": 2, "queueBucket": 2, "batteryBand": "50-79"}),
     ),
     vec(
         "W07-076", "STALE on AC with quiet fields: nothing changes", stale(R + 40_000, R, 0, state={"thermalBand": 0, "queueBucket": 0, "batteryBand": "ge80", "powerSource": "ac"}),
@@ -356,6 +389,44 @@ W07 += [
     vec(
         "W07-080", "STALE, unknown battery band stays unknown", stale(R + 40_000, R, 0, state={"thermalBand": 0, "queueBucket": 0, "batteryBand": None, "powerSource": "battery"}),
         cls("STALE", 40_000, False, {"thermalBand": 0, "queueBucket": 0, "batteryBand": None}),
+    ),
+    vec(
+        "W07-081", "STALE, thermal band 1 with a quiet queue: thermal min(2, 1 + 1) = 2 alone, queue 0 stays 0 (R4-L-17)",
+        stale(R + 40_000, R, 0, state={"thermalBand": 1, "queueBucket": 0, "batteryBand": "ge80", "powerSource": "ac"}),
+        cls("STALE", 40_000, False, {"thermalBand": 2, "queueBucket": 0, "batteryBand": "ge80"}),
+    ),
+    vec(
+        "W07-082", "STALE, thermal band 2 and queue 2 are capped at 2 (R4-L-17)",
+        stale(R + 40_000, R, 0, state={"thermalBand": 2, "queueBucket": 2, "batteryBand": "ge80", "powerSource": "ac"}),
+        cls("STALE", 40_000, False, {"thermalBand": 2, "queueBucket": 2, "batteryBand": "ge80"}),
+    ),
+    vec(
+        "W07-083", "FRESH passes thermal band 1 and queue bucket 1 unchanged: only STALE substitutes (ERR-R4B-TH-1)",
+        stale(R + 1_000, R, 0, state={"thermalBand": 1, "queueBucket": 1, "batteryBand": "ge80", "powerSource": "battery"}),
+        cls("FRESH", 1_000, False, {"thermalBand": 1, "queueBucket": 1, "batteryBand": "ge80"}),
+    ),
+    vec(
+        "W07-084", "WARM passes thermal band 1 and queue bucket 1 unchanged: only STALE substitutes (ERR-R4B-TH-1)",
+        stale(R + 20_000, R, 0, state={"thermalBand": 1, "queueBucket": 1, "batteryBand": "ge80", "powerSource": "battery"}),
+        cls("WARM", 20_000, False, {"thermalBand": 1, "queueBucket": 1, "batteryBand": "ge80"}),
+    ),
+]
+
+W07 += [
+    vec(
+        "W07-085", "STALE, an unknown power source is treated as battery (fail closed, ERR-FX4-PO-3): the band is one lower",
+        stale(R + 40_000, R, 0, state={"thermalBand": 0, "queueBucket": 0, "batteryBand": "ge80", "powerSource": "unknown"}),
+        cls("STALE", 40_000, False, {"thermalBand": 0, "queueBucket": 0, "batteryBand": "50-79"}),
+    ),
+    vec(
+        "W07-086", "STALE, a known ac source keeps the band (contrast with W07-085)",
+        stale(R + 40_000, R, 0, state={"thermalBand": 0, "queueBucket": 0, "batteryBand": "20-49", "powerSource": "ac"}),
+        cls("STALE", 40_000, False, {"thermalBand": 0, "queueBucket": 0, "batteryBand": "20-49"}),
+    ),
+    vec(
+        "W07-087", "WARM, an unknown power source passes the received band: only STALE substitutes",
+        stale(R + 20_000, R, 0, state={"thermalBand": 0, "queueBucket": 0, "batteryBand": "20-49", "powerSource": "unknown"}),
+        cls("WARM", 20_000, False, {"thermalBand": 0, "queueBucket": 0, "batteryBand": "20-49"}),
     ),
 ]
 
@@ -424,7 +495,10 @@ W07P = [
         "W07p-007", "the drain completes as soon as the in-flight work finishes", False, 30_000,
         [ev(0, "enable"), cond(0, True), ev(100, "inflight", n=1), pres(1_000, "INPUT_ACTIVITY"), ev(1_500, "inflight", n=0)], ["ARMED", "SERVING", "SERVING", "DRAINING", "ARMED"],
     ),
-    fsm_vec("W07p-008", "user_disable from SERVING: OFF at once", False, 30_000, [ev(0, "enable"), cond(0, True), ev(500, "disable")], ["ARMED", "SERVING", "OFF"]),
+    fsm_vec(
+        "W07p-008", "user_disable from SERVING runs DRAINING with grace 0 (platforms.md 2.1, ERR-FX4-PO-1): DRAINING in that step, OFF at the first later evaluation", False, 30_000,
+        [ev(0, "enable"), cond(0, True), ev(500, "disable"), ev(501, "tick")], ["ARMED", "SERVING", "DRAINING", "OFF"],
+    ),
     fsm_vec(
         "W07p-009", "conditions fail while ARMED: stays ARMED; a game (heavy foreground process) while SERVING drains", False, 2_000,
         [ev(0, "enable"), cond(0, False), cond(1_000, True), pres(2_000, "HEAVY_FOREGROUND_PROCESS")], ["ARMED", "ARMED", "SERVING", "DRAINING"],
@@ -475,6 +549,30 @@ W07P = [
     ),
 ]
 
+W07P += [
+    fsm_vec(
+        "W07p-020", "user_disable with a request in flight: grace 0 ends the drain at the first later evaluation although the work has not finished (the host aborts it); OFF, not ARMED", False, 30_000,
+        [ev(0, "enable"), cond(0, True), ev(100, "inflight", n=1), ev(500, "disable"), ev(500, "tick"), ev(501, "tick")], ["ARMED", "SERVING", "SERVING", "DRAINING", "DRAINING", "OFF"],
+    ),
+    fsm_vec(
+        "W07p-021", "user_disable from ARMED and from OFF: OFF at once (there is no listener to drain)", False, 30_000,
+        [ev(0, "enable"), ev(10, "disable"), ev(20, "disable")], ["ARMED", "OFF", "OFF"],
+    ),
+    fsm_vec(
+        "W07p-022", "user_disable during a condition drain with work in flight: the drain is shortened to grace 0 and ends in OFF, not after the remaining grace", False, 30_000,
+        [ev(0, "enable"), cond(0, True), ev(100, "inflight", n=1), cond(1_000, False), ev(2_000, "disable"), ev(2_001, "tick")], ["ARMED", "SERVING", "SERVING", "DRAINING", "DRAINING", "OFF"],
+    ),
+    fsm_vec(
+        "W07p-023", "user_enable during a user_disable drain cancels the disable but not the drain: it finishes into ARMED (and SERVING when conditions allow), never OFF", False, 30_000,
+        [ev(0, "enable"), cond(0, True), ev(500, "disable"), ev(500, "enable"), ev(501, "tick")], ["ARMED", "SERVING", "DRAINING", "DRAINING", "SERVING"],
+    ),
+    fsm_vec(
+        "W07p-024", "a PF node: user_disable from SERVING is DRAINING then OFF, and re-enabling needs a new explicit Start lending", True, 2_000,
+        [ev(0, "enable"), ev(0, "start"), cond(0, True), ev(500, "disable"), ev(501, "tick"), ev(502, "enable"), ev(503, "tick")],
+        ["ARMED", "ARMED", "SERVING", "DRAINING", "OFF", "ARMED", "ARMED"],
+    ),
+]
+
 PRESENCE = ["SCREEN_INTERACTIVE", "INPUT_ACTIVITY", "KEYGUARD_DISMISSED", "FOREGROUND_APP", "HEAVY_FOREGROUND_PROCESS", "CONSOLE_USER", "LOGIN_STATE", "OTHER_PROCESS_CONTENTION"]
 CONDITION = ["POWER_SOURCE", "CHARGING", "BATTERY_LEVEL", "BATTERY_TEMPERATURE", "THERMAL_BAND", "MEMORY", "PATH", "SLEEP_IMMINENT"]
 PF_CONSENT = ["LEND_SCREEN_FRONTMOST", "INPUT_INSIDE_LEND_SCREEN"]
@@ -504,7 +602,7 @@ for name in PF_PRESENCE:
 OFFER = {"attemptId": "AAAAAAAAAAAAAAAAAAAAAA", "model": "qwen3-8b", "op": "chat", "promptBytes": 1_200, "maxTokens": 512, "deadlineMs": 60_000, "stream": True}
 SIT = {
     "registryStatus": "PAIRED", "inferScopeGranted": True, "attemptSeenWithin24h": False, "modelAllowedAndLoadable": True, "servingConditionsOk": True, "presenceActive": False,
-    "presenceHoldRemainingMs": 0, "predictedThermalHold": False, "estStartMs": 0, "inflight": 0, "requestsThisMinute": 0,
+    "presenceHoldRemainingMs": 0, "predictedThermalHold": False, "estStartMs": 0, "inflight": 0, "requestsThisMinute": 0, "fsm": "SERVING", "sessionAcceptsNew": True,
 }
 AID = '"attemptId":"AAAAAAAAAAAAAAAAAAAAAA"'
 
@@ -536,9 +634,9 @@ W07P += [
     dec("W07p-207", "row 5: maxTokens above the limit", offer={"maxTokens": 4_097}, expect=error("5", "FRAME_TOO_LARGE", False)),
     dec("W07p-208", "row 5: promptBytes exactly at the limit passes", offer={"promptBytes": 8_388_608}, expect={"row": "8", "reply": "accept", "retain": "none", "wire": "{" + AID + ',"fileSha256":"' + "a" * 64 + '","servedModel":"qwen3-8b"}'}),
     dec("W07p-209", "row 6: serving conditions fail (charging, battery, thermal): PEER_UNAVAILABLE", sit={"servingConditionsOk": False}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
-    dec("W07p-210", "row 6, LP-1: a presence cause is PEER_UNAVAILABLE with the remaining hold-down as retryAfterMs", sit={"presenceActive": True, "presenceHoldRemainingMs": 123_456}, expect=decline("6", "PEER_UNAVAILABLE", 123_456)),
-    dec("W07p-211", "row 6: a presence hold-down below 5,000 ms is raised to 5,000", sit={"presenceActive": True, "presenceHoldRemainingMs": 10}, expect=decline("6", "PEER_UNAVAILABLE", 5_000)),
-    dec("W07p-212", "row 6: a hold-down above 600,000 ms is lowered to 600,000", sit={"presenceActive": True, "presenceHoldRemainingMs": 10_000_000}, expect=decline("6", "PEER_UNAVAILABLE", 600_000)),
+    dec("W07p-210", "row 6, LP-1, ERR-FX4-LD-2: a presence cause is PEER_UNAVAILABLE with the constant retryAfterMs of a condition, not the remaining hold-down (it would count down to the user's last input)", sit={"presenceActive": True, "presenceHoldRemainingMs": 123_456}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
+    dec("W07p-211", "row 6, ERR-FX4-LD-2: a presence hold-down of 10 ms gives the same 30,000, not a clamped 5,000", sit={"presenceActive": True, "presenceHoldRemainingMs": 10}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
+    dec("W07p-212", "row 6, ERR-FX4-LD-2: a hold-down above 600,000 ms gives the same 30,000, not a clamped 600,000", sit={"presenceActive": True, "presenceHoldRemainingMs": 10_000_000}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
     dec("W07p-213", "row 6a: a predicted thermal hold: PEER_UNAVAILABLE", sit={"predictedThermalHold": True}, expect=decline("6a", "PEER_UNAVAILABLE", 30_000)),
     dec("W07p-214", "row 6b: estStartMs 60,001 > deadlineMs 60,000: PEER_BUSY (the estimate is never sent)", sit={"estStartMs": 60_001}, expect=decline("6b", "PEER_BUSY", 5_000)),
     dec("W07p-215", "row 6b: estStartMs equal to the deadline is accepted", sit={"estStartMs": 60_000}, expect={"row": "8", "reply": "accept", "retain": "none", "wire": "{" + AID + ',"fileSha256":"' + "a" * 64 + '","servedModel":"qwen3-8b"}'}),
@@ -548,10 +646,18 @@ W07P += [
     dec("W07p-219", "order: not PAIRED outranks a missing scope", sit={"registryStatus": "REVOKED", "inferScopeGranted": False}, expect=error("1", "PEER_NOT_PAIRED", True)),
     dec("W07p-220", "order: a missing scope outranks a duplicate", sit={"inferScopeGranted": False, "attemptSeenWithin24h": True}, expect=decline("2", "SCOPE_DENIED", 30_000)),
     dec("W07p-221", "order: a too-large offer outranks a presence cause", sit={"presenceActive": True, "presenceHoldRemainingMs": 100_000}, offer={"promptBytes": 9_000_000}, expect=error("5", "FRAME_TOO_LARGE", False)),
-    dec("W07p-222", "order: presence and a failing condition are one row (6); the presence retryAfterMs wins", sit={"presenceActive": True, "presenceHoldRemainingMs": 200_000, "servingConditionsOk": False}, expect=decline("6", "PEER_UNAVAILABLE", 200_000)),
+    dec("W07p-222", "order: presence and a failing condition are one row (6) and one answer", sit={"presenceActive": True, "presenceHoldRemainingMs": 200_000, "servingConditionsOk": False}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
     dec("W07p-223", "order: row 6 outranks 6a, 6b and 7", sit={"servingConditionsOk": False, "predictedThermalHold": True, "estStartMs": 90_000, "inflight": 1}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
     dec("W07p-224", "order: 6a outranks 6b", sit={"predictedThermalHold": True, "estStartMs": 90_000}, expect=decline("6a", "PEER_UNAVAILABLE", 30_000)),
     dec("W07p-225", "order: 6b outranks 7", sit={"estStartMs": 90_000, "inflight": 1}, expect=decline("6b", "PEER_BUSY", 5_000)),
+    dec("W07p-226", "ERR-FX4-LD-1, design 3.2 rule 1: a lender whose availability is OFF declines PEER_UNAVAILABLE even though every other input is fine", sit={"fsm": "OFF"}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
+    dec("W07p-227", "ERR-FX4-LD-1: ARMED (a session exists only because a pairing window or the Peers tab is open) declines PEER_UNAVAILABLE", sit={"fsm": "ARMED"}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
+    dec("W07p-228", "ERR-FX4-LD-1: DRAINING declines PEER_UNAVAILABLE", sit={"fsm": "DRAINING"}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
+    dec("W07p-229", "ERR-FX4-LD-1: authorisation outranks availability (a REVOKED peer is told PEER_NOT_PAIRED even by an OFF lender)", sit={"fsm": "OFF", "registryStatus": "REVOKED"}, expect=error("1", "PEER_NOT_PAIRED", True)),
+    dec("W07p-230", "ERR-FX4-LD-1: availability outranks the load rows (6a, 6b, 7)", sit={"fsm": "DRAINING", "predictedThermalHold": True, "estStartMs": 90_000, "inflight": 1}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
+    dec("W07p-231", "ERR-FX4-LD-3: a session past its 30-minute maximum age takes no new attempt: PEER_UNAVAILABLE with the shortest retry (the requester dials a fresh session)", sit={"sessionAcceptsNew": False}, expect=decline("6c", "PEER_UNAVAILABLE", 5_000)),
+    dec("W07p-232", "ERR-FX4-LD-3: a lender that is not serving says so (row 6) before it says the session is old", sit={"sessionAcceptsNew": False, "fsm": "OFF"}, expect=decline("6", "PEER_UNAVAILABLE", 30_000)),
+    dec("W07p-233", "ERR-FX4-LD-3: row 6c outranks 6a, 6b and 7", sit={"sessionAcceptsNew": False, "predictedThermalHold": True, "estStartMs": 90_000, "inflight": 1}, expect=decline("6c", "PEER_UNAVAILABLE", 5_000)),
 ]
 
 
@@ -781,14 +887,14 @@ l02(
     show=["A", "B"], onlyKinds=INFER, fail={"node": "B", "at": 3, "mode": "BEFORE_WRITE", "sticky": False},
 )
 l02(
-    "L02-017", "FC-5: the lender's outcome append fails: no INFER_END is sent, the session is closed (close:ledger-failure) and the requester records the loss",
+    "L02-017", "FC-5: the lender's outcome append fails: no INFER_END is sent, the session is closed (close:ledger-failure; its row carries the 826 application bytes no other row holds) and the requester records the loss",
     HS + [
         fr("A", "INFER_OFFER", 120, attempt="a1", request="r1"), fr("B", "INFER_ACCEPT", 100, attempt="a1"), fr("A", "INFER_BODY", 500, attempt="a1"),
         fr("B", "INFER_HEAD", 70, attempt="a1"), fr("B", "INFER_END", 60, attempt="a1", served=SERVED_END), fin("a1", 502, "PEER_LOST"), close("A"),
     ],
     {
         "A": [DIAL_I, DIAL_O] + H_A + [r("infer-sent", "intent", None, 0, None, 0, 1, a="a1"), r("infer-sent", "outcome", "PEER_LOST", 638, 188, 502, 1, a="a1"), CLOSE],
-        "B": [OPEN_B] + H_B + [r("infer-served", "intent", None, 0, None, 0, 1, a="a1"), r("session", None, "close:ledger-failure", 0, 0, 503, 1, ob="measured")],
+        "B": [OPEN_B] + H_B + [r("infer-served", "intent", None, 0, None, 0, 1, a="a1"), r("session", None, "close:ledger-failure", 188, 638, 503, 1, ob="measured")],
         "abort": None,
     },
     show=["A", "B", "abort"], fail={"node": "B", "at": 4, "mode": "BEFORE_WRITE", "sticky": False},
@@ -842,6 +948,45 @@ l02(
         "B": H_B + [r("infer-served", "outcome", "FRAME_TOO_LARGE", 54, 129, 503, 1, a="a1")],
     },
     show=["A", "B"], onlyKinds=["control", "infer-sent", "infer-served"],
+)
+l02(
+    "L02-022", "a received ERROR code and GOAWAY reason that are free text (an address, prompt text, a device name) are stored as ERROR:UNKNOWN and GOAWAY:unknown on both nodes: peer-authored text never reaches a row (LAB_SPEC 7.2, LTQ-04)",
+    HS + [fr("B", "ERROR", 30, stream="0", code="x 192.168.1.20 my prompt text"), fr("B", "GOAWAY", 17, stream="0", code="see you, Alice's iPad"), close("A")],
+    {
+        "A": H_A + [r("control", None, "ERROR:UNKNOWN", 0, 39, 200, 1), r("control", None, "GOAWAY:unknown", 0, 26, 200, 1)],
+        "B": H_B + [r("control", None, "ERROR:UNKNOWN", 39, 0, 200, 1), r("control", None, "GOAWAY:unknown", 26, 0, 200, 1)],
+    },
+    show=["A", "B"], onlyKinds=["control"],
+)
+l02(
+    "L02-023", "a code that only resembles a member of the closed set (lower case, a trailing space, an embedded newline, a prefix) is not a member: it is stored as UNKNOWN (LTQ-04)",
+    HS + [fr("B", "ERROR", 30, stream="0", code="peer_busy"), fr("B", "GOAWAY", 17, stream="0", code="IDLE\nidle"), close("A")],
+    {
+        "A": H_A + [r("control", None, "ERROR:UNKNOWN", 0, 39, 200, 1), r("control", None, "GOAWAY:unknown", 0, 26, 200, 1)],
+        "B": H_B + [r("control", None, "ERROR:UNKNOWN", 39, 0, 200, 1), r("control", None, "GOAWAY:unknown", 26, 0, 200, 1)],
+    },
+    show=["A", "B"], onlyKinds=["control"],
+)
+l02(
+    "L02-024", "an accepted attempt the requester cancels before it sends the body: the lender ends it with 499 cancelled, an outcome row and no intent (no content was processed), durable before INFER_END, and both outcome rows count every frame (ERRATA ERR-FX4-LG-3)",
+    HS + [
+        fr("A", "INFER_OFFER", 120, attempt="a1", request="r1"), fr("B", "INFER_ACCEPT", 100, attempt="a1"), fr("A", "CANCEL", 58, attempt="a1"),
+        fr("B", "INFER_END", 60, attempt="a1", served=CANCELLED_END), fin("a1", 499, "CANCELLED"), close("A"),
+    ],
+    {
+        "A": [r("infer-sent", "intent", None, 0, None, 0, 1, a="a1"), r("infer-sent", "outcome", "CANCELLED", 196, 178, 499, 1, a="a1")],
+        "B": [r("infer-served", "outcome", "CANCELLED", 178, 196, 499, 1, a="a1")],
+    },
+    show=["A", "B"], onlyKinds=INFER,
+)
+l02(
+    "L02-025", "an accepted attempt whose body never comes: the requester gives it up (599), and the lender's attempt ends when the session closes, as 499 INTERRUPTED with every byte it saw; the lender never ends with no row (router.md 8.5, ERRATA ERR-FX4-LG-3)",
+    HS + [fr("A", "INFER_OFFER", 120, attempt="a1", request="r1"), fr("B", "INFER_ACCEPT", 100, attempt="a1"), fin("a1", 599, "PEER_UNREACHABLE"), close("A")],
+    {
+        "A": [r("infer-sent", "intent", None, 0, None, 0, 1, a="a1"), r("infer-sent", "outcome", "PEER_UNREACHABLE", 129, 109, 599, 1, a="a1")],
+        "B": [r("infer-served", "outcome", "INTERRUPTED", 109, 129, 499, 1, a="a1")],
+    },
+    show=["A", "B"], onlyKinds=INFER,
 )
 
 write(

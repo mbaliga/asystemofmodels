@@ -4,10 +4,12 @@
 Linux container) or `CI (hosted VM) evidence` (a GitHub-hosted Windows runner), **never device evidence**. Whatever needs a
 real Windows machine stays `NEEDS-DEVICE-VALIDATION`.
 
-**Written in a container with no Windows, no Android SDK and no way to run GitHub Actions.** Everything that touches a Windows
+**Superseded 2026-10-07 (status of the paragraph below):** the hosted jobs it waits for have run. At head `37332005` the check runs "W0 lab on Windows" (JDK 17 and 21), "W1 W2 winplatform on windows-2025" (JDK 17 and 21) and "... on windows-11-arm (JDK 21)" all concluded success. URLs: PROGRESS entry "Corrections to the record, 2026-10-07 (fix-docs)". This track did not read the job logs, only the conclusions. They are `CI (hosted VM) evidence`, not a Windows machine in anyone's hands: DPAPI, the Platform Crypto Provider, the firewall and power results stay `NEEDS-DEVICE-VALIDATION`.
+
+**Historical, as written: a container with no Windows, no Android SDK and no way to run GitHub Actions.** Everything that touches a Windows
 API was compiled and unit-tested against fakes on Linux, and has **not been run on Windows**. The workflow
 `.github/workflows/desktop-windows.yml` is what will run it, on `windows-2025` and `windows-11-arm`; until a hosted run has
-been seen, every Windows result below is `CI-ONLY / NOT RUN`.
+been seen, every Windows result below was `CI-ONLY / NOT RUN` (see the supersession above).
 
 Source of truth: `docs/design/mesh/platforms/windows.md` sections 3 to 10 and `docs/design/mesh/PLATFORM_PLAN.md` section 4,
 with the known spec defects of `docs/design/mesh/REVIEW_ROUND3.md` read conservatively. Every choice is in

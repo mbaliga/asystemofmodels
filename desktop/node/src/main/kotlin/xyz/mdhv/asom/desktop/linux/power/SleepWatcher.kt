@@ -66,22 +66,21 @@ class SleepWatcher(
 
     private fun busLoop() {
         while (!closed) {
+            var conn: MiniDbus? = null
             try {
-                val conn = connector(busSocket, uid())
+                conn = connector(busSocket, uid())
                 connection = conn
-                if (closed) {
-                    conn.close()
-                    return
-                }
+                if (closed) return
                 status = SleepWatcherStatus.CONNECTED
                 resumeIfStuckSleeping()
                 while (!closed) {
                     val start = conn.nextPrepareForSleep() ?: break
                     onSignal(start)
                 }
-                conn.close()
             } catch (_: Exception) {
                 // an unreachable, hostile or broken bus is a state, not a crash
+            } finally {
+                conn?.close()
             }
             connection = null
             if (closed) return

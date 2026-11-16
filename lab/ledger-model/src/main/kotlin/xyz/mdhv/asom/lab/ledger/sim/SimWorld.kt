@@ -6,6 +6,7 @@ import xyz.mdhv.asom.lab.ledger.DialResult
 import xyz.mdhv.asom.lab.ledger.FrameKind
 import xyz.mdhv.asom.lab.ledger.FrameSpec
 import xyz.mdhv.asom.lab.ledger.IfaceKind
+import xyz.mdhv.asom.lab.ledger.PeerPath
 import xyz.mdhv.asom.lab.ledger.InboundRefusedCounter
 import xyz.mdhv.asom.lab.ledger.LabEgress
 import xyz.mdhv.asom.lab.ledger.LabRouteRecord
@@ -27,6 +28,7 @@ import xyz.mdhv.asom.lab.ledger.SessionRole
 import xyz.mdhv.asom.lab.ledger.dial
 import xyz.mdhv.asom.lab.ledger.laws.ContentSent
 import xyz.mdhv.asom.lab.ledger.laws.EngineRead
+import xyz.mdhv.asom.lab.ledger.laws.ProviderCall
 import xyz.mdhv.asom.lab.ledger.laws.Responded
 import xyz.mdhv.asom.lab.ledger.laws.Secrets
 import xyz.mdhv.asom.lab.ledger.laws.ServedBy
@@ -52,6 +54,7 @@ data class FrameStep(
     val served: ServedRecord? = null,
     val model: String = "qwen3-8b",
     val callerPkg: String = "com.example.notes",
+    val attemptIndex: Int? = null,
 ) : Step
 
 data class FinishStep(val attemptId: String, val status: Int, val meshCode: String?, val tokensOut: Long? = null) : Step
@@ -64,6 +67,12 @@ sealed interface AttemptPlan {
     data class PeerDecline(val code: String) : AttemptPlan
     data class PeerServed(val terminal: String, val chunks: Int, val bodyBytes: Int) : AttemptPlan
     data class PeerCancelled(val bodyBytes: Int) : AttemptPlan
+
+    /** The peer accepted, the requester cancelled before it sent the body: the lender ends the attempt with `499 cancelled` and no intent (router.md 8.5, "accepted, cancelled"). */
+    data object PeerCancelledBeforeBody : AttemptPlan
+
+    /** The peer accepted and no body ever came: the requester gives the attempt up (`599 PEER_UNREACHABLE`), and the lender's attempt ends when the session closes. */
+    data object PeerAcceptedThenLost : AttemptPlan
     data object CloudFail : AttemptPlan
     data object CloudOk : AttemptPlan
     data object LocalOk : AttemptPlan
@@ -112,6 +121,7 @@ class SimWorld(val cfg: SimConfig = SimConfig()) {
     private val attemptRequest = HashMap<String, String>()
     private val declinedAfterBody = HashSet<String>()
     private var attemptCounter = 0
+    private val attemptsOfRequest = HashMap<String, Int>()
     private val bodies = ArrayList<String>()
     private val alphabet = "ΩЖ字⌘§¶ŧħøæßþ¤¥€£¢©®™✓✗∑∆∏√∞≈≠≤≥"
 
@@ -191,6 +201,11 @@ class SimWorld(val cfg: SimConfig = SimConfig()) {
         check(conn == null) { "one connection at a time" }
         val sid = payloads.b64u(16)
         val expected = PeerPathRule.classify(s.iface, s.iface == IfaceKind.OVERLAY, remoteIsPrivateOrLinkLocal = true)
+        val truth = when (s.iface) {
+            IfaceKind.WIFI, IfaceKind.ETHERNET -> PeerPath.LAN
+            IfaceKind.OVERLAY -> PeerPath.OVERLAY
+            IfaceKind.CELLULAR, IfaceKind.OTHER -> null
+        }
         val addr = "192.168.${rng.nextInt(255)}.${1 + rng.nextInt(250)}:11436"
         var made: SimConnection? = null
         val out = a.ledger.dial(sid, b.tag, addr, s.source) {
@@ -199,11 +214,19 @@ class SimWorld(val cfg: SimConfig = SimConfig()) {
             if (s.outcome != "connected" || expected == null) {
                 DialResult(if (s.outcome != "connected") s.outcome else "local-network-denied", null)
             } else {
-                val c = SimConnection(trace, kill, rng, a.name, if (s.hostile) null else b.name, cfg.measured, cfg.fault, expected)
+                val c = SimConnection(trace, kill, rng, a.name, if (s.hostile) null else b.name, cfg.measured, cfg.fault, expected, truth)
                 c.sidA = sid
                 c.handshake()
                 made = c
-                DialResult("connected", c.endA.meter, expected)
+                DialResult(
+                    "connected", c.endA.meter, expected,
+                    AutoCloseable {
+                        c.endA.close()
+                        c.endB.close()
+                        c.finalizeTaps()
+                        connectionsClosed++
+                    },
+                )
             }
         }
         if (out.code != "connected") return
@@ -272,7 +295,7 @@ class SimWorld(val cfg: SimConfig = SimConfig()) {
         val fromA = step.from == Side.A
         when (frame.kind) {
             FrameKind.INFER_OFFER -> {
-                val ra = sessA!!.requesterAttempt(step.requestId, id, requesterAttempts.size, step.callerPkg, step.model)
+                val ra = sessA!!.requesterAttempt(step.requestId, id, step.attemptIndex ?: attemptsOfRequest.merge(step.requestId ?: "", 1, Int::plus)!! - 1, step.callerPkg, step.model)
                 ra.begin()
                 requesterAttempts[id] = ra
                 if (step.requestId != null) attemptRequest[id] = step.requestId
@@ -320,11 +343,13 @@ class SimWorld(val cfg: SimConfig = SimConfig()) {
                 c.setPayload(text)
                 lenderAttempts.getValue(id).send(frame)
                 c.deliver(true, frame)
-                requesterAttempts.getValue(id).receive(frame)
+                requesterAttempts.getValue(id).receive(frame, if (frame.kind == FrameKind.INFER_HEAD) claimedModel(text) else null)
             }
             FrameKind.INFER_END -> {
                 c.setPayload(text)
-                val ok = lenderAttempts.getValue(id).finish(frame, step.served ?: error("INFER_END needs the served record"))
+                val la = lenderAttempts.getValue(id)
+                val served = step.served ?: error("INFER_END needs the served record")
+                val ok = if (la.hasIntent) la.finish(frame, served) else la.finishWithoutBody(frame, served)
                 if (ok) {
                     c.deliver(true, frame)
                     requesterAttempts.getValue(id).receive(frame)
@@ -354,76 +379,111 @@ class SimWorld(val cfg: SimConfig = SimConfig()) {
 
     private fun nextStream(): Int = 1 + 2 * (attemptCounter++)
 
+    private fun claimedModel(text: String?): String? {
+        val o = (text?.let { xyz.mdhv.asom.lab.json.StrictJson.parse(it.toByteArray()) } as? xyz.mdhv.asom.lab.json.ParseResult.Ok)?.value as? xyz.mdhv.asom.lab.json.JObject
+        return (o?.get("servedModel") as? xyz.mdhv.asom.lab.json.JString)?.value
+    }
+
     private fun request(r: RequestStep) {
         val rl = RequestLedger(a.ledger, r.requestId, "com.example.notes", r.model)
         var served = false
-        plans@ for (plan in r.attempts) {
+        var servedTruth: LabEgress? = null
+        plans@ for ((idx, plan) in r.attempts.withIndex()) {
             if (served) break
+            fun offer(id: String, st: Int, bodyBytes: Int) = frame(FrameStep(Side.A, payloads.offer(id, st, r.model, bodyBytes), r.requestId, model = r.model, attemptIndex = idx))
+            fun finishPeer(id: String, status: Int, code: String?, tokensOut: Long?, servedByPeer: Boolean): RequesterAttempt {
+                apply(FinishStep(id, status, code, tokensOut))
+                return requesterAttempts.getValue(id).also { rl.notePeer(it, servedByPeer) }
+            }
             when (plan) {
                 is AttemptPlan.PeerDecline -> {
                     val id = payloads.attemptId()
                     val st = nextStream()
-                    frame(FrameStep(Side.A, payloads.offer(id, st, r.model, 1200), r.requestId, model = r.model))
+                    offer(id, st, 1200)
                     frame(FrameStep(Side.B, payloads.decline(id, st, plan.code), model = r.model))
-                    apply(FinishStep(id, 503, plan.code))
-                    rl.note(LabEgress.peerClass, contentSent = false, served = false)
+                    finishPeer(id, 503, plan.code, null, false)
                 }
                 is AttemptPlan.PeerServed -> {
                     val id = payloads.attemptId()
                     val st = nextStream()
                     val rec = ServedRecord(r.model, if (plan.terminal == "done") 200 else 502, plan.terminal, 300)
-                    frame(FrameStep(Side.A, payloads.offer(id, st, r.model, plan.bodyBytes), r.requestId, model = r.model))
+                    val head = ServedRecord(r.model, 200, "done", 300)
+                    offer(id, st, plan.bodyBytes)
                     frame(FrameStep(Side.B, payloads.accept(id, st, r.model), model = r.model))
                     frame(FrameStep(Side.A, payloads.raw(FrameKind.INFER_BODY, plan.bodyBytes, st, id), r.requestId, model = r.model))
                     if (id in declinedAfterBody) {
-                        apply(FinishStep(id, 503, "PEER_UNAVAILABLE"))
-                        rl.note(LabEgress.peerClass, contentSent = true, served = false)
+                        finishPeer(id, 503, "PEER_UNAVAILABLE", null, false)
                         continue@plans
                     }
-                    frame(FrameStep(Side.B, payloads.head(id, st, rec), model = r.model))
+                    frame(FrameStep(Side.B, payloads.head(id, st, head), model = r.model))
                     repeat(plan.chunks) { frame(FrameStep(Side.B, payloads.raw(FrameKind.INFER_CHUNK, 200 + rng.nextInt(20_000), st, id), model = r.model)) }
                     frame(FrameStep(Side.B, payloads.end(id, st, rec), served = rec, model = r.model))
-                    val status = if (plan.terminal == "done") 200 else 502
-                    apply(FinishStep(id, status, if (plan.terminal == "done") null else "PEER_${plan.terminal.uppercase()}", 240))
                     val ok = plan.terminal == "done"
-                    rl.note(LabEgress.peerClass, contentSent = true, served = ok, provider = if (ok) "peer:deck" else null, model = if (ok) r.model else null)
+                    finishPeer(id, if (ok) 200 else 502, if (ok) null else "PEER_${plan.terminal.uppercase()}", 240, ok)
+                    if (ok) servedTruth = LabEgress.peerClass
                     served = ok
                 }
                 is AttemptPlan.PeerCancelled -> {
                     val id = payloads.attemptId()
                     val st = nextStream()
                     val rec = ServedRecord(r.model, 499, "cancelled", 300)
-                    frame(FrameStep(Side.A, payloads.offer(id, st, r.model, plan.bodyBytes), r.requestId, model = r.model))
+                    val head = ServedRecord(r.model, 200, "done", 300)
+                    offer(id, st, plan.bodyBytes)
                     frame(FrameStep(Side.B, payloads.accept(id, st, r.model), model = r.model))
                     frame(FrameStep(Side.A, payloads.raw(FrameKind.INFER_BODY, plan.bodyBytes, st, id), r.requestId, model = r.model))
                     if (id in declinedAfterBody) {
-                        apply(FinishStep(id, 503, "PEER_UNAVAILABLE"))
-                        rl.note(LabEgress.peerClass, contentSent = true, served = false)
+                        finishPeer(id, 503, "PEER_UNAVAILABLE", null, false)
                         continue@plans
                     }
-                    frame(FrameStep(Side.B, payloads.head(id, st, rec), model = r.model))
-                    frame(FrameStep(Side.A, payloads.cancel(id, st, "deadline"), model = r.model))
+                    frame(FrameStep(Side.B, payloads.head(id, st, head), model = r.model))
+                    frame(FrameStep(Side.A, payloads.cancel(id, st, CancelReasonWire.DEADLINE), model = r.model))
                     frame(FrameStep(Side.B, payloads.end(id, st, rec), served = rec, model = r.model))
-                    apply(FinishStep(id, 499, "CANCELLED", 0))
-                    rl.note(LabEgress.peerClass, contentSent = true, served = false)
+                    finishPeer(id, 499, "CANCELLED", 0, false)
+                }
+                AttemptPlan.PeerCancelledBeforeBody -> {
+                    val id = payloads.attemptId()
+                    val st = nextStream()
+                    val rec = ServedRecord(r.model, 499, "cancelled", null)
+                    offer(id, st, 1200)
+                    frame(FrameStep(Side.B, payloads.accept(id, st, r.model), model = r.model))
+                    frame(FrameStep(Side.A, payloads.cancel(id, st, CancelReasonWire.POLICY_CHANGED), model = r.model))
+                    frame(FrameStep(Side.B, payloads.end(id, st, rec), served = rec, model = r.model))
+                    finishPeer(id, 499, "CANCELLED", 0, false)
+                }
+                AttemptPlan.PeerAcceptedThenLost -> {
+                    val id = payloads.attemptId()
+                    val st = nextStream()
+                    offer(id, st, 1200)
+                    frame(FrameStep(Side.B, payloads.accept(id, st, r.model), model = r.model))
+                    finishPeer(id, 599, "PEER_UNREACHABLE", 0, false)
                 }
                 AttemptPlan.CloudFail, AttemptPlan.CloudOk -> {
-                    kill.tick()
-                    trace.add(ContentSent("A", r.requestId, "cloud-${attemptCounter++}", LabEgress.CLOUD))
+                    val provider = "openrouter"
+                    val cid = "cloud-${attemptCounter++}"
                     val ok = plan == AttemptPlan.CloudOk
-                    rl.note(LabEgress.CLOUD, contentSent = true, served = ok, provider = if (ok) "openrouter" else null, model = if (ok) r.model else null)
+                    val ca = rl.cloudAttempt(cid, idx, provider)
+                    ca.begin()
+                    kill.tick()
+                    val key = "sk-LAB-SECRET-$provider"
+                    val bytes = 200 + rng.nextInt(2_000)
+                    trace.add(ContentSent("A", r.requestId, cid, LabEgress.CLOUD))
+                    val upstreamError = if (ok) null else "401 Incorrect API key provided: $key"
+                    trace.add(ProviderCall("A", r.requestId, cid, "Bearer $key", upstreamError))
+                    ca.finish(if (ok) 200 else 401, bytes.toLong(), if (ok) r.model else null, providerError = upstreamError)
+                    rl.note(LabEgress.CLOUD, contentSent = true, served = ok, provider = if (ok) provider else null, model = if (ok) r.model else null)
+                    if (ok) servedTruth = LabEgress.CLOUD
                     served = ok
                 }
                 AttemptPlan.LocalOk -> {
                     rl.note(LabEgress.LOCAL, contentSent = false, served = true, provider = "local", model = r.model)
+                    servedTruth = LabEgress.LOCAL
                     served = true
                 }
             }
         }
-        val cloudServed = served && r.attempts.lastOrNull { it == AttemptPlan.CloudOk } != null
+        val cloudServed = served && servedTruth == LabEgress.CLOUD
         val row = rl.terminal(if (served) 200 else 502, costEst = if (cloudServed) 0.0000029 else null, costBasis = if (cloudServed) "usage" else "none")
-        val servedClass = row.servedClass
-        trace.add(ServedBy("A", r.requestId, servedClass))
+        trace.add(ServedBy("A", r.requestId, servedTruth))
         trace.add(Responded("A", r.requestId, row.toEchoHeaders()))
     }
 }

@@ -1,6 +1,7 @@
 # Mesh router intelligence: placement across this device, paired peers and the cloud
 
 **Section of:** the ASOM multi-device ("mesh") design session, 2026-09-29.
+**Revision 4.1 (2026-10-18; `REVISION_4_1.md`):** this is the r0 section. Where it differs from `ASOM_MESH_DESIGN.md` §7 or from `LAB_SPEC.md` §6, §10 and §11, those win. r4.1 corrects three places in this file, each marked **r4.1** with the old text quoted: §3.5 (the STALE substitution, which still read r3's no-op, and its plan-level consequence), §5.5 (the cap on unverified claims, now per node and only against a verified partner of another node) and §5.6 (errors when every attempt failed). Other r0 text here was superseded earlier and is not edited: the `own-devices` policy and `NO_ELIGIBLE_NODE` (withdrawn; design §7.5, §7.6, D12.6), the decline codes `PEER_THERMAL`, `PEER_BATTERY` and `PEER_USER_ACTIVE` (one code, `PEER_UNAVAILABLE`, design §4.3), the live-state fields that design §7.4 removed (`thermal.code`, `queue.estStartMs`, `user.active`, the battery percentage, `watch`), and `queuePos`/`estStartMs` on `INFER_ACCEPT` (LP-1).
 **Status:** DESIGN PROPOSAL. Nothing here is approved, frozen or executable. It turns the owner's requirement 2 (a router that understands each device's capabilities and *current situation* and routes intelligently) and the "intelligently distributing work" half of requirement 1 into implementable text for the roadmap §7 (v4) design session. v4's entry criteria stand; v1 device validation is still open (`PROGRESS.md`). Every contract addition (§14) and every owner question (§15) needs owner sign-off. Building anything here ahead of v4 needs the owner authorisation described in `platforms.md` OD4 and §15 OD-R6.
 **Siblings:** `trust.md` (identity, pairing, the `asom-mesh/1` frames incl. `INFER_*`, `STATE_REQ`/`STATE`, scopes, data classes, `meshEligibility`, write-ahead ledger rows, `lan` egress class), `manifest.md` (signed capability manifest; the claim-versus-observed tracker and its `ClaimView`), `benchmark.md` (measurement, `BenchCalibration`, thermal codes 0–4, passive samples), `platforms.md` (roles R/PA/PF/H, provider availability FSM, constraints C1–C11, conformance families W07 and R01–R04), `contract.md` (combined delta registry).
 **This section owns:** the live-state payload (`asom.state/1`) and its exchange and staleness rules; the placement objective; the estimator and scoring arithmetic; the plan algorithm and its composition with the frozen v1 `Router`; the learning policy; failover and retry rules; fairness; route reasons; the honest ranking of what "distributing work" can mean; the offline simulator; the router laws and the R/W07 vector families.
@@ -338,8 +339,10 @@ freshness    = FRESH   if ageMs <= 5_000
 | Freshness | Slow fields | Fast fields | Effect on the plan |
 |---|---|---|---|
 | FRESH, WARM | as received | as received | normal |
-| STALE | as received | **pessimistic substitution:** `thermal.code = max(last, 1)` if last ≥ 1 else last; `queue.estStartMs = last + (last depth > 0 ? meanServiceMs : 0)`; `batteryPermille = last − 50` if on battery; `user.active = last` | uncertainty term S6 = 25% of `totalMs` (§4.3); may not override a fresher candidate on a tie |
+| STALE | as received | **pessimistic substitution (r4.1; `LAB_SPEC.md` R4-L-17, R41-L-02; on the mesh-1 fields of design §7.4):** `thermal.band = min(2, last + 1)` if last ≥ 1, else last; `queue.bucket = min(2, last + 1)` if last ≥ 1, else last; `batteryBand` one band lower unless `power.source` is `ac` (an `unknown` source counts as battery). Old (r0, still standing after r3 and r4): "`thermal.code = max(last, 1)` if last ≥ 1 else last; `queue.estStartMs = last + (last depth > 0 ? meanServiceMs : 0)`; `batteryPermille = last − 50` if on battery; `user.active = last`"; the thermal rule changed nothing for any value it applied to, and the other three fields are not on the mesh-1 wire | uncertainty term S6 = 25% of `totalMs` (§4.3); may not override a fresher candidate on a tie |
 | EXPIRED | last known (models held, availability mode, class) | **unknown** | candidate is **probe-only**: hard filters that depend on fast fields are skipped (the peer's own `INFER_OFFER` decision table is authoritative, `trust.md` §7.3); S6 = 50% of `totalMs`; placed after every non-expired sovereign candidate of the same usability class |
+
+**Plan-level consequence (r4.1; ERR-FX4-RT-3, ERR-FX4-RT-11).** F10 excludes a peer whose thermal band is 2 (design §7.3, `LAB_SPEC.md` §6.3). A lender last heard at **band 1** is therefore planned normally while FRESH or WARM (R01-093; a handheld is charged the heat term, R02-054), **excluded by F10 while STALE**, because the substitution reads band 2 (R01-092, R02-053), and **kept as probe-only once EXPIRED**, because EXPIRED skips every filter that depends on fast fields and the `INFER_OFFER` itself is the probe (R01-094). The older state is not the stricter one, and that is intended: STALE says the band is known and ageing, so the pessimistic value applies; EXPIRED says nothing is known, so the lender's own decision table decides at offer time, for one round trip and no content. RL13 still holds: an EXPIRED candidate is placed after every non-probe usable candidate, and the probe itself is scheduled by `LAB_SPEC.md` R41-L-04. Before r4.1 the reference arithmetic (`lab/mesh-router/tools/ref.py`) kept the r3 no-op and kept a STALE band-1 lender that the lab's router excluded; no vector had a STALE peer at band ≥ 1.
 
 A probe-only attempt costs at most one offer and one decline: one round trip, **no content** (R5). That is the entire price of stale knowledge, which is why the protocol can afford to be lazy.
 
@@ -576,30 +579,49 @@ SELF with no engine is not "excluded"; it is simply absent from the universe, ex
 
 ### 5.5 Anti-poisoning cap on unverified claims
 
-`manifest.md` §11.5 recommends that an `UNVERIFIED` claim may win at most one in four of the placements it would win on score until `n ≥ 3`. Implemented deterministically:
+`manifest.md` §11.5 recommends that an `UNVERIFIED` claim may win at most one in four of the placements it would win on score until `n ≥ 3`. Implemented deterministically (**r4.1**, ERR-FX4-RT-1; `LAB_SPEC.md` R41-L-03):
 
 ```
 for the top sovereign candidate c in the plan (after merging):
+    if c.claimState == UNVERIFIED:
+        d = the first USABLE sovereign candidate in plan order with d.nodeId != c.nodeId
+            and d.claimState != UNVERIFIED                 // the partner; SELF qualifies
+        if d exists:
+            n = the counter of NODE c.nodeId               // the sum of the counters of every file key of that node
+            n.wouldWin += 1                                // the delta is written on ClaimKey(c), in capDelta,
+                                                           // committed only if the plan executes
+            if n.won >= ceilDiv(n.wouldWin, 4):            // wins allowed at would-win counts 1, 5, 9, ...
+                swap c with d; reason += "cap:unverified"
+            else:
+                n.won += 1
+        // no partner: the cap does not apply and no counter moves
+```
+
+Old (r0, unchanged by r3 and r4):
+
+```
     if c.claimState == UNVERIFIED and there exists another USABLE sovereign candidate d:
         k = ClaimKey(c)
-        wouldWin[k] += 1                                   // in capDelta, committed only if the plan executes
-        if won[k] >= ceilDiv(wouldWin[k], 4):              // wins allowed at would-win counts 1, 5, 9, ...
+        wouldWin[k] += 1
+        if won[k] >= ceilDiv(wouldWin[k], 4):
             swap c with d (the best other usable sovereign candidate); reason += "cap:unverified"
         else:
             won[k] += 1
 ```
 
-The cap applies **only when another usable sovereign candidate exists**: it moves work between the user's own devices, never from an own device to the cloud. It never changes eligibility (RL12) and is replayable because the counters live in the snapshot.
+Why it changed: counted per (peer, file) and swapped with *any* other usable candidate, a peer holding two files swapped with its own second file, whose counter never moved (it won 20 of 20 placements against a bound of 5), and two new UNVERIFIED peers handed the placement to each other; the bound held one key, not the device. Pinned by R03-034 (a second file of the same node is no partner), R03-035 (an UNVERIFIED candidate of another node is skipped), R03-036 (no partner: nothing moves) and R03-037 (two files of one node add up). Stated consequence: with no verified partner of another node, UNVERIFIED peers are **not** capped against each other (design §5.7, K11).
+
+The cap applies **only when a partner exists**: it moves work between the user's own devices, never from an own device to the cloud. It never changes eligibility (RL12) and is replayable because the counters live in the snapshot.
 
 ### 5.6 Error precedence (when the plan is empty, or every attempt fails)
 
 | Situation | Error | Why |
 |---|---|---|
-| Mesh off, or the sovereign universe was empty | the v1 error unchanged (`MODEL_UNKNOWN`, `NO_PROVIDER_KEY`, `ALL_PROVIDERS_COOLING`, `LOCAL_ENGINE_ABSENT`) | RL1: v1 clients see v1 behaviour |
+| Mesh off, or the sovereign universe was empty | the v1 error unchanged (`MODEL_UNKNOWN`, `NO_PROVIDER_KEY`, `ALL_PROVIDERS_COOLING`, `LOCAL_ENGINE_ABSENT`); **r4.1 (ERR-FX4-RT-5):** never `NO_PROVIDER_KEY` when the cloud is not in `P` (then `LOCAL_ENGINE_ABSENT`; R01-095) | RL1: v1 clients see v1 behaviour |
 | `local-only` and self unusable | v2 matrix: queue, then `THERMAL_HOLD` / `MODEL_OOM` / `CONTEXT_OVERFLOW` | Frozen meaning + roadmap v2 |
-| `own-devices` and nothing eligible or all attempts failed | `NO_ELIGIBLE_NODE` (RC-6) | New policy, new code |
+| `own-devices` and nothing eligible or all attempts failed | `NO_ELIGIBLE_NODE` (RC-6). **r4.1 note: withdrawn in r3** (design §7.5, §7.6; D12.6): the policy and the code do not exist | New policy, new code |
 | Sovereign candidates existed but were all excluded or failed, and the cloud tier had a typed error | the **cloud tier's v1 code**; the ledger row's `routeDetail` lists the sovereign exclusions | The v1 code stays true (e.g. there really is no provider key); no new code for v1-era clients |
-| A peer attempt sent a body and every later attempt failed | `ALL_PROVIDERS_COOLING` if cloud candidates were tried and are cooling; else `NO_ELIGIBLE_NODE` | Only reachable with the mesh on, i.e. after the user opted in |
+| A peer attempt sent a body and every later attempt failed | **r4.1 (ERR-FX4-RT-6; `LAB_SPEC.md` R41-L-05):** `ALL_PROVIDERS_COOLING` when the plan had cloud attempts and every one of them failed; in every other case (no cloud attempt in the plan, the request deadline reached with attempts left, a cloud tier only partly tried) no existing v1 or v2 code is true, and the code is owner item **D42**; until it is ruled the lab returns none and invents none. Old: "`ALL_PROVIDERS_COOLING` if cloud candidates were tried and are cooling; else `NO_ELIGIBLE_NODE`" | Only reachable with the mesh on, i.e. after the user opted in |
 
 ### 5.7 Worked example (generated by `router_ref.py`; all inputs assumed or invented)
 

@@ -6,6 +6,7 @@ import Foundation
 // asom-conformance [lines|check|sigcheck] [FAMILIES] [DIR]
 //   lines     one "<id> ok" or "<id> reject <CODE>" per vector this lane runs (LAB_SPEC.md section 3.3)
 //   check     compares each verdict and value with the vector's own expectation; non-zero exit on any mismatch
+//   generate-crosslane OUTDIR   write the Swift-signed M02 and M03 fixtures (apple/crosslane) from the lab's TEST-ONLY keys
 //   sigcheck  r0 only: "<id> sigValidUnderKey1=<bool>", the format of manifest-vectors/crosscheck.out
 // DIR defaults to ASOM_CONFORMANCE_DIR, else lab/conformance if it exists, else docs/design/mesh/manifest-vectors.
 // A directory whose VERSION is 0.2.0 (lab/conformance) is the r3 set: families M01 to M06. Anything else is the r0 set
@@ -18,7 +19,7 @@ func note(_ text: String) {
 func run() -> Int32 {
     var args = Array(CommandLine.arguments.dropFirst())
     var command = "lines"
-    if let first = args.first, ["lines", "check", "sigcheck", "debug-results", "debug-payload", "show"].contains(first) {
+    if let first = args.first, ["lines", "check", "sigcheck", "debug-results", "debug-payload", "show", "generate-crosslane"].contains(first) {
         command = first
         args.removeFirst()
     }
@@ -26,6 +27,18 @@ func run() -> Int32 {
     var explicit: String?
     for arg in args {
         if arg.contains("/") || arg == "." { explicit = arg } else { families = arg.split(separator: ",").map(String.init) }
+    }
+    if command == "generate-crosslane" {
+        guard let out = args.first, let lab = Conformance.resolveDirectory(explicit: nil, environment: ProcessInfo.processInfo.environment, startingAt: FileManager.default.currentDirectoryPath),
+              R3.isR3Directory(lab) else { note("usage: ASOM_CONFORMANCE_DIR=lab/conformance generate-crosslane OUTDIR"); return 2 }
+        do {
+            let s = try CrossLane.generate(labDir: lab, into: out)
+            print("wrote \(s.m02) M02 and \(s.m03) M03 vectors, \(s.signatures) fresh signatures, to \(out)")
+            return 0
+        } catch {
+            note("error: \(error)")
+            return 2
+        }
     }
     let cwd = FileManager.default.currentDirectoryPath
     guard let dir = Conformance.resolveDirectory(explicit: explicit, environment: ProcessInfo.processInfo.environment, startingAt: cwd) else {

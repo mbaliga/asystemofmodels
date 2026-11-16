@@ -34,15 +34,18 @@ def ROW(paired=True, route=True, grant=True, charge=False, limits=None):
 
 
 def PEER(id, cls="DESKTOP", files=None, backend="metal", prior="default", state="default", rx=1000000, link="default", row=None, breaker=None, last_same=None,
-         reservations=0, design=None, session_open=True, goaway=False, max_ctx=None, regressed=False):
+         reservations=0, design=None, session_open=True, goaway=False, max_ctx=None, regressed=False, power_freshness=None):
     files = files if files is not None else [F()]
     pr = PR() if prior == "default" else prior
     st = ST(backend=backend) if state == "default" else state
     priors = [] if pr is None else [dict(nodeId=id, fileSha256=f["fileSha256"], backend=backend, prior=copy.deepcopy(pr)) for f in files]
-    return dict(nodeId=id, nodeTag=id[:8], tier="PEER", deviceClass=cls, peer=row or ROW(), files=files, priors=priors, self=None, state=st,
+    node = dict(nodeId=id, nodeTag=id[:8], tier="PEER", deviceClass=cls, peer=row or ROW(), files=files, priors=priors, self=None, state=st,
                 stateRxMonoMs=None if st is None else rx, sessionOpen=session_open, goawaySeen=goaway, link=LK() if link == "default" else link,
                 breaker=breaker or dict(coolingUntilMonoMs=None, declineBackoffUntilMonoMs=None, halfOpen=False), lastSameFileMonoMs=last_same or {},
                 ownReservationsMs=reservations, maxContextTokens=max_ctx, batteryDesignMilliWh=design, stateRegressed=regressed)
+    if power_freshness is not None:
+        node["powerFreshness"] = power_freshness
+    return node
 
 
 def SS(permille=900, chg=False, on_batt=True, thermal=0, gov="RUN", avail=20000000000, loaded=(A,), active=False, busy=0, design=19000, engine=True,

@@ -29,6 +29,7 @@ Rectangle {
         }
         Text {
             objectName: "nodeLabel"
+            textFormat: Text.PlainText
             anchors.verticalCenter: parent.verticalCenter
             color: Tokens.text
             font.pixelSize: Tokens.fontBody
@@ -40,6 +41,7 @@ Rectangle {
             color: Tokens.violet
         }
         Text {
+            textFormat: Text.PlainText
             anchors.verticalCenter: parent.verticalCenter
             color: Tokens.textMuted
             font.pixelSize: Tokens.fontSmall
@@ -47,6 +49,7 @@ Rectangle {
         }
         Text {
             objectName: "lendingBanner"
+            textFormat: Text.PlainText
             visible: header.lending !== "off"
             anchors.verticalCenter: parent.verticalCenter
             color: Tokens.text

@@ -88,7 +88,8 @@ data class PeerRowView(
 
 /**
  * Additive fields (ERRATA): [maxContextTokens] and [batteryDesignMilliWh] (R3-CLOSURE-5 (3), (5)), [stateRegressed] (the requester's
- * [LiveStateCache] saw the stored state's `seq` fall below the highest `seq` of the session).
+ * [LiveStateCache] saw the stored state's `seq` fall below the highest `seq` of the session), [powerFreshness] (ERR-FX-RT-6: the class of the
+ * fields a piggybacked digest does not carry, aged from the last full STATE; null means the same class as the digest fields).
  */
 data class NodeView(
     val nodeId: String,
@@ -110,6 +111,7 @@ data class NodeView(
     val maxContextTokens: Long? = null,
     val batteryDesignMilliWh: Long? = null,
     val stateRegressed: Boolean = false,
+    val powerFreshness: Freshness? = null,
 )
 
 data class AppPolicy(
@@ -246,7 +248,11 @@ data class PlannedAttempt(
     val claimState: ClaimState? = null,
 )
 
-data class MeshPlan(val attempts: List<PlannedAttempt>, val excluded: List<Exclusion>, val capDelta: CapDelta, val detail: String = "")
+/**
+ * [probeIndex] (additive, ERR-FX4-RT-2): the index of the one probe-only peer attempt whose score beats the first non-probe usable sovereign attempt. The order of
+ * [attempts] never changes (RL13); the executor sends that peer an offer without content and, if it is accepted, moves the attempt to the front.
+ */
+data class MeshPlan(val attempts: List<PlannedAttempt>, val excluded: List<Exclusion>, val capDelta: CapDelta, val detail: String = "", val probeIndex: Int? = null)
 
 /** No new code: the four v1 names come from `AsomErrorCode`; the three v2 names (roadmap v2 contract delta) are not in the frozen enum, and a test says so. */
 class MeshPlanException(val code: String, message: String, val excluded: List<Exclusion> = emptyList()) : Exception(message)
@@ -256,7 +262,11 @@ object MeshErrorCodes {
     val V2: Set<String> = setOf("THERMAL_HOLD", "MODEL_OOM", "CONTEXT_OVERFLOW")
 }
 
-/** What a [NodeView] says about this node's fast fields after staleness handling. */
+/**
+ * What a [NodeView] says about this node's fast fields after staleness handling. [digestFreshness] classifies the fields a piggybacked digest carries
+ * (`fsm`, thermal band, governor, queue bucket) and [powerFreshness] the rest (power source, charging, battery band), which age from the last full STATE
+ * (ERR-FX-RT-6). [freshness] is the worse of the two: it drives probe-only and S6.
+ */
 internal data class FastView(
     val freshness: Freshness,
     val fsm: Fsm,
@@ -268,4 +278,6 @@ internal data class FastView(
     val batteryBand: BatteryBand?,
     val backend: String?,
     val held: Set<String>?,
+    val digestFreshness: Freshness = freshness,
+    val powerFreshness: Freshness = freshness,
 )

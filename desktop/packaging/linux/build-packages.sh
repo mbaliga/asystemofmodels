@@ -6,7 +6,7 @@
 #
 #   --out      default: <image dir>/../dist
 #   --formats  default: tar,deb,rpm
-#   --nfpm     default: nfpm from PATH, else the pinned, checksum-verified download (fetch-nfpm.sh)
+#   --nfpm     default: the pinned, checksum-verified download (fetch-nfpm.sh). An nfpm on PATH is NOT used unless named here.
 #
 # UNSIGNED: nothing is signed, attested or notarised here. SHA256SUMS is not a signature; the owner signs it offline,
 # outside CI (linux.md 8.3). Every output dir gets UNSIGNED-NOT-FOR-RELEASE.txt.
@@ -53,7 +53,10 @@ fi
 
 if want deb || want rpm; then
   if [ -z "$nfpm_bin" ]; then
-    if command -v nfpm >/dev/null 2>&1; then nfpm_bin="$(command -v nfpm)"; else nfpm_bin="$("$here/fetch-nfpm.sh" | tail -1)"; fi
+    nfpm_bin="$("$here/fetch-nfpm.sh" | tail -1)"
+    echo "build-packages: nfpm route: pinned download, checksum-verified by fetch-nfpm.sh"
+  else
+    echo "build-packages: nfpm route: --nfpm given explicitly, NOT verified by this script"
   fi
   [ -x "$nfpm_bin" ] || die "nfpm not found at '$nfpm_bin'" 2
   echo "build-packages: nfpm $("$nfpm_bin" --version | sed -n 's/^GitVersion: *//p') at $nfpm_bin"
@@ -62,10 +65,12 @@ if want deb || want rpm; then
   trap 'rm -rf "$stage"' EXIT
   cp -a "$image" "$stage/$name"
   rm -f "$stage/$name/install.sh" "$stage/$name/uninstall.sh"
-  export ASOM_VERSION="$ver" ASOM_ARCH="$deb_arch" ASOM_STAGE="$stage/$name" ASOM_LINUX_DIR="$here"
+  # The package's user unit runs the root-owned /opt/asom, not the tarball's ~/.local/opt/asom (linux.md 3.1; B-LA-4).
+  "$here/package-user-unit.sh" "$here/systemd/asom-user.service" "$stage/asom-user.package.service"
+  export ASOM_VERSION="$ver" ASOM_ARCH="$deb_arch" ASOM_STAGE="$stage/$name" ASOM_LINUX_DIR="$here" ASOM_USER_UNIT="$stage/asom-user.package.service"
   # nfpm 2.41 does not expand ${VAR} in contents src/dst, so every variable is resolved here, before nfpm sees the file.
   yaml="$(cat "$here/nfpm.yaml")"
-  for v in ASOM_VERSION ASOM_ARCH ASOM_STAGE ASOM_LINUX_DIR; do yaml="${yaml//\$\{$v\}/${!v}}"; done
+  for v in ASOM_VERSION ASOM_ARCH ASOM_STAGE ASOM_LINUX_DIR ASOM_USER_UNIT; do yaml="${yaml//\$\{$v\}/${!v}}"; done
   case "$yaml" in *'${'*) die "nfpm.yaml still holds an unresolved \${...} after substitution" 1 ;; esac
   printf '%s\n' "$yaml" > "$stage/nfpm.resolved.yaml"
   for f in deb rpm; do

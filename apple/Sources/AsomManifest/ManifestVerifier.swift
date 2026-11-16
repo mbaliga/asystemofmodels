@@ -44,7 +44,7 @@ public struct VerifyContext: Sendable {
     public init(
         mode: VerifyMode, pinnedSpki: [UInt8]? = nil, expectedChallenge: [UInt8]? = nil, comparedFingerprint: String? = nil,
         compareMethod: CompareMethod? = nil, rollback: [String: RollbackEntry] = [:], requiredTier: AttestationTier = .a0,
-        confFloor: String, knownBadConf: Set<String> = [], productionKeys: Bool = false, nowMs: Int64
+        confFloor: String, knownBadConf: Set<String> = [], productionKeys: Bool = true, nowMs: Int64
     ) {
         self.mode = mode
         self.pinnedSpki = pinnedSpki
@@ -89,7 +89,10 @@ public struct VerifyFailure: Error, Sendable {
 public enum ManifestVerifier {
     public static let maxSkewMs: Int64 = 300_000
     public static let maxTtlMs: Int64 = 600_000
+    static let maxEvidenceItemBytes = 32_768
     public static let hardwareStorages: Set<String> = ["strongbox", "tee", "secure-enclave", "tpm"]
+    /// What a document can PROVE: evidence is unused, so nothing above A0 (A2 is deferred).
+    static let attestedTier: AttestationTier = .a0
 
     /// The r3 verifier, steps 1 to 19, in the normative order.
     public static func verify(document: [UInt8], context: VerifyContext) -> Result<Verified, VerifyFailure> {
@@ -162,7 +165,9 @@ public enum ManifestVerifier {
 
         // Step 15c: evidence is absent or an array of at most two objects. No evidence type is read (A2 is deferred).
         if let evidence = dsse.container.member("evidence") {
-            guard let items = evidence.elements, items.count <= 2, items.allSatisfy({ $0.isObject }) else { return late(.containerInvalid) }
+            // an item whose JCS form exceeds 32,768 bytes cannot hold a DER of at most 16 KiB (ERR-FX-CV8); the JVM lane refuses it too
+            guard let items = evidence.elements, items.count <= 2,
+                  items.allSatisfy({ $0.isObject && ((try? JCS.serialize($0).count) ?? Int.max) <= maxEvidenceItemBytes }) else { return late(.containerInvalid) }
         }
 
         // Step 16.
@@ -173,9 +178,10 @@ public enum ManifestVerifier {
             if seq == prev.seq, !codeUnitsEqual(digest, prev.bodyDigest) { return late(.equivocation) }
         }
 
-        // Steps 17 and 18.
+        // Steps 17 and 18. The tier is a self-reported label and is only displayed; no claim satisfies a requirement
+        // (manifest.md 9.1 "A1 is treated exactly as A0 for every decision", ERR-FX-CV3). Nothing above A0 is ever proven in the lab.
         let tier: AttestationTier = hardwareStorages.contains(manifest.subject.keyStorage) ? .a1 : .a0
-        guard tier >= context.requiredTier else { return .failure(VerifyFailure(code: .tierInsufficient, displayable: nil)) }
+        guard attestedTier >= context.requiredTier else { return .failure(VerifyFailure(code: .tierInsufficient, displayable: nil)) }
 
         return .success(Verified(
             payloadBytes: dsse.payload, object: dsse.object, manifest: manifest, bodyDigest: digest, pin: dsse.pin, tier: tier,
@@ -188,8 +194,9 @@ public enum ManifestVerifier {
     }
 
     static func constantTimeEqual(_ a: [UInt8], _ b: [UInt8]) -> Bool {
-        var diff = UInt8(truncatingIfNeeded: a.count ^ b.count)
-        for k in 0..<min(a.count, b.count) { diff |= a[k] ^ b[k] }
+        guard a.count == b.count else { return false }
+        var diff: UInt8 = 0
+        for k in 0..<a.count { diff |= a[k] ^ b[k] }
         return diff == 0
     }
 }

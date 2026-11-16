@@ -87,9 +87,10 @@ class ThermalZoneProbe(
         private const val MAX_PLAUSIBLE = 250_000
 
         fun kelvinToMilliC(kelvin: Double): Int? {
-            if (kelvin.isNaN() || kelvin <= 0.0) return null
-            val milli = Math.round((kelvin - 273.15) * 1000.0).toInt()
-            return milli.takeIf { it in MIN_PLAUSIBLE..MAX_PLAUSIBLE }
+            if (!kelvin.isFinite() || kelvin <= 0.0) return null
+            val milli = Math.round((kelvin - 273.15) * 1000.0)
+            if (milli < MIN_PLAUSIBLE || milli > MAX_PLAUSIBLE) return null
+            return milli.toInt()
         }
     }
 }

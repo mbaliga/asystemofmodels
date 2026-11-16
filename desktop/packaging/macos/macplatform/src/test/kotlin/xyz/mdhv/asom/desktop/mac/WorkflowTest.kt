@@ -69,6 +69,18 @@ class WorkflowTest {
     }
 
     @Test
+    fun `every checkout drops its credentials, because no job here pushes (HC-R6)`() {
+        val lines = text().lines()
+        val at = lines.indices.filter { Regex("^\\s*-\\s+uses:\\s*actions/checkout@").containsMatchIn(lines[it]) }
+        assertTrue(at.size >= 5, "found only ${at.size} checkouts")
+        for (i in at) {
+            val indent = lines[i].indexOf('-')
+            val step = lines.drop(i + 1).takeWhile { it.isBlank() || it.trimStart().startsWith("#") || it.length - it.trimStart().length > indent }
+            assertTrue(step.any { it.trim() == "persist-credentials: false" }, "checkout at line ${i + 1} keeps the token in .git/config")
+        }
+    }
+
+    @Test
     fun `nothing signs, notarises, releases or publishes, and the MC3 to MC7 jobs do not exist yet`() {
         val t = text().lines().filter { !it.trim().startsWith("#") }.joinToString("\n").lowercase()
         for (banned in listOf("codesign", "notarytool", "stapler", "productbuild", "pkgbuild", "hdiutil", "gh release", "softprops", "package-and-smoke", "sign-notarize", "macos27-probes", "build-llama-jni", "smoke-app", "smoke-two-node", "brew install", "xcode-27")) {

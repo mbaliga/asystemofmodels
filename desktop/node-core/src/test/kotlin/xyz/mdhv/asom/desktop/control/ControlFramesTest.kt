@@ -64,4 +64,27 @@ class ControlFramesTest {
         val r = ControlFrames.encodeResponse(ControlResponse.notImplemented(3, "chat", "DL6"))
         assertEquals("""{"id":3,"ok":false,"code":"NOT_IMPLEMENTED","message":"chat (DL6)"}""", r)
     }
+
+    private fun framed(body: ByteArray): ByteArrayInputStream = ByteArrayInputStream(ControlFrames.frame(body))
+
+    @Test
+    fun `a frame body that is not strict UTF-8 is refused, never repaired into U+FFFD`() {
+        val bad = mapOf(
+            "overlong C0 AF" to byteArrayOf(0x7b, 0x22, 0x78, 0x22, 0x3a, 0x22, 0xC0.toByte(), 0xAF.toByte(), 0x22, 0x7d),
+            "overlong C0 80" to byteArrayOf(0x22, 0xC0.toByte(), 0x80.toByte(), 0x22),
+            "encoded surrogate ED A0 80" to byteArrayOf(0x22, 0xED.toByte(), 0xA0.toByte(), 0x80.toByte(), 0x22),
+            "above U+10FFFF F4 90 80 80" to byteArrayOf(0x22, 0xF4.toByte(), 0x90.toByte(), 0x80.toByte(), 0x80.toByte(), 0x22),
+            "stray FF" to byteArrayOf(0x22, 0xFF.toByte(), 0x22),
+            "truncated sequence E2 82" to byteArrayOf(0x22, 0xE2.toByte(), 0x82.toByte(), 0x22),
+            "lone continuation 80" to byteArrayOf(0x22, 0x80.toByte(), 0x22),
+        )
+        for ((why, body) in bad) {
+            val e = assertFailsWith<ControlFrameException>(why) { ControlFrames.read(framed(body)) }
+            assertEquals(ControlCode.BAD_REQUEST, e.code, why)
+        }
+        val ok = ControlFrames.read(framed("""{"x":"€ 😀"}""".toByteArray(Charsets.UTF_8)))
+        assertEquals("""{"x":"€ 😀"}""", ok)
+        Report.line("control frames: ${bad.size} invalid UTF-8 bodies refused, valid multi-byte text accepted")
+        assertTrue(bad.size >= 7)
+    }
 }

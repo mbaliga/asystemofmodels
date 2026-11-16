@@ -8,7 +8,10 @@ verdicts. The exit status is non-zero when:
   * a vector disagrees and is not listed in --known (a new, unexplained disagreement);
   * a vector listed in --known now agrees (the list is stale, and stale lists hide regressions);
   * the JVM lane printed a vector the Swift lane did not, and it is not listed in --not-implemented;
-  * the Swift lane printed a vector the JVM lane did not.
+  * the Swift lane printed a vector the JVM lane did not;
+  * a vector listed in --not-implemented that the Swift lane printed, or that the JVM lane does not print at all (a stale or
+    mistyped entry);
+  * an entry of either list with no reason after the id, or listed twice.
 The --known and --not-implemented files hold one `<id> <reason>` per line; `#` starts a comment.
 """
 import sys
@@ -27,7 +30,7 @@ def read_lines(path):
     return verdicts
 
 
-def read_list(path):
+def read_list(path, problems):
     ids = {}
     if path is None:
         return ids
@@ -35,6 +38,10 @@ def read_list(path):
         line = raw.split("#", 1)[0].strip()
         if line:
             vid, _, reason = line.partition(" ")
+            if vid in ids:
+                problems.append("%s: listed twice in %s" % (vid, path))
+            if not reason.strip():
+                problems.append("%s: no reason given in %s" % (vid, path))
             ids[vid] = reason.strip()
     return ids
 
@@ -55,9 +62,9 @@ def main(argv):
         else:
             sys.exit("unknown argument " + flag)
     jvm, swift = read_lines(jvm_path), read_lines(swift_path)
-    known, not_impl = read_list(known_path), read_list(not_impl_path)
-
     problems = []
+    known, not_impl = read_list(known_path, problems), read_list(not_impl_path, problems)
+
     agree = 0
     disagree = []
     for vid in sorted(jvm):
@@ -77,6 +84,11 @@ def main(argv):
     for vid in sorted(not_impl):
         if vid in swift:
             problems.append("%s: listed as not implemented but the Swift lane printed it" % vid)
+        elif vid not in jvm:
+            problems.append("%s: listed as not implemented but the JVM lane does not print it either (stale or mistyped entry)" % vid)
+    for vid in sorted(known):
+        if vid not in jvm or vid not in swift:
+            problems.append("%s: listed as a known disagreement but a lane did not print it" % vid)
 
     print("%-9s %-34s %-34s %s" % ("vector", "jvm", "swift", "status"))
     for vid in disagree:

@@ -5,8 +5,8 @@
 #              [--home <dir>] [--force]
 #
 # What it does, in order: verify the archive against SHA256SUMS (always; a missing or non-matching SHA256SUMS is a
-# refusal); check the owner's detached signature when one is present AND gpg is installed (and say plainly when that
-# check did not run); inspect the archive (one top directory, no absolute or `..` paths, right architecture); extract
+# refusal); check the detached signature on SHA256SUMS when one is present AND gpg is installed, against the pinned owner
+# fingerprint below (and say plainly when that check did not run or could not bind the signer to the owner); inspect the archive (one top directory, no absolute or `..` paths, right architecture); extract
 # beside any older version; swap the `current` link atomically; link ~/.local/bin/asom; write the USER unit.
 #
 # What it never does: enable, start or restart anything, run anything from the archive, or touch state and data
@@ -18,6 +18,11 @@
 #
 # EVIDENCE: the artefacts this ships with are UNSIGNED, not for release. No signature check can pass on them.
 set -euo pipefail
+
+# The owner's OpenPGP PRIMARY-key fingerprint, 40 hex digits with no spaces. OWNER-FILL: the owner has not published one
+# yet (see desktop/packaging/linux/README.md, "Signature"). While it is unset a signature is reported with the key that made
+# it and is explicitly NOT bound to the owner; this installer never says "the owner signed it" without a pinned match.
+OWNER_FPR="OWNER-FILL"
 
 archive=""
 sums=""
@@ -32,7 +37,7 @@ while [ "$#" -gt 0 ]; do
     --sig) sig="${2:-}"; shift 2 ;;
     --home) home="${2:-}"; custom_home=1; shift 2 ;;
     --force) force=1; shift ;;
-    -h|--help) sed -n '2,22p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,23p' "$0"; exit 0 ;;
     *) echo "install.sh: unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -68,8 +73,20 @@ if [ -z "$sig" ]; then
   done
 fi
 if [ -n "$sig" ] && command -v gpg >/dev/null 2>&1; then
-  gpg --verify "$sig" "$sums" >/dev/null 2>&1 || die "the signature $sig did not verify against $sums (is the owner's public key imported? its fingerprint is in the README). Nothing was installed." 1
-  sig_line="signature $(basename "$sig") verified by gpg (this proves the owner's key signed the checksums, not that the code is safe)"
+  gpg_status="$(gpg --batch --status-fd 1 --verify "$sig" "$sums" 2>/dev/null)" || die "the signature $sig did not verify against $sums (is the signing key's public part imported into your gpg keyring?). Nothing was installed." 1
+  signer="$(printf '%s\n' "$gpg_status" | awk '$1 == "[GNUPG:]" && $2 == "GOODSIG" { g = 1 } $1 == "[GNUPG:]" && $2 == "VALIDSIG" && v == "" { v = $NF } END { if (g) print v }')"
+  case "$signer" in
+    *[!0-9A-Fa-f]*|"") die "gpg did not report a good signature with a key fingerprint for $sig (expired, revoked or unusable key?). Nothing was installed." 1 ;;
+  esac
+  signer="$(printf '%s' "$signer" | tr 'a-f' 'A-F')"
+  if [ "$OWNER_FPR" = "OWNER-FILL" ]; then
+    sig_line="signature $(basename "$sig") is valid and made by key $signer, which is NOT checked against the owner's key (no owner fingerprint is pinned in this installer yet); it proves nothing about who published the archive"
+  else
+    if [ "${#OWNER_FPR}" != "40" ] || [ -n "${OWNER_FPR//[0-9A-Fa-f]/}" ]; then die "OWNER_FPR in this installer is neither OWNER-FILL nor 40 hex digits. Nothing was installed." 2; fi
+    want_fpr="$(printf '%s' "$OWNER_FPR" | tr 'a-f' 'A-F')"
+    [ "$signer" = "$want_fpr" ] || die "the signature $sig is by key $signer, which is NOT the owner's pinned key $want_fpr. Nothing was installed." 1
+    sig_line="signature $(basename "$sig") verified by gpg and made by the owner's pinned key $want_fpr (this proves the owner's key signed the checksums, not that the code is safe)"
+  fi
 elif [ -n "$sig" ]; then
   sig_line="signature NOT CHECKED: gpg is not installed ($(basename "$sig") was not verified)"
 else
@@ -90,7 +107,16 @@ case "$top" in
   asom-desktop-*-linux-*) die "$base is for a different architecture than this machine ($arch)" 1 ;;
   *) die "unexpected top-level directory '$top' (expected asom-desktop-<ver>-linux-$arch)" 1 ;;
 esac
-case "$ver" in ""|*[!0-9A-Za-z.+~_-]*) die "unsafe version string '$ver' in the archive name" 1 ;; esac
+case "$ver" in [0-9]*) ;; *) die "unsafe version string '$ver' in the archive name (it must start with a digit)" 1 ;; esac
+case "$ver" in *[!0-9A-Za-z.+~_-]*) die "unsafe version string '$ver' in the archive name" 1 ;; esac
+tar -tvzf "$archive" --numeric-owner | awk '
+  { rest = $0; for (i = 0; i < 5; i++) sub(/^[^ ]+ +/, "", rest); names[NR] = rest }
+  substr($0, 1, 1) == "l" {
+    tmp = rest; acc = ""
+    while ((i = index(tmp, " -> ")) > 0) { acc = acc substr(tmp, 1, i - 1); links[acc] = 1; acc = acc " -> "; tmp = substr(tmp, i + 4) }
+  }
+  END { for (n = 1; n <= NR; n++) for (l in links) if (index(names[n], l "/") == 1) bad = 1; exit bad }
+' || die "$base has a member written through a symlink member" 1
 
 # ---- 4. extract to a staging directory, then verify what came out -----------------------------------------------------
 prefix="$home/.local/opt/asom"
@@ -103,8 +129,9 @@ rm -rf "$stage"
 mkdir "$stage"
 cleanup() { rm -rf "$stage" "$prefix/current.tmp.$$" "$prefix/previous.tmp.$$"; }
 trap cleanup EXIT
-tar -xzf "$archive" -C "$stage" --no-same-owner
-tree="$stage/$top"
+tar -xzf "$archive" -C "$stage" --no-same-owner || die "$base could not be extracted cleanly (tar refused it). Nothing was installed." 1
+mv "$stage/$top" "$stage/$ver"
+tree="$stage/$ver"
 for f in bin/asom-node bin/asom lib/runtime/bin/java share/systemd/asom-user.service; do
   [ -e "$tree/$f" ] || die "the archive lacks $f: not an asom app image" 1
 done
@@ -113,7 +140,7 @@ while IFS= read -r l; do
   t="$(readlink "$l")"
   case "$t" in /*) die "the archive holds an absolute symlink ($l -> $t)" 1 ;; esac
   r="$(realpath -m -- "$(dirname "$l")/$t")"
-  case "$r" in "$stage_real/$top"|"$stage_real/$top"/*) ;; *) die "the archive holds a symlink that leaves the image ($l -> $t)" 1 ;; esac
+  case "$r" in "$stage_real/$ver"|"$stage_real/$ver"/*) ;; *) die "the archive holds a symlink that leaves the image ($l -> $t)" 1 ;; esac
 done < <(find "$tree" -type l)
 
 # ---- 5. place it, swap `current` atomically ---------------------------------------------------------------------------
@@ -126,10 +153,10 @@ mv "$tree" "$dest"
 
 prev=""
 if [ -L "$prefix/current" ]; then prev="$(readlink "$prefix/current")"; fi
-ln -s "$ver" "$prefix/current.tmp.$$"
+ln -s -- "$ver" "$prefix/current.tmp.$$"
 mv -T "$prefix/current.tmp.$$" "$prefix/current"
 if [ -n "$prev" ] && [ "$prev" != "$ver" ] && [ -d "$prefix/$prev" ]; then
-  ln -s "$prev" "$prefix/previous.tmp.$$"
+  ln -s -- "$prev" "$prefix/previous.tmp.$$"
   mv -T "$prefix/previous.tmp.$$" "$prefix/previous"
 fi
 

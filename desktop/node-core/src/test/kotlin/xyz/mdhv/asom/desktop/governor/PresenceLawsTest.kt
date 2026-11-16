@@ -10,11 +10,14 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import xyz.mdhv.asom.desktop.FakePower
 import xyz.mdhv.asom.desktop.GpuSample
 import xyz.mdhv.asom.desktop.LawCounter
+import xyz.mdhv.asom.desktop.NodeConfig
 import xyz.mdhv.asom.desktop.PresenceSample
 import xyz.mdhv.asom.desktop.PresenceTagged
 import xyz.mdhv.asom.desktop.Report
+import xyz.mdhv.asom.desktop.ThermalReading
 
 /** LP-0, LP-1 and LP-2 (design 7.4, LAB_SPEC 6.5) as sequences, a classification table and a seeded property test. */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -30,7 +33,8 @@ class PresenceLawsTest {
             "LP-2-hold-down-599999", "LP-2-hold-down-600000", "LP-2-second-presence-restarts", "LP-2-condition-drain-returns-at-once",
             "LP-2-sleep-drain-not-presence", "LP-2-pf-needs-explicit-start", "PF-consent-not-presence", "deck-grace-2s",
             "prop-serve-entry-guarded", "prop-listener-effects", "prop-lock-balance", "prop-drain-exits", "prop-off-entry",
-            "prop-config-rejects-short-hold-down",
+            "prop-config-rejects-short-hold-down", "startup-mid-band-never-serves", "startup-quiet-dwell-60s", "startup-blind-sample-not-eligible",
+            "startup-gpu-counter-must-settle",
         ),
     )
 
@@ -270,6 +274,99 @@ class PresenceLawsTest {
         }
         Report.line("property test: $sequences sequences, $steps steps, seed 20260930")
         assertTrue(sequences > 0 && steps > 0)
+    }
+
+    /**
+     * HLU-4: a node enabled while the owner is at the machine must not serve. The gate starts UNSETTLED (neither drained nor
+     * eligible); only 60 s below 200 permille makes it eligible, whatever the first, blind, sample said.
+     */
+    private fun startupRig(): Triple<Governor, ProviderFsm, (Long, Int?, Int?, Boolean) -> List<FsmEvent>> {
+        val cfg0 = NodeConfig()
+        val g = Governor(cfg0, DesktopRules(cfg0))
+        val f = ProviderFsm(FsmConfig(graceMs = 30_000, holdDownMs = cfg0.presenceHoldDownMs))
+        val run = { t: Long, cpu: Int?, gpu: Int?, gpuCounter: Boolean ->
+            val ev = g.evaluate(t, Readings(FakePower.ac(), ThermalReading(0, 40_000, 80_000, listOf("s")), HostSignals(), cpu, gpu, gpuCounter)).events
+            ev.forEach { f.apply(it, t) }
+            ev
+        }
+        return Triple(g, f, run)
+    }
+
+    @Test
+    fun `startup while the machine is in use never serves, whatever the first sample was`() {
+        val (_, f, run) = startupRig()
+        f.apply(FsmEvent.USER_ENABLE, 0)
+        assertEquals(emptyList(), run(0, null, null, false), "a blind first sample is not eligibility")
+        var t = 2_000L
+        repeat(150) {
+            assertEquals(emptyList(), run(t, 390, null, false), "390 permille at t=$t: neither eligible nor drained")
+            assertEquals(LenderState.ARMED, f.state, "must not be SERVING at t=$t while contention sits between 200 and 400")
+            t += 2_000
+        }
+        laws.hit("startup-mid-band-never-serves")
+        // genuinely heavy use is presence, as before
+        var last = emptyList<FsmEvent>()
+        repeat(6) { last = run(t, 700, null, false); t += 2_000 }
+        assertEquals(listOf(FsmEvent.PRESENCE_SIGNAL), last)
+        laws.hit("startup-mid-band-never-serves")
+    }
+
+    @Test
+    fun `startup on a quiet machine serves only after 60 s below 200 permille, exactly`() {
+        val (_, f, run) = startupRig()
+        f.apply(FsmEvent.USER_ENABLE, 0)
+        run(0, null, null, false)
+        run(2_000, 100, null, false)
+        assertEquals(emptyList(), run(2_000 + 59_999, 100, null, false), "59,999 ms below 200 is not 60 s")
+        assertEquals(LenderState.ARMED, f.state)
+        assertEquals(listOf(FsmEvent.CONDITIONS_MET), run(2_000 + 60_000, 100, null, false))
+        assertEquals(LenderState.SERVING, f.state)
+        laws.hit("startup-quiet-dwell-60s")
+        // a reading back in the 200 to 400 band restarts the dwell
+        val (_, f2, run2) = startupRig()
+        f2.apply(FsmEvent.USER_ENABLE, 0)
+        run2(0, 100, null, false)
+        run2(30_000, 300, null, false)
+        assertEquals(emptyList(), run2(60_000, 100, null, false), "the band reading restarted the dwell")
+        assertEquals(listOf(FsmEvent.CONDITIONS_MET), run2(120_000, 100, null, false))
+        laws.hit("startup-quiet-dwell-60s")
+    }
+
+    @Test
+    fun `an unreadable sample is not known to be eligible and drains nobody`() {
+        val (_, f, run) = startupRig()
+        f.apply(FsmEvent.USER_ENABLE, 0)
+        run(0, 100, null, false)
+        assertEquals(listOf(FsmEvent.CONDITIONS_MET), run(60_000, 100, null, false))
+        assertEquals(LenderState.SERVING, f.state)
+        assertEquals(emptyList(), run(62_000, null, null, false), "blind while SERVING: no event, so no drain")
+        assertEquals(LenderState.SERVING, f.state)
+        f.apply(FsmEvent.CONDITION_LOST, 63_000)
+        f.apply(FsmEvent.INFLIGHT_DONE, 63_001)
+        assertEquals(LenderState.ARMED, f.state)
+        assertEquals(emptyList(), run(64_000, null, null, false), "blind while ARMED: not eligible this tick")
+        assertEquals(LenderState.ARMED, f.state)
+        assertEquals(listOf(FsmEvent.CONDITIONS_MET), run(66_000, 100, null, false))
+        laws.hit("startup-blind-sample-not-eligible")
+    }
+
+    @Test
+    fun `a GPU counter that exists must settle too, and one that does not exist is off`() {
+        val (_, f, run) = startupRig()
+        f.apply(FsmEvent.USER_ENABLE, 0)
+        var t = 0L
+        while (t < 40_000) { assertEquals(emptyList(), run(t, 100, 100, true)); t += 2_000 }
+        assertEquals(emptyList(), run(40_000, 100, null, true), "the counter exists but this sample is blind: the GPU dwell restarts")
+        t = 42_000
+        while (t < 102_000) { assertEquals(emptyList(), run(t, 100, 100, true), "t=$t: the CPU is long eligible but the GPU dwell began at 42,000"); t += 2_000 }
+        assertEquals(LenderState.ARMED, f.state)
+        assertEquals(listOf(FsmEvent.CONDITIONS_MET), run(102_000, 100, 100, true))
+        laws.hit("startup-gpu-counter-must-settle")
+        val (_, f2, run2) = startupRig()
+        f2.apply(FsmEvent.USER_ENABLE, 0)
+        run2(0, 100, null, false)
+        assertEquals(listOf(FsmEvent.CONDITIONS_MET), run2(60_000, 100, null, false), "no GPU counter (NVIDIA): the rule is off")
+        laws.hit("startup-gpu-counter-must-settle")
     }
 
     @Test

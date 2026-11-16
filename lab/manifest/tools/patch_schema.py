@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Writes lab/conformance/manifest/schema/asom.manifest.1.schema.json and asom.bench-public.1.schema.json from the design session's r0 schemas
 (docs/design/mesh/manifest-vectors/) by applying the r3 patch list P1..P10 of LAB_SPEC 4.1, the extra patches P11 and B1..B8 recorded in
-lab/ERRATA.md (ERR-CLOSURE-1, ERR-SCHEMA-1), and the public-derivative patches PP1..PP2. Python 3 standard library only.
+lab/ERRATA.md (ERR-CLOSURE-1, ERR-SCHEMA-1), and the public-derivative patches PP1..PP3, and B9 (R4-B-01: BATTERY_LOW and POWER_SAVER join the run.abort.reason and sustain.endReason enums). Python 3 standard library only.
+With `--out DIR` the two files go there instead of the committed directory (CI regenerates into a temporary directory and compares byte for byte).
 
 The JSON Schema is DOCUMENTATION AND A TEST ORACLE ONLY (LAB_SPEC 4.1): the verifier's step 11 is the hand-written typed decoder in
 xyz.mdhv.asom.lab.manifest.ManifestDecoder. Run:  python3 lab/manifest/tools/patch_schema.py
@@ -9,6 +10,7 @@ xyz.mdhv.asom.lab.manifest.ManifestDecoder. Run:  python3 lab/manifest/tools/pat
 import copy
 import json
 import os
+import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
@@ -90,7 +92,7 @@ def bench_schema():
                                    "contentionBeforePermille": {"type": "integer", "minimum": 0, "maximum": 1000000},
                                    "contentionAfterPermille": {"type": "integer", "minimum": 0, "maximum": 1000000},
                                    "abort": {"oneOf": [{"type": "null"}, {"type": "object", "additionalProperties": False, "required": ["reason", "atMs"],
-                                                                          "properties": {"reason": {"enum": ["THERMAL_HARD", "BATTERY_TEMP", "USER_STOP", "BACKGROUNDED", "CHARGER_REMOVED", "MEMORY_PRESSURE", "WALL_CAP", "PROBE_LOST", "DEVICE_BUSY"]},
+                                                                          "properties": {"reason": {"enum": ["THERMAL_HARD", "BATTERY_TEMP", "BATTERY_LOW", "POWER_SAVER", "USER_STOP", "BACKGROUNDED", "CHARGER_REMOVED", "MEMORY_PRESSURE", "WALL_CAP", "PROBE_LOST", "DEVICE_BUSY"]},
                                                                                          "atMs": {"type": "integer", "minimum": 0}}}]}}},
             "tiers": {"type": "array", "maxItems": 6, "items": {
                 "type": "object", "additionalProperties": False,
@@ -116,7 +118,7 @@ def bench_schema():
                 "required": ["tier", "windowMs", "capMs", "endReason", "headroomAtOnsetPermille", "windows"],
                 "properties": {"tier": {"enum": tiers}, "windowMs": {"type": "integer", "minimum": 100, "maximum": 3600000},
                                "capMs": {"type": "integer", "minimum": 1, "maximum": 86400000},
-                               "endReason": {"enum": ["PLATEAU", "TIME_CAP", "THERMAL_SOFT", "THERMAL_HARD", "BATTERY_TEMP", "USER_STOP", "BACKGROUNDED", "CHARGER_REMOVED",
+                               "endReason": {"enum": ["PLATEAU", "TIME_CAP", "THERMAL_SOFT", "THERMAL_HARD", "BATTERY_TEMP", "BATTERY_LOW", "POWER_SAVER", "USER_STOP", "BACKGROUNDED", "CHARGER_REMOVED",
                                                       "MEMORY_PRESSURE", "WALL_CAP", "YIELDED", "DEVICE_BUSY", "PROBE_LOST"]},
                                "headroomAtOnsetPermille": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 10000}, {"type": "null"}]},
                                "windows": {"type": "array", "minItems": 1, "maxItems": 240, "items": win}}}]},
@@ -218,12 +220,20 @@ def patch_public(s):
     props["engine"]["properties"]["commit"] = {"oneOf": [{"type": "string", "pattern": "^[0-9a-f]{7,40}$"}, {"const": "custom"}]}
     for k in ("version", "confVersion"):
         props["harness"]["properties"][k] = {"oneOf": [{"$ref": "#/$defs/semver"}, {"const": "custom"}]}
+    # PP3 (R4-L-14): osFamily is the manifest family enum, so a windows or ubuntu-touch manifest has a derivative its own schema accepts
+    families = props["device"]["properties"]["osFamily"]["enum"]
+    families += [f for f in ("windows", "ubuntu-touch") if f not in families]
     # PP2: vendor and model are a catalogue-backed coarse name or `other` (still text)
     s["title"] = "asom public (anonymised) benchmark derivative, major version 1 (r3 conformance schema; DOCUMENTATION AND TEST ORACLE ONLY)"
     return s
 
 
-def main():
+def main(argv):
+    global DST
+    if argv[:1] == ["--out"] and len(argv) == 2:
+        DST = os.path.abspath(argv[1])
+    elif argv:
+        sys.exit("usage: patch_schema.py [--out DIR]")
     os.makedirs(DST, exist_ok=True)
     out = {"asom.manifest.1.schema.json": patch_manifest(load("asom.manifest.1.schema.json")),
            "asom.bench-public.1.schema.json": patch_public(load("asom.bench-public.1.schema.json"))}
@@ -235,4 +245,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

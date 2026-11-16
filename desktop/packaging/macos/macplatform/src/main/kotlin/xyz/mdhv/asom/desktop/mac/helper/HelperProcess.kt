@@ -128,6 +128,10 @@ class HelperProcess(
 
     override val alive: Boolean get() = state == HelperState.RUNNING
 
+    @Volatile
+    override var epoch: Long = 0L
+        private set
+
     /** What the last successful handshake said, or null when the helper has not been reached. */
     val helloInfo: HelperClient.Hello? get() = synchronized(lock) { hello }
 
@@ -166,6 +170,7 @@ class HelperProcess(
             }
             val s = Session(child)
             session = s
+            epoch++
             s.reader = Thread({ readLoop(s) }, "asom-helper-reader").also { it.isDaemon = true; it.start() }
             try {
                 val reply = callOn(s, Request("hello", null, Fields.of("v" to HValue.I(ProtocolSpec.VERSION))))

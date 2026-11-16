@@ -102,6 +102,10 @@ class NetshFirewallProbe(private val runner: ProcessRunner, private val systemRo
             return FirewallRead.Failed("could not run netsh: ${e.message ?: e::class.simpleName}")
         }
         if (r.timedOut) return FirewallRead.Failed("netsh timed out after $timeoutMs ms")
+        // A listing cut at the output cap is a prefix: a block rule after the cut would never be seen while an allow rule
+        // before it opened the gate. A failed run is no better evidence than a cut one (ERR-FX-HWM-13).
+        if (r.truncated) return FirewallRead.Failed("netsh output was truncated at the runner's output cap; the rule list is incomplete")
+        if (r.exitCode != 0) return FirewallRead.Failed("netsh exited with code ${r.exitCode}; its rule list is not trusted")
         // The console output is OEM-encoded; ISO-8859-1 keeps every byte, so ASCII labels and paths parse exactly.
         val text = String(r.stdout, Charsets.ISO_8859_1)
         val parsed = NetshRuleParser.parse(text)

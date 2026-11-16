@@ -15,13 +15,15 @@ internal fun fastViewOf(n: NodeView, nowMonoMs: Long): FastView {
     if (d == null || n.stateRxMonoMs == null) {
         return FastView(Freshness.EXPIRED, Fsm.OFF, Governor.RUN, 1, 2, "unknown", false, null, null, null)
     }
-    val fr = LiveStateCache.classify(d, n.stateRxMonoMs, n.sessionOpen, n.goawaySeen, n.stateRegressed, nowMonoMs)
-    val fast = Staleness.fastFields(fr, d)
+    val digestFr = LiveStateCache.classify(d, n.stateRxMonoMs, n.sessionOpen, n.goawaySeen, n.stateRegressed, nowMonoMs)
+    val powerFr = n.powerFreshness?.let { maxOf(it, digestFr) } ?: digestFr
+    val fast = Staleness.fastFields(digestFr, d)
+    val powerFast = Staleness.fastFields(powerFr, d)
     return FastView(
-        freshness = fr, fsm = d.fsm, governor = d.governor,
+        freshness = maxOf(digestFr, powerFr), fsm = d.fsm, governor = d.governor,
         thermalBand = fast?.thermalBand ?: d.thermalBand, queueBucket = fast?.queueBucket ?: d.queueBucket,
-        powerSource = d.powerSource, charging = d.charging, batteryBand = if (fast != null) fast.batteryBand else d.batteryBand,
-        backend = d.backend, held = d.held.toSet(),
+        powerSource = d.powerSource, charging = d.charging, batteryBand = if (powerFast != null) powerFast.batteryBand else d.batteryBand,
+        backend = d.backend, held = d.held.toSet(), digestFreshness = digestFr, powerFreshness = powerFr,
     )
 }
 
@@ -44,6 +46,9 @@ internal object Priors {
         return n.priors[key]?.let { key to it }
     }
 
+    /** The precondition of [Estimator.decodeAtCtx]: one to four points with strictly ascending contexts. A claim that breaks it is F8, not an exception. */
+    private fun curveValid(c: List<Pair<Int, Long>>): Boolean = c.size in 1..4 && c.zipWithNext().all { (a, b) -> b.first > a.first }
+
     /** F8's inputs: the tracked rates of the claim row, or the reason there is no usable prior. SELF uses its own calibration as measured (LOCAL_MEASURED). */
     fun resolve(n: NodeView, f: FileKey, fast: FastView?, promptTokens: Long, s: MeshSnapshot): PriorResolution {
         val row = claimRow(n, f, fast) ?: return PriorResolution.Missing("no-prior")
@@ -51,11 +56,12 @@ internal object Priors {
         if (claim.decodeAt.isEmpty() || claim.prefillMilliTokPerSec <= 0 || claim.steadyMilliTokPerSec <= 0 || claim.decodeAt.any { it.second <= 0 }) {
             return PriorResolution.Missing("claim-rate<=0")
         }
+        if (!curveValid(claim.decodeAt)) return PriorResolution.Missing("claim-curve-invalid")
         val claimDecode = Estimator.decodeAtCtx(claim.decodeAt, promptTokens)
         if (n.tier == Tier.SELF) {
             return PriorResolution.Ok(claim, key, TrackedRates(claim.prefillMilliTokPerSec, claimDecode, claim.steadyMilliTokPerSec), ClaimState.LOCAL_MEASURED)
         }
-        val ts = s.tracker[key]
+        val ts = ClaimTracker.stateAt(s.tracker, key)
         if (ts?.memoryDiscrepant == true) return PriorResolution.Missing("memory-discrepant")
         val cfg = s.config
         val ck = CeilingKey(f.modelId, key.backend, n.deviceClass)

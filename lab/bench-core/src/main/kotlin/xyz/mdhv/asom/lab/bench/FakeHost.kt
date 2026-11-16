@@ -23,7 +23,7 @@ data class TierSpeed(
 /** From [fromHeatMs] of accumulated busy time upward, decode takes [slowdownPermille]/1000 of its cool time and the thermal readings are [code] and [headroomPermille]. */
 data class HeatStep(val fromHeatMs: Long, val slowdownPermille: Long, val code: Int, val headroomPermille: Int)
 
-/** At [atMs] of virtual time, something happens: CHARGER_REMOVED, CHARGER_ATTACHED, BACKGROUND, FOREGROUND, REAL_REQUEST, MEMORY_PRESSURE, THERMAL_CODE, BATTERY_TEMP, GPU_BUSY, THERMAL_LOST, THERMAL_BACK, STOP. */
+/** At [atMs] of virtual time, something happens: CHARGER_REMOVED, CHARGER_ATTACHED, BACKGROUND, FOREGROUND, REAL_REQUEST, MEMORY_PRESSURE, THERMAL_CODE, BATTERY_TEMP, BATTERY_LEVEL (permille), POWER_SAVER (Low Power Mode), GPU_BUSY, THERMAL_LOST, THERMAL_BACK, STOP. */
 data class Injection(val atMs: Long, val kind: String, val value: Long = 0L)
 
 data class FakeConfig(
@@ -59,7 +59,9 @@ class FakeHost(val cfg: FakeConfig) : BenchHost {
     private var forcedCode: Int? = null
     private var batteryTemp: Int? = cfg.baseBatteryTempDeciC
     private var chargerOn = cfg.power.source == "ac"
+    private var batteryLevel: Int? = cfg.power.levelPermille
     private var foreground = cfg.presence.foreground
+    private var lowPowerMode = false
     private var memPressure = false
     private var gpuBusy: Int? = null
     private var thermalLost = !cfg.thermalAvailable
@@ -101,6 +103,8 @@ class FakeHost(val cfg: FakeConfig) : BenchHost {
                     "MEMORY_PRESSURE" -> memPressure = true
                     "THERMAL_CODE" -> forcedCode = inj.value.toInt()
                     "BATTERY_TEMP" -> batteryTemp = inj.value.toInt()
+                    "BATTERY_LEVEL" -> batteryLevel = inj.value.toInt()
+                    "POWER_SAVER" -> lowPowerMode = true
                     "GPU_BUSY" -> gpuBusy = inj.value.toInt()
                     "THERMAL_LOST" -> thermalLost = true
                     "THERMAL_BACK" -> thermalLost = false
@@ -146,14 +150,14 @@ class FakeHost(val cfg: FakeConfig) : BenchHost {
 
         override fun power(): PowerReading {
             tick()
-            return PowerReading(if (chargerOn) "ac" else "battery", cfg.power.levelPermille, cfg.power.hasBattery)
+            return PowerReading(if (chargerOn) "ac" else "battery", batteryLevel, cfg.power.hasBattery)
         }
 
         override fun memory(): MemoryReading = cfg.memory.copy(footprintBytes = loadedTier?.let { cfg.tiers.getValue(it).peakFootprintBytes } ?: cfg.memory.footprintBytes)
 
         override fun presence(): Presence {
             tick()
-            return cfg.presence.copy(foreground = foreground)
+            return cfg.presence.copy(foreground = foreground, lowPowerMode = cfg.presence.lowPowerMode || lowPowerMode)
         }
 
         override fun gpuBusyByOthersPermille(): Int? {

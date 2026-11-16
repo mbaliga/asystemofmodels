@@ -1,12 +1,15 @@
 """M08 (the claim tracker and its adversaries, LAB_SPEC 6.6) for gen_vectors.py.
 
 The worked numbers (M08-001..004) and the adversary table (M08-010..022) are the spec's own, with the expected values written out by hand in the descriptions and
-asserted below. The remaining vectors (M08-023 on) are hand-derived and cross-checked against the Python tracker in this file, an independent reading of 6.6.
-R3-OVERCLAIM-1: M08-017 does NOT claim the design's 'at most about 2x' padding bound; it pins what the mechanism gives (ratio 2,071 at 3,000 bytes) and the
-worst case at the cap (M08-046, M08-047)."""
+asserted below. The remaining vectors (M08-023 on) are hand-derived and cross-checked against the Python tracker in this file (a same-session cross-check, not an independent reading: ERR-FX3-TP-5).
+R3-OVERCLAIM-1: M08-017 does NOT claim the design's 'at most about 2x' padding bound; it pins what the mechanism gives (ratio 2,071 at 3,000 bytes of VISIBLE filler) and the
+worst case at the cap (M08-046, M08-047). r4 (LAB_SPEC R4-L-18, R4-L-19): `outBytes` is counted over the normalised answer text (`normalise()` below, a same-session transliteration of the Kotlin and Swift normalisers with
+`unicodedata`, NOT an independent reading: ERR-FX3-TP-5); M08-083..093 pin the normalisation, M08-094..096 interpolation, M08-097 inheritance with no recorded claim body, M08-098..101 the ASC01 state and penalty cases. The
+file is written with ascii_only so that the invisible characters of the normalisation vectors are visible \\uXXXX escapes."""
 import json
 import os
 import sys
+import unicodedata
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ref  # noqa: E402
@@ -21,7 +24,8 @@ BPT = (4000, 8000)
 
 
 def net_warm(link, b):
-    return link["rttMs"] + ref.cdiv(b * 8, link["kbps"])
+    kbps = link["kbps"] if link["kbps"] > 0 else ref.CFG["pathKbps"][link["path"]]
+    return link["rttMs"] + ref.cdiv(b * 8, kbps)
 
 
 def base(**kw):
@@ -31,16 +35,59 @@ def base(**kw):
     return d
 
 
+# ERR-FX3-TP-1: the invisible set, spelled out so that no runtime's Unicode table decides it. Default_Ignorable_Code_Point (Unicode 15.0; equal to Perl 5 and the Swift 6.1 runtime property) plus
+# U+2800 BRAILLE PATTERN BLANK, plus the Cf characters assigned after Unicode 13 (U+0890..0891, U+13430..1343F) so that JDK 17 (Unicode 13) and JDK 21 (Unicode 15) agree.
+INVISIBLE = ((0x00AD, 0x00AD), (0x034F, 0x034F), (0x061C, 0x061C), (0x0890, 0x0891), (0x115F, 0x1160), (0x17B4, 0x17B5), (0x180B, 0x180F), (0x200B, 0x200F),
+             (0x202A, 0x202E), (0x2060, 0x206F), (0x2800, 0x2800), (0x3164, 0x3164), (0xFE00, 0xFE0F), (0xFEFF, 0xFEFF), (0xFFA0, 0xFFA0), (0xFFF0, 0xFFF8),
+             (0x13430, 0x1343F), (0x1BCA0, 0x1BCA3), (0x1D173, 0x1D17A), (0xE0000, 0xE0FFF))
+
+
+def invisible(c):
+    cp = ord(c)
+    return unicodedata.category(c) in ("Cf", "Cc") or any(lo <= cp <= hi for lo, hi in INVISIBLE)
+
+
+def strip(text):
+    """Removes invisible characters (Cc, Cf, the INVISIBLE set), collapses every run of space separators (Zs, Zl, Zp) to one U+0020 and trims. No NFC."""
+    out, pending = [], False
+    for c in text:
+        if invisible(c):
+            continue
+        if unicodedata.category(c) in ("Zs", "Zl", "Zp"):
+            pending = True
+        else:
+            if pending and out:
+                out.append(" ")
+            pending = False
+            out.append(c)
+    return "".join(out)
+
+
+def normalise(text):
+    """LAB_SPEC R4-L-19 in the spec's own order, with the invisible set of ERR-FX3-TP-1: NFC first, then `strip`. A tab or a newline (Cc) is removed, never collapsed (ERR-R4B-TR-1)."""
+    return strip(unicodedata.normalize("NFC", text))
+
+
+def counted_bytes(text):
+    """The bytes that count as `outBytes` (ERR-FX3-TP-2): the NFC form, but never more than the same text without NFC. NFC can expand (U+0958, U+1D160) and must not
+    turn a visible character into more counted bytes than it was sent with."""
+    return min(len(normalise(text).encode("utf-8")), len(strip(text).encode("utf-8")))
+
+
+def chunk_text(c):
+    if "parts" in c:
+        return "".join(p["text"] * p["times"] for p in c["parts"])
+    if "count" in c:
+        return "x" * (c["count"] * c["bytesEach"])
+    return "x" * c["bytes"]
+
+
 def evaluate(inp):
     chunks = inp["chunks"]
-    total, last = 0, None
+    last = None
     for c in chunks:
-        if "count" in c:
-            total += c["count"] * c["bytesEach"]
-            last = max(last or 0, c["tTo"])
-        else:
-            total += c["bytes"]
-            last = max(last or 0, c["t"])
+        last = max(last or 0, c["tTo"] if "count" in c else c["t"])
+    total = counted_bytes("".join(chunk_text(c) for c in chunks))
     end_t = inp["end"]["t"] if inp["end"] else None
     t_end = max([t for t in (end_t, last) if t is not None])
     elapsed = max(1, t_end - inp["tBodyMs"])
@@ -97,9 +144,11 @@ m08_eval("M08-015", "reported heat: st.tb = 2 on every piggyback has no effect o
          dict(predictedMs=19961, ratio=973))
 m08_eval("M08-016", "reported queue: qb = 2 on every piggyback: no discard, the ratio is unchanged", base(chunks=ONE, end=dict(t=20500, payload=END_OK), peerDigest=dict(tb=0, qb=2)),
          dict(ratio=973, discard=None))
-# padding: 1,200 real + 1,800 filler = 3,000 bytes in the honest time (M08-017): the spec's ratio is 2,071. R3-OVERCLAIM-1: this is not bounded by 'about 2x'.
-m08_eval("M08-017", "padding under the cap: 3,000 bytes (1,200 real + 1,800 filler) in the honest time: outTokEst 750, E7 = 37,450, predicted 42,461, ratio 2,071 (placement still cannot exceed the claim: effRatio = min(1000, ...))",
-         base(chunks=[dict(t=20000, bytes=3000)], end=dict(t=20500, payload=END_OK)), dict(ratio=2071, predictedMs=42461, outTokEst=750, discard=None))
+# padding: 1,200 real + 1,800 filler = 3,000 bytes in the honest time (M08-017). R3-OVERCLAIM-1 / LAB_SPEC R4-L-19: the filler is VISIBLE (letters), so the normaliser keeps it. This is
+# the stated residual, no longer "at most bptCap / bpt = 2": min(RATIO_CAP / 1000, maxTokens x bptCap / trueOutBytes) = min(5, 1024 x 8 / 1.2 = 6.8) = 5.
+m08_eval("M08-017", "padding under the cap with visible filler (1,200 real letters + 1,800 filler letters = 3,000 bytes) in the honest time: normalisation keeps it; outTokEst 750, E7 = 37,450, predicted 42,461, ratio 2,071; "
+         "the inflation (2.07x) is inside the stated residual min(RATIO_CAP / 1000, maxTokens x bptCap / trueOutBytes) = min(5, 6.8) = 5, not the r3 bound of about 2x; placement still cannot exceed the claim (effRatio = min(1000, ...))",
+         base(chunks=[dict(t=20000, parts=[dict(text="x", times=1200), dict(text="y", times=1800)])], end=dict(t=20500, payload=END_OK)), dict(ratio=2071, predictedMs=42461, outTokEst=750, discard=None, outBytes=3000))
 m08_eval("M08-018", "padding over the cap: 8,193 bytes at maxTokens 1,024 (cap 8,192): DISCARD_OVERLONG", base(chunks=[dict(t=20000, bytes=8193)], end=dict(t=20500, payload=END_OK)), dict(discard="OVERLONG"))
 m08_eval("M08-062", "padding exactly at the cap (8,192 bytes) is kept: this is the worst case that the tracker cannot see (R3-OVERCLAIM-1)", base(chunks=[dict(t=20000, bytes=8192)], end=dict(t=20500, payload=END_OK)),
          dict(discard=None, outTokEst=2048))
@@ -194,13 +243,13 @@ sequence("M08-055", "capRef below the claim binds prior' while n < 3: min(claim,
 sequence("M08-056", "capRef does not apply once n >= 3 (the observed median replaces the prior)", [HONEST] * 3, ceiling=CEIL)
 
 # raw states
-def state_vec(id_, desc, ratios=(), recent=(), inherited=False, disc=700, want=None):
+def state_vec(id_, desc, ratios=(), recent=(), inherited=False, disc=700, want=None, claim=CLAIM):
     ts_recent = list(recent)
-    s = summarize(list(ratios), ts_recent, 0, inherited=inherited, disc=disc)
+    s = summarize(list(ratios), ts_recent, 0, inherited=inherited, disc=disc, claim=claim)
     if want:
         for k, v in want.items():
             assert s[k] == v, f"{id_}: {k} = {s[k]}, expected {v}"
-    M08.append(vec(id_, desc, dict(kind="state", claim=CLAIM, promptTokens=500, ratios=list(ratios), recent=ts_recent, inheritedDiscrepant=inherited, disc=disc, ceiling=None), ok(s)))
+    M08.append(vec(id_, desc, dict(kind="state", claim=claim, promptTokens=500, ratios=list(ratios), recent=ts_recent, inheritedDiscrepant=inherited, disc=disc, ceiling=None), ok(s)))
 
 
 state_vec("M08-057", "an inherited DISCREPANT state stays DISCREPANT whatever the new ratios say until it clears", [1000] * 6, inherited=True, want=dict(state="DISCREPANT"))
@@ -224,4 +273,238 @@ def claim_body(id_, desc, events, want_accepts):
 claim_body("M08-022", "the peer publishes a new claim seq twice in one day: the second is ignored for routing until 24 h pass", [dict(seq=1, at=1000), dict(seq=2, at=3601000), dict(seq=2, at=86401000)], [True, False, True])
 claim_body("M08-060", "a claim body with a seq that is not higher is never accepted (rollback)", [dict(seq=5, at=0), dict(seq=5, at=90000000), dict(seq=4, at=180000000)], [True, False, False])
 
-write("M08-claim-tracker.json", "M08", ["LAB_SPEC.md 6.6", "ASOM_MESH_DESIGN.md 5.7", "docs/design/mesh/REVIEW_ROUND3.md R3-OVERCLAIM-1, R3-CLOSURE-5"], M08)
+# --- review fixes (LTQ-05, LTQ-12): appended so that every earlier id keeps its number ---------------------------------------------------------------
+DAY = 86400000
+
+
+def ratio_of_obs(o, claim=CLAIM):
+    return evaluate(base(claim=claim, chunks=[dict(t=o["elapsed"], bytes=o["bytes"])], end=dict(t=o["elapsed"], payload=END_OK)))
+
+
+def inherit(id_, desc, before, after, new_claim_at, want_accepted, want_states, initial_claim=True):
+    """A DISCREPANT window, then a new claim seq: DISCREPANT is inherited until 10 new kept observations have best >= CORR. With initial_claim False no claim body was recorded
+    before the window (LAB_SPEC R4-L-18: DISCREPANT is inherited then too, and the 24 h gate has no earlier acceptance to wait for)."""
+    ratios, recent = [], []
+    for o in before:
+        ev = ratio_of_obs(o)
+        ratios = (ratios + [ev["ratio"]])[-ref.WIN:]
+        recent = (recent + [dict(kept=True, ratio=ev["ratio"], outBytes=ev["outBytes"])])[-20:]
+    was_bad = ref.state_of(dict(ratios=ratios, recent=recent, inheritedDiscrepant=False)) == "DISCREPANT"
+    accepted = new_claim_at >= DAY or not initial_claim
+    inherited, ratios = was_bad, []
+    states = []
+    for o in after:
+        ev = ratio_of_obs(o)
+        ratios = (ratios + [ev["ratio"]])[-ref.WIN:]
+        if inherited and len(ratios) >= 10 and sorted(ratios)[(3 * len(ratios)) // 4] >= ref.CORR:
+            inherited = False
+        states.append(ref.state_of(dict(ratios=ratios, recent=[], inheritedDiscrepant=inherited)))
+    assert accepted == want_accepted, f"{id_}: accepted {accepted}"
+    assert states == want_states, f"{id_}: {states} vs {want_states}"
+    inp = dict(kind="inherit", claim=CLAIM, link=LINK, promptTokens=500, promptBytes=5120, maxTokens=1024, bpt=list(BPT), before=before, newClaimAtMs=new_claim_at, after=after)
+    if not initial_claim:
+        inp["initialClaim"] = False
+    M08.append(vec(id_, desc, inp, ok(dict(accepted=accepted, states=states))))
+
+
+GOOD = dict(bytes=1200, elapsed=19000)
+inherit("M08-065", "an inherited DISCREPANT state holds through 9 good observations and clears at the 10th (LTQ-12: not at MIN_STATE = 5)", [HALF] * 5, [GOOD] * 10, DAY,
+        True, ["DISCREPANT"] * 9 + ["CORROBORATED"])
+inherit("M08-066", "a window that was not DISCREPANT is not inherited: the new claim seq starts UNVERIFIED and reaches its state after 5 observations", [HONEST] * 5, [GOOD] * 5, DAY,
+        True, ["UNVERIFIED"] * 4 + ["CORROBORATED"])
+inherit("M08-067", "an inherited DISCREPANT state does not clear on 10 observations whose best is below CORR", [HALF] * 5, [HALF] * 10, DAY,
+        True, ["DISCREPANT"] * 10)
+
+
+def claim_budget(id_, desc, observations, want_state, want_tracked_prefill):
+    """A tripped discard budget survives a new claim seq (only W restarts, LTQ-05)."""
+    kept, recent = [], []
+    for o in observations:
+        ev = ratio_of_obs(o)
+        is_kept = ev["discard"] is None
+        if is_kept:
+            kept = (kept + [ev["ratio"]])[-ref.WIN:]
+        recent = (recent + [dict(kept=is_kept, ratio=ev["ratio"], outBytes=ev["outBytes"])])[-20:]
+    s = summarize([], recent, 0)
+    assert s["state"] == want_state, f"{id_}: {s['state']}"
+    assert s["tracked"]["prefill"] == want_tracked_prefill, f"{id_}: {s['tracked']}"
+    inp = dict(kind="claimBudget", claim=CLAIM, link=LINK, promptTokens=500, promptBytes=5120, maxTokens=1024, bpt=list(BPT), observations=observations, newClaimAtMs=DAY + 1)
+    M08.append(vec(id_, desc, inp, ok(dict(accepted=True, state=s["state"], budgetTripped=s["budgetTripped"], n=0, tracked=s["tracked"]))))
+
+
+claim_budget("M08-068", "a new claim seq 24 h later restarts W but not the discard budget: four truncated answers still read WEAK and still clamp the rate to the lowest ratio of an answer of >= 8 bytes (40 bytes: predicted 5,461 ms, ratio 27, prefill 2,700)",
+             [dict(bytes=40, elapsed=200000)] * 4, "WEAK", 2700)
+claim_budget("M08-069", "a new claim seq with every truncated answer under 8 bytes: the clamp is 0 and the candidate fails F8", [dict(bytes=4, elapsed=1000)] * 4, "WEAK", 0)
+
+
+def penalty(id_, desc, events, probes, want_penalty, want_disc):
+    """Two files of one peer DISCREPANT latch a peer-wide penalty of 7 days, doubling on every repeat. Each file keeps its discard record: a tripped budget never lifts DISCREPANT."""
+    files = {"A": dict(ratios=[], recent=[]), "B": dict(ratios=[], recent=[])}
+    pen = None
+
+    def bad_files():
+        return sum(1 for f in files.values() if ref.state_of(dict(ratios=f["ratios"], recent=f["recent"], inheritedDiscrepant=False)) == "DISCREPANT")
+
+    for e in events:
+        ev = ratio_of_obs(e)
+        f = files[e["file"]]
+        is_kept = ev["discard"] is None
+        if is_kept:
+            f["ratios"] = (f["ratios"] + [ev["ratio"]])[-ref.WIN:]
+        f["recent"] = (f["recent"] + [dict(kept=is_kept, ratio=ev["ratio"], outBytes=ev["outBytes"])])[-20:]
+        active = pen is not None and pen["untilWallMs"] > e["at"]
+        if not active and bad_files() >= 2:
+            reps = pen["repeats"] if pen else 0
+            pen = dict(untilWallMs=e["at"] + 7 * DAY * (1 << reps), repeats=reps + 1)
+    discs = []
+    for t in probes:
+        discs.append(400 if (pen is not None and pen["untilWallMs"] > t) or bad_files() >= 2 else 700)
+    assert pen == want_penalty, f"{id_}: {pen} vs {want_penalty}"
+    assert discs == want_disc, f"{id_}: {discs} vs {want_disc}"
+    inp = dict(kind="penalty", claim=CLAIM, link=LINK, promptTokens=500, promptBytes=5120, maxTokens=1024, bpt=list(BPT), events=events, probes=probes)
+    M08.append(vec(id_, desc, inp, ok(dict(penalty=pen, disc=discs))))
+
+
+def bad_obs(file, at):
+    return dict(file=file, bytes=1200, elapsed=39911, at=at)
+
+
+FIVE_A = [bad_obs("A", 1000)] * 5
+FIVE_B = [bad_obs("B", 2000)] * 5
+penalty("M08-070", "one DISCREPANT file of a peer does not latch a penalty: disc stays 700", FIVE_A, [1000, 5000], None, [700, 700])
+penalty("M08-071", "two DISCREPANT files latch a 7-day penalty at the observation that makes the second DISCREPANT; disc is 400 until it ends and 400 after it while both stay DISCREPANT",
+        FIVE_A + FIVE_B, [2000, 2000 + 7 * DAY - 1, 2000 + 7 * DAY], dict(untilWallMs=2000 + 7 * DAY, repeats=1), [400, 400, 400])
+penalty("M08-072", "a second penalty of a peer that is still DISCREPANT lasts 14 days (doubling on repeat)", FIVE_A + FIVE_B + [bad_obs("B", 2000 + 7 * DAY + 5)],
+        [2000 + 7 * DAY + 5, 2000 + 21 * DAY + 4, 2000 + 21 * DAY + 5], dict(untilWallMs=2000 + 7 * DAY + 5 + 14 * DAY, repeats=2), [400, 400, 400])
+penalty("M08-073", "a third penalty lasts 28 days", FIVE_A + FIVE_B + [bad_obs("B", 2000 + 7 * DAY + 5), bad_obs("B", 2000 + 21 * DAY + 10)], [2000 + 21 * DAY + 10],
+        dict(untilWallMs=2000 + 21 * DAY + 10 + 28 * DAY, repeats=3), [400])
+
+
+def disc_vec(id_, desc, states, penalty_, now, want):
+    got = None
+    if penalty_ is not None and penalty_["untilWallMs"] > now:
+        got = 400
+    else:
+        bad = sum(1 for st in states if ref.state_of(dict(ratios=st["ratios"], recent=[], inheritedDiscrepant=st["inherited"])) == "DISCREPANT")
+        got = 400 if bad >= 2 else 700
+    assert got == want, f"{id_}: {got} vs {want}"
+    M08.append(vec(id_, desc, dict(kind="disc", states=states, penalty=penalty_, now=now), ok(dict(disc=got))))
+
+
+INH = lambda f: dict(file=f, ratios=[], inherited=True)
+disc_vec("M08-074", "two files DISCREPANT only by inheritance (no observation, so no penalty was latched) still give disc 400", [INH("A"), INH("B")], None, 1000, 400)
+disc_vec("M08-075", "one file DISCREPANT by inheritance gives disc 700", [INH("A")], None, 1000, 700)
+disc_vec("M08-076", "two files DISCREPANT by ratios (best < 600) give disc 400", [dict(file="A", ratios=[100] * 5, inherited=False), dict(file="B", ratios=[100] * 5, inherited=False)], None, 1000, 400)
+disc_vec("M08-077", "a running penalty gives disc 400 whatever the states are", [], dict(untilWallMs=5000, repeats=1), 4999, 400)
+disc_vec("M08-078", "a penalty that ended at now gives disc 700 when fewer than two files are DISCREPANT", [INH("A")], dict(untilWallMs=5000, repeats=1), 5000, 700)
+
+# best = x[(3n)/4] at the lengths where nearest-rank differs from the next index down (LTQ-12)
+for n_, want_best in ((8, 700), (12, 1000), (16, 1300), (20, 1600)):
+    rs = [100 * (k + 1) for k in range(n_)]
+    state_vec(f"M08-{79 + (8, 12, 16, 20).index(n_):03d}", f"best at n = {n_} is x[{(3 * n_) // 4}] = {want_best} (nearest rank, not x[{(3 * n_ - 1) // 4}])", rs, want=dict(best=want_best))
+
+
+# --- r4 builder actions 6 and 7 (REVISION_4.md section 6; LAB_SPEC R4-L-18, R4-L-19) -------------------------------------------------------------
+def parts(*ps):
+    return [dict(text=t, times=n) for t, n in ps]
+
+
+ZW = "​"
+HONEST_END = dict(t=20500, payload=END_OK)
+# (a) trailing-whitespace padding: the honest 1,200 letters, then 1,800 bytes of newline, space and tab. Control characters (newline, tab) are removed, space runs collapse, the end is trimmed.
+m08_eval("M08-083", "R4-L-19 (a) trailing-whitespace padding: 1,200 letters then 600 newlines, 600 spaces and 600 tabs (3,000 raw bytes) in the honest time: normalised outBytes 1,200, ratio 973, exactly the unpadded answer (M08-002)",
+         base(chunks=[dict(t=20000, parts=parts(("x", 1200), ("\n", 600), (" ", 600), ("\t", 600)))], end=HONEST_END), dict(outBytes=1200, ratio=973, discard=None))
+# (b) zero-width padding, interleaved: U+200B, U+FEFF, U+2060 are Cf (3 bytes each)
+m08_eval("M08-084", "R4-L-19 (b) zero-width padding: 1,200 letters with 300 U+200B, 100 U+FEFF and 200 U+2060 (3 bytes each, 1,800 bytes of padding) interleaved: all Cf, removed: outBytes 1,200, ratio 973",
+         base(chunks=[dict(t=20000, parts=parts(("x", 600), (ZW, 300), ("﻿", 100), ("x", 600), ("⁠", 200)))], end=HONEST_END), dict(outBytes=1200, ratio=973, discard=None))
+# (c) a short real answer under a large max_tokens: 200 real bytes, maxTokens 4,096 (cap 32,768)
+SHORT_REAL = dict(maxTokens=4096)
+m08_eval("M08-085", "R4-L-19 (c) a short real answer under a large max_tokens: 200 real letters then 32,568 spaces (32,768 raw bytes = the cap at max_tokens 4,096): normalised outBytes 200, outTokEst 50, predicted 7,461, "
+         "elapsed 7,700: ratio 968, the honest ratio (invisible padding gains nothing)",
+         base(chunks=[dict(t=7600, parts=parts(("x", 200), (" ", 32568)))], end=dict(t=7700, payload=END_OK), **SHORT_REAL), dict(outBytes=200, outTokEst=50, predictedMs=7461, elapsedMs=7700, ratio=968, discard=None))
+m08_eval("M08-086", "R4-L-19 (c) the residual: the same 200 real letters then 32,568 VISIBLE filler letters (32,768 bytes = the cap) in the same time 7,700: outTokEst 8,192, E7 = 409,550, predicted 414,561, ratio capped at RATIO_CAP 5,000; "
+         "the bound min(RATIO_CAP / 1000, 4,096 x 8 / 200) = min(5, 163.8) = 5 is reached; placement still cannot exceed the claim",
+         base(chunks=[dict(t=7600, parts=parts(("x", 200), ("y", 32568)))], end=dict(t=7700, payload=END_OK), **SHORT_REAL), dict(outBytes=32768, outTokEst=8192, predictedMs=414561, ratio=5000, discard=None))
+m08_eval("M08-087", "R4-L-19: padding cannot rescue a short answer: 100 real letters then 1,000 newlines and 1,000 spaces: normalised outBytes 100 < SHORT_BYTES: DISCARD_SHORT",
+         base(chunks=[dict(t=2000, parts=parts(("x", 100), ("\n", 1000), (" ", 1000)))], end=dict(t=2100, payload=END_OK)), dict(outBytes=100, discard="SHORT"))
+m08_eval("M08-088", "R4-L-19 NFC: 600 decomposed e + U+0301 (3 bytes each, 1,800 raw bytes) compose to 600 precomposed U+00E9 (2 bytes each): outBytes 1,200, ratio 973",
+         base(chunks=[dict(t=20000, parts=parts(("é", 600)))], end=HONEST_END), dict(outBytes=1200, ratio=973, discard=None))
+m08_eval("M08-089", "R4-L-19 order: control characters are removed BEFORE whitespace runs collapse. 600 letters, a space, U+0007, a space, 599 letters: the two spaces meet and collapse to one: 600 + 1 + 599 = 1,200",
+         base(chunks=[dict(t=20000, parts=parts(("x", 600), (" \u0007 ", 1), ("x", 599)))], end=HONEST_END), dict(outBytes=1200, ratio=973, discard=None))
+m08_eval("M08-090", "R4-L-19 (ERR-R4B-TR-1): a newline is a control character and is removed, not collapsed to a space: 600 letters, a newline, 600 letters: outBytes 1,200 (not 1,201)",
+         base(chunks=[dict(t=20000, parts=parts(("x", 600), ("\n", 1), ("x", 600)))], end=HONEST_END), dict(outBytes=1200, ratio=973, discard=None))
+m08_eval("M08-091", "R4-L-19 whitespace: a run of mixed space separators (U+00A0, U+2003, U+2028, U+0020, U+3000) between two 600-letter halves collapses to ONE U+0020 (1 byte), a leading run and a trailing run (U+2029) are trimmed: outBytes 1,201",
+         base(chunks=[dict(t=20000, parts=parts(("  ", 3), ("x", 600), ("    　", 4), ("x", 600), (" ", 2)))], end=HONEST_END), dict(outBytes=1201, discard=None))
+m08_eval("M08-092", "R4-L-19 chunk-split invariance: a whitespace run split across chunks, a zero-width character at a chunk edge and a decomposed e + U+0301 split across chunks give the same outBytes as one chunk: "
+         "400 letters + 1 + 400 letters + U+00E9 (2) + 397 letters = 1,200",
+         base(chunks=[dict(t=5000, parts=parts(("x", 400), (" ", 1))), dict(t=10000, parts=parts((" ", 1), ("x", 400), ("e", 1))), dict(t=15000, parts=parts(("́", 1), ("x", 397), (ZW, 1))), dict(t=20000, parts=parts((" ", 1)))],
+              end=HONEST_END), dict(outBytes=1200, ratio=973, discard=None))
+m08_eval("M08-093", "R4-L-19 OVERLONG is judged on the normalised length: 8,192 letters (the cap at max_tokens 1,024) plus 5,000 U+200B (15,000 bytes of padding) are kept, outBytes 8,192",
+         base(chunks=[dict(t=20000, parts=parts(("x", 8192), (ZW, 5000)))], end=HONEST_END), dict(outBytes=8192, discard=None))
+
+# R4-L-18: the interpolation vectors. The curve (256, 30000) - (1024, 20000) at P = 500 is 26,822 (20,600,000 / 768 = 26,822.9, floored), not 26,823.
+CURVE = PR(prefill=100000, decode=20000, ttft0=0, steady=20000, curve=[[256, 30000], [1024, 20000]])
+m08_eval("M08-094", "R4-L-18 interpolation: claim decode curve (256, 30000)-(1024, 20000) at P = 500: floor((30000 x 524 + 20000 x 244) / 768) = floor(20,600,000 / 768) = 26,822; E7 = ceilDiv(299 x 10^6, 26,822) = 11,148; "
+         "predicted = 11 + 5,000 + 11,148 = 16,159; elapsed 16,600: ratio 973",
+         base(claim=CURVE, chunks=[dict(t=16500, bytes=1200)], end=dict(t=16600, payload=END_OK)), dict(predictedMs=16159, elapsedMs=16600, ratio=973))
+state_vec("M08-095", "R4-L-18: one tracked ratio scales the claim decode AT P; it does not rescale the curve points first: ratios {900, 900, 900}, claim decode at P = 26,822: tracked decodeAtP = floor(26,822 x 900 / 1000) = 24,139 "
+          "(scaling the points first would give 24,140); prefill 90,000, steady 18,000", [900, 900, 900], want=dict(tracked=dict(prefill=90000, decodeAtP=24139, steady=18000)), claim=CURVE)
+state_vec("M08-096", "R4-L-18: clamped below the curve: at P = 500 a curve whose first point is at 600 ((600, 30000)-(1024, 20000)) gives the first point, 30,000; n = 0: prior' = min(30,000, no capRef) x 700 / 1000 = 21,000",
+          [], want=dict(tracked=dict(prefill=70000, decodeAtP=21000, steady=14000)), claim=PR(prefill=100000, decode=20000, ttft0=0, steady=20000, curve=[[600, 30000], [1024, 20000]]))
+
+# R4-L-18: DISCREPANT is inherited also when no claim body was recorded before the window (the JVM `wasBad` required a recorded claimSeq).
+inherit("M08-097", "R4-L-18: a DISCREPANT window with NO claim body recorded before it (no earlier seq, no earlier acceptance), then the first claim body at 1,000 ms: it is accepted (nothing to wait 24 h for) and DISCREPANT is inherited "
+        "until 10 good observations: 9 DISCREPANT then CORROBORATED", [HALF] * 5, [GOOD] * 10, 1000, True, ["DISCREPANT"] * 9 + ["CORROBORATED"], initial_claim=False)
+
+# ERR-FX2-ASC01: a tripped discard budget never lifts DISCREPANT.
+TRUNC = [dict(kept=True, ratio=500, outBytes=1200)] * 5 + [dict(kept=False, ratio=5, outBytes=50)] * 6
+state_vec("M08-098", "ERR-FX2-ASC01: five kept ratios of 500 (best 500 < 600: DISCREPANT) and six truncated answers (6 of 11 discarded: budget tripped): the budget never lifts DISCREPANT to WEAK; the clamp still applies: "
+          "minRatio 5, tracked prefill 100,000 x 5 / 1000 = 500, decode 100, steady 100", [500] * 5, recent=TRUNC,
+          want=dict(state="DISCREPANT", budgetTripped=True, minRatio=5, tracked=dict(prefill=500, decodeAtP=100, steady=100)))
+state_vec("M08-099", "ERR-FX2-ASC01 control: a tripped budget on a CORROBORATED window (best 900) turns it WEAK (the budget demotes)", [900] * 5,
+          recent=[dict(kept=True, ratio=900, outBytes=1200)] * 5 + [dict(kept=False, ratio=5, outBytes=50)] * 6, want=dict(state="WEAK", budgetTripped=True))
+state_vec("M08-100", "ERR-FX2-ASC01 control: a tripped budget on an UNVERIFIED window (n = 4) is WEAK", [900] * 4,
+          recent=[dict(kept=True, ratio=900, outBytes=1200)] * 4 + [dict(kept=False, ratio=5, outBytes=50)] * 6, want=dict(state="WEAK", budgetTripped=True))
+
+
+def trunc_events(file, at, n_short=6):
+    return [dict(file=file, bytes=1200, elapsed=39911, at=at)] * 5 + [dict(file=file, bytes=20, elapsed=1000000, at=at)] * n_short
+
+
+penalty("M08-101", "ERR-FX2-ASC01: two files of one peer are each DISCREPANT (five ratios of 500) and then each truncates six answers (budget tripped): DISCREPANT is not lifted, so the penalty latches at the 5th kept "
+        "observation of the second file (7 days from 2,000), is not extended by the later discards, and disc is 400 before, during and after it (both files are still DISCREPANT)",
+        trunc_events("A", 1000) + trunc_events("B", 2000), [2000, 2000 + 7 * DAY - 1, 2000 + 7 * DAY, 2000 + 30 * DAY], dict(untilWallMs=2000 + 7 * DAY, repeats=1), [400, 400, 400, 400])
+
+# ERR-FX3-TP-1..4 (review findings R4TB-03, R4TB-05): the invisible set beyond Cf, the NFC expansion cap and the normalised basis of the bytes-per-token table. Only characters whose
+# category and normalisation have been stable since Unicode 4.0 (U+FE0F 3.2, U+E0100 4.0, U+034F 3.2, U+115F 1.1, U+3164 1.1, U+FFA0 1.1, U+2800 3.0, U+17B4 3.0, U+180B 3.0, U+0958 1.1).
+VS16, VS17 = "\ufe0f", "\U000e0100"
+m08_eval("M08-102", "ERR-FX3-TP-1 variation-selector padding: 1,200 letters with 300 U+FE0F (3 bytes each) and 300 U+E0100 (4 bytes each, 2,100 bytes of padding) interleaved: both are default-ignorable "
+         "(U+FE0F is Mn, U+E0100 is Mn), removed: outBytes 1,200, ratio 973, exactly the unpadded answer",
+         base(chunks=[dict(t=20000, parts=parts(("x", 600), (VS16, 300), (VS17, 300), ("x", 600)))], end=HONEST_END), dict(outBytes=1200, ratio=973, discard=None))
+m08_eval("M08-103", "ERR-FX3-TP-1 combining-grapheme-joiner and filler padding: 1,200 letters with 200 U+034F (Mn, 2 bytes), 100 U+115F (Lo, 3), 100 U+3164 (Lo, 3) and 100 U+FFA0 (Lo, 3) interleaved: "
+         "all default-ignorable, removed: outBytes 1,200, ratio 973",
+         base(chunks=[dict(t=20000, parts=parts(("x", 600), ("\u034f", 200), ("\u115f", 100), ("\u3164", 100), ("\uffa0", 100), ("x", 600)))], end=HONEST_END), dict(outBytes=1200, ratio=973, discard=None))
+m08_eval("M08-104", "ERR-FX3-TP-1 blank-glyph padding: 1,200 letters with 200 U+2800 BRAILLE PATTERN BLANK (So, 3 bytes; not default-ignorable, listed by name), 100 U+17B4 (Mn) and 100 U+180B (Mn) interleaved: "
+         "removed: outBytes 1,200, ratio 973",
+         base(chunks=[dict(t=20000, parts=parts(("x", 600), ("\u2800", 200), ("\u17b4", 100), ("\u180b", 100), ("x", 600)))], end=HONEST_END), dict(outBytes=1200, ratio=973, discard=None))
+m08_eval("M08-105", "ERR-FX3-TP-2 NFC expansion is capped: 300 letters and 300 U+0958 (3 bytes each, 900 raw; NFC expands each to U+0915 U+093C, 6 bytes): the NFC form would be 2,100 bytes, "
+         "more than was sent; outBytes is min(NFC form, the same text without NFC) = 1,200, ratio 973",
+         base(chunks=[dict(t=20000, parts=parts(("x", 300), ("\u0958", 300)))], end=HONEST_END), dict(outBytes=1200, ratio=973, discard=None))
+m08_eval("M08-106", "ERR-FX3-TP-1 control: a visible combining mark is not invisible padding: 600 x (e + U+0300) is 1,800 raw bytes, NFC composes each pair to U+00E8 (2 bytes): outBytes 1,200, ratio 973",
+         base(chunks=[dict(t=20000, parts=parts(("e\u0300", 600)))], end=HONEST_END), dict(outBytes=1200, ratio=973, discard=None))
+# R4TB-05: formatted honest answers. 133 lines of two-space indentation then 'r = f(y)' then a newline, then 4 letters: 1,467 raw bytes, 1,200 normalised (the newline is removed and the indentation
+# run collapses to one space). The table basis is the normalised text (ERR-FX3-TP-4): the lender at its claim reads the plain-answer ratio 973.
+FORMATTED = parts(("  r = f(y)\n", 133), ("xxxx", 1))
+m08_eval("M08-107", "ERR-FX3-TP-4 a formatted honest answer on the NORMALISED basis: 133 indented lines and 4 letters (1,467 raw bytes, 1,200 after normalisation) in the honest time: outBytes 1,200, ratio 973, "
+         "CORROBORATED-grade (>= 800) exactly like the plain 1,200-letter answer (M08-002); the bytes-per-token table is measured on this normalised text",
+         base(chunks=[dict(t=20000, parts=FORMATTED)], end=HONEST_END), dict(outBytes=1200, ratio=973, discard=None))
+m08_eval("M08-108", "ERR-FX3-TP-4 the trap, pinned: the same formatted answer from a lender running at 90 % of its claim when the table was (wrongly) measured on RAW bytes (4,000 bytes per token over 1,467 raw "
+         "bytes = 367 tokens, honest time 23,311 / 0.9 = 25,901 ms): the tracker counts 1,200 normalised bytes (300 tokens, predicted 19,961), ratio floor(19,961,000 / 25,901) = 770 < 800: the tracker does not "
+         "compensate, so a raw-basis table would mark honest formatted answers down; the table must be generated with AnswerText",
+         base(chunks=[dict(t=25800, parts=FORMATTED)], end=dict(t=25901, payload=END_OK)), dict(outBytes=1200, ratio=770, discard=None, predictedMs=19961, elapsedMs=25901))
+
+# ERR-FX4-RT-10 (RP-10): `kbps` 0 is the normal value until a transfer of at least 256 KiB, and E1 then uses the path default (LAN 100,000 kbit/s); the Swift tracker used to divide by it and throw.
+m08_eval("M08-109", "RP-10 an unmeasured bandwidth (kbps 0, path LAN) takes the LAN default 100,000 kbit/s: E1 = 10 + ceilDiv(40,960, 100,000) = 11, exactly the worked numbers of M08-001: predicted 19,961 ms, ratio 973",
+         base(link=LK(rtt=10, kbps=0, path="LAN", warm=True), chunks=EVEN, end=dict(t=20500, payload=END_OK)), dict(predictedMs=19961, ratio=973))
+
+write("M08-claim-tracker.json", "M08", ["LAB_SPEC.md 6.6", "ASOM_MESH_DESIGN.md 5.7", "docs/design/mesh/REVIEW_ROUND3.md R3-OVERCLAIM-1, R3-CLOSURE-5", "LAB_SPEC.md R4-L-18, R4-L-19"], M08, ascii_only=True)
