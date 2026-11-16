@@ -20,7 +20,7 @@ permissions: {}
 
 jobs:
   cleanup-artifacts:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       actions: write
     steps:
@@ -70,7 +70,7 @@ jobs:
             );
 
   cleanup-caches:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       actions: write
     steps:

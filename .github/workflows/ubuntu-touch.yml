@@ -55,7 +55,7 @@ env:
 jobs:
   ut-jvm:
     name: UT host and UTC01-UTC05 (JDK ${{ matrix.jdk }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -110,7 +110,7 @@ jobs:
   ut-isolation-with-sdk:
     name: UT isolation check 2 (Android SDK present)
     # ANDROID_HOME is set on this image; deliberately NOT cleared here.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -132,7 +132,7 @@ jobs:
 
   ut-root-unchanged:
     name: Root jvmTest unchanged
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       ANDROID_HOME: ""
       ANDROID_SDK_ROOT: ""
@@ -162,7 +162,7 @@ jobs:
 
   ut-runtime:
     name: Cross-jlinked aarch64 runtime (size, glibc, module set)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -191,7 +191,7 @@ jobs:
   ut-click:
     name: Click build and review (Clickable ${{ matrix.series }}, arm64)
     needs: [ut-jvm, ut-runtime]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -253,7 +253,7 @@ jobs:
 
   ut-qml:
     name: QML tests against the real Lomiri.Components (fake node)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: clickable/ci-ut24.04-1.x-amd64@sha256:d5f775ab898ee832d6c2dd9870172af3a6359eecf05e4f685d7a4664a0a88ace
     steps:
@@ -331,7 +331,7 @@ jobs:
   ut-canary-2604:
     name: Canary - the next series (26.04-1.x), NON-GATING
     needs: [ut-jvm, ut-runtime]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     continue-on-error: true
     container:
       image: clickable/ci-ut26.04-1.x-arm64@sha256:b4f69f56c27eb689f737697c63f8b9880d87c3e2055136a3675ce67bf2c563f2

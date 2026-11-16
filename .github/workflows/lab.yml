@@ -18,7 +18,7 @@ concurrency:
 jobs:
   lab-tests:
     name: Lab (pure JVM, JDK ${{ matrix.jdk }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -97,7 +97,7 @@ jobs:
 
   lab-schema-oracle:
     name: Manifest schemas equal the generator, and the schema oracle agrees
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -117,7 +117,7 @@ jobs:
   lab-isolation-with-sdk:
     name: Lab isolation check 2 (Android SDK present)
     # ANDROID_HOME is set on this image; deliberately NOT cleared here.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -140,7 +140,7 @@ jobs:
 
   root-unchanged:
     name: Root jvmTest unchanged
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       ANDROID_HOME: ""
       ANDROID_SDK_ROOT: ""

@@ -48,7 +48,7 @@ jobs:
   # reuses the lab's pinned-base check (lab/tools/isolation.py: byte-for-byte against lab/LAB_BASE_SHA).
   root-unchanged:
     name: root build and shipped modules unchanged (pinned base)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -73,7 +73,7 @@ jobs:
             container: ""
             lines: swift-lines-macos
           - name: ubuntu-latest, swift:6.1-noble, swift-crypto
-            os: ubuntu-latest
+            os: ubuntu-24.04
             container: swift:6.1-noble@sha256:3991e5dd5c40b04580c1e56f1ad6042f3173829b1995ffa53b84957371c25876
             lines: swift-lines-linux
     steps:
@@ -148,7 +148,7 @@ jobs:
   jvm-lines:
     name: jvm-lines (JDK 17, lab conformance runner)
     needs: root-unchanged
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       ANDROID_HOME: ""
       ANDROID_SDK_ROOT: ""
@@ -192,7 +192,7 @@ jobs:
   lane-diff:
     name: lane-diff (per vector, JVM against Swift on macOS and on Linux)
     needs: [jvm-lines, apple-swift-lane]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
